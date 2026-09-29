@@ -54,6 +54,11 @@ the [contracts](contracts/); we don't provide or support one.
 
 To keep the APK small, add `-PCABLEGRAM_ABIS=arm64-v8a` (phone) or the ABI of your device.
 
+## Releases
+
+Tagged releases are built and signed by the [Release workflow](.github/workflows/release.yml) and published
+with checksums. See [VERIFY.md](VERIFY.md) to check a download or an installed app.
+
 ## Forks
 
 Cablegram is an unofficial app and is not made or endorsed by Telegram. A fork must use its own Telegram

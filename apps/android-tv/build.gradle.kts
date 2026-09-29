@@ -92,3 +92,13 @@ dependencies {
 // no API-37 calls. AGP cannot skip one dependency, so the whole AAR metadata check is off: re-enable it
 // once the project moves to compileSdk 37 (spec 004 assumptions).
 tasks.matching { it.name.startsWith("check") && it.name.endsWith("AarMetadata") }.configureEach { enabled = false }
+
+// The GPL-3.0 licence and the third-party notices at the repository root ship inside the app (About
+// screen), so the text in the app is the text in the repository.
+val copyLegalAssets = tasks.register<Copy>("copyLegalAssets") {
+    from(rootDir.resolve("../../NOTICE"), rootDir.resolve("../../LICENSE"))
+    into(layout.buildDirectory.dir("generated/legal/legal"))
+}
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/legal"))
+tasks.matching { it.name != copyLegalAssets.name && Regex("(merge.*Assets|.*Lint.*|lint.*)").matches(it.name) }
+    .configureEach { dependsOn(copyLegalAssets) }

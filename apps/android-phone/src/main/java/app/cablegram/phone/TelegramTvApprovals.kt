@@ -176,6 +176,10 @@ object TelegramTvApprovals {
     internal const val ACTION_DENY = "app.cablegram.phone.telegram.DENY_TV"
     internal const val EXTRA_REQUEST = "request_id"
 
+    /** Allow approves the request the user was shown, never another one the server lists. */
+    internal fun requestToApprove(pending: List<PendingTvLogin>?, requestId: String): PendingTvLogin? =
+        pending?.firstOrNull { it.requestId == requestId }
+
     fun ask(context: Context, request: PendingTvLogin) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (Build.VERSION.SDK_INT >= 26) {
@@ -220,9 +224,9 @@ class TelegramTvApprovalReceiver : BroadcastReceiver() {
                 when (intent.action) {
                     TelegramTvApprovals.ACTION_DENY -> client.postTvLoginResult(token, requestId, "denied")
                     TelegramTvApprovals.ACTION_ALLOW -> {
-                        // The TV may have posted a fresher link since the notification; approve the current one.
-                        val request = client.pendingTvLogins(token)?.firstOrNull { it.requestId == requestId }
-                            ?: client.pendingTvLogins(token)?.firstOrNull()
+                        // The TV may have posted a fresher link since the notification; approve the current one
+                        // of the same request. Never another request: the user allowed this one only.
+                        val request = TelegramTvApprovals.requestToApprove(client.pendingTvLogins(token), requestId)
                         request?.let { TelegramTvApprovalWatcher.approve(context, client, token, it) }
                     }
                 }

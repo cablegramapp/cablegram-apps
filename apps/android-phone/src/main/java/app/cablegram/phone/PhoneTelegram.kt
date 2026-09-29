@@ -82,8 +82,12 @@ object PhoneTelegram {
     /** Opens a private channel in the Telegram app; Telegram's private links drop the -100 prefix. */
     fun channelLink(chatId: Long): String = "tg://privatepost?channel=${chatId.toString().removePrefix("-100")}&post=1"
 
-    /** "Approve my TVs automatically" (spec 004 US2): on by default; off means a notification asks. */
-    fun autoApproveTvs(context: Context): Boolean = prefs(context).getBoolean(PREF_AUTO_APPROVE, true)
+    /**
+     * "Approve my TVs automatically" (spec 004 US2): off by default, so a notification asks first. The
+     * login link comes from the server, and approving it gives that link's holder a session on the
+     * user's Telegram account; the user should see and confirm it unless they opted in.
+     */
+    fun autoApproveTvs(context: Context): Boolean = prefs(context).getBoolean(PREF_AUTO_APPROVE, false)
 
     fun setAutoApproveTvs(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(PREF_AUTO_APPROVE, enabled).apply()
