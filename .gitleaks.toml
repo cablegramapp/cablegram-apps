@@ -1,0 +1,12 @@
+title = "cablegram-apps"
+
+[extend]
+useDefault = true
+
+# Fake values used by tests.
+[[allowlists]]
+description = "Test fixtures"
+paths = [
+  '''src/test/.*''',
+  '''contracts/.*''',
+]

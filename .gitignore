@@ -1,0 +1,18 @@
+# Build output and tooling
+build/
+.gradle/
+.kotlin/
+*.apk
+*.aab
+.idea/
+*.iml
+.DS_Store
+
+# Local configuration and secrets: never commit
+local.properties
+.env
+.env.*
+*.jks
+*.keystore
+*.pem
+id_*

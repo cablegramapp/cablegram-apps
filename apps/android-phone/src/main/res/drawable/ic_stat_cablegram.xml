@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar silhouette of the Cablegram mark (TV on a cable). Notification
+     small icons must be single-colour; the system tints them. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M8.5,1.5L12,5L15.5,1.5M5,5h14a2,2 0,0 1,2 2v6a2,2 0,0 1,-2 2h-14a2,2 0,0 1,-2 -2v-6a2,2 0,0 1,2 -2zM12,15c0,2 -3,2.5 -3,4.5c0,1 0.8,1.6 2,1.8" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M16,20.5m-2.8,0a2.8,2.8 0,1 1,5.6 0a2.8,2.8 0,1 1,-5.6 0" />
+</vector>

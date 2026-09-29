@@ -1,0 +1,25 @@
+Cablegram
+Copyright (C) 2026 The Cablegram authors
+
+Cablegram is licensed under the GNU General Public License, version 3 (see LICENSE).
+
+Cablegram is an unofficial app. It is not made or endorsed by Telegram. Its Telegram features use the
+user's own Telegram account through Telegram's public API. Forks must register their own api_id and
+api_hash at my.telegram.org and must not call their app "Telegram".
+
+Third-party software used by the apps, each under its own licence:
+
+- TDLib (Telegram Database Library): Boost Software License 1.0. https://github.com/tdlib/td
+- tdl-coroutines-android (Kotlin bindings for TDLib): Apache License 2.0.
+- LibVLC for Android (libvlc-all): LGPL-2.1-or-later. It is used unmodified as a separate library that
+  the app links dynamically. https://www.videolan.org
+- NanoHTTPD: BSD 3-Clause. OkHttp, Kotlin, kotlinx.coroutines, kotlinx.serialization, AndroidX and
+  Jetpack Compose: Apache License 2.0.
+- ZXing (`com.google.zxing:core`) and zxing-android-embedded (QR codes), Coil 3 (images) and AndroidX TV
+  Material: Apache License 2.0.
+
+The Movie Database (TMDB): title search, metadata and artwork shown in the apps come from the TMDB API through the Cablegram service. This product uses
+the TMDB API but is not endorsed or certified by TMDB.
+
+All of these licences are compatible with GPL-3.0 for the way Cablegram uses them. Check again before
+adding a dependency that is not listed here.

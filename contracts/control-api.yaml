@@ -1,0 +1,252 @@
+openapi: 3.0.3
+info:
+  title: Cablegram Control Plane API
+  version: 0.1.0
+  description: >
+    Authoritative household state. Does not stream or store video files.
+    Phone JWT (scope=phone) or TV JWT (scope=tv) unless noted.
+servers:
+  - url: https://api.example.invalid
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        "200":
+          description: OK
+  /api/auth/register:
+    post:
+      security: []
+      summary: Create Cablegram account, founding household, default profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                household_name: { type: string }
+      responses:
+        "201":
+          description: User JWT + household
+  /api/auth/login:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: Access + refresh tokens
+  /api/auth/refresh:
+    post:
+      responses:
+        "200":
+          description: New access token
+  /api/auth/logout:
+    post:
+      responses:
+        "204":
+          description: Revoke refresh
+  /api/auth/device:
+    post:
+      summary: TV starts pairing (no user JWT)
+      security: []
+      responses:
+        "201":
+          description: pairing session id, PIN (once), pairing token, expires
+  /api/auth/device/{sessionId}:
+    get:
+      security: []
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Authorization
+          required: true
+          description: Pairing <token>
+          schema: { type: string }
+      responses:
+        "200":
+          description: pending or paired (TV JWT when paired)
+  /api/auth/device/claim:
+    post:
+      summary: Phone claims PIN into household
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin]
+              properties:
+                pin: { type: string, pattern: "^[0-9]{6}$" }
+                tv_display_name: { type: string }
+      responses:
+        "200":
+          description: Pairing completed
+  /api/households/invites:
+    post:
+      summary: Household member invites another Cablegram account (or email) to join
+      responses:
+        "201":
+          description: Invite created (short-lived token; not a pairing PIN)
+  /api/households/invites/accept:
+    post:
+      summary: Signed-in user accepts an invite and becomes a household member
+      responses:
+        "200":
+          description: Membership granted
+  /api/me:
+    get:
+      responses:
+        "200":
+          description: User, household, devices, membership
+  /api/playback/private-approvals:
+    post:
+      summary: TV requests or phone consumes one-time private playback approval
+      description: >
+        Bound to household, profile, TV, item/source, and attempt. Consumed once.
+        Pairing PIN MUST NOT be accepted as the approval credential.
+      responses:
+        "200":
+          description: Pending, approved (one-time token), consumed, or denied
+  /api/profiles:
+    get:
+      responses:
+        "200":
+          description: Profiles including pin_set boolean (not pin)
+    post:
+      summary: Create profile (optional PIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                pin: { type: string, pattern: "^[0-9]{4,6}$" }
+      responses:
+        "201":
+          description: Created
+  /api/devices/{deviceId}:
+    patch:
+      summary: Phone updates LAN reachability hint (not catalog)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lan_host: { type: string }
+                lan_port: { type: integer }
+      responses:
+        "200":
+          description: Updated
+    delete:
+      summary: Revoke device
+      responses:
+        "204":
+          description: Revoked
+  /api/catalog/items:
+    get:
+      summary: Household logical library (TV and phone)
+      responses:
+        "200":
+          description: items with sources metadata and progress for selected profile
+    post:
+      summary: Phone import — create item + phone_local source
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportBody"
+      responses:
+        "201":
+          description: Item created
+  /api/catalog/items/{itemId}:
+    patch:
+      summary: Correct title match; never overwrites origin_filename
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                year: { type: integer }
+                description: { type: string }
+                duration_seconds: { type: number }
+      responses:
+        "200":
+          description: Updated
+  /api/catalog/items/{itemId}/poster:
+    put:
+      summary: Upload poster image bytes (not video)
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/png:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Poster stored/referenced
+  /api/profiles/{profileId}/progress/{itemId}:
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressBody"
+      responses:
+        "200":
+          description: Upserted
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  security:
+    - bearerAuth: []
+  schemas:
+    ImportBody:
+      type: object
+      required: [origin_filename, origin_identity]
+      properties:
+        origin_filename: { type: string }
+        origin_identity: { type: string }
+        title: { type: string }
+        duration_seconds: { type: number }
+        serving_device_id: { type: string, format: uuid }
+    ProgressBody:
+      type: object
+      required: [position_seconds, state]
+      properties:
+        position_seconds: { type: number }
+        duration_seconds: { type: number }
+        state:
+          type: string
+          enum: [playing, paused, stopped, completed]
+        client_updated_at: { type: string, format: date-time }
