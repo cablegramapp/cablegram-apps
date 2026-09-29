@@ -108,7 +108,7 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
             Column(Modifier.weight(1f)) {
                 Text("Approve my TVs automatically", color = Color.White)
                 Text(
-                    "Paired TVs sign in to Telegram without asking. Turn off to approve each TV from a notification.",
+                    "Off: a notification asks before each TV signs in to Telegram. On: paired TVs sign in without asking.",
                     color = VlcMuted,
                     fontSize = 12.sp,
                 )

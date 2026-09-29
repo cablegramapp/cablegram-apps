@@ -72,8 +72,8 @@ time it changes.
 
 ### `GET /api/telegram/tv-logins/pending` (phone only)
 
-Polled by the phone's `TelegramLinkWatcher` on the `ApprovalWatcher` schedule,
-and immediately after a push when push exists.
+Polled by the phone's `TelegramTvApprovalWatcher` every 5 s, and immediately
+after a push when push exists.
 
 ```json
 200 { "requests": [ { "request_id": "uuid", "tv_device_id": "uuid",
@@ -82,6 +82,18 @@ and immediately after a push when push exists.
 
 Only the phone that is linked to Telegram should act on these requests. Other
 phones ignore them.
+
+**The phone asks first.** The login link comes from the server, and approving
+it gives the holder of that link a session on the user's Telegram account. So:
+- By default the phone shows a notification, "Let <TV name> use your Telegram?",
+  with **Allow** and **Don't allow**, and approves nothing until the user taps
+  Allow.
+- The user can turn on "Approve my TVs automatically". It is off by default.
+- Allow approves only the request the notification was raised for (matched by
+  `request_id`, using its latest link). If that request is gone, nothing is
+  approved.
+- This stops silent approval. It does not authenticate the server: the TV name
+  in the prompt also comes from the server.
 
 ### `POST /api/telegram/tv-logins/:id/result` (phone only)
 
