@@ -77,4 +77,9 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.apk dist/SHA256SUMS --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
+        # A tag with a hyphen (v0.3.0-rc1, v0.0.0-test) is a trial: it stays a draft that only maintainers see.
+        run: |
+          draft=""
+          case "$GITHUB_REF_NAME" in *-*) draft="--draft" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/*.apk dist/SHA256SUMS $draft \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
