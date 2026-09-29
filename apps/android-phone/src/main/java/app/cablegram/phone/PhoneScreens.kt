@@ -840,6 +840,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
     var accountNameDraft by remember(viewModel.householdName) { mutableStateOf(viewModel.householdName) }
     var tvToRemove by remember { mutableStateOf<PairedTv?>(null) }
     var confirmSignOut by remember { mutableStateOf(false) }
+    var showLegal by remember { mutableStateOf(false) }
     var profileToDelete by remember { mutableStateOf<HouseholdProfile?>(null) }
     LaunchedEffect(Unit) {
         viewModel.loadProfiles()
@@ -970,7 +971,19 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_SIGN_OUT),
         ) { Text("Sign out", color = MaterialTheme.colorScheme.error) }
         viewModel.status?.let { StatusNote(it) }
+        TextButton(onClick = { showLegal = true }) { Text("Licence and third-party notices") }
         Text("CABLEGRAM  ·  ${BuildConfig.VERSION_NAME}\nYour videos. Your screen. Your space.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+    }
+    if (showLegal) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val legal = remember { LegalText.read(context) }
+        AlertDialog(
+            modifier = Modifier.maestroRoot(),
+            onDismissRequest = { showLegal = false },
+            title = { Text("Licence and notices") },
+            text = { Text(legal, modifier = Modifier.verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall) },
+            confirmButton = { TextButton(onClick = { showLegal = false }) { Text("Close") } },
+        )
     }
     tvToRemove?.let { tv ->
         AlertDialog(

@@ -95,6 +95,23 @@ internal fun AboutSettingsPanel(
                 Text("Open privacy policy")
             }
             Text(PRIVACY_POLICY_URL, color = Slate, fontSize = 12.sp)
+            var showLegal by remember { mutableStateOf(false) }
+            Button(
+                onClick = { showLegal = !showLegal },
+                colors = ButtonDefaults.colors(containerColor = PanelRaised),
+            ) {
+                Text(if (showLegal) "Hide licence and notices" else "Licence and notices")
+            }
+            if (showLegal) {
+                val notice = remember { LegalText.notice(context) }
+                Text(
+                    notice,
+                    color = Muted,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            }
         }
         Column(
             modifier = Modifier
