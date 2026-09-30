@@ -1,7 +1,7 @@
 import java.util.Properties
 
 plugins {
-    id("com.android.application") version "8.9.1"
+    id("com.android.application") version "8.11.1"
     id("org.jetbrains.kotlin.android") version "2.4.10"
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.10"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.10"
@@ -19,12 +19,12 @@ fun telegramSetting(name: String): String =
 
 android {
     namespace = "app.cablegram"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "app.cablegram"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 2
+        targetSdk = 36
+        versionCode = 3
         versionName = "0.2.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val apiBase = (project.findProperty("CABLEGRAM_API_BASE") as String?)
@@ -88,9 +88,9 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
 
-// The TDLib wrapper's AAR asks for compileSdk 37, which AGP 8.9 does not support; it is a JNI wrapper with
+// The TDLib wrapper's AAR asks for compileSdk 37, which AGP 8.11 (compileSdk 36 at most) does not support; it is a JNI wrapper with
 // no API-37 calls. AGP cannot skip one dependency, so the whole AAR metadata check is off: re-enable it
-// once the project moves to compileSdk 37 (spec 004 assumptions).
+// once the project moves to compileSdk 37 and an AGP that supports it (spec 004 assumptions).
 tasks.matching { it.name.startsWith("check") && it.name.endsWith("AarMetadata") }.configureEach { enabled = false }
 
 // The GPL-3.0 licence and the third-party notices at the repository root ship inside the app (About
