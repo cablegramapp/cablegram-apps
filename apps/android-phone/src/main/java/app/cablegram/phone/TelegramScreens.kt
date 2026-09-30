@@ -44,6 +44,10 @@ import app.cablegram.telegram.TelegramState
 
 private const val PRIVACY_URL = "https://cablegram.app/privacy.html#telegram"
 
+/** The code that talks to Telegram, in the public repository. Point it at the release tag once one exists. */
+private const val TELEGRAM_CODE_URL =
+    "https://github.com/cablegramapp/cablegram-apps/tree/main/apps/android-phone/src/main/java/app/cablegram/telegram"
+
 /**
  * Telegram in Import → Connected storage (spec 004 US1): connect once on the phone, then videos
  * shared into the private "Cablegram library" channel appear in Cablegram.
@@ -199,6 +203,15 @@ private fun BeforeYouConnect(viewModel: PhoneViewModel) {
         "You stay in control",
         "You'll see Cablegram in Telegram → Settings → Devices and can end it there at any time. Disconnect in Cablegram signs out everywhere.",
     )
+    TrustPoint(
+        "You can check this",
+        "The Cablegram apps are open source. Anyone can check what they do with your Telegram account. Cablegram's servers are not part of that.",
+    )
+    TextButton(onClick = {
+        runCatching {
+            context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(TELEGRAM_CODE_URL)))
+        }
+    }) { Text("Read the code", color = VlcOrange) }
     Text(
         "Cablegram is an unofficial app. It isn't made or endorsed by Telegram; it uses your own Telegram account through Telegram's public API.",
         color = VlcMuted,
