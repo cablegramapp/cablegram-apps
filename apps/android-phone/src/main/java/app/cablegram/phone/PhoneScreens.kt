@@ -20,6 +20,7 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -970,8 +971,19 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             enabled = !viewModel.busy,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_SIGN_OUT),
         ) { Text("Sign out", color = MaterialTheme.colorScheme.error) }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedButton(
+                onClick = viewModel::openDeleteAccount,
+                enabled = !viewModel.busy,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro("settings_delete_account"),
+            ) { Text(stringResource(R.string.delete_account_entry), color = MaterialTheme.colorScheme.error) }
+            Text(stringResource(R.string.delete_account_entry_hint), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        }
         viewModel.status?.let { StatusNote(it) }
         TextButton(onClick = { showLegal = true }) { Text("Licence and third-party notices") }
+        val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+        TextButton(onClick = { uriHandler.openUri(DELETE_ACCOUNT_WEB_URL) }) { Text(stringResource(R.string.delete_account_web_link)) }
         Text("CABLEGRAM  ·  ${BuildConfig.VERSION_NAME}\nYour videos. Your screen. Your space.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
     }
     if (showLegal) {

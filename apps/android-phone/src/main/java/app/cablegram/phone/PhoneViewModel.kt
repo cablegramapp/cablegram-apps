@@ -698,6 +698,29 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Everything a signed-in phone holds in memory and in its stores, back to a fresh install's sign-in screen. */
+    private fun clearSignedInState() {
+        LanLibraryService.stop(getApplication())
+        pairing.accountToken = null
+        pairing.refreshToken = null
+        pairing.phoneDeviceId = null
+        pairing.clearTVs()
+        pairing.displayName = ""
+        tvs = emptyList()
+        paired = false
+        nowPlaying = null
+        paused = false
+        lanAddress = null
+        connectionDetail = null
+        householdName = ""
+        profiles = emptyList()
+        selectedId = null
+        tab = PhoneTab.Library
+        addingTv = false
+        needsName = false
+        needsAccount = true
+    }
+
     fun signOut() {
         if (busy) return
         viewModelScope.launch {
@@ -710,25 +733,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 if (!token.isNullOrBlank() && !phoneId.isNullOrBlank()) runCatching { client.revokeDevice(phoneId, token) }
                 pairing.refreshToken?.let { runCatching { client.logout(it) } }
             } finally {
-                LanLibraryService.stop(getApplication())
-                pairing.accountToken = null
-                pairing.refreshToken = null
-                pairing.phoneDeviceId = null
-                pairing.clearTVs()
-                pairing.displayName = ""
-                tvs = emptyList()
-                paired = false
-                nowPlaying = null
-                paused = false
-                lanAddress = null
-                connectionDetail = null
-                householdName = ""
-                profiles = emptyList()
-                selectedId = null
-                tab = PhoneTab.Library
-                addingTv = false
-                needsName = false
-                needsAccount = true
+                clearSignedInState()
                 busy = false
                 status = "Signed out. Your videos stay on this phone."
                 PairLog.i("Phone signed out")
@@ -746,6 +751,59 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     var relayUsage by mutableStateOf<RelayUsage?>(null)
         private set
+
+    // ---- Delete account ----
+
+    /** The "Delete account" screens are open. */
+    var deletingAccount by mutableStateOf(false)
+        private set
+
+    val accountDeletion = AccountDeletionController(
+        token = { pairing.accountToken },
+        delete = { token, password -> catalog().deleteAccount(token, password) },
+        wipeLocal = ::wipeAfterAccountDeletion,
+    )
+
+    fun openDeleteAccount() {
+        accountDeletion.reset()
+        deletingAccount = true
+    }
+
+    fun closeDeleteAccount() {
+        if (accountDeletion.running) return
+        accountDeletion.reset()
+        deletingAccount = false
+    }
+
+    fun deleteAccount(password: String) {
+        viewModelScope.launch { accountDeletion.submit(password) }
+    }
+
+    /** The server deleted the account: sign out completely and forget everything tied to it on this phone. */
+    private suspend fun wipeAfterAccountDeletion() {
+        val app = getApplication<Application>()
+        withContext(Dispatchers.IO) {
+            runCatching { app.stopService(Intent(app, CloudTransferService::class.java)) }
+            // Same local path as "Disconnect Telegram", minus the server call: the link died with the account.
+            if (PhoneTelegram.existing() == null && PhoneTelegram.wasLinked(app)) PhoneTelegram.session(app)
+            wipeTelegramLocally()
+            TelegramDeletionQueue.forContext(app).let { queue -> queue.all().forEach { queue.remove(it.stableSourceKey) } }
+            CommandQueue(app).drain()
+            store.forgetHousehold()
+        }
+        clearSignedInState()
+        items = store.list()
+        collections = store.collections()
+        pendingApprovals = emptyList()
+        relayUsage = null
+        emailVerified = null
+        verifyingEmail = false
+        resettingPassword = false
+        deletingAccount = false
+        busy = false
+        status = app.getString(R.string.account_deleted_message)
+        PairLog.i("Account deleted; phone signed out")
+    }
 
     // ---- Email confirmation and password reset ----
     /** Shows the "enter the code we emailed" screen (after sign-up, or from Settings). */
@@ -1093,6 +1151,15 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         telegramMessage = null
     }
 
+    /** Logs this phone out of Telegram and deletes the local TDLib database, files and key. */
+    private fun wipeTelegramLocally() {
+        PhoneTelegram.existing()?.logOut()
+        PhoneTelegram.forget(getApplication())
+        telegramLink = TelegramLinkInfo(linked = false)
+        telegramHealth = TelegramHealth.Unknown
+        telegramStarted = false
+    }
+
     fun disconnectTelegram() {
         val token = pairing.accountToken ?: return
         viewModelScope.launch {
@@ -1106,11 +1173,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 runCatching { TelegramTvApprovalWatcher.endDueSessions(getApplication(), catalog(), token) }
                 catalog().dueTvTelegramSessions(token)?.size ?: -1
             }
-            PhoneTelegram.existing()?.logOut()
-            PhoneTelegram.forget(getApplication())
-            telegramLink = TelegramLinkInfo(linked = false)
-            telegramHealth = TelegramHealth.Unknown
-            telegramStarted = false
+            wipeTelegramLocally()
             status = if (unended == 0) "Telegram disconnected. Your TVs are signed out of Telegram too."
             else "Telegram disconnected. Some TVs may still be signed in: open Telegram → Settings → Devices and end any \"Cablegram\" sessions you don't recognise."
         }

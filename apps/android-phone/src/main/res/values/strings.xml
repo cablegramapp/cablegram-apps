@@ -1,4 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Cablegram</string>
+
+    <!-- Delete account -->
+    <string name="delete_account_entry">Delete account…</string>
+    <string name="delete_account_entry_hint">Permanently deletes your Cablegram account and its data.</string>
+    <string name="delete_account_web_link">Delete your account on the web</string>
+    <string name="delete_account_title">Delete your account</string>
+    <string name="delete_account_intro">This deletes everything at once and cannot be undone. There is no grace period.</string>
+    <string name="delete_account_removed_heading">What is deleted</string>
+    <string name="delete_account_removed_account">Your account and email address</string>
+    <string name="delete_account_removed_household">Your household, with its profiles and every paired phone and TV</string>
+    <string name="delete_account_removed_library">Your library, watch progress and My List</string>
+    <string name="delete_account_removed_telegram">The link to your Telegram account, and this phone\'s Telegram sign-in</string>
+    <string name="delete_account_removed_files">Any files Cablegram stores for you</string>
+    <string name="delete_account_kept_heading">What is not deleted</string>
+    <string name="delete_account_kept_telegram">Videos in your own Telegram channel are not deleted. They belong to your Telegram account, not to Cablegram.</string>
+    <string name="delete_account_kept_phone">Video files on this phone stay on this phone.</string>
+    <string name="delete_account_tv_sessions">TVs that are signed in to your Telegram account stay signed in until you end their sessions in Telegram, under Settings, Devices.</string>
+    <string name="delete_account_password_label">Account password</string>
+    <string name="delete_account_password_hint">Enter your password to confirm it is you.</string>
+    <string name="delete_account_show_password">Show password</string>
+    <string name="delete_account_hide_password">Hide password</string>
+    <string name="delete_account_continue">Delete my account</string>
+    <string name="delete_account_deleting">Deleting…</string>
+    <string name="delete_account_cancel">Cancel</string>
+    <string name="delete_account_confirm_title">Delete your account for good?</string>
+    <string name="delete_account_confirm_text">Your account, household, library and everything listed above will be deleted now. This cannot be undone.</string>
+    <string name="delete_account_confirm_button">Delete forever</string>
+    <string name="delete_account_error_wrong_password">That password is not right. Nothing was deleted. Try again.</string>
+    <string name="delete_account_error_rate_limited">Too many attempts. Nothing was deleted. Wait 15 minutes and try again.</string>
+    <string name="delete_account_error_session_expired">Your session has expired. Nothing was deleted. Sign out, sign in again, then retry.</string>
+    <string name="delete_account_error_offline">Can\'t reach Cablegram. Nothing was deleted. Check your connection and try again.</string>
+    <string name="delete_account_error_failed">Something went wrong and your account was not deleted. Try again in a moment.</string>
+    <string name="account_deleted_message">Your account was deleted.</string>
 </resources>
