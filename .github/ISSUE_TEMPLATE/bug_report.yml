@@ -1,0 +1,35 @@
+name: Bug report
+description: Something in the phone or TV app does not work
+labels: [bug]
+body:
+  - type: dropdown
+    id: app
+    attributes:
+      label: Which app?
+      options: [Phone, TV, Both]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Settings on the phone, About on the TV, or the release tag you installed.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Pixel 8, Android 15 / Chromecast with Google TV
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: Steps to reproduce help most.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste tokens, login links (`tg://login?token=...`), phone numbers, login codes or passwords.**
+        Remove them from logs before you attach anything.
