@@ -36,7 +36,12 @@ Deletion rows below are true only once both halves are deployed and released:
   at home. Covered by the IP address entry under Device or other IDs.
 - **No analytics, crash-reporting or ad SDK** in either app, and no advertising ID. The server's request logger is
   off (`Fastify({ logger: false })`); it does log title-lookup queries (the cleaned text, at most 500 characters).
-  What the web server in front of it logs cannot be seen from the code. The draft assumes nginx writes its default access log for `/` (IP addresses included) and `/relay/` has access logging off; confirm that with whoever runs the servers.
+  On the production VPS (Contabo GmbH,
+  Ubuntu 24.04; checked 2026-09-30) nginx writes the default access log for `/` (IP addresses included) and
+  `/relay/` has access logging off. nginx logs rotate daily and 14 rotations are kept, so entries live at most 15
+  days. The journal (control plane and relay output, including title-lookup queries) has no time limit set: it is
+  size-capped by journald's default and held about three weeks of data at 560 MB. `/var/log/syslog` keeps about
+  four weeks. See Open items
 
 ## Section 1: Data collection and security (both apps)
 
@@ -110,6 +115,8 @@ Posters note above.)
 - No expiry and no per-household total cap on stored web videos (only 5 GiB per file). Decide and state the
   retention in the policy ("until you delete your account").
 - A household with several members: deleting one account keeps the household and its stored videos. Say so.
-- What the web server in front of the control plane logs, and for how long, is not in the code.
+- Set a time limit for the journal and syslog (for example `MaxRetentionSec=14day` in a journald drop-in, and
+  `rotate 2` for syslog) in `deploy/deploy-vps.sh`, then state that number for application logs in the policy. Today only
+  the nginx logs (15 days) have a real limit.
 - Whether the policy text in `CableGram-homePage` (branch `fix-video-storage-wording`) is published.
 - The Play store listing drafts still say "never stores your videos on its servers": edit them in Play Console.
