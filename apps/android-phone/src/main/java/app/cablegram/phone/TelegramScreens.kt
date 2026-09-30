@@ -44,9 +44,12 @@ import app.cablegram.telegram.TelegramState
 
 private const val PRIVACY_URL = "https://cablegram.app/privacy.html#telegram"
 
-/** The code that talks to Telegram, in the public repository. Point it at the release tag once one exists. */
+/**
+ * The code that talks to Telegram, in the public repository, at the tag this build is released from
+ * (`v` + versionName). Update the tag in the URL together with `versionName` in build.gradle.kts.
+ */
 private const val TELEGRAM_CODE_URL =
-    "https://github.com/cablegramapp/cablegram-apps/tree/main/apps/android-phone/src/main/java/app/cablegram/telegram"
+    "https://github.com/cablegramapp/cablegram-apps/tree/v0.2.0/apps/android-phone/src/main/java/app/cablegram/telegram"
 
 /**
  * Telegram in Import → Connected storage (spec 004 US1): connect once on the phone, then videos
