@@ -31,7 +31,7 @@ jobs:
         env:
           ORG_GRADLE_PROJECT_TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           ORG_GRADLE_PROJECT_TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease bundleRelease
       - name: Sign
         env:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -48,12 +48,26 @@ jobs:
           "$apksigner" sign --ks "$RUNNER_TEMP/release.jks" --ks-key-alias "$KEY_ALIAS" \
             --ks-pass env:KEYSTORE_PASSWORD --out "$out" "$unsigned"
           "$apksigner" verify --print-certs "$out"
+          # The app bundle for Google Play is signed with the same key (the upload key). It is not attached to
+          # the public release: users cannot install a bundle. Download it from this run's artifacts.
+          bundle=$(ls apps/${{ matrix.app }}/build/outputs/bundle/release/*.aab | head -n 1)
+          bundle_out="dist-play/cablegram-${{ matrix.app == 'android-phone' && 'phone' || 'tv' }}-${GITHUB_REF_NAME}.aab"
+          mkdir -p dist-play
+          cp "$bundle" "$bundle_out"
+          jarsigner -keystore "$RUNNER_TEMP/release.jks" -storepass:env KEYSTORE_PASSWORD "$bundle_out" "$KEY_ALIAS"
+          jarsigner -verify "$bundle_out"
           rm -f "$RUNNER_TEMP/release.jks"
       - uses: actions/upload-artifact@v4
         with:
           name: apk-${{ matrix.app }}
           path: dist/*.apk
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: play-bundle-${{ matrix.app }}
+          path: dist-play/*.aab
+          if-no-files-found: error
+          retention-days: 90
 
   publish:
     needs: build

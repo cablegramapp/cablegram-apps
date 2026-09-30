@@ -36,6 +36,13 @@ sha256sum installed.apk
 The certificate SHA-256 digests must be the same. Installed files can differ from the download when Google Play
 delivers a split APK for your device; then compare the certificate digest, not the file hash.
 
+## If you installed from Google Play
+
+Play delivers a version of the app built for your device, so its file hash is not the one in `SHA256SUMS`.
+If the app was published with Play App Signing, its signing certificate is Google's and not the one on the
+GitHub release. Which certificate Play uses is stated on the app's Play page or in the release notes; the
+GitHub release is the copy you can check against this repository.
+
 ## What this does and does not show
 
 It shows that an APK was built from a public commit and signed with the release key. It does not show that
