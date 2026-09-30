@@ -19,8 +19,11 @@ the same model Telegram uses for its own apps.
   fixed allowlist, and that `uploadVideo` is the only one that sends anything. Adding a method fails the test
   until someone changes the allowlist in review.
 - **Nothing is logged that shouldn't be.** `TelegramLogAuditTest` covers log output.
-- **Cablegram never stores your video files.** The phone serves them over your local network, or through a
-  relay that forwards bytes without keeping them ([contracts/relay-protocol.md](contracts/relay-protocol.md)).
+- **Cablegram does not store the videos on your phone or in your Telegram channel.** The phone serves them over
+  your local network, or through a relay that forwards bytes without keeping them
+  ([contracts/relay-protocol.md](contracts/relay-protocol.md)). The one exception is a video from a web
+  address that you choose to save to Cablegram storage: that copy is kept on Cablegram's server (at most 5 GiB
+  per file) until you delete your account, which deletes it.
 
 ## Layout
 
