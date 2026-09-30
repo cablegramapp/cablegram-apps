@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest a change to the phone or TV app
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do that you can't today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you change?
+  - type: markdown
+    attributes:
+      value: |
+        The servers are not in this repository. A change that needs a new server endpoint has to be agreed
+        with the maintainers first; see `contracts/`.
