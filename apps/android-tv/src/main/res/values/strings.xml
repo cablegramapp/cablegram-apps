@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Cablegram</string>
     <string name="app_tagline">Your own videos, streamed from your phone to your TV</string>
-    <string name="legal_disclaimer">Cablegram plays videos you own or are allowed to watch. It provides no media of its own and never stores your videos on its servers.</string>
+    <string name="legal_disclaimer">Cablegram plays videos you own or are allowed to watch. It provides no media of its own. Videos from your phone or your Telegram channel are never stored on its servers; only a web video you choose to save to Cablegram storage is, until you delete your account.</string>
     <string name="privacy_policy_url">https://cablegram.app/privacy.html</string>
 </resources>
