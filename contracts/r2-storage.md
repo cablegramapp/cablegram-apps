@@ -1,7 +1,7 @@
 # Contract: R2 storage connection, upload and playback
 
 Routes are under `/api`, use bearer device tokens, and are limited to the caller's household. No
-response carries an OAuth token, an S3 key or a secret. Field names are camelCase for the existing
+response carries an S3 key or secret. Field names are camelCase for the existing
 phone models (`/api/storage/status`, `/connect/cloudflare`) and snake_case for new routes, as in the
 rest of the API.
 
@@ -18,25 +18,22 @@ rest of the API.
       "connections": [ …same shape… ] }
 ```
 
-`connection` is the active one or `null`. `configured` is false when the server has no Cloudflare
-OAuth client.
+`connection` is the active one or `null`. `configured` is false when the server has no `STORAGE_CREDENTIALS_KEY`.
 
-### `GET /api/storage/connect/cloudflare?returnTo=phone` (phone only)
+### `POST /api/storage/connect/r2` (phone only)
 
-`200 { "provider": "cloudflare_r2", "authUrl": "https://dash.cloudflare.com/oauth2/auth?…" }`.
-`503 cloudflare_oauth_not_configured`. `409 storage_already_connected` while one is active.
-The `state` inside `authUrl` is a 15-minute signed token with the household, device and a nonce. The
-nonce is single use.
+```json
+{ "account_id": "32 hex characters", "bucket": "my-movies",
+  "access_key_id": "…", "secret_access_key": "…" }
+```
+Strict: any other field is `400`. The server writes and deletes `.cablegram-check/<uuid>` in the bucket with these
+keys, then stores them encrypted.
 
-### `GET /api/storage/oauth/cloudflare/callback` (browser, no bearer)
-
-Validates `state`, exchanges the code, lists accounts, and either provisions (one account) or
-returns an account picker page (several). Always returns HTML. On success it links to
-`cablegram://storage`. Failures say what to do: enable R2, add the API-token scope, or retry.
-
-### `POST /api/storage/oauth/cloudflare/select` (browser, form, no bearer)
-
-`ticket` (10-minute signed token) and `accountId`. Same result page as the callback.
+- `201 { "connection": { …same shape as in status… } }`. The secret is not in any response.
+- `409 storage_already_connected` while one is active.
+- `422 credentials_rejected` (the bucket refused the keys) or `422 bucket_not_found`.
+- `502 storage_unavailable` for anything else, with no upstream text.
+- `503 storage_not_configured` when the server has no `STORAGE_CREDENTIALS_KEY`.
 
 ### `POST /api/storage/disconnect` (phone only)
 

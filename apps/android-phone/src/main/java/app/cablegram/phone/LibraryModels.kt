@@ -298,12 +298,6 @@ data class StorageStatusResponse(
 )
 
 @Serializable
-data class StorageConnectResponse(
-    val provider: String? = null,
-    val authUrl: String,
-)
-
-@Serializable
 data class AdsResponse(
     val enabled: Boolean = false,
     val placement: String = "library",

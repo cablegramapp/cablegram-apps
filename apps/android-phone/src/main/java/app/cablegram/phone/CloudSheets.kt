@@ -22,6 +22,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,8 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.content.Intent
-import android.net.Uri
 
 @Composable
 fun CloudFlow(viewModel: PhoneViewModel) {
@@ -41,6 +45,7 @@ fun CloudFlow(viewModel: PhoneViewModel) {
         CloudSheet.Confirm -> SaveConfirmSheet(viewModel)
         CloudSheet.Oversize -> SaveOversizeSheet(viewModel)
         CloudSheet.Manage -> ManageCloudSheet(viewModel)
+        CloudSheet.ConnectR2 -> ConnectR2Sheet(viewModel)
         CloudSheet.FreeUp -> FreeUpSheet(viewModel)
         CloudSheet.FreeUpConfirm -> FreeUpConfirmSheet(viewModel)
     }
@@ -166,22 +171,47 @@ private fun ManageCloudSheet(viewModel: PhoneViewModel) {
         }
         Text("Other storage", color = Color.White, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         Text("Connect another provider for your own bucket. Normal saves never ask for keys.", color = VlcMuted)
-        val context = LocalContext.current
         if (viewModel.cloudConnected) {
             Text(viewModel.storage?.connection?.displayLabel ?: "Your storage is connected", color = Color(0xFF79D6B0))
             OutlinedButton(onClick = viewModel::disconnectStorage, modifier = Modifier.fillMaxWidth()) {
                 Text("Disconnect own storage")
             }
         } else {
-            OutlinedButton(
-                onClick = {
-                    viewModel.connectCloudflareStorage { url ->
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Connect your own storage") }
+            OutlinedButton(onClick = viewModel::beginConnectR2, modifier = Modifier.fillMaxWidth()) { Text("Connect your own storage") }
         }
+    }
+}
+
+/** Cloudflare R2: the owner makes a bucket and an Object Read & Write token once, and enters its keys here. */
+@Composable
+private fun ConnectR2Sheet(viewModel: PhoneViewModel) {
+    var accountId by remember { mutableStateOf("") }
+    var bucket by remember { mutableStateOf("") }
+    var keyId by remember { mutableStateOf("") }
+    var secret by remember { mutableStateOf("") }
+    SheetScaffold("Connect Cloudflare R2", viewModel::dismissCloudSheet) {
+        Text("Your videos go straight to a bucket you own. Set it up once in Cloudflare:", color = VlcMuted)
+        Text("1. Turn on R2 (the free tier is enough) and create a bucket.", color = Color.White)
+        Text("2. R2 → Manage R2 API Tokens → Create API token. Permission: Object Read & Write, for that bucket only.", color = Color.White)
+        Text("3. Copy the account ID, the Access Key ID and the Secret Access Key here.", color = Color.White)
+        Text("Cablegram keeps the keys encrypted and uses them only for your library. To remove access later, delete the token in Cloudflare.", color = VlcMuted, fontSize = 12.sp)
+        OutlinedTextField(accountId, { accountId = it }, label = { Text("Account ID") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(bucket, { bucket = it }, label = { Text("Bucket name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(keyId, { keyId = it }, label = { Text("Access Key ID") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            secret, { secret = it }, label = { Text("Secret Access Key") }, singleLine = true,
+            visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(),
+        )
+        viewModel.r2ConnectError?.let { Text(it, color = Color(0xFFFFB74D)) }
+        Button(
+            onClick = {
+                viewModel.connectR2Storage(accountId, bucket, keyId, secret)
+                // The secret does not stay in the form once it has been sent.
+                secret = ""
+            },
+            enabled = !viewModel.busy && accountId.isNotBlank() && bucket.isNotBlank() && keyId.isNotBlank() && secret.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(if (viewModel.busy) "Checking…" else "Connect") }
     }
 }
 

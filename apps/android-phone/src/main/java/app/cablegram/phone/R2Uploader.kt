@@ -193,3 +193,18 @@ class R2Uploader(
         const val MAX_ATTEMPTS = 4
     }
 }
+
+/** How `POST /api/storage/connect/r2` ended: [error] is null on success, else the server's stable error string. */
+data class R2ConnectResult(val error: String?)
+
+/** What to tell the owner about a failed connect. Never repeats what the server or bucket said. */
+fun r2ConnectMessage(error: String): String = when (error) {
+    "credentials_rejected" -> "Cloudflare refused these keys. Check the Access Key ID and the Secret, and that the token can edit this bucket."
+    "bucket_not_found" -> "That bucket wasn't found in this account. Check the account ID and bucket name, and that R2 is turned on."
+    "invalid_request" -> "One of the fields doesn't look right. The account ID is 32 characters; the bucket is lowercase letters, digits and dashes."
+    "storage_already_connected" -> "Your storage is already connected."
+    "storage_not_configured" -> "This server can't keep storage keys yet."
+    "storage_unavailable" -> "Cloudflare R2 isn't answering. Try again in a moment."
+    "offline" -> "Couldn't reach Cablegram. Check your connection."
+    else -> "Couldn't connect ($error)."
+}

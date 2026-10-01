@@ -1045,18 +1045,33 @@ class CatalogClient(
         }.getOrNull()
     }
 
-    suspend fun connectCloudflare(token: String): StorageConnectResponse? = withContext(Dispatchers.IO) {
+    /**
+     * Connects the household's own R2 bucket (spec 005). The control plane checks the keys with a real write before it
+     * keeps them. [secret] is sent once, over TLS, and is not kept by this class.
+     */
+    suspend fun connectR2(token: String, accountId: String, bucket: String, accessKeyId: String, secret: String): R2ConnectResult = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject {
+            put("account_id", accountId)
+            put("bucket", bucket)
+            put("access_key_id", accessKeyId)
+            put("secret_access_key", secret)
+        })
         val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/storage/connect/cloudflare?returnTo=phone")
+            .url("${baseUrl.trimEnd('/')}/api/storage/connect/r2")
             .header("Authorization", "Bearer $token")
-            .get()
+            .post(body.toRequestBody("application/json".toMediaType()))
             .build()
-        runCatching {
+        try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                json.decodeFromString<StorageConnectResponse>(response.body?.string().orEmpty())
+                if (response.isSuccessful) return@use R2ConnectResult(null)
+                val text = response.body?.string().orEmpty()
+                // Only a stable error string is kept; a 400 means a field the server did not accept.
+                val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
+                R2ConnectResult(code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: if (response.code == 400) "invalid_request" else "http_${response.code}")
             }
-        }.getOrNull()
+        } catch (_: java.io.IOException) {
+            R2ConnectResult("offline")
+        }
     }
 
     /** Save to Cloud against the household's own R2 bucket (spec 005); [token] is the phone's account token. */

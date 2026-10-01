@@ -383,30 +383,34 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { storage = catalog().storageStatus(token) }
     }
 
-    fun markStorageReturned() {
-        status = "Cloudflare storage updated."
-        refreshStorage()
+    /** Why the last "Connect your own storage" attempt failed; null while untried or after it worked. */
+    var r2ConnectError by mutableStateOf<String?>(null)
+        private set
+
+    fun beginConnectR2() {
+        r2ConnectError = null
+        cloudSheet = CloudSheet.ConnectR2
+        tab = PhoneTab.Storage
     }
 
-    fun connectCloudflareStorage(openUrl: (String) -> Unit) {
+    /** Sends the owner's R2 account ID, bucket and keys once; the server verifies them with a real write. */
+    fun connectR2Storage(accountId: String, bucket: String, accessKeyId: String, secret: String) {
         val token = pairing.accountToken ?: run {
-            status = "Pair a TV first so Cablegram can attach storage to this household."
+            r2ConnectError = "Pair a TV first so Cablegram can attach storage to this household."
             return
         }
         viewModelScope.launch {
             busy = true
+            r2ConnectError = null
             try {
-                val connect = catalog().connectCloudflare(token)
-                if (connect?.authUrl.isNullOrBlank()) {
-                    status = if (storage?.configured == false) {
-                        "Cloudflare connect is not enabled on this API yet."
-                    } else {
-                        "Could not start Cloudflare sign-in."
-                    }
-                    return@launch
+                val result = catalog().connectR2(token, accountId.trim().lowercase(), bucket.trim(), accessKeyId.trim(), secret.trim())
+                if (result.error == null) {
+                    status = "Connected to your R2 storage."
+                    cloudSheet = CloudSheet.Manage
+                    refreshStorage()
+                } else {
+                    r2ConnectError = r2ConnectMessage(result.error)
                 }
-                status = "Sign in to Cloudflare, then come back here."
-                openUrl(connect.authUrl)
             } finally {
                 busy = false
             }
@@ -419,7 +423,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             busy = true
             try {
                 if (catalog().disconnectStorage(token)) {
-                    status = "Storage disconnected. New videos stay on this phone."
+                    status = "Storage disconnected. Your files stay in the bucket; delete the API token in Cloudflare to remove access."
                     refreshStorage()
                 } else {
                     status = "Could not disconnect storage."
@@ -2861,7 +2865,7 @@ enum class PhoneTab { Library, Browse, Remote, Storage, Settings }
 
 enum class TelegramHealth { Unknown, Ok, ChannelLost, SignedOut }
 
-enum class CloudSheet { None, Setup, Confirm, Oversize, Manage, FreeUp, FreeUpConfirm }
+enum class CloudSheet { None, Setup, Confirm, Oversize, Manage, ConnectR2, FreeUp, FreeUpConfirm }
 
 private typealias File = java.io.File
 
