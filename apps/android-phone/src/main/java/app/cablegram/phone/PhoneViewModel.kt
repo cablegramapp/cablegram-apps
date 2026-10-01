@@ -406,7 +406,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 val result = catalog().connectR2(token, r2AccountIdFrom(accountId) ?: accountId.trim().lowercase(), bucket.trim(), accessKeyId.trim(), secret.trim())
                 if (result.error == null) {
                     status = "Connected to your R2 storage."
-                    cloudSheet = CloudSheet.Manage
+                    // Back to the Storage page, which now shows the bucket; the guide does not stay on top.
+                    cloudSheet = CloudSheet.None
+                    tab = PhoneTab.Storage
                     refreshStorage()
                 } else {
                     r2ConnectError = r2ConnectMessage(result.error)

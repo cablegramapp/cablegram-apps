@@ -162,7 +162,8 @@ private fun LibraryNav(viewModel: PhoneViewModel) {
         items.forEach { (tab, icon, label) ->
             NavigationBarItem(
                 selected = viewModel.tab == tab || (tab == PhoneTab.Settings && viewModel.tab == PhoneTab.Storage),
-                onClick = { viewModel.tab = tab; viewModel.closeItem() },
+                // A cloud sheet is a full-screen overlay: leaving for another tab must not leave it covering that tab.
+                onClick = { viewModel.dismissCloudSheet(); viewModel.tab = tab; viewModel.closeItem() },
                 icon = { Icon(icon, contentDescription = label) },
                 label = { Text(label, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 modifier = Modifier.maestro(
@@ -806,6 +807,7 @@ private fun StorageScreen(viewModel: PhoneViewModel) {
         SectionCard("Cloud storage") {
             StorageMetric("Media saved", formatBytes(cloudMediaBytes(viewModel.items)))
             StorageMetric("Available", if (viewModel.cloudUnlimited) "Your storage" else formatBytes(viewModel.cloudAvailable))
+            if (viewModel.cloudConnected) Text("Connected: ${viewModel.storage?.connection?.displayLabel ?: "your own storage"}", color = Color(0xFF79D6B0))
             OutlinedButton(onClick = { viewModel.cloudSheet = CloudSheet.Manage }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.STORAGE_MANAGE)) { Text("Manage cloud storage") }
         }
         SectionCard("Saved in the cloud") {

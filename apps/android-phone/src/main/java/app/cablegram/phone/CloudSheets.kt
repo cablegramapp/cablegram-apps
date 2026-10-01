@@ -94,7 +94,7 @@ private fun SheetScaffold(title: String, onClose: () -> Unit, content: @Composab
     Column(
         Modifier
             .fillMaxSize()
-            .background(VlcBlack.copy(alpha = 0.98f))
+            .background(VlcBlack)
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
