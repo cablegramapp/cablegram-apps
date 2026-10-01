@@ -31,6 +31,20 @@ jobs:
           node-version: 22
       - run: node scripts/check-telegram-sync.mjs
 
+  web-remote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests
+        working-directory: apps/web-remote
+        run: npm test
+      - name: Syntax check
+        working-directory: apps/web-remote
+        run: for f in src/*.js sw.js config.js; do node --check "$f"; done
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

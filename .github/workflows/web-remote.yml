@@ -1,0 +1,40 @@
+name: Web remote
+# Publishes apps/web-remote to Cloudflare Pages from a tagged commit, so the live site is exactly a commit of this
+# repository. Tag it `web-v1.0.0`; the Android releases use `v*` tags and are not affected.
+on:
+  push:
+    tags: ["web-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-remote-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests
+        working-directory: apps/web-remote
+        run: npm test
+      - name: Assemble the site
+        run: |
+          set -euo pipefail
+          mkdir -p site
+          cp -r apps/web-remote/. site/
+          rm -rf site/test site/package.json site/README.md
+          # Lets anyone compare what is live with this repository (see VERIFY.md).
+          printf '%s\n%s\n' "${GITHUB_REF_NAME}" "${GITHUB_SHA}" > site/version.txt
+          (cd site && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main --commit-hash=${{ github.sha }}
