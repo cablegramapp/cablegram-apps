@@ -437,7 +437,7 @@ private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series
                     }
                     TextButton(
                         onClick = { viewModel.playOnTv(episode) },
-                        enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.sourceKind == "telegram",
+                        enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.r2Copy || episode.sourceKind == "telegram",
                     ) { Text("Play") }
                     ItemActionMenu(viewModel, episode, viewModel.actionMenuId == rowKey)
                 }
@@ -516,7 +516,7 @@ private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: Phon
 @Composable
 private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expanded: Boolean) {
     DropdownMenu(expanded = expanded, onDismissRequest = { viewModel.actionMenuId = null }) {
-        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.sourceKind == "telegram") {
+        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.r2Copy || item.sourceKind == "telegram") {
             viewModel.actionMenuId = null
             viewModel.playOnTv(item)
         }
@@ -526,7 +526,7 @@ private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expande
         if (canSaveToTelegram(item) && viewModel.telegramLink?.linked == true && PhoneTelegram.configured) {
             CompactMenuItem("Save to Telegram") { viewModel.actionMenuId = null; viewModel.saveToTelegram(item) }
         }
-        if (item.cloudObjectPresent && !item.copied) {
+        if ((item.cloudObjectPresent || item.r2Copy) && !item.copied) {
             CompactMenuItem("Download from Cloud") { viewModel.actionMenuId = null; viewModel.downloadFromCloud(item) }
         }
         if (canRemoveLocalCopy(item)) {
@@ -1036,7 +1036,7 @@ private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> U
 
 @Composable
 private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
-    val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent
+    val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent && !item.r2Copy
     var title by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.title) }
     var year by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.year?.toString().orEmpty()) }
     var mediaType by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.mediaType) }
@@ -1105,7 +1105,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 if (viewModel.telegramLink?.linked == true && PhoneTelegram.configured && canSaveToTelegram(item) && item.webTransferError != TELEGRAM_SAVE_FAILED) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Save to Telegram") }
                 }
-                if (item.cloudObjectPresent && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
+                if ((item.cloudObjectPresent || item.r2Copy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
                 if (canRemoveLocalCopy(item)) TextButton(onClick = { viewModel.askFreeUp(item) }) { Text("Free up phone space") }
             }
             if (viewModel.collections.isNotEmpty()) SectionCard("Collections") {

@@ -36,6 +36,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="cablegram" android:host="pair" />
+                <!-- Return from Cloudflare after "Connect your own storage" (spec 005). -->
+                <data android:scheme="cablegram" android:host="storage" />
             </intent-filter>
         </activity>
         <activity

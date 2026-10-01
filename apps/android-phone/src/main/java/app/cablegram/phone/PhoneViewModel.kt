@@ -1350,7 +1350,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     // appear a second time as a Telegram title, nor after its phone copy was freed up.
                     val phoneCopy = store.get(remote.id)?.takeIf { it.sourceKind != "telegram" }
                         ?: remote.sources.firstNotNullOfOrNull { s ->
-                            if (s.kind == "telegram") null else s.originIdentity?.let(store::get)?.takeIf { it.sourceKind != "telegram" }
+                            if (s.kind == "telegram" || s.kind == "cloud_r2") null else s.originIdentity?.let(store::get)?.takeIf { it.sourceKind != "telegram" }
                         }
                     val livePhoneSource = remote.sources.any { it.kind == "phone_local" && it.archiveState != "archived" }
                     if (phoneCopy == null && !livePhoneSource) {
@@ -1361,7 +1361,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     val hasCloudObject = remote.sources.any { it.kind == "cloud_object" && it.archiveState != "archived" }
                     // A Telegram copy's identity (`tg:…`) is not a phone file id.
-                    val source = remote.sources.firstOrNull { it.kind != "telegram" && !it.originIdentity.isNullOrBlank() }
+                    val source = remote.sources.firstOrNull { it.kind != "telegram" && it.kind != "cloud_r2" && !it.originIdentity.isNullOrBlank() }
+                    // A verified copy in the user's own R2 bucket. Dynamic: it clears when the bucket is disconnected.
+                    val hasR2Copy = remote.sources.any { it.kind == "cloud_r2" && it.archiveState != "archived" && it.availability != "unavailable" }
                     val hasTelegramCopy = remote.sources.any { it.kind == "telegram" && it.archiveState != "archived" && it.availability != "unavailable" }
                     val local = source?.originIdentity?.let(store::get)
                         ?: remote.sources.firstNotNullOfOrNull { remoteSource ->
@@ -1392,6 +1394,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             cloudObjectPresent = hasCloudObject || local.cloudObjectPresent,
                             // Saved to Telegram (here or on another phone): the server knows the verified copy.
                             telegramCopy = hasTelegramCopy && local.sourceKind == "phone_local",
+                            r2Copy = hasR2Copy && local.sourceKind == "phone_local",
                             storageState = if (hasCloudObject) STORAGE_CLOUD else local.storageState,
                             transferStatus = if (hasCloudObject) TRANSFER_IDLE else local.transferStatus,
                         ))
@@ -2521,9 +2524,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             busy = true
             status = "Downloading ${item.title}…"
             try {
+                // A title freed up from the phone comes back from the user's own R2 bucket.
+                val r2Url = if (item.r2Copy && !store.hasSource(item)) {
+                    pairing.accountToken?.let { catalog().r2ReadUrl(it, item.id) }
+                        ?: throw IllegalStateException("Couldn't reach your Cloudflare storage. Check that it is still connected in Storage.")
+                } else null
                 val ready = withContext(Dispatchers.IO) {
                     store.update(item.copy(downloadBytes = 0, downloadTotal = item.fileSizeBytes ?: 0))
-                    store.materialize(item) { copied, total ->
+                    store.materialize(item, r2Url) { copied, total ->
                         store.update(item.copy(downloadBytes = copied, downloadTotal = total))
                     }
                 }
@@ -2669,7 +2677,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             pollWebTransfer(item.id)
             return
         }
-        runCatching { CloudTransferService.start(getApplication(), item.id) }
+        runCatching { CloudTransferService.start(getApplication(), item.id, ownR2 = cloudConnected) }
             .onFailure {
                 PairLog.e("Could not start cloud save service", it)
                 status = it.message ?: "Could not start cloud save"
@@ -2763,10 +2771,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         store.removeLocalCopy(item.id)
         // Only in Telegram now: the phone file is gone, so this phone no longer serves it.
-        if (item.telegramCopy && !item.cloudObjectPresent) store.updateItem(item.id) { it.copy(sourceAvailable = false) }
+        val elsewhereOnly = !item.cloudObjectPresent && (item.telegramCopy || item.r2Copy)
+        if (elsewhereOnly) store.updateItem(item.id) { it.copy(sourceAvailable = false) }
         refresh()
-        status = if (item.telegramCopy && !item.cloudObjectPresent) "Removed the phone copy. ${item.title} stays in Telegram."
-        else "Removed the phone copy. ${item.title} stays in the cloud."
+        status = when {
+            elsewhereOnly && item.r2Copy -> "Removed the phone copy. ${item.title} stays in your Cloudflare storage."
+            elsewhereOnly -> "Removed the phone copy. ${item.title} stays in Telegram."
+            else -> "Removed the phone copy. ${item.title} stays in the cloud."
+        }
     }
 
     fun keepOnPhone(item: LibraryItem) {

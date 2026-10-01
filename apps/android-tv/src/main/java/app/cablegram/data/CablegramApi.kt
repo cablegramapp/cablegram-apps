@@ -91,8 +91,8 @@ class CablegramApi(
         }.getOrDefault(emptyList())
         return VideoLibrary(
             videos = catalog.items.map { item ->
-                val source = item.sources.firstOrNull { it.kind != "telegram" && !it.originIdentity.isNullOrBlank() }
-                    ?: item.sources.firstOrNull { !it.originIdentity.isNullOrBlank() }
+                val source = item.sources.firstOrNull { it.isPhoneSource() }
+                    ?: item.sources.firstOrNull { it.kind != CLOUD_R2 && !it.originIdentity.isNullOrBlank() }
                     ?: item.sources.firstOrNull()
                 val phone = servingPhone(devices, source)
                 val localPosterUrl = if (phone != null && !source?.originIdentity.isNullOrBlank()) {
@@ -347,7 +347,22 @@ class CablegramApi(
         val telegram = telegramSource?.originIdentity?.let { telegramUrl(it) }
         // A phone copy that was freed up after Save to Telegram (archived, unavailable) is not a source to try.
         val source = item.sources.firstOrNull {
-            it.kind != "telegram" && !it.originIdentity.isNullOrBlank() && it.archiveState != "archived" && it.availability != "unavailable"
+            it.isPhoneSource() && it.archiveState != "archived" && it.availability != "unavailable"
+        }
+        // Spec 005: a copy in the household's own R2 bucket. The control plane turns it into a short-lived
+        // presigned URL, so playback needs neither the phone nor the relay.
+        val hasR2 = item.sources.any { it.kind == CLOUD_R2 && it.availability != "unavailable" && it.archiveState != "archived" }
+        var r2Looked = false
+        var r2Found: String? = null
+        val r2Url: suspend () -> String? = {
+            if (!r2Looked) {
+                r2Looked = true
+                r2Found = runCatching { resolveWebPlayback(videoId, token) }.getOrNull()?.takeIf { it.status == "ready" }?.url
+            }
+            r2Found
+        }
+        if (source == null && hasR2) {
+            r2Url()?.let { return PlaybackResponse(status = "ready", url = it, title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram) }
         }
         if (source == null) {
             // No Telegram session on this TV (temporary TV, or not signed in yet): the phone streams it.
@@ -378,6 +393,13 @@ class CablegramApi(
             // LAN first; the relay carries the same request when the phone isn't reachable here.
             val lan = if (!host.isNullOrBlank()) lanUrl(phone, "media/$identity", lanPin) else null
             val relay = relayUrl(phone, "media/$identity", lanPin, null, token)
+            // Spec 005: LAN, then the user's R2 bucket, then the relay. R2 beats the relay because it
+            // costs the phone's mobile data and Cablegram's relay quota nothing.
+            if (lan == null && hasR2) {
+                r2Url()?.let {
+                    return PlaybackResponse(status = "ready", url = it, title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram ?: relay)
+                }
+            }
             val primary = lan ?: relay
             if (primary != null) {
                 return PlaybackResponse(
@@ -385,9 +407,15 @@ class CablegramApi(
                     url = primary,
                     title = item.title,
                     posterUrl = item.posterUrl,
-                    fallbackUrl = if (lan != null) telegram ?: relay else telegram,
+                    fallbackUrl = if (lan != null) telegram ?: (if (hasR2) null else relay) else telegram,
+                    // Looked up only if the LAN stalls: R2 first, the relay when R2 cannot be reached.
+                    fallbackResolver = if (lan != null && telegram == null && hasR2) ({ r2Url() ?: relay }) else null,
                 )
             }
+        }
+        // No phone to ask on this Wi‑Fi and no relay: the bucket still has it.
+        if (hasR2) {
+            r2Url()?.let { return PlaybackResponse(status = "ready", url = it, title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram) }
         }
         if (telegram != null) {
             return PlaybackResponse(status = "ready", url = telegram, title = item.title, posterUrl = item.posterUrl)
@@ -468,7 +496,7 @@ class CablegramApi(
                 "approved" -> {
                     val current = execute<CatalogResponse>(authenticatedRequest("api/catalog/items", token).get().build())
                         .items.firstOrNull { it.id == videoId }
-                    if (current?.sources?.any { it.kind == "web" || it.kind == "cloud_object" } == true) {
+                    if (current?.sources?.any { it.kind == "web" || it.kind == "cloud_object" || it.kind == CLOUD_R2 } == true) {
                         return resolveWebPlayback(videoId, token, attemptId)
                     }
                     val source = current?.sources?.firstOrNull { !it.originIdentity.isNullOrBlank() }
@@ -772,6 +800,11 @@ internal fun servingPhone(devices: List<DeviceHintDto>, servingDeviceId: String?
     // Legacy sources carry no serving device; a revoked/re-registered one is gone.
     return phones.firstOrNull { !it.lastLanHost.isNullOrBlank() }
 }
+
+/** `cloud_r2` is a copy in the household's own Cloudflare R2 bucket (spec 005), not a phone to ask. */
+private const val CLOUD_R2 = "cloud_r2"
+
+private fun CatalogSourceDto.isPhoneSource() = kind != "telegram" && kind != CLOUD_R2 && !originIdentity.isNullOrBlank()
 
 private fun servingPhone(devices: List<DeviceHintDto>, source: CatalogSourceDto?) =
     servingPhone(devices, source?.servingDeviceId)

@@ -1059,6 +1059,62 @@ class CatalogClient(
         }.getOrNull()
     }
 
+    /** Save to Cloud against the household's own R2 bucket (spec 005); [token] is the phone's account token. */
+    fun r2Api(token: String): R2UploadApi = object : R2UploadApi {
+        private suspend fun call(path: String, method: String, body: String? = null): String = withContext(Dispatchers.IO) {
+            val builder = Request.Builder().url("${baseUrl.trimEnd('/')}$path").header("Authorization", "Bearer $token")
+            when (method) {
+                "GET" -> builder.get()
+                "DELETE" -> builder.delete()
+                else -> builder.method(method, (body ?: "{}").toRequestBody("application/json".toMediaType()))
+            }
+            client.newCall(builder.build()).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    // Only the stable error string is kept; nothing the server echoed is shown or logged.
+                    val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()?.takeIf { it.matches(Regex("[a-z_]{1,40}")) }
+                    throw R2ApiException(response.code, code ?: "http_${response.code}")
+                }
+                text
+            }
+        }
+
+        override suspend fun start(originIdentity: String, sizeBytes: Long, contentType: String, fileName: String): R2UploadStart =
+            json.decodeFromString(call("/api/storage/uploads", "POST", json.encodeToString(buildJsonObject {
+                put("attach_to_origin_identity", originIdentity)
+                put("size_bytes", sizeBytes)
+                put("content_type", contentType)
+                put("file_name", fileName)
+            })))
+
+        override suspend fun parts(uploadId: String, from: Int, count: Int): R2Parts =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/parts?from=$from&count=$count", "GET"))
+
+        override suspend fun complete(uploadId: String, parts: List<R2PartRef>): R2Done =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/complete", "POST", json.encodeToString(buildJsonObject {
+                put("parts", buildJsonArray { parts.forEach { add(buildJsonObject { put("part", it.part); put("etag", it.etag) }) } })
+            })))
+
+        override suspend fun abort(uploadId: String) {
+            call("/api/storage/uploads/$uploadId", "DELETE")
+        }
+    }
+
+    /** A presigned URL for reading this phone title's copy in the household's bucket back; null if it has none. */
+    suspend fun r2ReadUrl(token: String, originIdentity: String): String? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/read-url")
+            .header("Authorization", "Bearer $token")
+            .post(json.encodeToString(buildJsonObject { put("origin_identity", originIdentity) }).toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["url"]?.jsonPrimitive?.contentOrNull
+            }
+        }.getOrNull()
+    }
+
     suspend fun disconnectStorage(token: String): Boolean = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/storage/disconnect")

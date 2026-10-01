@@ -413,19 +413,32 @@ class LibraryStore private constructor(private val context: Context) {
         ).also(::update)
     }
 
-    fun materialize(item: LibraryItem, onProgress: (Long, Long) -> Unit = { _, _ -> }): LibraryItem {
+    /**
+     * Makes a phone copy of [item]. With [remoteUrl] (a presigned read URL for the user's own R2 bucket, spec 005)
+     * the bytes come from there, which is how a title freed up from the phone comes back.
+     */
+    fun materialize(item: LibraryItem, remoteUrl: String? = null, onProgress: (Long, Long) -> Unit = { _, _ -> }): LibraryItem {
         if (videoFile(item).exists()) return item.copy(copied = true)
-        val uri = item.sourceUri ?: error("No file to download")
         val dest = videoFile(item)
-        val parsed = Uri.parse(uri)
         val total = item.fileSizeBytes ?: 0L
-        val source = cloudFile(item).takeIf { it.exists() }
-        if (source != null) {
-            source.inputStream().use { copyWithProgress(it, dest, total, onProgress) }
+        if (remoteUrl != null) {
+            val request = okhttp3.Request.Builder().url(remoteUrl).build()
+            okhttp3.OkHttpClient.Builder().readTimeout(2, java.util.concurrent.TimeUnit.MINUTES).build().newCall(request).execute().use { response ->
+                check(response.isSuccessful) { "Cloudflare didn't send the video (${response.code})." }
+                val body = response.body ?: error("Cloudflare sent an empty answer.")
+                body.byteStream().use { copyWithProgress(it, dest, total.takeIf { t -> t > 0 } ?: body.contentLength(), onProgress) }
+            }
         } else {
-            context.contentResolver.openInputStream(parsed)?.use { input ->
-                copyWithProgress(input, dest, total, onProgress)
-            } ?: error("Could not read that video")
+            val uri = item.sourceUri ?: error("No file to download")
+            val parsed = Uri.parse(uri)
+            val source = cloudFile(item).takeIf { it.exists() }
+            if (source != null) {
+                source.inputStream().use { copyWithProgress(it, dest, total, onProgress) }
+            } else {
+                context.contentResolver.openInputStream(parsed)?.use { input ->
+                    copyWithProgress(input, dest, total, onProgress)
+                } ?: error("Could not read that video")
+            }
         }
         val duration = item.durationSeconds ?: probeDuration(dest)
         val poster = item.posterPath?.let { File(it) }?.takeIf { it.exists() } ?: extractPoster(dest, item.id)

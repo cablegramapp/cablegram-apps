@@ -88,6 +88,22 @@ class LibraryLogicTest {
     }
 
     @Test
+    fun `free up space needs a verified R2 copy, the badge follows it, and it stops counting after a disconnect`() {
+        val saved = item().copy(r2Copy = true, copied = true)
+        assertTrue(canRemoveLocalCopy(saved))
+        assertEquals(StorageBadge.Both, storageBadge(saved))
+        assertEquals(StorageBadge.Cloud, storageBadge(saved.copy(copied = false, sourceAvailable = false)))
+        assertFalse("already saved there", canSaveToCloud(saved))
+        assertTrue(saved in cloudFiles(listOf(saved)))
+        // The catalog clears the flag when the bucket is disconnected: the phone file is then the only copy.
+        val disconnected = saved.copy(r2Copy = false)
+        assertFalse(canRemoveLocalCopy(disconnected))
+        assertTrue(canSaveToCloud(disconnected))
+        // R2 bytes are the user's own storage and never count against Cablegram Cloud's 5 GB.
+        assertEquals(0L, cloudMediaBytes(listOf(saved)))
+    }
+
+    @Test
     fun `telegram titles show a cloud badge and cannot be saved to cloud again`() {
         val telegram = item().copy(sourceKind = "telegram", copied = false, sourceAvailable = true)
         assertEquals(StorageBadge.Telegram, storageBadge(telegram))

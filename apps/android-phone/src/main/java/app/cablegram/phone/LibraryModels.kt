@@ -49,6 +49,11 @@ data class LibraryItem(
      * after "Save to Telegram" (spec 004 T011). Free up space may then remove the phone copy.
      */
     val telegramCopy: Boolean = false,
+    /**
+     * A verified copy of this title's video is in the household's own Cloudflare R2 bucket (spec 005). Set from the
+     * catalog on every sync, so it clears when the bucket is disconnected (the copy is then unreachable).
+     */
+    val r2Copy: Boolean = false,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
     val seasonNumber: Int? = null,

@@ -169,6 +169,74 @@ class CablegramApiTest {
         assertEquals("Video is unavailable.", error.message)
     }
 
+    private val r2Item = """{"id":"item-1","title":"Film","sources":[{"kind":"phone_local","origin_identity":"phone-video","serving_device_id":"p1"},{"kind":"cloud_r2","origin_identity":"r2:abc","availability":"available"}]}"""
+    private val r2Resolve = """{"status":"ready","url":"https://acct.r2.cloudflarestorage.com/h/u/film.mkv?X-Amz-Signature=sig"}"""
+
+    @Test
+    fun `a title that only lives in the household R2 bucket plays from it without asking a phone`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"cloud_r2","origin_identity":"r2:abc","availability":"available"}]}]}"""))
+        server.enqueue(MockResponse().setBody(r2Resolve))
+
+        val playback = api.getPlayback("item-1", "jwt")
+
+        assertEquals("ready", playback.status)
+        assertEquals("https://acct.r2.cloudflarestorage.com/h/u/film.mkv?X-Amz-Signature=sig", playback.url)
+        server.takeRequest()
+        assertEquals("/api/playback/resolve", server.takeRequest().path)
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun `R2 is used before the relay when the phone is not on this Wi-Fi`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone"}]}"""))
+        server.enqueue(MockResponse().setBody(r2Resolve))
+
+        val playback = api.getPlayback("item-1", "jwt")
+
+        assertTrue(playback.url!!.startsWith("https://acct.r2.cloudflarestorage.com/"))
+    }
+
+    @Test
+    fun `LAN stays first and R2 is looked up only if the LAN stalls`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
+        server.enqueue(MockResponse().setResponseCode(404)) // the relay ticket: not available in this test
+        server.enqueue(MockResponse().setBody(r2Resolve))
+
+        val playback = api.getPlayback("item-1", "jwt")
+
+        assertTrue(playback.url!!.startsWith("http://192.168.1.20:8765/media/phone-video"))
+        val before = server.requestCount
+        val fallback = playback.fallbackResolver!!.invoke()
+        assertTrue(fallback!!.startsWith("https://acct.r2.cloudflarestorage.com/"))
+        assertEquals(before + 1, server.requestCount)
+        playback.fallbackResolver!!.invoke()
+        assertEquals("the R2 lookup is made once", before + 1, server.requestCount)
+    }
+
+    @Test
+    fun `a cloud copy is never mistaken for a phone to stream from`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[]}"""))
+        server.enqueue(MockResponse().setBody(r2Resolve))
+
+        val playback = api.getPlayback("item-1", "jwt")
+
+        assertTrue(playback.url!!.startsWith("https://acct.r2.cloudflarestorage.com/"))
+        assertTrue(!playback.url!!.contains("r2:abc"))
+    }
+
+    @Test
+    fun `an unavailable R2 copy is not tried`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"cloud_r2","origin_identity":"r2:abc","availability":"unavailable"}]}]}"""))
+
+        val playback = api.getPlayback("item-1", "jwt")
+
+        assertEquals("denied", playback.status)
+        assertEquals(1, server.requestCount)
+    }
+
     @Test
     fun `returns preparing playback when phone is not available`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Inception","sources":[{"origin_identity":"video-1"}]}]}"""))

@@ -9,6 +9,9 @@ fun storageBadge(item: LibraryItem): StorageBadge = when {
     // Saved to Telegram: still on the phone too (Both), or only in Telegram once the phone copy was freed.
     item.telegramCopy && item.sourceAvailable == false -> StorageBadge.Telegram
     item.telegramCopy && !item.cloudObjectPresent -> StorageBadge.Both
+    // Saved to the user's own R2 bucket: same two states.
+    item.r2Copy && item.sourceAvailable == false -> StorageBadge.Cloud
+    item.r2Copy && !item.cloudObjectPresent -> StorageBadge.Both
     item.sourceAvailable == false -> when {
         item.cloudObjectPresent -> StorageBadge.Cloud
         item.householdOnly -> StorageBadge.NotOnPhone
@@ -137,9 +140,12 @@ fun fitsInCloud(item: LibraryItem, available: Long): Boolean {
     return size <= available
 }
 
-/** Free up space: only once a verified copy exists elsewhere (Cablegram cloud, or Telegram after Save to Telegram). */
+/**
+ * Free up space: only once a verified copy exists elsewhere (Cablegram cloud, Telegram after Save to Telegram, or the
+ * user's own R2 bucket, which the control plane verifies by size before it records the copy).
+ */
 fun canRemoveLocalCopy(item: LibraryItem): Boolean =
-    item.sourceAvailable != false && (item.cloudObjectPresent || item.telegramCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
+    item.sourceAvailable != false && (item.cloudObjectPresent || item.telegramCopy || item.r2Copy) && item.copied && item.transferStatus != TRANSFER_SAVING
 
 /**
  * Save to Telegram (spec 004 T011). Private titles never go to Telegram: the channel would hold a copy that any
@@ -160,7 +166,7 @@ fun telegramUploadRefusal(sizeBytes: Long, limitBytes: Long): String? = when {
 private fun formatGigabytes(bytes: Long): String = String.format(java.util.Locale.US, "%.1f", bytes / (1024.0 * 1024 * 1024))
 
 fun canSaveToCloud(item: LibraryItem): Boolean =
-    item.sourceKind != "telegram" && item.sourceAvailable != false && !item.cloudObjectPresent && item.transferStatus != TRANSFER_SAVING
+    item.sourceKind != "telegram" && item.sourceAvailable != false && !item.cloudObjectPresent && !item.r2Copy && item.transferStatus != TRANSFER_SAVING
 
 fun freeUpCandidates(items: List<LibraryItem>): List<LibraryItem> =
     items.filter(::canRemoveLocalCopy).sortedByDescending { it.fileSizeBytes ?: 0L }
@@ -172,7 +178,7 @@ fun itemMatchesCollection(item: LibraryItem, collectionId: String): Boolean =
     collectionId in item.collectionIds
 
 fun cloudFiles(items: List<LibraryItem>): List<LibraryItem> =
-    items.filter { it.cloudObjectPresent }.sortedByDescending { it.fileSizeBytes ?: 0L }
+    items.filter { it.cloudObjectPresent || it.r2Copy }.sortedByDescending { it.fileSizeBytes ?: 0L }
 
 fun needsTitleInput(vararg labels: String?): Boolean = firstCatalogHint(*labels) == null
 
