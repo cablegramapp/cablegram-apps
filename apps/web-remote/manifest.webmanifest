@@ -1,0 +1,14 @@
+{
+  "name": "Cablegram Remote",
+  "short_name": "Cablegram",
+  "description": "Play your videos on your TV, from your phone.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+  ]
+}

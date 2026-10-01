@@ -216,6 +216,8 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     tvLanIp = viewModel.tvLanIp,
                     telegramStatus = viewModel.telegram.status.collectAsState().value,
                     onTelegramPassword = viewModel.telegram::submitPassword,
+                    onTelegramConnect = viewModel.telegram::connectStandalone,
+                    onTelegramCancel = viewModel.telegram::cancelConnect,
                 )
                 is ScreenState.Resolving -> PrepareStatusScreen(
                     screen = screen,
