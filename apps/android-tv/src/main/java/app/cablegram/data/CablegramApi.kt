@@ -169,6 +169,19 @@ class CablegramApi(
     suspend fun telegramLink(token: String): TelegramLinkDto =
         execute(authenticatedRequest("api/telegram/link", token).get().build())
 
+    /**
+     * An iPhone-only household has no Cablegram phone app to link Telegram, so a TV that signed in by its own
+     * QR code links it. The server accepts this only while the household has no link (403 otherwise).
+     */
+    suspend fun putTelegramLink(token: String, telegramUserId: Long, displayName: String, libraryChatId: Long): TelegramLinkDto {
+        val body = json.encodeToString(buildJsonObject {
+            put("telegram_user_id", telegramUserId)
+            put("display_name", displayName)
+            put("library_chat_id", libraryChatId)
+        })
+        return execute(authenticatedRequest("api/telegram/link", token).put(body.toRequestBody(jsonMediaType)).build())
+    }
+
     /** Offers this TV's Telegram login link to the household phone; returns the request id. */
     suspend fun postTelegramTvLogin(token: String, loginLink: String): String {
         val body = json.encodeToString(buildJsonObject { put("login_link", loginLink) })

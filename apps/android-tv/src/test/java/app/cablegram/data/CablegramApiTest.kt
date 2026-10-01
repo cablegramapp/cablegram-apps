@@ -31,6 +31,27 @@ class CablegramApiTest {
     }
 
     @Test
+    fun `a TV links the household with its own token and the account it signed in with`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"linked":true,"telegram_user_id":777000111,"display_name":"Masoud","library_chat_id":-1004296878113,"linked_at":"2026-10-01T10:00:00Z"}"""))
+        val link = api.putTelegramLink("tv-token", 777000111L, "Masoud", -1004296878113L)
+        assertTrue(link.linked)
+        assertEquals(-1004296878113L, link.chatId)
+        val request = server.takeRequest(3, TimeUnit.SECONDS)!!
+        assertEquals("PUT", request.method)
+        assertEquals("/api/telegram/link", request.path)
+        assertEquals("Bearer tv-token", request.getHeader("Authorization"))
+        // Exactly the fields the control plane accepts; it rejects any other, so no phone_device_id from a TV.
+        assertEquals("""{"telegram_user_id":777000111,"display_name":"Masoud","library_chat_id":-1004296878113}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `a household that is already linked refuses the TV's link`() {
+        server.enqueue(MockResponse().setResponseCode(403).setBody("""{"error":"forbidden"}"""))
+        val error = runCatching { runBlocking { api.putTelegramLink("tv-token", 1L, "x", -100L) } }.exceptionOrNull() as ApiException
+        assertEquals(403, error.statusCode)
+    }
+
+    @Test
     fun `real websocket carries authenticated command and receipt frames`() {
         val events = LinkedBlockingQueue<String>()
         val results = LinkedBlockingQueue<String>()

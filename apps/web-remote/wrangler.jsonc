@@ -1,0 +1,11 @@
+{
+  // The web remote: static files only, served by Workers static assets (the homepage Worker does the same).
+  // `npm run build` assembles dist/; the Web remote workflow runs `wrangler deploy` on a web-v* tag.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cablegram-web-remote",
+  "compatibility_date": "2026-09-30",
+  "assets": { "directory": "./dist" },
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "app.cablegram.app", "custom_domain": true }]
+}

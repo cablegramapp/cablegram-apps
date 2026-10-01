@@ -25,9 +25,17 @@ import kotlinx.coroutines.launch
 sealed interface TvTelegramStatus {
     /** The household hasn't connected Telegram (or this build has no Telegram credentials). */
     data object Off : TvTelegramStatus
+    /**
+     * Nobody has linked Telegram to this household yet. The owner can do it from this TV by scanning its QR code
+     * in the Telegram app: the way in for a household with no Cablegram phone app (an iPhone with the web app).
+     */
+    data object CanConnect : TvTelegramStatus
     data object Connecting : TvTelegramStatus
-    /** Waiting for the household phone to approve [link]; [since] is when waiting began (QR fallback after 20 s). */
-    data class WaitingForPhone(val link: String, val since: Long) : TvTelegramStatus
+    /**
+     * Waiting for the household phone to approve [link]; [since] is when waiting began (QR fallback after 20 s).
+     * [standalone]: the owner chose to connect from this TV, so no phone is asked and the QR code shows at once.
+     */
+    data class WaitingForPhone(val link: String, val since: Long, val standalone: Boolean = false) : TvTelegramStatus
     data class Connected(val name: String, val libraryChatId: Long?) : TvTelegramStatus
     /**
      * The phone approved this TV, but the account has two-step verification: Telegram wants the password
@@ -61,6 +69,8 @@ class TvTelegram(
     @Volatile private var expectedUserId: Long? = null
     @Volatile private var libraryChatId: Long? = null
     @Volatile private var linkedPhoneId: String? = null
+    /** The owner chose "Connect Telegram on this TV" for a household nobody has linked yet. */
+    @Volatile private var standalone = false
 
     private val prefs = context.getSharedPreferences("cablegram_tv_trust", Context.MODE_PRIVATE)
 
@@ -95,7 +105,9 @@ class TvTelegram(
                     signOutAndWipe()
                     runCatching { api.telegramLogoutAck(currentToken) }
                 }
-                !link.linked -> if (session == null) _status.value = TvTelegramStatus.Off
+                !link.linked -> if (session == null) {
+                    _status.value = if (link.trustLevel == "home" && link.telegramDirect) TvTelegramStatus.CanConnect else TvTelegramStatus.Off
+                }
                 !link.telegramDirect -> {
                     // A temporary TV without the owner's opt-in holds no Telegram session at all (US8).
                     if (session != null) signOutAndWipe()
@@ -110,6 +122,23 @@ class TvTelegram(
         }
     }
 
+    /**
+     * Signs this TV in by QR code for a household nobody has linked, then links it (see [onState]). Only the owner
+     * starts this, from Settings, and only while the household has no link. Elsewhere a TV never creates a channel.
+     */
+    fun connectStandalone() {
+        if (!configured || session != null || _status.value != TvTelegramStatus.CanConnect) return
+        standalone = true
+        expectedUserId = null
+        libraryChatId = null
+        ensureSession()
+    }
+
+    /** The owner backed out of [connectStandalone] before finishing. */
+    fun cancelConnect() {
+        if (standalone) signOutAndWipe()
+    }
+
     /** The two-step verification password, typed on the TV; it goes to Telegram only, never to Cablegram. */
     fun submitPassword(password: String) {
         session?.submitPassword(password)
@@ -119,6 +148,8 @@ class TvTelegram(
     fun signOutAndWipe() {
         val current = session
         session = null
+        standalone = false
+        postedLink = null
         watchJob?.cancel()
         watchJob = null
         syncJob?.cancel()
@@ -184,9 +215,10 @@ class TvTelegram(
         when (state) {
             is TelegramState.WaitingForApproval -> {
                 val waitingSince = (_status.value as? TvTelegramStatus.WaitingForPhone)?.since ?: System.currentTimeMillis()
-                _status.value = TvTelegramStatus.WaitingForPhone(state.link, waitingSince)
+                _status.value = TvTelegramStatus.WaitingForPhone(state.link, waitingSince, standalone)
                 // TDLib refreshes the token about every 30 s; each new link goes to the phone again.
-                if (state.link != postedLink) {
+                // A standalone sign-in has no phone to ask: the owner scans the code on screen.
+                if (!standalone && state.link != postedLink) {
                     postedLink = state.link
                     val currentToken = token ?: return
                     try {
@@ -207,7 +239,9 @@ class TvTelegram(
                     )
                     return
                 }
-                // Only the household's channel, by id (FR-005); a TV never creates or searches for one.
+                if (standalone && !linkStandalone(current, state.user)) return
+                // Only the household's channel, by id (FR-005); a TV never creates or searches for one,
+                // except in the standalone sign-in handled above.
                 val library = libraryChatId?.let { current.openLibrary(knownChatId = it, allowCreate = false) }
                 _status.value = TvTelegramStatus.Connected(state.user.displayName, library?.chatId)
                 library?.let { startSync(current, it.chatId) }
@@ -218,6 +252,35 @@ class TvTelegram(
             TelegramState.SignedOut -> _status.value = TvTelegramStatus.Off
             else -> if (_status.value !is TvTelegramStatus.WaitingForPhone) _status.value = TvTelegramStatus.Connecting
         }
+    }
+
+    /**
+     * The standalone sign-in reached Ready: find or create the library channel and link the household to it.
+     * False when it failed; the TV has then signed out again and says why.
+     */
+    private suspend fun linkStandalone(current: TelegramSession, user: app.cablegram.telegram.TgUser): Boolean {
+        val currentToken = token
+        val chatId = runCatching { current.openLibrary(knownChatId = null, allowCreate = true)?.chatId }.getOrNull()
+        val linked = if (currentToken != null && chatId != null) {
+            runCatching { api.putTelegramLink(currentToken, user.id, user.displayName, chatId) }
+        } else null
+        if (linked == null || linked.isFailure) {
+            val failure = linked?.exceptionOrNull() as? ApiException
+            val taken = failure?.statusCode == 403
+            // Only the server's error name or a fixed reason: nothing that could sign anyone in reaches the log.
+            val reason = failure?.error ?: "not_ready"
+            PairLog.i("Standalone Telegram link failed: $reason")
+            signOutAndWipe()
+            _status.value = TvTelegramStatus.Problem(
+                if (taken) "Telegram is already connected for this household. Ask the owner to use the app that connected it."
+                else "Couldn't set up your Telegram library. Check your connection and try again.",
+            )
+            return false
+        }
+        standalone = false
+        expectedUserId = user.id
+        libraryChatId = chatId
+        return true
     }
 
     /** Channel videos become library titles (US3); a TV registers with the file name or caption as title. */

@@ -110,6 +110,8 @@ internal fun LibraryScreen(
     tvLanIp: String? = null,
     telegramStatus: app.cablegram.TvTelegramStatus = app.cablegram.TvTelegramStatus.Off,
     onTelegramPassword: (String) -> Unit = {},
+    onTelegramConnect: () -> Unit = {},
+    onTelegramCancel: () -> Unit = {},
 ) {
     var selectedGenre by remember { mutableStateOf<String?>(null) }
     var selectedShow by remember { mutableStateOf<TvShow?>(null) }
@@ -280,6 +282,8 @@ internal fun LibraryScreen(
                         tvLanIp = tvLanIp,
                         telegramStatus = telegramStatus,
                         onTelegramPassword = onTelegramPassword,
+                        onTelegramConnect = onTelegramConnect,
+                        onTelegramCancel = onTelegramCancel,
                     )
                     return@Column
                 }
