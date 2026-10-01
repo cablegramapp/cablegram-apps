@@ -62,6 +62,20 @@ class R2FormChecksTest {
         for (check in listOf(::r2AccountIdProblem, ::r2BucketProblem, ::r2KeyIdProblem, ::r2SecretProblem)) org.junit.Assert.assertNull(check(""))
     }
 
+    @org.junit.Test fun `the account ID is taken from the Endpoint address Cloudflare shows`() {
+        val id = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+        org.junit.Assert.assertEquals(id, r2AccountIdFrom(id))
+        org.junit.Assert.assertEquals(id, r2AccountIdFrom("  ${id.uppercase()} "))
+        org.junit.Assert.assertEquals(id, r2AccountIdFrom("https://$id.r2.cloudflarestorage.com"))
+        org.junit.Assert.assertEquals(id, r2AccountIdFrom("https://$id.r2.cloudflarestorage.com/my-bucket"))
+        org.junit.Assert.assertEquals(id, r2AccountIdFrom("$id.r2.cloudflarestorage.com"))
+        org.junit.Assert.assertNull(r2AccountIdFrom("https://$id.evil.example"))
+        org.junit.Assert.assertNull(r2AccountIdFrom("https://x$id.r2.cloudflarestorage.com"))
+        org.junit.Assert.assertNull(r2AccountIdFrom("not an id"))
+        org.junit.Assert.assertNull(r2AccountIdProblem("https://$id.r2.cloudflarestorage.com"))
+        org.junit.Assert.assertNotNull(r2AccountIdProblem("https://example.com"))
+    }
+
     @org.junit.Test fun `good values pass, with spaces around them ignored`() {
         org.junit.Assert.assertNull(r2AccountIdProblem(" " + "a1b2c3d4e5f60718293a4b5c6d7e8f90" + " "))
         org.junit.Assert.assertNull(r2BucketProblem("my-cablegram-videos"))

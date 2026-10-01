@@ -210,9 +210,20 @@ fun r2ConnectMessage(error: String): String = when (error) {
 }
 
 // Live checks for the connect form: null means fine (or nothing typed yet). Mirror the server's own rules.
+/**
+ * The 32-character account ID, from what the owner typed: the ID itself, or the Endpoint address Cloudflare shows with
+ * a new token (`https://<account id>.r2.cloudflarestorage.com`, with or without a bucket after it). Null if neither.
+ */
+fun r2AccountIdFrom(input: String): String? {
+    val text = input.trim()
+    Regex("[0-9a-fA-F]{32}").matchEntire(text)?.let { return text.lowercase() }
+    return Regex("^(?:https?://)?([0-9a-fA-F]{32})\\.r2\\.cloudflarestorage\\.com(?:[/?#].*)?$", RegexOption.IGNORE_CASE)
+        .find(text)?.groupValues?.get(1)?.lowercase()
+}
+
 fun r2AccountIdProblem(value: String): String? =
-    if (value.isBlank() || Regex("[0-9a-fA-F]{32}").matches(value.trim())) null
-    else "The account ID is 32 letters and digits. Copy it from the R2 page."
+    if (value.isBlank() || r2AccountIdFrom(value) != null) null
+    else "That isn't an account ID. Paste the Endpoint address Cloudflare showed with your keys."
 
 fun r2BucketProblem(value: String): String? =
     if (value.isBlank() || Regex("[a-z0-9][a-z0-9-]{1,61}[a-z0-9]").matches(value.trim())) null

@@ -189,7 +189,6 @@ private fun ManageCloudSheet(viewModel: PhoneViewModel) {
 
 private const val CLOUDFLARE_SIGN_UP = "https://dash.cloudflare.com/sign-up"
 private const val CLOUDFLARE_R2 = "https://dash.cloudflare.com/?to=/:account/r2/overview"
-private const val CLOUDFLARE_R2_TOKENS = "https://dash.cloudflare.com/?to=/:account/r2/api-tokens"
 
 /** One numbered step of the connect walkthrough, optionally with a button that opens the Cloudflare page it is about. */
 @Composable
@@ -235,26 +234,25 @@ private fun ConnectR2Sheet(viewModel: PhoneViewModel) {
         GuideStep(
             2, "Turn on R2 and make a bucket",
             listOf(
-                "Open R2, then tap Create bucket. Cloudflare may ask for a payment card to turn R2 on; the free allowance is 10 GB.",
-                "Name it with lowercase letters, digits and dashes, for example my-cablegram-videos. Leave the other settings as they are.",
-                "Copy your Account ID from the right side of the R2 page. You will paste it in step 4.",
+                "Open R2. Cloudflare asks you to subscribe to R2 once; it is free to start, and it may ask for a payment card.",
+                "Then tap Create bucket. Name it with lowercase letters, digits and dashes, for example my-cablegram-videos. Leave the other settings as they are.",
             ),
             "Open R2", CLOUDFLARE_R2,
         )
         GuideStep(
             3, "Create an access token",
             listOf(
-                "Open API tokens, then tap Create API token.",
-                "Permission: Object Read & Write. Apply it to Specific bucket, and choose the bucket from step 2. Then tap Create.",
-                "Cloudflare now shows an Access Key ID and a Secret Access Key. The secret is shown only once, so keep that page open.",
+                "On the R2 page, find Account Details and tap Manage next to API Tokens. Then tap Create Account API token.",
+                "Permission: Object Read & Write. Apply it to a specific bucket and choose the one from step 2. Then tap Create.",
+                "Cloudflare now shows an Access Key ID, a Secret Access Key and an Endpoint. The secret is shown only once, so keep that page open.",
             ),
-            "Open API tokens", CLOUDFLARE_R2_TOKENS,
+            "Open R2", CLOUDFLARE_R2,
         )
-        GuideStep(4, "Enter the details", listOf("Copy each value from Cloudflare. Spaces around them are ignored.")) {
+        GuideStep(4, "Enter the details", listOf("Copy each value from the page Cloudflare showed you. Spaces around them are ignored.")) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    accountId, { accountId = it }, label = { Text("Account ID") }, singleLine = true,
-                    isError = problems[0] != null, supportingText = { Text(problems[0] ?: "From the R2 page, 32 characters.") },
+                    accountId, { accountId = it }, label = { Text("Endpoint or Account ID") }, singleLine = true,
+                    isError = problems[0] != null, supportingText = { Text(problems[0] ?: "Paste the Endpoint address Cloudflare showed, or just the 32-character account ID in it.") },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(

@@ -403,7 +403,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             busy = true
             r2ConnectError = null
             try {
-                val result = catalog().connectR2(token, accountId.trim().lowercase(), bucket.trim(), accessKeyId.trim(), secret.trim())
+                val result = catalog().connectR2(token, r2AccountIdFrom(accountId) ?: accountId.trim().lowercase(), bucket.trim(), accessKeyId.trim(), secret.trim())
                 if (result.error == null) {
                     status = "Connected to your R2 storage."
                     cloudSheet = CloudSheet.Manage
