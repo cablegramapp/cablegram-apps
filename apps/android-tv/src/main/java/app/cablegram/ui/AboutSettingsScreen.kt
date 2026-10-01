@@ -52,6 +52,8 @@ internal fun AboutSettingsPanel(
     tvLanIp: String?,
     telegramStatus: app.cablegram.TvTelegramStatus = app.cablegram.TvTelegramStatus.Off,
     onTelegramPassword: (String) -> Unit = {},
+    onTelegramConnect: () -> Unit = {},
+    onTelegramCancel: () -> Unit = {},
 ) {
     val context = LocalContext.current
     Row(
@@ -132,7 +134,7 @@ internal fun AboutSettingsPanel(
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )
-            TelegramSettingsSection(telegramStatus, onTelegramPassword)
+            TelegramSettingsSection(telegramStatus, onTelegramPassword, onTelegramConnect, onTelegramCancel)
         }
     }
 }
@@ -153,7 +155,12 @@ private fun SettingValue(label: String, value: String, monospace: Boolean = fals
 
 /** Spec 004 US2: the TV's Telegram status; a QR code if the household phone hasn't approved it within 20 s. */
 @Composable
-private fun TelegramSettingsSection(status: app.cablegram.TvTelegramStatus, onPassword: (String) -> Unit) {
+private fun TelegramSettingsSection(
+    status: app.cablegram.TvTelegramStatus,
+    onPassword: (String) -> Unit,
+    onConnect: () -> Unit,
+    onCancel: () -> Unit,
+) {
     if (status == app.cablegram.TvTelegramStatus.Off) return
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(status) {
@@ -171,11 +178,22 @@ private fun TelegramSettingsSection(status: app.cablegram.TvTelegramStatus, onPa
         is app.cablegram.TvTelegramStatus.Connected ->
             SettingValue("Signed in as", status.name)
         is app.cablegram.TvTelegramStatus.Problem -> Text(status.message, color = Cyan, fontSize = 14.sp, lineHeight = 20.sp)
+        app.cablegram.TvTelegramStatus.CanConnect -> {
+            Text(
+                "Telegram isn't connected for this household yet. You can connect it from this TV: scan a code with the Telegram app on your phone.",
+                color = Muted,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+            )
+            Button(onClick = onConnect, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Connect Telegram on this TV") }
+        }
         is app.cablegram.TvTelegramStatus.WaitingForPhone -> {
-            Text("Waiting for your phone to let this TV use your Telegram…", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
-            if (now - status.since > 20_000) {
+            if (!status.standalone) {
+                Text("Waiting for your phone to let this TV use your Telegram…", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            }
+            if (status.standalone || now - status.since > 20_000) {
                 Text(
-                    "Or scan this code in Telegram on your phone: Settings → Devices → Link Desktop Device.",
+                    "Scan this code in Telegram on your phone: Settings → Devices → Link Desktop Device.",
                     color = Muted,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -186,6 +204,9 @@ private fun TelegramSettingsSection(status: app.cablegram.TvTelegramStatus, onPa
                     contentDescription = "Telegram login QR code",
                     modifier = Modifier.size(180.dp),
                 )
+            }
+            if (status.standalone) {
+                Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Cancel") }
             }
         }
         is app.cablegram.TvTelegramStatus.NeedsPassword -> TelegramPasswordStep(status, onPassword)

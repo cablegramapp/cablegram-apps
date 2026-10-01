@@ -188,6 +188,46 @@ only the requests addressed to this TV, with `login_link` and `expires_in_ms`.
 The same outcomes and error-name rules as the TV login. The link is erased when
 the request resolves or expires.
 
+## Web (iPhone PWA) households
+
+An iPhone user has no Cablegram phone app that runs TDLib. The PWA is a remote and library browser
+only: it never holds a Telegram session and never sees a login code or password. The TV is the only
+Telegram client in such a household.
+
+**Web client.** The PWA signs in with `"client": "web"` in the body of `POST /api/auth/register` or
+`/api/auth/login`. The session remembers it, so a refreshed token keeps it, and the phone access token
+carries `client: "web"`. It is a normal phone-scope token otherwise, so it may use the routes marked "phone
+or TV" and remote commands. On the Telegram routes a web token is refused (`403 forbidden_for_web_client`)
+except for `GET /api/telegram/link` and the two TV-login routes below. It must not serve media and must not
+call `PUT`/`DELETE /api/telegram/link` or `POST /api/telegram/phone-logins`. This limits what the PWA is
+asked to do; it is not a barrier against the account owner, who can always sign in without the field.
+
+**TV creates the link.** `PUT /api/telegram/link` also accepts a TV token, but only while the household
+has no link and only from a TV whose TDLib session has reached Ready. The body is the same as for a phone,
+without `phone_device_id` (`400 invalid_request` if present). If the household is already linked, a TV gets
+`403 forbidden`. `DELETE` stays native-phone-only, because it logs out every TV.
+
+**Connecting from the TV.** A Home TV whose household has no link (`GET /api/telegram/link` says
+`linked: false`) offers "Connect Telegram on this TV" in Settings. The owner starts it; it never starts by
+itself. The TV signs in with its own QR code (`tg://login?token=…`), shown at once and not sent to the
+server. The owner scans it in the Telegram app on their phone and confirms there. When the TV reaches
+Ready it finds the library channel by title, or creates it, and calls `PUT /api/telegram/link` with its own
+token. If that fails (for example `403` because another device linked first), the TV signs out and wipes
+its Telegram data. This is the only time a TV creates a channel.
+
+**Approving a TV from the PWA.** When the household is linked, `GET /api/telegram/tv-logins/pending` is
+also open to web clients. The PWA:
+- shows the same "Let <TV name> use your Telegram?" prompt, with **Allow** and **Don't allow**. There is no
+  auto-approve for web devices;
+- on Allow, opens the `login_link` (`tg://login?token=…`), so the Telegram app asks the user to confirm;
+- posts `{ "outcome": "approved" | "denied" }`.
+
+**What is weaker.** The PWA can't list Telegram sessions, so it can't run the "verified approval" check
+that native phones do (`UNEXPECTED_CLIENT`). The server supplies the `login_link` and the TV name, so a
+compromised server could hand the PWA a link from another client. The TV can't detect that: it never signs
+in, and it can't list sessions before it has one. The prompt only stops silent approval, as it does on
+native phones. A web client may only post `approved` or `denied`; `failed` gets `403 forbidden_for_web_client`.
+
 ## TV trust and Telegram sessions
 
 ### Pairing and TV settings (phone only)
