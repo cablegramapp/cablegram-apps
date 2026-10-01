@@ -67,6 +67,7 @@ fun PhoneApp(viewModel: PhoneViewModel) {
     when {
         viewModel.needsAccount && viewModel.resettingPassword -> ResetPasswordForm(viewModel)
         viewModel.needsAccount -> AccountForm(viewModel)
+        viewModel.deletingAccount -> DeleteAccountScreen(viewModel)
         viewModel.verifyingEmail -> VerifyEmailForm(viewModel)
         viewModel.addingTv -> PairingForm(viewModel)
         viewModel.needsName -> NameForm(viewModel)

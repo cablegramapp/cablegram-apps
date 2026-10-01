@@ -371,7 +371,9 @@ fun PlayerScreen(
         return true
     }
 
-    BackHandler { exit() }
+    // Targeting Android 16, Back is a predictive-back gesture and the remote's Back key no longer reaches
+    // dispatchKeyEvent, so run it through the same layered handling (close panel, hide controls, then exit).
+    BackHandler { key(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK)) }
     DisposableEffect(activity, start) {
         if (start != null) activity?.setPlayerKeyHandler(::key)
         onDispose { activity?.setPlayerKeyHandler(null) }
