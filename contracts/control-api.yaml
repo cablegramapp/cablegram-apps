@@ -114,6 +114,35 @@ paths:
       responses:
         "200":
           description: User, household, devices, membership
+  /api/account/delete:
+    post:
+      summary: Phone deletes the signed-in account and all its data (Google Play account deletion)
+      description: >
+        Phone scope only; a TV token gets 403. Requires the account password, checked like a sign-in and
+        sharing its 15-minute lock. Everything is deleted at once (account, household, profiles, paired
+        devices, library, watch progress, My List, Telegram link, stored files) and it cannot be undone.
+        Videos in the user's own Telegram channel belong to their Telegram account and are not touched.
+        The same deletion is offered on the public web page `GET /delete-account`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 1 }
+      responses:
+        "204":
+          description: Account and data deleted
+        "401":
+          description: >
+            `{"error":"invalid_credentials"}` wrong password (nothing deleted), or
+            `{"error":"unauthorized"}` the session is no longer valid
+        "403":
+          description: Not a phone token
+        "429":
+          description: '`{"error":"too_many_login_attempts"}` locked for 15 minutes'
   /api/playback/private-approvals:
     post:
       summary: TV requests or phone consumes one-time private playback approval

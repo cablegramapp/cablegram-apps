@@ -39,7 +39,7 @@ identical.
 
 ## Building
 
-You need JDK 17 and the Android SDK (compileSdk 35). Each app is its own Gradle project:
+You need JDK 17 and the Android SDK (compileSdk 36). Each app is its own Gradle project:
 
 ```sh
 cd apps/android-phone   # or apps/android-tv
