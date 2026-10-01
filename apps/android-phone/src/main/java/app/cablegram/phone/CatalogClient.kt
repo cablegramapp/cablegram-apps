@@ -16,6 +16,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import okhttp3.Authenticator
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,7 +26,7 @@ import java.util.concurrent.TimeUnit
 class CatalogClient(
     private val baseUrl: String = BuildConfig.API_BASE_URL,
     /** Renews the two-hour access token on 401; omit only for anonymous calls. */
-    tokens: AccountTokens? = null,
+    private val tokens: AccountTokens? = null,
     private val client: OkHttpClient = OkHttpClient.Builder()
         .callTimeout(20, TimeUnit.SECONDS)
         .apply { if (tokens != null) authenticator(AccountAuthenticator(baseUrl, tokens)) }
@@ -246,6 +247,58 @@ class CatalogClient(
             .post(body.toRequestBody("application/json".toMediaType()))
             .build()
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
+    /**
+     * Deletes the signed-in account and everything stored for it (`POST /api/account/delete`). The server checks
+     * [password] before deleting, so a wrong one is a 401 `invalid_credentials`.
+     *
+     * The request goes out without the token-renewing authenticator: that would resend a wrong password after
+     * every 401 and count twice against the 15-minute sign-in lock. An expired access token (401 `unauthorized`,
+     * answered before the password is looked at) is renewed here instead, once, and the request is repeated.
+     * The password is only ever in the request body; nothing here logs it.
+     */
+    suspend fun deleteAccount(token: String, password: String): AccountDeletionResult = withContext(Dispatchers.IO) {
+        val first = postDeleteAccount(token, password)
+        if (first != AccountDeletionResult.SessionExpired || tokens == null) return@withContext first
+        val fresh = renewedAccessToken(token) ?: return@withContext first
+        postDeleteAccount(fresh, password)
+    }
+
+    private fun postDeleteAccount(token: String, password: String): AccountDeletionResult {
+        val body = json.encodeToString(buildJsonObject { put("password", password) })
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/account/delete")
+            .header("Authorization", "Bearer $token")
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        return try {
+            client.newBuilder().authenticator(Authenticator.NONE).build().newCall(request).execute().use { response ->
+                val error = runCatching {
+                    json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["error"]?.jsonPrimitive?.contentOrNull
+                }.getOrNull()
+                when {
+                    response.code == 204 -> AccountDeletionResult.Deleted
+                    response.code == 429 -> AccountDeletionResult.RateLimited
+                    response.code == 401 && error == "invalid_credentials" -> AccountDeletionResult.WrongPassword
+                    response.code == 401 -> AccountDeletionResult.SessionExpired
+                    else -> AccountDeletionResult.Failed
+                }
+            }
+        } catch (_: java.io.IOException) {
+            AccountDeletionResult.Offline
+        }
+    }
+
+    /** A cheap authenticated call; its 401 makes [AccountAuthenticator] renew the token. Null when it did not change. */
+    private fun renewedAccessToken(stale: String): String? {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/me")
+            .header("Authorization", "Bearer $stale")
+            .get()
+            .build()
+        runCatching { client.newCall(request).execute().close() }
+        return tokens?.accountToken?.takeIf { it.isNotBlank() && it != stale }
     }
 
     /** POST JSON; returns (status, body) with status null when the server can't be reached. */
@@ -1030,5 +1083,8 @@ class CatalogClient(
         return item.title.isBlank() || item.title == filenameTitle || item.title == item.filename
     }
 }
+
+/** How `POST /api/account/delete` ended, see [CatalogClient.deleteAccount]. */
+enum class AccountDeletionResult { Deleted, WrongPassword, RateLimited, SessionExpired, Offline, Failed }
 
 enum class PhoneDeviceStatus { Registered, Missing, Unknown }

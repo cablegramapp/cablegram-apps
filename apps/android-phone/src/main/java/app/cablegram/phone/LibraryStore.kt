@@ -170,6 +170,25 @@ class LibraryStore private constructor(private val context: Context) {
         return current.items.isNotEmpty()
     }
 
+    /**
+     * The household was deleted with the account: nothing tied to it may stay or sync into a later account.
+     * Videos that are files on this phone stay (they are the user's own); titles that only existed because of
+     * the household (restored placeholders, Telegram channel titles) and its bookkeeping go.
+     */
+    @Synchronized
+    fun forgetHousehold() {
+        val current = snapshot()
+        save(current.copy(
+            householdId = null,
+            dismissedRemoteIds = emptyList(),
+            promptedTelegramIds = emptyList(),
+            pendingWebImports = emptyList(),
+            items = current.items.filterNot { it.householdOnly || it.sourceKind == "telegram" }
+                .map { it.copy(telegramCopy = false) },
+        ))
+        File(root, "index-${current.householdId}.json").delete()
+    }
+
     fun dismissedRemoteIds(): Set<String> = snapshot().dismissedRemoteIds.toSet()
 
     /** A household title without a file on this phone (restored after a reinstall / on a new phone). */
