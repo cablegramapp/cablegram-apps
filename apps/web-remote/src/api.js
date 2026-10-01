@@ -123,11 +123,5 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
     pendingTvLogins: async () => (await send("/api/telegram/tv-logins/pending")).requests || [],
     /** The web client may only answer "approved" or "denied"; the server refuses "failed". */
     answerTvLogin: (id, allow) => send(`/api/telegram/tv-logins/${id}/result`, { method: "POST", body: { outcome: allow ? "approved" : "denied" } }),
-    /** Posters need the bearer token, which an <img> can't send, so fetch the bytes. */
-    async poster(url) {
-      const response = await fetchImpl(url, { headers: memory?.access_token ? { authorization: `Bearer ${memory.access_token}` } : {} });
-      if (!response.ok) return null;
-      return response.blob();
-    },
   };
 }
