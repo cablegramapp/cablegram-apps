@@ -56,3 +56,27 @@ class R2ConnectTest {
         assertEquals("Couldn't connect (http_500).", r2ConnectMessage("http_500"))
     }
 }
+
+class R2FormChecksTest {
+    @org.junit.Test fun `nothing typed yet shows no complaint`() {
+        for (check in listOf(::r2AccountIdProblem, ::r2BucketProblem, ::r2KeyIdProblem, ::r2SecretProblem)) org.junit.Assert.assertNull(check(""))
+    }
+
+    @org.junit.Test fun `good values pass, with spaces around them ignored`() {
+        org.junit.Assert.assertNull(r2AccountIdProblem(" " + "a1b2c3d4e5f60718293a4b5c6d7e8f90" + " "))
+        org.junit.Assert.assertNull(r2BucketProblem("my-cablegram-videos"))
+        org.junit.Assert.assertNull(r2KeyIdProblem("AKIAKEY0123456789"))
+        org.junit.Assert.assertNull(r2SecretProblem("wJalrXUtnFEMI-K7MDENG_bPxRfiCYTESTSECRETKEY"))
+    }
+
+    @org.junit.Test fun `typical mistakes are caught before anything is sent`() {
+        org.junit.Assert.assertNotNull(r2AccountIdProblem("12345"))
+        org.junit.Assert.assertNotNull(r2AccountIdProblem("zzzz".repeat(8)))
+        org.junit.Assert.assertNotNull(r2BucketProblem("My Videos"))
+        org.junit.Assert.assertNotNull(r2BucketProblem("ab"))
+        org.junit.Assert.assertNotNull(r2KeyIdProblem("short"))
+        org.junit.Assert.assertNotNull(r2SecretProblem("short"))
+        // The API URL or a token value pasted into the wrong field.
+        org.junit.Assert.assertNotNull(r2BucketProblem("https://x.r2.cloudflarestorage.com"))
+    }
+}

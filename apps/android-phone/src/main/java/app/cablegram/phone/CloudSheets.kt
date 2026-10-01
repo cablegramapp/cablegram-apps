@@ -5,12 +5,15 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +38,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
 
 @Composable
 fun CloudFlow(viewModel: PhoneViewModel) {
@@ -182,26 +187,94 @@ private fun ManageCloudSheet(viewModel: PhoneViewModel) {
     }
 }
 
-/** Cloudflare R2: the owner makes a bucket and an Object Read & Write token once, and enters its keys here. */
+private const val CLOUDFLARE_SIGN_UP = "https://dash.cloudflare.com/sign-up"
+private const val CLOUDFLARE_R2 = "https://dash.cloudflare.com/?to=/:account/r2/overview"
+private const val CLOUDFLARE_R2_TOKENS = "https://dash.cloudflare.com/?to=/:account/r2/api-tokens"
+
+/** One numbered step of the connect walkthrough, optionally with a button that opens the Cloudflare page it is about. */
+@Composable
+private fun GuideStep(number: Int, title: String, lines: List<String>, openLabel: String? = null, openUrl: String? = null, content: (@Composable () -> Unit)? = null) {
+    val context = LocalContext.current
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1A1A1A)).padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(Modifier.size(28.dp).clip(CircleShape).background(VlcOrange), contentAlignment = Alignment.Center) {
+            Text(number.toString(), color = Color.Black, fontSize = 14.sp)
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, color = Color.White, style = MaterialTheme.typography.titleSmall)
+            lines.forEach { Text(it, color = VlcMuted, fontSize = 14.sp) }
+            if (openLabel != null && openUrl != null) {
+                OutlinedButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(openUrl))) } }) { Text(openLabel) }
+            }
+            content?.invoke()
+        }
+    }
+}
+
+/**
+ * Cloudflare R2: the owner makes a bucket and an Object Read & Write token once, and enters its keys here. Each step
+ * says what to tap in Cloudflare, with a button that opens the page, and the form checks every field as it is typed.
+ */
 @Composable
 private fun ConnectR2Sheet(viewModel: PhoneViewModel) {
     var accountId by remember { mutableStateOf("") }
     var bucket by remember { mutableStateOf("") }
     var keyId by remember { mutableStateOf("") }
     var secret by remember { mutableStateOf("") }
-    SheetScaffold("Connect Cloudflare R2", viewModel::dismissCloudSheet) {
-        Text("Your videos go straight to a bucket you own. Set it up once in Cloudflare:", color = VlcMuted)
-        Text("1. Turn on R2 (the free tier is enough) and create a bucket.", color = Color.White)
-        Text("2. R2 → Manage R2 API Tokens → Create API token. Permission: Object Read & Write, for that bucket only.", color = Color.White)
-        Text("3. Copy the account ID, the Access Key ID and the Secret Access Key here.", color = Color.White)
-        Text("Cablegram keeps the keys encrypted and uses them only for your library. To remove access later, delete the token in Cloudflare.", color = VlcMuted, fontSize = 12.sp)
-        OutlinedTextField(accountId, { accountId = it }, label = { Text("Account ID") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(bucket, { bucket = it }, label = { Text("Bucket name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(keyId, { keyId = it }, label = { Text("Access Key ID") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(
-            secret, { secret = it }, label = { Text("Secret Access Key") }, singleLine = true,
-            visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(),
+    val problems = listOf(r2AccountIdProblem(accountId), r2BucketProblem(bucket), r2KeyIdProblem(keyId), r2SecretProblem(secret))
+    val complete = listOf(accountId, bucket, keyId, secret).all { it.isNotBlank() } && problems.all { it == null }
+    SheetScaffold("Connect your own storage", viewModel::dismissCloudSheet) {
+        Text("Keep your videos in your own Cloudflare R2 storage. They go straight there from your phone, and your TV plays them even when the phone is off. About 5 minutes, once.", color = VlcMuted)
+        GuideStep(
+            1, "Create a free Cloudflare account",
+            listOf("Already have one? Skip to step 2."),
+            "Open Cloudflare sign-up", CLOUDFLARE_SIGN_UP,
         )
+        GuideStep(
+            2, "Turn on R2 and make a bucket",
+            listOf(
+                "Open R2, then tap Create bucket. Cloudflare may ask for a payment card to turn R2 on; the free allowance is 10 GB.",
+                "Name it with lowercase letters, digits and dashes, for example my-cablegram-videos. Leave the other settings as they are.",
+                "Copy your Account ID from the right side of the R2 page. You will paste it in step 4.",
+            ),
+            "Open R2", CLOUDFLARE_R2,
+        )
+        GuideStep(
+            3, "Create an access token",
+            listOf(
+                "Open API tokens, then tap Create API token.",
+                "Permission: Object Read & Write. Apply it to Specific bucket, and choose the bucket from step 2. Then tap Create.",
+                "Cloudflare now shows an Access Key ID and a Secret Access Key. The secret is shown only once, so keep that page open.",
+            ),
+            "Open API tokens", CLOUDFLARE_R2_TOKENS,
+        )
+        GuideStep(4, "Enter the details", listOf("Copy each value from Cloudflare. Spaces around them are ignored.")) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    accountId, { accountId = it }, label = { Text("Account ID") }, singleLine = true,
+                    isError = problems[0] != null, supportingText = { Text(problems[0] ?: "From the R2 page, 32 characters.") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    bucket, { bucket = it }, label = { Text("Bucket name") }, singleLine = true,
+                    isError = problems[1] != null, supportingText = { Text(problems[1] ?: "The name you gave the bucket.") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    keyId, { keyId = it }, label = { Text("Access Key ID") }, singleLine = true,
+                    isError = problems[2] != null, supportingText = { Text(problems[2] ?: "Shown when you created the token.") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    secret, { secret = it }, label = { Text("Secret Access Key") }, singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    isError = problems[3] != null, supportingText = { Text(problems[3] ?: "Shown once, under the Access Key ID.") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
         viewModel.r2ConnectError?.let { Text(it, color = Color(0xFFFFB74D)) }
         Button(
             onClick = {
@@ -209,9 +282,11 @@ private fun ConnectR2Sheet(viewModel: PhoneViewModel) {
                 // The secret does not stay in the form once it has been sent.
                 secret = ""
             },
-            enabled = !viewModel.busy && accountId.isNotBlank() && bucket.isNotBlank() && keyId.isNotBlank() && secret.isNotBlank(),
+            enabled = !viewModel.busy && complete,
             modifier = Modifier.fillMaxWidth(),
         ) { Text(if (viewModel.busy) "Checking…" else "Connect") }
+        Text("What it costs: R2 includes 10 GB free; after that Cloudflare charges about $0.015 per GB a month, and downloads are free.", color = VlcMuted, fontSize = 12.sp)
+        Text("Cablegram keeps the keys encrypted and uses them only for your library. To remove access later, delete the token in Cloudflare.", color = VlcMuted, fontSize = 12.sp)
     }
 }
 

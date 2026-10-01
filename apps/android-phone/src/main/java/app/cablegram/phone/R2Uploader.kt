@@ -208,3 +208,20 @@ fun r2ConnectMessage(error: String): String = when (error) {
     "offline" -> "Couldn't reach Cablegram. Check your connection."
     else -> "Couldn't connect ($error)."
 }
+
+// Live checks for the connect form: null means fine (or nothing typed yet). Mirror the server's own rules.
+fun r2AccountIdProblem(value: String): String? =
+    if (value.isBlank() || Regex("[0-9a-fA-F]{32}").matches(value.trim())) null
+    else "The account ID is 32 letters and digits. Copy it from the R2 page."
+
+fun r2BucketProblem(value: String): String? =
+    if (value.isBlank() || Regex("[a-z0-9][a-z0-9-]{1,61}[a-z0-9]").matches(value.trim())) null
+    else "Use 3 to 63 lowercase letters, digits or dashes, as when you made the bucket."
+
+fun r2KeyIdProblem(value: String): String? =
+    if (value.isBlank() || Regex("[A-Za-z0-9]{16,128}").matches(value.trim())) null
+    else "That doesn't look like an Access Key ID. Copy it again from the token page."
+
+fun r2SecretProblem(value: String): String? =
+    if (value.isBlank() || Regex("[A-Za-z0-9/+=_-]{32,128}").matches(value.trim())) null
+    else "That doesn't look like a Secret Access Key. It's the long value under the Access Key ID."
