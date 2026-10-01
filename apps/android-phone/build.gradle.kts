@@ -25,7 +25,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 3
-        versionName = "0.2.1"
+        versionName = "0.2.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val apiBase = (project.findProperty("CABLEGRAM_API_BASE") as String?)
             ?: (project.findProperty("CABLEGRAM_API_BASE_URL") as String?)
