@@ -32,7 +32,9 @@ npm run serve     # http://localhost:8080
 `config.js` holds the API address (`https://api.cablegram.app`). To use another server, change it, and have
 that server list this app's origin in `WEB_APP_ORIGINS` so the browser may call it.
 
-Host the folder on any static host over HTTPS (a service worker and Home Screen install need it).
+`npm run build` assembles `dist/`, which is what gets served. To host it yourself, serve `dist/` on any static
+host over HTTPS (a service worker and Home Screen install need it). Cablegram's own copy is published to
+Cloudflare by `.github/workflows/web-remote.yml` using `wrangler.jsonc`.
 
 ## Files
 
@@ -40,5 +42,6 @@ Host the folder on any static host over HTTPS (a service worker and Home Screen 
 |---|---|
 | `src/api.js` | The control-plane client: sign-in, token refresh, TV commands, TV login answers. |
 | `src/app.js` | The screens. Server text is always set as text, never as HTML. |
+| `scripts/build.mjs` | Assembles `dist/` and writes `version.txt` and `SHA256SUMS`. |
 | `sw.js` | Caches the app shell only. It never caches or intercepts API calls. |
 | `test/` | Node tests for the client and the command shapes the TV accepts. |
