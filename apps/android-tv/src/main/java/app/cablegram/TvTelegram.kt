@@ -265,8 +265,11 @@ class TvTelegram(
             runCatching { api.putTelegramLink(currentToken, user.id, user.displayName, chatId) }
         } else null
         if (linked == null || linked.isFailure) {
-            val taken = (linked?.exceptionOrNull() as? ApiException)?.statusCode == 403
-            PairLog.i("Standalone Telegram link failed: ${(linked?.exceptionOrNull() as? ApiException)?.error ?: "no channel or token"}")
+            val failure = linked?.exceptionOrNull() as? ApiException
+            val taken = failure?.statusCode == 403
+            // Only the server's error name or a fixed reason: nothing that could sign anyone in reaches the log.
+            val reason = failure?.error ?: "not_ready"
+            PairLog.i("Standalone Telegram link failed: $reason")
             signOutAndWipe()
             _status.value = TvTelegramStatus.Problem(
                 if (taken) "Telegram is already connected for this household. Ask the owner to use the app that connected it."
