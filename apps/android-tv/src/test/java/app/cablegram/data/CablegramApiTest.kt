@@ -284,6 +284,35 @@ class CablegramApiTest {
     }
 
     @Test
+    fun `a private Drive title, once approved, also plays through the local stream`() = runBlocking {
+        val privateDrive = """{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"gdrive:abc","availability":"available","private":true}]}]}"""
+        server.enqueue(MockResponse().setBody(privateDrive))                    // catalog
+        server.enqueue(MockResponse().setBody("""{"attempt_id":"att-1","expires_at":"2026-10-02T13:00:00Z"}"""))
+        server.enqueue(MockResponse().setBody("""{"status":"approved"}"""))     // the owner tapped Allow
+        server.enqueue(MockResponse().setBody(privateDrive))                    // catalog again after approval
+        server.enqueue(MockResponse().setBody(driveResolve))
+
+        val playback = api.getPlayback("item-1", "jwt", cloudStream = { _, _ -> "http://127.0.0.1:5555/cloud/abc" })
+
+        assertEquals("ready", playback.status)
+        assertEquals("http://127.0.0.1:5555/cloud/abc", playback.url)
+        assertTrue("no bearer reaches the player", playback.headers.isEmpty())
+    }
+
+    @Test
+    fun `a web title's own headers are left for the player, not sent through the local stream`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"kind":"web","availability":"available"}]}]}"""))
+        server.enqueue(MockResponse().setBody("""{"status":"ready","url":"https://cdn.example/clip.mp4","headers":{"Referer":"https://site.example/"}}"""))
+        var asked = false
+
+        val playback = api.getPlayback("item-1", "jwt", cloudStream = { _, _ -> asked = true; "http://127.0.0.1:1/x" })
+
+        assertEquals("https://cdn.example/clip.mp4", playback.url)
+        assertEquals(mapOf("Referer" to "https://site.example/"), playback.headers)
+        assertFalse(asked)
+    }
+
+    @Test
     fun `Drive limiting downloads is explained, not shown as a phone that is away`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"gdrive:abc","availability":"available"}]}]}"""))
         server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":"provider_rate_limited"}"""))

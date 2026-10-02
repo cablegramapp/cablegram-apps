@@ -336,7 +336,7 @@ class CablegramApi(
         // until the authorized phone approves this exact attempt. No approval →
         // no URL, regardless of LAN availability or cached media.
         if (item.sources.any { it.isPrivate }) {
-            return privatePlaybackFlow(videoId, item.title, item.posterUrl, token, lanPin, onStatus, onAwaitingApproval)
+            return privatePlaybackFlow(videoId, item.title, item.posterUrl, token, lanPin, onStatus, onAwaitingApproval, cloudStream)
         }
 
         if (item.sources.any { it.kind == "web" }) {
@@ -365,11 +365,8 @@ class CablegramApi(
             if (!ownCloudLooked) {
                 ownCloudLooked = true
                 ownCloudFound = try {
-                    resolveWebPlayback(videoId, token).takeIf { it.status == "ready" && it.url != null }?.let { resolved ->
-                        // A header the player cannot send is added by the local stream instead; the token stays out of the URL.
-                        val local = if (resolved.headers.isNotEmpty()) cloudStream(resolved.url!!, resolved.headers) else null
-                        if (local != null) resolved.copy(url = local, headers = emptyMap()) else resolved
-                    }
+                    resolveWebPlayback(videoId, token).takeIf { it.status == "ready" && it.url != null }
+                        ?.let { withLocalCloudStream(it, cloudStream) }
                 } catch (cancelled: kotlinx.coroutines.CancellationException) {
                     throw cancelled
                 } catch (failure: ApiException) {
@@ -473,6 +470,7 @@ class CablegramApi(
         lanPin: String?,
         onStatus: (String) -> Unit = {},
         onAwaitingApproval: () -> Unit = {},
+        cloudStream: (String, Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
         val request = runCatching {
             val body = json.encodeToString(buildJsonObject { put("media_item_id", videoId) })
@@ -491,7 +489,7 @@ class CablegramApi(
         onAwaitingApproval()
         var settled = false
         try {
-            return awaitApproval(attemptId, videoId, title, posterUrl, token, lanPin).also { settled = it.status == "ready" || it.prepareLabel == DENIED_LABEL }
+            return awaitApproval(attemptId, videoId, title, posterUrl, token, lanPin, cloudStream).also { settled = it.status == "ready" || it.prepareLabel == DENIED_LABEL }
         } finally {
             // Timed out or the viewer left: withdraw the request so phones stop
             // offering an approval nobody is waiting for.
@@ -513,6 +511,7 @@ class CablegramApi(
         posterUrl: String?,
         token: String,
         lanPin: String?,
+        cloudStream: (String, Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
         var waited = 0
         while (waited < GRANT_WAIT_SECONDS * 1000) {
@@ -528,7 +527,8 @@ class CablegramApi(
                     val current = execute<CatalogResponse>(authenticatedRequest("api/catalog/items", token).get().build())
                         .items.firstOrNull { it.id == videoId }
                     if (current?.sources?.any { it.kind == "web" || it.kind == "cloud_object" || it.kind == OWN_CLOUD } == true) {
-                        return resolveWebPlayback(videoId, token, attemptId)
+                        // A private title in Google Drive needs the local stream too, or the player reaches Drive without its header.
+                        return withLocalCloudStream(resolveWebPlayback(videoId, token, attemptId), cloudStream)
                     }
                     val source = current?.sources?.firstOrNull { !it.originIdentity.isNullOrBlank() }
                     val identity = source?.originIdentity ?: return deniedPlayback(title, posterUrl)
@@ -591,6 +591,17 @@ class CablegramApi(
                 .post(body.toRequestBody(jsonMediaType))
                 .build(),
         )
+    }
+
+    /**
+     * A bearer header the player cannot send (LibVLC, Google Drive) is added by the TV's local stream instead, so the token
+     * stays out of the URL. Anything else, including a web title's Referer or User-Agent, is left as the server sent it.
+     */
+    private fun withLocalCloudStream(resolved: PlaybackResponse, cloudStream: (String, Map<String, String>) -> String?): PlaybackResponse {
+        val url = resolved.url ?: return resolved
+        if (resolved.headers.keys.none { it.equals("Authorization", ignoreCase = true) }) return resolved
+        val local = cloudStream(url, resolved.headers) ?: return resolved
+        return resolved.copy(url = local, headers = emptyMap())
     }
 
     private fun deniedPlayback(title: String?, posterUrl: String?) = PlaybackResponse(
