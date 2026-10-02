@@ -1199,11 +1199,11 @@ private fun RemoteControls(viewModel: PhoneViewModel) {
     Text("${viewModel.tvName} · ${item.title}", color = VlcMuted)
     LinearProgressIndicator(progress = { watchFraction(item) }, modifier = Modifier.fillMaxWidth(), color = VlcOrange, trackColor = Color(0xFF333333))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = { viewModel.skipSeconds(-15) }) { Text("-15") }
+        TextButton(onClick = { viewModel.skipSeconds(-CastRemoteReceiver.SEEK_SECONDS) }) { Text("-${CastRemoteReceiver.SEEK_SECONDS}") }
         IconButton(onClick = viewModel::togglePlayPause) {
             Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, null, tint = Color.White)
         }
-        TextButton(onClick = { viewModel.skipSeconds(15) }) { Text("+15") }
+        TextButton(onClick = { viewModel.skipSeconds(CastRemoteReceiver.SEEK_SECONDS) }) { Text("+${CastRemoteReceiver.SEEK_SECONDS}") }
     }
     TextButton(onClick = viewModel::stopCast) { Text("Stop casting") }
 }

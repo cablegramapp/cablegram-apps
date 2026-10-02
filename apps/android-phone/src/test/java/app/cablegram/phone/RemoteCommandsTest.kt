@@ -88,4 +88,13 @@ class RemoteCommandsTest {
         assertEquals("Another title was started on Den.", rejectionMessage("superseded", "Den"))
         assertEquals("Playback was cancelled on Den.", rejectionMessage("cancelled", "Den"))
     }
+
+    @Test
+    fun `the phone remote seeks 10 seconds in both directions`() {
+        assertEquals(10, CastRemoteReceiver.SEEK_SECONDS)
+        val back = remoteCommandBody("seek", "den", arguments = buildJsonObject { put("seconds", -CastRemoteReceiver.SEEK_SECONDS) })
+        val forward = remoteCommandBody("seek", "den", arguments = buildJsonObject { put("seconds", CastRemoteReceiver.SEEK_SECONDS) })
+        assertEquals(-10, back.getValue("payload").jsonObject["seconds"]?.jsonPrimitive?.int)
+        assertEquals(10, forward.getValue("payload").jsonObject["seconds"]?.jsonPrimitive?.int)
+    }
 }

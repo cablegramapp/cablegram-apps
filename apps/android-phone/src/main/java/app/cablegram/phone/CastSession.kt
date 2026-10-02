@@ -112,7 +112,7 @@ class CastRemoteReceiver : BroadcastReceiver() {
         const val ACTION_TOGGLE = "app.cablegram.phone.REMOTE_TOGGLE"
         const val ACTION_FORWARD = "app.cablegram.phone.REMOTE_FORWARD"
         const val ACTION_STOP = "app.cablegram.phone.REMOTE_STOP"
-        const val SEEK_SECONDS = 15
+        const val SEEK_SECONDS = 10
         private const val NOTIFICATION_WAIT_MS = 7_000L
         private const val RECEIVER_BUDGET_MS = 9_000L
     }
