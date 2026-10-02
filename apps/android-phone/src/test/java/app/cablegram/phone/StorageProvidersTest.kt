@@ -195,4 +195,48 @@ class StorageProvidersTest {
         assertEquals("Your cloud storage didn't send the video (500).", cloudDownloadMessage(500))
         assertFalse(listOf(401, 403, 404, 500).any { cloudDownloadMessage(it).contains("Cloudflare") })
     }
+
+    // ---- removing just the cloud copy ----
+
+    private fun title(copied: Boolean = true, cloudCopy: Boolean = true, sourceId: String? = "src-1", status: String = TRANSFER_IDLE) = LibraryItem(
+        id = "t1", title = "Dune", filename = "Dune.mkv", importedAt = "2026-01-01T00:00:00Z", copied = copied,
+        ownCloudCopy = cloudCopy, ownCloudSourceId = sourceId, transferStatus = status,
+    )
+
+    @Test fun `the remove-copy button is offered only for a copy the phone still has a video behind`() {
+        assertTrue(canRemoveOwnCloudCopy(title()))
+        assertFalse("the only copy is not removed from here", canRemoveOwnCloudCopy(title(copied = false)))
+        assertFalse("no cloud copy", canRemoveOwnCloudCopy(title(cloudCopy = false)))
+        assertFalse("the server never named it", canRemoveOwnCloudCopy(title(sourceId = null)))
+        assertFalse("not while it is being saved", canRemoveOwnCloudCopy(title(status = TRANSFER_SAVING)))
+    }
+
+    @Test fun `the copy to remove is the title's usable own-storage source`() {
+        fun src(id: String?, kind: String = "own_cloud", availability: String? = "available", archive: String? = null) =
+            RemoteCatalogSource(id = id, kind = kind, availability = availability, archiveState = archive)
+        assertEquals("c1", ownCloudSourceIdOf(listOf(src("p1", kind = "phone_local"), src("c1"))))
+        assertNull(ownCloudSourceIdOf(listOf(src("p1", kind = "phone_local"))))
+        assertNull("a copy that is unavailable cannot be removed from here", ownCloudSourceIdOf(listOf(src("c1", availability = "unavailable"))))
+        assertNull(ownCloudSourceIdOf(listOf(src("c1", archive = "archived"))))
+        assertNull("an older server sends no id", ownCloudSourceIdOf(listOf(src(null))))
+    }
+
+    @Test fun `the confirmation says what is deleted and what stays`() {
+        val text = removeCopyQuestion("Dune", "Google Drive")
+        assertTrue(text.contains("\"Dune\""))
+        assertTrue(text.contains("from Google Drive"))
+        assertTrue(text.contains("stays on this phone"))
+    }
+
+    @Test fun `every ending of a remove has words, and none repeats provider text`() {
+        fun msg(error: String?) = removeCopyMessage(RemoveCopyResult(error), "Google Drive")
+        assertEquals("Removed the copy from Google Drive. The video stays on this phone.", msg(null))
+        assertEquals("a copy already gone counts as removed", msg(null), msg("not_found"))
+        assertTrue(msg("reauthorization_required").contains("sign in again"))
+        assertTrue(msg("storage_unavailable").contains("Try again later"))
+        assertTrue(msg("provider_rate_limited").contains("limiting requests"))
+        assertTrue(msg("offline").contains("connection"))
+        assertEquals("Couldn't remove the copy from Google Drive.", msg("http_500"))
+        assertFalse(msg("<script>alert(1)</script>").contains("script"))
+    }
 }

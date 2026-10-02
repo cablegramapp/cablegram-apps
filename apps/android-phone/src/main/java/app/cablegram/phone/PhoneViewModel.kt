@@ -166,6 +166,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var searchQuery by mutableStateOf("")
     var editingMetadata by mutableStateOf(false)
     var deleteTarget by mutableStateOf<LibraryItem?>(null)
+    /** The title whose copy in the household's own storage the owner is being asked to remove (spec 006). */
+    var removeCloudCopyTarget by mutableStateOf<LibraryItem?>(null)
     // Declared before `init`, which starts the queued Telegram deletions.
     private val PHONE_LOGIN_WAIT_MS = 120_000L
     private val telegramDeletions by lazy { TelegramDeletionQueue.forContext(getApplication()) }
@@ -1449,6 +1451,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             // Saved to Telegram (here or on another phone): the server knows the verified copy.
                             telegramCopy = hasTelegramCopy && local.sourceKind == "phone_local",
                             ownCloudCopy = hasOwnCloudCopy && local.sourceKind == "phone_local",
+                            ownCloudSourceId = if (hasOwnCloudCopy && local.sourceKind == "phone_local") ownCloudSourceIdOf(remote.sources) else null,
                             storageState = if (hasCloudObject) STORAGE_CLOUD else local.storageState,
                             transferStatus = if (hasCloudObject) TRANSFER_IDLE else local.transferStatus,
                         ))
@@ -2797,6 +2800,32 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun runSaveInBackground() {
         transferCardDismissed = true
+    }
+
+    fun askRemoveCloudCopy(item: LibraryItem) {
+        if (canRemoveOwnCloudCopy(item)) removeCloudCopyTarget = item
+    }
+
+    /** Deletes just the cloud copy; the video stays on the phone and the title keeps its other sources. */
+    fun removeCloudCopy(item: LibraryItem) {
+        removeCloudCopyTarget = null
+        val sourceId = item.ownCloudSourceId ?: return
+        val token = pairing.accountToken ?: return
+        val destination = saveDestinationName
+        viewModelScope.launch {
+            busy = true
+            try {
+                val result = catalog().removeOwnCloudSource(token, sourceId)
+                if (result.error == null || result.error == "not_found") {
+                    store.updateItem(item.id) { it.copy(ownCloudCopy = false, ownCloudSourceId = null) }
+                    refresh()
+                    refreshStorage()
+                }
+                status = removeCopyMessage(result, destination)
+            } finally {
+                busy = false
+            }
+        }
     }
 
     fun openFreeUp() {

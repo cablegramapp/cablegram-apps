@@ -144,6 +144,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
             viewModel.shownSeries?.let { SeriesOverlay(viewModel, it) }
             viewModel.selected?.let { DetailOverlay(viewModel, it) }
             viewModel.deleteTarget?.let { DeleteDialog(viewModel, it) }
+            viewModel.removeCloudCopyTarget?.let { RemoveCloudCopyDialog(viewModel, it) }
             CloudFlow(viewModel)
             if (viewModel.telegramSheetOpen) TelegramConnectSheet(viewModel)
         }
@@ -532,6 +533,9 @@ private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expande
         }
         if (canRemoveLocalCopy(item)) {
             CompactMenuItem("Free up phone space") { viewModel.actionMenuId = null; viewModel.askFreeUp(item) }
+        }
+        if (canRemoveOwnCloudCopy(item)) {
+            CompactMenuItem("Remove cloud copy") { viewModel.actionMenuId = null; viewModel.askRemoveCloudCopy(item) }
         }
         viewModel.collections.forEach { collection ->
             CompactMenuItem("Move to ${collection.name}") {
@@ -1109,6 +1113,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 }
                 if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
                 if (canRemoveLocalCopy(item)) TextButton(onClick = { viewModel.askFreeUp(item) }) { Text("Free up phone space") }
+                if (canRemoveOwnCloudCopy(item)) TextButton(onClick = { viewModel.askRemoveCloudCopy(item) }) { Text("Remove cloud copy") }
             }
             if (viewModel.collections.isNotEmpty()) SectionCard("Collections") {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1120,6 +1125,20 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             TextButton(onClick = { viewModel.askDelete(item) }) { Text("Remove title…", color = MaterialTheme.colorScheme.error) }
         }
     }
+}
+
+@Composable
+private fun RemoveCloudCopyDialog(viewModel: PhoneViewModel, item: LibraryItem) {
+    AlertDialog(
+        modifier = Modifier.maestroRoot(),
+        onDismissRequest = { viewModel.removeCloudCopyTarget = null },
+        title = { Text("Remove the cloud copy?") },
+        text = { Text(removeCopyQuestion(item.title, viewModel.saveDestinationName)) },
+        confirmButton = {
+            TextButton(onClick = { viewModel.removeCloudCopy(item) }) { Text("Remove copy", color = Color(0xFFFF8A80)) }
+        },
+        dismissButton = { TextButton(onClick = { viewModel.removeCloudCopyTarget = null }) { Text("Keep it") } },
+    )
 }
 
 @Composable

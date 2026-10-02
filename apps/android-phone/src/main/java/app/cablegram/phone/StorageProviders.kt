@@ -161,3 +161,20 @@ fun cloudDownloadMessage(code: Int): String = when (code) {
     404 -> "This video is no longer in your cloud storage."
     else -> "Your cloud storage didn't send the video ($code)."
 }
+
+/** How `DELETE /api/storage/sources/:id` ended: [error] is null on success, else the server's stable error string. */
+data class RemoveCopyResult(val error: String?)
+
+/** What the confirmation says before a cloud copy is deleted. */
+fun removeCopyQuestion(title: String, destination: String): String =
+    "This deletes the copy of \"$title\" from $destination. The video stays on this phone, and you can save it again later."
+
+/** What to tell the owner when removing a cloud copy ends. Never repeats provider text. */
+fun removeCopyMessage(result: RemoveCopyResult, destination: String): String = when (result.error) {
+    null, "not_found" -> "Removed the copy from $destination. The video stays on this phone."
+    "reauthorization_required" -> "$destination needs you to sign in again before it can remove files. Open Storage and sign in."
+    "storage_unavailable" -> "$destination isn't answering. Try again later."
+    "provider_rate_limited" -> "$destination is limiting requests right now. Try again in a little while."
+    "offline" -> "Couldn't reach Cablegram. Check your connection."
+    else -> "Couldn't remove the copy from $destination."
+}

@@ -148,6 +148,17 @@ fun canRemoveLocalCopy(item: LibraryItem): Boolean =
     item.sourceAvailable != false && (item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
 
 /**
+ * Remove just the copy in the household's own storage (spec 006). Only while this phone still holds the video: removing the
+ * only copy of a title is a different, bigger step ("Remove title"), so it is not offered here.
+ */
+fun canRemoveOwnCloudCopy(item: LibraryItem): Boolean =
+    item.ownCloudCopy && item.ownCloudSourceId != null && item.copied && item.transferStatus != TRANSFER_SAVING
+
+/** The catalog id of a title's usable copy in the household's own storage, or null. */
+fun ownCloudSourceIdOf(sources: List<RemoteCatalogSource>): String? =
+    sources.firstOrNull { it.kind == "own_cloud" && it.archiveState != "archived" && it.availability != "unavailable" }?.id
+
+/**
  * Save to Telegram (spec 004 T011). Private titles never go to Telegram: the channel would hold a copy that any
  * device signed in to the account can play, which the phone's approval for private titles is meant to prevent.
  */

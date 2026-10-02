@@ -1164,6 +1164,24 @@ class CatalogClient(
         }.getOrNull()
     }
 
+    /** Deletes one copy in the household's own storage: the control plane removes the file, and the title keeps its other sources. */
+    suspend fun removeOwnCloudSource(token: String, sourceId: String): RemoveCopyResult = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/sources/$sourceId")
+            .header("Authorization", "Bearer $token")
+            .delete()
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) return@use RemoveCopyResult(null)
+                val code = runCatching { json.decodeFromString<ApiError>(response.body?.string().orEmpty()).error }.getOrNull()
+                RemoveCopyResult(code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: "http_${response.code}")
+            }
+        } catch (_: java.io.IOException) {
+            RemoveCopyResult("offline")
+        }
+    }
+
     suspend fun disconnectStorage(token: String): Boolean = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/storage/disconnect")

@@ -54,6 +54,8 @@ data class LibraryItem(
      * catalog on every sync, so it clears when the bucket is disconnected (the copy is then unreachable).
      */
     val ownCloudCopy: Boolean = false,
+    /** The catalog's id for that copy, used to remove just that copy (spec 006); null when there is none. */
+    val ownCloudSourceId: String? = null,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
     val seasonNumber: Int? = null,
@@ -203,6 +205,7 @@ data class RemoteCatalogItem(
 
 @Serializable
 data class RemoteCatalogSource(
+    val id: String? = null,
     val kind: String = "phone_local",
     @SerialName("origin_identity") val originIdentity: String? = null,
     @SerialName("origin_filename") val originFilename: String? = null,
