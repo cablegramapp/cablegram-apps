@@ -57,6 +57,7 @@ object CastSession {
         }
         return when (val sent = client.postCommand(token, command, videoId, target.deviceId, arguments)) {
             is CommandSend.Accepted -> Result.Sent(target.name, sent.id, token)
+            CommandSend.TargetGone -> Result.Failed("${target.name} is no longer connected. Choose a TV in Settings.")
             CommandSend.Failed -> Result.Failed("Could not reach the control service. Check your connection and try again.")
         }
     }

@@ -6,6 +6,8 @@ import kotlinx.coroutines.delay
 sealed interface CommandSend {
     data class Accepted(val id: String) : CommandSend
     data object Failed : CommandSend
+    /** The control plane no longer knows the target TV (revoked or removed), as opposed to being unreachable. */
+    data object TargetGone : CommandSend
 }
 
 /** What the control plane reports for a command. [Unsupported] is a server without the status endpoint. */

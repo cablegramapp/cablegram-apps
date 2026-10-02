@@ -913,24 +913,30 @@ class CatalogClient(
         if (targetDeviceId.isNullOrBlank()) return@withContext CommandSend.Failed
         val id = java.util.UUID.randomUUID().toString()
         val payload = json.encodeToString(remoteCommandBody(command, targetDeviceId, videoId, arguments, id))
-        suspend fun attempt(): Boolean = client.newCall(
+        suspend fun attempt(): CommandSend = client.newCall(
             Request.Builder()
                 .url("${baseUrl.trimEnd('/')}/api/control/commands")
                 .header("Authorization", "Bearer $token")
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build(),
-        ).await().use { it.isSuccessful }
-        val accepted = try {
+        ).await().use { response ->
+            when {
+                response.isSuccessful -> CommandSend.Accepted(id)
+                // The server names the revoked or removed TV; anything else stays a plain failure.
+                response.code == 400 && response.body?.string()?.contains("unknown_target_device") == true -> CommandSend.TargetGone
+                else -> CommandSend.Failed
+            }
+        }
+        try {
             attempt()
         } catch (_: java.io.IOException) {
             try {
                 attempt()
             } catch (_: java.io.IOException) {
                 // Stored by a request whose response was lost: the TV will run it, so report it as sent.
-                commandStatus(token, id) is CommandStatus.Known
-            } catch (_: Exception) { false }
-        } catch (_: Exception) { false }
-        if (accepted) CommandSend.Accepted(id) else CommandSend.Failed
+                if (commandStatus(token, id) is CommandStatus.Known) CommandSend.Accepted(id) else CommandSend.Failed
+            } catch (_: Exception) { CommandSend.Failed }
+        } catch (_: Exception) { CommandSend.Failed }
     }
 
     /** What the TV did with a command; null when the status could not be read right now. */

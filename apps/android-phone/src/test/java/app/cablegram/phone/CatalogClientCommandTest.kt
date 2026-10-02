@@ -55,6 +55,19 @@ class CatalogClientCommandTest {
     }
 
     @Test
+    fun `a revoked or removed target is reported as gone, not as unreachable`() {
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":"unknown_target_device"}"""))
+        assertEquals(CommandSend.TargetGone, runBlocking { client().postCommand("t", "pause", targetDeviceId = "tv-1") })
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `another bad request stays a plain failure`() {
+        server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":"id_requires_target_device"}"""))
+        assertEquals(CommandSend.Failed, runBlocking { client().postCommand("t", "pause", targetDeviceId = "tv-1") })
+    }
+
+    @Test
     fun `a status 404 from an older server maps to Unsupported`() {
         // Fastify's route-not-found body, as an older server answers.
         server.enqueue(MockResponse().setResponseCode(404)

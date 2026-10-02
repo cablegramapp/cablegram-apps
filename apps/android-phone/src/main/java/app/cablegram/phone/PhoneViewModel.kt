@@ -336,6 +336,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         // the TV giver timeout is ~2 minutes).
         private const val PENDING_APPROVAL_POLL_MS = 5_000L
         private const val HOUSEHOLD_TVS_REFRESH_MS = 60_000L
+        /** How long a finished command's result stays in [remoteStatus] before it clears. */
+        private const val REMOTE_STATUS_LINGER_MS = 6_000L
     }
 
     fun refresh() {
@@ -2865,15 +2867,23 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     ): SentCommand? {
         val generation = ++commandGeneration
         fun report(text: String) { if (generation == commandGeneration) remoteStatus = text }
+        // A finished command's result stays long enough to read, then clears if nothing newer replaced it.
+        fun reportFinal(text: String) {
+            report(text)
+            viewModelScope.launch {
+                delay(REMOTE_STATUS_LINGER_MS)
+                if (generation == commandGeneration && remoteStatus == text) remoteStatus = null
+            }
+        }
         report("Sending…")
         val client = catalog()
         val sent = when (val result = CastSession.send(pairing, client, command, videoId, arguments, householdTvsCache)) {
             is CastSession.Result.Sent -> result
-            is CastSession.Result.Failed -> return null.also { report(result.message) }
+            is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
         }
         report(if (command == "play" && videoId != null) "Starting on ${sent.tvName}…" else "Sent to ${sent.tvName}…")
         val outcome = CastSession.confirm(client, sent, wait)
-        report(when (outcome) {
+        reportFinal(when (outcome) {
             Outcome.Confirmed -> "Done on ${sent.tvName}"
             is Outcome.Rejected -> rejectionMessage(outcome.reason, sent.tvName)
             Outcome.TimedOut -> "${sent.tvName} didn't confirm. Check the TV."

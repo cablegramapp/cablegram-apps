@@ -1183,7 +1183,9 @@ private fun RemoteBar(viewModel: PhoneViewModel, modifier: Modifier = Modifier) 
         Icon(Icons.Default.Tv, contentDescription = null, tint = VlcOrange)
         Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
             Text(item.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(viewModel.tvName, color = VlcMuted, fontSize = 12.sp)
+            // The command's progress and result show here, so a TV that does not confirm is visible
+            // without opening the Remote tab.
+            Text(viewModel.remoteStatus ?: viewModel.tvName, color = VlcMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = viewModel::togglePlayPause) {
             Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = if (viewModel.paused) "Resume playback" else "Pause playback", tint = Color.White)
