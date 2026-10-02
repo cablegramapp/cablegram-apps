@@ -433,6 +433,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Where a save goes, in the words on every save sheet: the connected provider, else Cablegram Cloud. */
     val saveDestinationName: String get() = saveDestination(storage)
 
+    /** True while the "tick the box" note is on screen, before Google's sign-in opens. */
+    var googleSignInNoteOpen by mutableStateOf(false)
+
     /** Asks the server for Google's sign-in URL and hands it to [open] (a Custom Tab); the link back lands in [applyStorageReturn]. */
     fun connectGoogle(open: (String) -> Unit) {
         val token = pairing.accountToken ?: run {
@@ -460,8 +463,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** The Google sign-in ended and the browser sent the owner back with `cablegram://storage?provider=…&result=…`. */
     fun applyStorageReturn(uri: String) {
         val ret = parseStorageReturn(uri) ?: return
-        status = storageReturnMessage(ret, storage)
-        googleConnectError = null
+        val message = storageReturnMessage(ret, storage)
+        status = message
+        // A missed permission box is shown on the sheet itself, beside the button to try again.
+        googleConnectError = if (signInNeedsAnotherTry(ret)) message else null
         tab = PhoneTab.Storage
         cloudSheet = CloudSheet.Manage
         refreshStorage()

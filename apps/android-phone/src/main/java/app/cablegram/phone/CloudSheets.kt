@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -207,12 +208,26 @@ private fun ManageCloudSheet(viewModel: PhoneViewModel) {
         rows.forEach { row ->
             ProviderRowView(row, enabled = row.state != ProviderState.Locked && !viewModel.busy) {
                 when (row.id) {
-                    PROVIDER_GOOGLE_DRIVE -> viewModel.connectGoogle { url -> openCustomTab(context, url) }
+                    PROVIDER_GOOGLE_DRIVE -> viewModel.googleSignInNoteOpen = true
                     PROVIDER_CLOUDFLARE_R2 -> viewModel.beginConnectR2()
                 }
             }
         }
         viewModel.googleConnectError?.let { Text(it, color = Color(0xFFFFB74D)) }
+    }
+    if (viewModel.googleSignInNoteOpen) {
+        AlertDialog(
+            onDismissRequest = { viewModel.googleSignInNoteOpen = false },
+            title = { Text("One box to tick") },
+            text = { Text(googleSignInPreparation()) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.googleSignInNoteOpen = false
+                    viewModel.connectGoogle { url -> openCustomTab(context, url) }
+                }) { Text("Open Google") }
+            },
+            dismissButton = { TextButton(onClick = { viewModel.googleSignInNoteOpen = false }) { Text("Cancel") } },
+        )
     }
 }
 

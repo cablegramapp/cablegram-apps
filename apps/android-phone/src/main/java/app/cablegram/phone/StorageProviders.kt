@@ -103,13 +103,28 @@ fun parseStorageReturn(uri: String): StorageReturn? = runCatching<StorageReturn?
     StorageReturn(provider, result)
 }.getOrNull()
 
+/**
+ * The wording Google puts beside the one box that matters on its consent screen. Google lets a person leave any permission
+ * unticked, and the box starts unticked for most people, so the app says which one to tick before opening Google and again if
+ * it was missed.
+ */
+const val DRIVE_PERMISSION_TEXT = "See, edit, create, and delete only the specific Google Drive files you use with this app"
+
+/** What the app says just before it opens Google's sign-in. */
+fun googleSignInPreparation(): String =
+    "Google will show a box beside \"$DRIVE_PERMISSION_TEXT\". Tick it, then tap Continue. Without it Cablegram can't save to your Drive. " +
+        "It only reaches the files Cablegram creates, never the rest of your Drive."
+
+/** True when the sign-in ended because the permission box was left unticked, so the screen offers to try again. */
+fun signInNeedsAnotherTry(ret: StorageReturn): Boolean = ret.result == "scope_missing"
+
 /** What to tell the owner when the sign-in ends. Never repeats text that came from the link or the provider. */
 fun storageReturnMessage(ret: StorageReturn, status: StorageStatusResponse? = null): String {
     val name = providerName(ret.provider, status)
     return when (ret.result) {
         "connected" -> "Connected to $name."
         "denied" -> "Not connected. You didn't allow Cablegram to use $name."
-        "scope_missing" -> "$name access wasn't granted. Sign in again and leave the permission ticked."
+        "scope_missing" -> "$name access wasn't granted. On Google's screen, tick the box \"$DRIVE_PERMISSION_TEXT\", then tap Continue."
         "expired" -> "The sign-in expired. Start again."
         "already_connected" -> "Your storage is already connected."
         else -> "Couldn't connect $name. Try again in a moment."

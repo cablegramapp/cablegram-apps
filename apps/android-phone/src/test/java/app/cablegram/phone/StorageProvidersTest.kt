@@ -122,6 +122,7 @@ class StorageProvidersTest {
         assertEquals("Connected to Google Drive.", msg("connected"))
         assertTrue(msg("denied").startsWith("Not connected"))
         assertTrue(msg("scope_missing").contains("access wasn't granted"))
+        assertTrue("it names the box to tick", msg("scope_missing").contains(DRIVE_PERMISSION_TEXT) && msg("scope_missing").contains("tick"))
         assertTrue(msg("expired").contains("expired"))
         assertTrue(msg("already_connected").contains("already connected"))
         assertTrue(msg("failed").contains("Try again"))
@@ -238,5 +239,19 @@ class StorageProvidersTest {
         assertTrue(msg("offline").contains("connection"))
         assertEquals("Couldn't remove the copy from Google Drive.", msg("http_500"))
         assertFalse(msg("<script>alert(1)</script>").contains("script"))
+    }
+
+    @Test fun `before Google opens the app says which box to tick, and that nothing else of the Drive is reached`() {
+        val note = googleSignInPreparation()
+        assertTrue(note.contains(DRIVE_PERMISSION_TEXT))
+        assertTrue(note.contains("Tick it"))
+        assertTrue(note.contains("never the rest of your Drive"))
+    }
+
+    @Test fun `only a missed permission box offers another try`() {
+        assertTrue(signInNeedsAnotherTry(StorageReturn("google_drive", "scope_missing")))
+        for (result in listOf("connected", "denied", "expired", "already_connected", "failed")) {
+            assertFalse(result, signInNeedsAnotherTry(StorageReturn("google_drive", result)))
+        }
     }
 }
