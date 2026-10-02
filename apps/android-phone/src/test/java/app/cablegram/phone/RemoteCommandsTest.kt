@@ -30,4 +30,39 @@ class RemoteCommandsTest {
     fun `missing target cannot broadcast a remote action`() {
         remoteCommandBody("stop", "")
     }
+
+    @Test
+    fun `the body carries a client-generated UUID id`() {
+        val body = remoteCommandBody("pause", "living-room")
+        val id = body["id"]?.jsonPrimitive?.content
+        assertEquals(id, java.util.UUID.fromString(id).toString())
+        assertEquals("fixed", remoteCommandBody("pause", "living-room", id = "fixed")["id"]?.jsonPrimitive?.content)
+    }
+
+    private fun device(id: String, name: String? = null) = MeDevice(id = id, kind = "tv", displayName = name)
+    private val living = PairedTv(pin = "1", name = "Living room", deviceId = "tv-1")
+
+    @Test
+    fun `a selected TV present in the household is the target`() {
+        val target = resolveTarget(living, listOf(device("tv-2", "Bedroom"), device("tv-1")))
+        assertEquals(TargetResult.Target("tv-1", "Living room"), target)
+    }
+
+    @Test
+    fun `a selected TV missing from the household fails instead of using another TV`() {
+        val result = resolveTarget(living, listOf(device("tv-2", "Bedroom")))
+        assertEquals(TargetResult.Failed("Living room is no longer connected. Choose a TV in Settings."), result)
+    }
+
+    @Test
+    fun `with no selection the first household TV is the default`() {
+        assertEquals(TargetResult.Target("tv-2", "Bedroom"), resolveTarget(null, listOf(device("tv-2", "Bedroom"), device("tv-3"))))
+        assertTrue(resolveTarget(null, emptyList()) is TargetResult.Failed)
+    }
+
+    @Test
+    fun `offline uses the selected TV's stored id`() {
+        assertEquals(TargetResult.Target("tv-1", "Living room"), resolveTarget(living, null))
+        assertTrue(resolveTarget(null, null) is TargetResult.Failed)
+    }
 }

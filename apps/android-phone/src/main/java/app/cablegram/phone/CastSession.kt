@@ -26,14 +26,14 @@ object CastSession {
     }
 
     sealed interface Result {
-        data class Sent(val tvName: String) : Result
+        data class Sent(val tvName: String, val commandId: String, val token: String) : Result
         data class Failed(val message: String) : Result
     }
 
     /**
-     * Sends to this phone's TV while it is still active in the household,
-     * otherwise to an active household TV: a TV paired by another household
-     * phone must be controllable too.
+     * Sends to the TV selected on this phone. A selected TV the household no longer lists fails
+     * instead of falling back to another TV. [household] is the caller's cached list; it is
+     * refreshed from the server only when it does not already contain the selected TV.
      */
     suspend fun send(
         pairing: PairingStore,
@@ -41,19 +41,26 @@ object CastSession {
         command: String,
         videoId: String? = null,
         arguments: JsonObject = buildJsonObject {},
+        household: List<MeDevice>? = null,
     ): Result {
         val token = pairing.accountToken
         if (token.isNullOrBlank()) return Result.Failed("Sign in to use the remote.")
-        val local = pairing.tvs.lastOrNull()
-        val household = client.householdTvs(token)
-        val target: Pair<String, String> = when {
-            household == null -> local?.deviceId?.let { it to local.name }
-            else -> household.firstOrNull { it.id == local?.deviceId }?.let { it.id to local!!.name }
-                ?: household.firstOrNull()?.let { it.id to (it.displayName?.takeIf(String::isNotBlank) ?: "TV") }
-        } ?: return Result.Failed("No TV is paired with this household. Pair a TV to use the remote.")
-        val sent = client.postCommand(token, command, videoId, target.first, arguments)
-        return if (sent) Result.Sent(target.second) else Result.Failed("Could not reach the control service. Check your connection and try again.")
+        val selected = pairing.tvs.lastOrNull()
+        var list = household
+        if (list == null || selected != null && list.none { it.id == selected.deviceId }) list = client.householdTvs(token) ?: list
+        val target = when (val resolved = resolveTarget(selected, list)) {
+            is TargetResult.Failed -> return Result.Failed(resolved.message)
+            is TargetResult.Target -> resolved
+        }
+        return when (val sent = client.postCommand(token, command, videoId, target.deviceId, arguments)) {
+            is CommandSend.Accepted -> Result.Sent(target.name, sent.id, token)
+            CommandSend.Failed -> Result.Failed("Could not reach the control service. Check your connection and try again.")
+        }
     }
+
+    /** Waits for the TV to confirm a command the control plane accepted. */
+    suspend fun confirm(client: CatalogClient, sent: Result.Sent, wait: ConfirmationWait): Outcome =
+        awaitOutcome(sent.commandId, wait, { client.commandStatus(sent.token, it) })
 }
 
 /** The remote buttons on the ongoing notification while something plays on the TV. */
@@ -68,17 +75,22 @@ class CastRemoteReceiver : BroadcastReceiver() {
             ACTION_STOP -> "stop" to buildJsonObject {}
             else -> return
         }
-        // Reflect the change right away, as the in-app remote does.
-        when (intent.action) {
-            ACTION_TOGGLE -> CastSession.update(cast.copy(paused = !cast.paused))
-            ACTION_STOP -> CastSession.update(null)
-        }
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val pairing = PairingStore(context)
-                val result = CastSession.send(pairing, CatalogClient(pairing.apiBaseUrl, pairing), command, arguments = arguments)
-                if (result is CastSession.Result.Failed) PairLog.e("Notification remote $command failed: ${result.message}", null)
+                val client = CatalogClient(pairing.apiBaseUrl, pairing)
+                when (val result = CastSession.send(pairing, client, command, arguments = arguments)) {
+                    is CastSession.Result.Failed -> PairLog.e("Notification remote $command failed: ${result.message}", null)
+                    is CastSession.Result.Sent -> {
+                        // Stay under the receiver's ~10 s window; update only what the TV confirmed.
+                        val outcome = CastSession.confirm(client, result, ConfirmationWait.Control(NOTIFICATION_WAIT_MS))
+                        if (outcome == Outcome.Confirmed || outcome == Outcome.Unconfirmable) when (intent.action) {
+                            ACTION_TOGGLE -> CastSession.update(cast.copy(paused = command == "pause"))
+                            ACTION_STOP -> CastSession.update(null)
+                        } else PairLog.e("Notification remote $command not confirmed: $outcome", null)
+                    }
+                }
             } finally {
                 pending.finish()
             }
@@ -91,5 +103,6 @@ class CastRemoteReceiver : BroadcastReceiver() {
         const val ACTION_FORWARD = "app.cablegram.phone.REMOTE_FORWARD"
         const val ACTION_STOP = "app.cablegram.phone.REMOTE_STOP"
         const val SEEK_SECONDS = 15
+        private const val NOTIFICATION_WAIT_MS = 7_000L
     }
 }

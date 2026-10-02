@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -894,22 +895,60 @@ class CatalogClient(
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
     }
 
-    /** T078 / R-8: send a remote-control command, optionally targeted at one TV. */
+    /**
+     * T078 / R-8: send a remote-control command to one TV. [Accepted] means the server stored it,
+     * not that the TV ran it; see [commandStatus]. A network error is retried once with the same
+     * body, so the same client-generated ID makes the retry harmless.
+     */
     suspend fun postCommand(
         token: String,
         command: String,
         videoId: String? = null,
         targetDeviceId: String? = null,
         arguments: kotlinx.serialization.json.JsonObject = buildJsonObject {},
-    ): Boolean = withContext(Dispatchers.IO) {
-        if (targetDeviceId.isNullOrBlank()) return@withContext false
-        val payload = remoteCommandBody(command, targetDeviceId, videoId, arguments)
+    ): CommandSend = withContext(Dispatchers.IO) {
+        if (targetDeviceId.isNullOrBlank()) return@withContext CommandSend.Failed
+        val id = java.util.UUID.randomUUID().toString()
+        val payload = json.encodeToString(remoteCommandBody(command, targetDeviceId, videoId, arguments, id))
+        fun attempt(): Boolean = client.newCall(
+            Request.Builder()
+                .url("${baseUrl.trimEnd('/')}/api/control/commands")
+                .header("Authorization", "Bearer $token")
+                .post(payload.toRequestBody("application/json".toMediaType()))
+                .build(),
+        ).execute().use { it.isSuccessful }
+        val accepted = try {
+            attempt()
+        } catch (_: java.io.IOException) {
+            try { attempt() } catch (_: java.io.IOException) { false }
+        }
+        if (accepted) CommandSend.Accepted(id) else CommandSend.Failed
+    }
+
+    /** What the TV did with a command; null when the status could not be read right now. */
+    suspend fun commandStatus(token: String, id: String): CommandStatus? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/control/commands")
+            .url("${baseUrl.trimEnd('/')}/api/control/commands/$id")
             .header("Authorization", "Bearer $token")
-            .post(json.encodeToString(payload).toRequestBody("application/json".toMediaType()))
+            .get()
             .build()
-        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                when {
+                    // A command that was just accepted is unknown only to a server without this endpoint.
+                    response.code == 404 -> CommandStatus.Unsupported
+                    !response.isSuccessful -> null
+                    else -> {
+                        val body = json.parseToJsonElement(response.body?.string().orEmpty()) as JsonObject
+                        CommandStatus.Known(
+                            state = (body["status"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+                            reason = (body["reason"] as? JsonPrimitive)?.contentOrNull,
+                            expiresAtMs = (body["expires_at_ms"] as? JsonPrimitive)?.longOrNull ?: 0L,
+                        )
+                    }
+                }
+            }
+        }.getOrNull()
     }
 
     suspend fun pushLibrary(
