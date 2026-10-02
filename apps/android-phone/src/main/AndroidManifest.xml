@@ -36,6 +36,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="cablegram" android:host="pair" />
+                <!-- Where the Google sign-in ends (spec 006): cablegram://storage?provider=…&result=… -->
+                <data android:scheme="cablegram" android:host="storage" />
             </intent-filter>
         </activity>
         <activity

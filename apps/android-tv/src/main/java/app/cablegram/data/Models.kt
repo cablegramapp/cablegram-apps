@@ -196,6 +196,11 @@ data class PlaybackResponse(
      */
     @kotlinx.serialization.Transient val fallbackUrl: String? = null,
     /**
+     * The headers [fallbackUrl] needs, kept apart from [headers] so a cloud bearer token is never sent to a phone, a relay
+     * or a local stream (spec 006). Empty for every fallback today.
+     */
+    @kotlinx.serialization.Transient val fallbackHeaders: Map<String, String> = emptyMap(),
+    /**
      * Review fix 9: a fallback that costs requests to find (the phone's own Telegram session) is looked up
      * only when the player actually needs it, not before every Telegram playback starts.
      */
@@ -392,3 +397,10 @@ internal fun decodeApiError(statusCode: Int, body: String, json: kotlinx.seriali
         parsed?.error,
     )
 }
+
+/**
+ * Whether a renewed playback needs the player reloaded. A signed URL (R2) changes with every renewal; a Drive URL stays
+ * the same and only the bearer header changes, so the headers count too (spec 006).
+ */
+fun playbackNeedsReload(current: PlaybackResponse, renewed: PlaybackResponse): Boolean =
+    renewed.url != null && (renewed.url != current.url || renewed.headers != current.headers)

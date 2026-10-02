@@ -49,6 +49,13 @@ data class LibraryItem(
      * after "Save to Telegram" (spec 004 T011). Free up space may then remove the phone copy.
      */
     val telegramCopy: Boolean = false,
+    /**
+     * A verified copy of this title's video is in the household's own Cloudflare R2 bucket (spec 005). Set from the
+     * catalog on every sync, so it clears when the bucket is disconnected (the copy is then unreachable).
+     */
+    val ownCloudCopy: Boolean = false,
+    /** The catalog's id for that copy, used to remove just that copy (spec 006); null when there is none. */
+    val ownCloudSourceId: String? = null,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
     val seasonNumber: Int? = null,
@@ -198,6 +205,7 @@ data class RemoteCatalogItem(
 
 @Serializable
 data class RemoteCatalogSource(
+    val id: String? = null,
     val kind: String = "phone_local",
     @SerialName("origin_identity") val originIdentity: String? = null,
     @SerialName("origin_filename") val originFilename: String? = null,
@@ -283,19 +291,33 @@ data class StorageConnection(
     val status: String? = null,
     val bucketName: String? = null,
     val displayLabel: String? = null,
+    /** The signed-in account (Google email); null for providers that connect by keys. */
+    val accountLabel: String? = null,
+    /** Where files go: the Drive folder name. */
+    val locationLabel: String? = null,
+    /** A stable code such as `reauthorization_required`, never provider text. */
+    val lastError: String? = null,
+    val quota: StorageQuota? = null,
+)
+
+@Serializable
+data class StorageQuota(val usedBytes: Long = 0, val limitBytes: Long? = null)
+
+/** A storage provider the server offers (spec 006). `configured` is false when the server lacks what it needs. */
+@Serializable
+data class StorageProviderInfo(
+    val id: String,
+    val name: String = id,
+    val connectMethod: String = "keys",
+    val configured: Boolean = false,
 )
 
 @Serializable
 data class StorageStatusResponse(
     val configured: Boolean = false,
+    val providers: List<StorageProviderInfo> = emptyList(),
     val connection: StorageConnection? = null,
     val connections: List<StorageConnection> = emptyList(),
-)
-
-@Serializable
-data class StorageConnectResponse(
-    val provider: String? = null,
-    val authUrl: String,
 )
 
 @Serializable

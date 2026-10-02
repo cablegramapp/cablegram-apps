@@ -74,6 +74,7 @@ import androidx.tv.material3.Text
 import app.cablegram.MainActivity
 import app.cablegram.R
 import app.cablegram.data.PlaybackResponse
+import app.cablegram.data.playbackNeedsReload
 import app.cablegram.data.TvCommand
 import app.cablegram.data.validationError
 import app.cablegram.player.CableGramPlayer
@@ -177,14 +178,17 @@ fun PlayerScreen(
         transition = transitionTo(next)
         try {
             val current = activePlayback.url
-            val failure = reachableSource(playbackHttp, next, activePlayback.headers, quick = !isRelayUrl(next)) { transportNotice = it }
+            val failure = reachableSource(playbackHttp, next, activePlayback.fallbackHeaders, quick = !isRelayUrl(next)) { transportNotice = it }
             if (failure != null) {
                 lastSourceError = failure
                 transition = null
                 return false
             }
             val resumeAt = ((resumeAtMs ?: player.positionMs) - 2_000).coerceAtLeast(0)
-            activePlayback = activePlayback.copy(url = next, fallbackUrl = current)
+            // The two paths swap places, each with its own headers: a cloud token never goes to the other path.
+            activePlayback = activePlayback.copy(
+                url = next, headers = activePlayback.fallbackHeaders, fallbackUrl = current, fallbackHeaders = activePlayback.headers,
+            )
             player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers))
             transportNotice = transportNoticeFor(next)
             Log.i(PLAYBACK_LOG_TAG, "Switched source to ${if (isRelayUrl(next)) "relay" else "LAN"} at ${resumeAt / 1000}s")
@@ -526,12 +530,17 @@ fun PlayerScreen(
             val expiresAt = activePlayback.expiresAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() } ?: continue
             if (expiresAt - System.currentTimeMillis() < 120_000) {
                 val renewed = onRenewPlayback() ?: continue
-                if (renewed.url != null && renewed.url != activePlayback.url) {
+                if (renewed.url != null && !playbackNeedsReload(activePlayback, renewed)) {
+                    // The same link and header, only a later expiry: no reload, just stop asking again every minute.
+                    Log.i(PLAYBACK_LOG_TAG, "Playback renewed without a reload, expires ${renewed.expiresAt}")
+                    activePlayback = activePlayback.copy(expiresAt = renewed.expiresAt)
+                } else if (renewed.url != null) {
                     val renewalError = preflightPlaybackUrl(playbackHttp, renewed.url, renewed.headers)
                     if (renewalError != null) {
                         error = renewalError
                         continue
                     }
+                    Log.i(PLAYBACK_LOG_TAG, "Playback renewed, reloading the player at ${player.positionMs / 1000}s")
                     val playing = player.isPlaying
                     activePlayback = renewed
                     player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers))
@@ -1473,7 +1482,10 @@ internal suspend fun reachableSource(
     if (!isRelayUrl(url)) {
         if (!quick) return preflightPlaybackUrl(client, url, headers)
         val (code, _) = probeSource(client, url, headers, 3_000)
-        return if (code != null && code in 200..299) null else "Can't reach your phone on this Wi‑Fi."
+        val cloud = headers.keys.any { it.equals("Authorization", ignoreCase = true) }
+        return if (code != null && code in 200..299) null
+        else if (cloud) preflightMessage(code ?: 0, cloud = true).takeIf { code != null } ?: "Can't reach your cloud storage right now."
+        else "Can't reach your phone on this Wi‑Fi."
     }
     repeat(40) {
         val (code, error) = probeSource(client, url, headers, 12_000)
@@ -1493,9 +1505,14 @@ internal suspend fun reachableSource(
 }
 
 /** What the viewer can do about a failed stream, instead of a bare "HTTP 404". */
-internal fun preflightMessage(code: Int): String = when (code) {
-    404 -> "This video isn't on your phone anymore. Import it again on the phone, or remove it from the library."
-    401, 403 -> "Your phone didn't allow this playback. Open Cablegram on the phone and try again."
+internal fun preflightMessage(code: Int, cloud: Boolean = false): String = when {
+    // A request that carries a bearer token is for the household's own cloud storage (Google Drive), not the phone.
+    cloud && code == 404 -> "This video is no longer in your cloud storage. Remove it from the library or save it again."
+    cloud && code == 401 -> "Your cloud storage needs you to sign in again. Open Storage on the phone."
+    cloud && (code == 403 || code == 429) -> "Your cloud storage is limiting downloads of this video. Try again in a little while."
+    cloud -> "Your cloud storage couldn't send this video (error $code). Try again in a moment."
+    code == 404 -> "This video isn't on your phone anymore. Import it again on the phone, or remove it from the library."
+    code == 401 || code == 403 -> "Your phone didn't allow this playback. Open Cablegram on the phone and try again."
     else -> "Your phone couldn't send this video (error $code). Try again in a moment."
 }
 
@@ -1517,7 +1534,7 @@ private suspend fun preflightPlaybackUrl(client: OkHttpClient, url: String, head
                         null
                     } else {
                         Log.e(PLAYBACK_LOG_TAG, "Playback preflight HTTP ${response.code} $safeUrl")
-                        preflightMessage(response.code)
+                        preflightMessage(response.code, cloud = headers.keys.any { it.equals("Authorization", ignoreCase = true) })
                     }
                 }
             } catch (error: Exception) {

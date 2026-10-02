@@ -21,7 +21,9 @@ android {
     namespace = "app.cablegram"
     compileSdk = 36
     defaultConfig {
-        applicationId = "app.cablegram"
+        // Optional, e.g. -PCABLEGRAM_APP_ID_SUFFIX=.test: installs next to the real app, so a test build never replaces
+        // its pairing or data.
+        applicationId = "app.cablegram" + ((project.findProperty("CABLEGRAM_APP_ID_SUFFIX") as String?) ?: "")
         minSdk = 26
         targetSdk = 36
         versionCode = 3
