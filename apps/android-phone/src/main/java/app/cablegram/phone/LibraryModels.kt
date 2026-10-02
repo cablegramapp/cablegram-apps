@@ -90,6 +90,8 @@ data class LibraryFile(
     val collections: List<UserCollection> = emptyList(),
     val folders: List<IndexedFolder> = emptyList(),
     val pendingWebImports: List<PendingWebImport> = emptyList(),
+    /** Shared files being copied in; a process death mid-copy leaves the entry for the next start. */
+    val pendingSharedImports: List<PendingSharedImport> = emptyList(),
     /** Telegram titles the phone already asked about, so "Find details" never repeats for them. */
     val promptedTelegramIds: List<String> = emptyList(),
 )
@@ -101,6 +103,15 @@ data class PendingWebImport(
     val caption: String? = null,
     val createdAt: String,
     val lastError: String? = null,
+)
+
+/** A shared file whose copy into the library has begun. [id] becomes the library item id, so a resume cannot register it twice. */
+@Serializable
+data class PendingSharedImport(
+    val id: String,
+    val uri: String,
+    val displayName: String,
+    val createdAt: String,
 )
 
 const val STORAGE_LOCAL = "local"

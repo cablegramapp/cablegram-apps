@@ -242,3 +242,33 @@ fun previewFrameTimesUs(durationMs: Long, count: Int = 4, random: kotlin.random.
         (center + jitter).toLong().coerceIn(start, end)
     }
 }
+
+/** A file in the videos folder, as the sweep sees it. */
+internal data class VideoFileInfo(val name: String, val lastModified: Long)
+
+/** Files younger than this are left alone: something may still be writing them. */
+private const val SWEEP_GRACE_MS = 60_000L
+
+/**
+ * Names to delete from the videos folder: `.part` files and files no library row points to. A name in
+ * [importing] (or a file changed within the last minute) is never touched.
+ */
+internal fun orphanedVideoFiles(
+    files: List<VideoFileInfo>,
+    referenced: Set<String>,
+    importing: Set<String>,
+    now: Long,
+): List<String> = files.filter { file ->
+    val final = file.name.removeSuffix(".part")
+    val kept = final in importing || now - file.lastModified < SWEEP_GRACE_MS || (!file.name.endsWith(".part") && file.name in referenced)
+    !kept
+}.map { it.name }
+
+internal enum class SharedImportResume { Finish, Copy, Drop }
+
+/** What to do with a shared import a previous run left unfinished. */
+internal fun sharedImportResume(alreadyRegistered: Boolean, sourceReadable: Boolean): SharedImportResume = when {
+    alreadyRegistered -> SharedImportResume.Finish
+    sourceReadable -> SharedImportResume.Copy
+    else -> SharedImportResume.Drop
+}
