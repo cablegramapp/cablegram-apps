@@ -127,6 +127,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     is ScreenState.Resolving -> "resolving:${screen.video.id}"
                     is ScreenState.Player -> "player:${screen.video.id}"
                     is ScreenState.Error -> "error:${screen.title}"
+                    is ScreenState.TelegramPassword -> "telegram-password"
                 }
             },
             transitionSpec = {
@@ -216,6 +217,9 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     tvLanIp = viewModel.tvLanIp,
                     telegramStatus = viewModel.telegram.status.collectAsState().value,
                     onTelegramPassword = viewModel.telegram::submitPassword,
+                    onTelegramAskPhone = viewModel.telegram::askPhoneForPassword,
+                    telegramViaPhone = viewModel.telegram.viaPhone.collectAsState().value,
+                    onTelegramViaPhone = viewModel.telegram::setViaPhone,
                     onTelegramConnect = viewModel.telegram::connectStandalone,
                     onTelegramCancel = viewModel.telegram::cancelConnect,
                 )
@@ -235,6 +239,14 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     onRemoteCommandConsumed = viewModel::consumePlayerCommand,
                     onRemotePlaybackResult = { reason -> viewModel.remotePlaybackResult(screen.video.id, reason) },
                     onRenewPlayback = { viewModel.renewPlayback(screen.video.id) },
+                    onBack = viewModel::closePlayer,
+                )
+                is ScreenState.TelegramPassword -> TelegramPasswordScreen(
+                    status = viewModel.telegram.status.collectAsState().value,
+                    onPassword = viewModel.telegram::submitPassword,
+                    onAskPhone = viewModel.telegram::askPhoneForPassword,
+                    onSignedIn = { viewModel.play(screen.video) },
+                    onPlayThroughPhone = { always -> viewModel.playThroughPhone(screen.video, always) },
                     onBack = viewModel::closePlayer,
                 )
                 is ScreenState.Error -> ErrorScreen(

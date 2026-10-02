@@ -68,6 +68,8 @@ sealed interface ScreenState {
         val awaitingApproval: Boolean = false,
     ) : ScreenState
     data class Player(val video: Video, val playback: PlaybackResponse) : ScreenState
+    /** A Telegram title was opened while this TV still waits for the Telegram two-step password. */
+    data class TelegramPassword(val video: Video) : ScreenState
     data class Error(
         val title: String,
         val message: String,
@@ -395,8 +397,18 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         )
     }
 
+    /** The viewer chose to play this Telegram title through the phone instead of signing in to Telegram on this TV. */
+    private var phoneRelayChoice: String? = null
+
+    fun playThroughPhone(video: Video, always: Boolean = false) {
+        phoneRelayChoice = video.id
+        if (always) telegram.setViaPhone(true)
+        play(video)
+    }
+
     fun play(video: Video) {
-        finishRemoteTitle("superseded")
+        // The same title continuing (after the Telegram password prompt, say) keeps the phone's command open.
+        if (remoteTitleCommand?.second != video.id) finishRemoteTitle("superseded")
         if (isLiveChannelId(video.id)) return
         // T077 / R-7: the server catalog is the single source of truth.
         // Playback resolution always goes through the control plane (`getPlayback`),
@@ -410,6 +422,11 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         val currentToken = token ?: return
+        // A Telegram-only title can't start until the owner types the Telegram password on this TV: ask now, then play.
+        if (video.source == "telegram" && telegram.status.value is TvTelegramStatus.NeedsPassword && phoneRelayChoice != video.id && !telegram.viaPhone.value) {
+            screen = ScreenState.TelegramPassword(video)
+            return
+        }
         librarySyncJob?.cancel()
         failedPlaybackVideo = null
         val loadingUrl = getRandomLoadingVideoUrl()
@@ -563,6 +580,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun closePlayer() {
+        phoneRelayChoice = null
         telegram.releasePlayback()
         finishRemoteTitle("cancelled")
         // Do not leave player actions queued for the next title.
@@ -1110,6 +1128,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             finishCommand(command.id, "title_unavailable")
             return
         }
+        finishRemoteTitle("superseded")
         play(video)
         remoteTitleCommand = command.id to video.id
     }

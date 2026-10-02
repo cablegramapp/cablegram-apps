@@ -110,6 +110,9 @@ internal fun LibraryScreen(
     tvLanIp: String? = null,
     telegramStatus: app.cablegram.TvTelegramStatus = app.cablegram.TvTelegramStatus.Off,
     onTelegramPassword: (String) -> Unit = {},
+    onTelegramAskPhone: () -> Unit = {},
+    telegramViaPhone: Boolean = false,
+    onTelegramViaPhone: (Boolean) -> Unit = {},
     onTelegramConnect: () -> Unit = {},
     onTelegramCancel: () -> Unit = {},
 ) {
@@ -282,6 +285,9 @@ internal fun LibraryScreen(
                         tvLanIp = tvLanIp,
                         telegramStatus = telegramStatus,
                         onTelegramPassword = onTelegramPassword,
+                        onTelegramAskPhone = onTelegramAskPhone,
+                        telegramViaPhone = telegramViaPhone,
+                        onTelegramViaPhone = onTelegramViaPhone,
                         onTelegramConnect = onTelegramConnect,
                         onTelegramCancel = onTelegramCancel,
                     )

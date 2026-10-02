@@ -905,7 +905,7 @@ fun PlayerScreen(
 }
 
 /** T-net: how the stream travels — shown as a badge next to the brand mark. */
-private enum class Transport { LAN, RELAY, CLOUD, LIVE }
+internal enum class Transport { LAN, RELAY, CLOUD, TELEGRAM, TELEGRAM_VIA_PHONE, LIVE }
 
 private enum class StreamHealth { GOOD, OK, BAD }
 
@@ -984,7 +984,9 @@ private fun TransportBadge(transport: Transport, modifier: Modifier = Modifier) 
     val (label, icon, tint) = when (transport) {
         Transport.LAN -> Triple("Local LAN", "⌂", Color(0xFF4ADE80))
         Transport.RELAY -> Triple("Relay", "⇄", Color(0xFFFBBF24))
-        Transport.CLOUD -> Triple("Cloud", "☁", Color(0xFF2AABEE))
+        Transport.CLOUD -> Triple("Cloud", "☁", Color(0xFF8B9DF8))
+        Transport.TELEGRAM -> Triple("Telegram", "✈", Color(0xFF2AABEE))
+        Transport.TELEGRAM_VIA_PHONE -> Triple("Telegram via phone", "✈", Color(0xFF2AABEE))
         Transport.LIVE -> Triple("Live", "◉", Color(0xFFF87171))
     }
     Row(
@@ -1006,14 +1008,20 @@ private fun TransportBadge(transport: Transport, modifier: Modifier = Modifier) 
     }
 }
 
-/** Classify the playback URL's transport: phone media server, cloud storage, or relay node. */
-private fun classifyTransport(url: String?, isLive: Boolean): Transport {
+/**
+ * Where the bytes come from, read from the playback URL: Telegram first (this TV's own session on loopback, or the phone's
+ * session over the LAN), then the Cablegram relay, then the home network, and any other public host is cloud storage.
+ * Telegram through the phone and the relay is shown as the relay it travels over.
+ */
+internal fun classifyTransport(url: String?, isLive: Boolean): Transport {
     if (isLive) return Transport.LIVE
     if (url.isNullOrBlank()) return Transport.CLOUD
     return when {
+        isTelegramLocalUrl(url) -> Transport.TELEGRAM
+        isRelayUrl(url) -> Transport.RELAY
+        isPhoneTelegramUrl(url) -> Transport.TELEGRAM_VIA_PHONE
         url.startsWith("http://") && !isPublicHost(url) -> Transport.LAN
-        url.contains(".r2.dev") || url.contains("r2.cloudflarestorage") -> Transport.CLOUD
-        else -> Transport.RELAY
+        else -> Transport.CLOUD
     }
 }
 
@@ -1397,7 +1405,13 @@ internal fun isRelayUrl(url: String): Boolean = url.contains("/relay/v1/")
 internal fun isTelegramLocalUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && url.contains("/tg/")
 
 /** A Telegram title streamed by the phone's session, over the LAN or the relay (spec 004 US8). */
-internal fun isPhoneTelegramUrl(url: String): Boolean = url.contains("/telegram/")
+internal fun isPhoneTelegramUrl(url: String): Boolean {
+    // The phone serves `/telegram/<unique file id>`, the relay forwards it as `/relay/v1/p/<phone>/telegram/<id>`.
+    val path = runCatching { java.net.URI(url).rawPath }.getOrNull() ?: return false
+    return PHONE_TELEGRAM_PATH.matches(path)
+}
+
+private val PHONE_TELEGRAM_PATH = Regex("(/relay/v1/p/[^/]+)?/telegram/[A-Za-z0-9_-]+")
 
 /** Telegram delivers the first bytes in seconds and may pause while it fetches the next window. */
 internal fun stallSwitchSeconds(url: String?): Int = if (url != null && isTelegramLocalUrl(url)) TELEGRAM_STALL_SWITCH_SECONDS else STALL_SWITCH_SECONDS
