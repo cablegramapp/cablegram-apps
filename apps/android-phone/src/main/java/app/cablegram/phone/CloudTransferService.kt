@@ -148,6 +148,8 @@ class CloudTransferService : Service() {
                 store.updateItem(item.id) { current ->
                     current.copy(
                         ownCloudCopy = true,
+                        // The catalog's id for the copy, so it can be removed at once without waiting for the next sync.
+                        ownCloudSourceId = done.sourceId,
                         transferStatus = TRANSFER_IDLE,
                         webTransferError = null,
                         uploadBytes = done.bytes,

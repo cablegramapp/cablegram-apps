@@ -199,14 +199,20 @@ class StorageProvidersTest {
 
     // ---- removing just the cloud copy ----
 
-    private fun title(copied: Boolean = true, cloudCopy: Boolean = true, sourceId: String? = "src-1", status: String = TRANSFER_IDLE) = LibraryItem(
+    private fun title(
+        copied: Boolean = true, cloudCopy: Boolean = true, sourceId: String? = "src-1", status: String = TRANSFER_IDLE,
+        sourceUri: String? = null, sourceAvailable: Boolean? = null,
+    ) = LibraryItem(
         id = "t1", title = "Dune", filename = "Dune.mkv", importedAt = "2026-01-01T00:00:00Z", copied = copied,
-        ownCloudCopy = cloudCopy, ownCloudSourceId = sourceId, transferStatus = status,
+        ownCloudCopy = cloudCopy, ownCloudSourceId = sourceId, transferStatus = status, sourceUri = sourceUri, sourceAvailable = sourceAvailable,
     )
 
     @Test fun `the remove-copy button is offered only for a copy the phone still has a video behind`() {
         assertTrue(canRemoveOwnCloudCopy(title()))
         assertFalse("the only copy is not removed from here", canRemoveOwnCloudCopy(title(copied = false)))
+        assertTrue("a title imported by reference plays from the phone's own storage", canRemoveOwnCloudCopy(title(copied = false, sourceUri = "content://media/external/video/1")))
+        assertTrue("an unchecked source is not treated as gone", canRemoveOwnCloudCopy(title(copied = false, sourceUri = "content://x", sourceAvailable = null)))
+        assertFalse("a source known to be gone does not count", canRemoveOwnCloudCopy(title(copied = false, sourceUri = "content://x", sourceAvailable = false)))
         assertFalse("no cloud copy", canRemoveOwnCloudCopy(title(cloudCopy = false)))
         assertFalse("the server never named it", canRemoveOwnCloudCopy(title(sourceId = null)))
         assertFalse("not while it is being saved", canRemoveOwnCloudCopy(title(status = TRANSFER_SAVING)))

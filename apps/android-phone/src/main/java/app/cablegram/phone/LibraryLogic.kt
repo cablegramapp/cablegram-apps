@@ -148,11 +148,18 @@ fun canRemoveLocalCopy(item: LibraryItem): Boolean =
     item.sourceAvailable != false && (item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
 
 /**
+ * The phone still has this title's video: stored inside the app, or readable at its original place on the phone (a title
+ * imported by reference has `copied` false but plays from there). A source known to be gone does not count.
+ */
+fun phoneStillHoldsVideo(item: LibraryItem): Boolean =
+    item.copied || (item.sourceUri != null && item.sourceAvailable != false)
+
+/**
  * Remove just the copy in the household's own storage (spec 006). Only while this phone still holds the video: removing the
  * only copy of a title is a different, bigger step ("Remove title"), so it is not offered here.
  */
 fun canRemoveOwnCloudCopy(item: LibraryItem): Boolean =
-    item.ownCloudCopy && item.ownCloudSourceId != null && item.copied && item.transferStatus != TRANSFER_SAVING
+    item.ownCloudCopy && item.ownCloudSourceId != null && phoneStillHoldsVideo(item) && item.transferStatus != TRANSFER_SAVING
 
 /** The catalog id of a title's usable copy in the household's own storage, or null. */
 fun ownCloudSourceIdOf(sources: List<RemoteCatalogSource>): String? =
