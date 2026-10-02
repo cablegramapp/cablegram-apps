@@ -1142,22 +1142,28 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         if (librarySyncJob?.isActive == true) return
         librarySyncJob = viewModelScope.launch {
             var lastSignature: String? = null
+            var lastEtag: String? = null
             while (true) {
                 delay(LIBRARY_SYNC_MS)
                 if (screen !is ScreenState.Library) return@launch
                 val currentToken = token ?: return@launch
-                runCatching { api.getVideos(currentToken, lanToken, activeProfileId).videos }
-                    .onSuccess { latest ->
-                        // Cheap staleness check first: a full structural equals of the
-                        // library every cycle costs O(n) object-graph compares on the
-                        // main thread and thrashes low-memory TVs (ANR 4b063625).
-                        val signature = latest.joinToString("|") { v ->
-                            "${v.id}:${v.ingestProgress}:${v.ingestStage}:${v.tier}:${v.inMyList}:${v.resumePositionSeconds}:${v.title}:${v.posterUrl}"
-                        }
-                        if (signature != lastSignature) {
-                            lastSignature = signature
-                            cachedVideos = latest
-                            libraryVideos = latest
+                runCatching { api.getVideosIfChanged(currentToken, lanToken, activeProfileId, lastEtag) }
+                    .onSuccess { fetch ->
+                        // 304: nothing changed, so the list stays as it is.
+                        if (fetch is CablegramApi.LibraryFetch.Changed) {
+                            lastEtag = fetch.etag
+                            val latest = fetch.library.videos
+                            // Cheap staleness check first: a full structural equals of the
+                            // library every cycle costs O(n) object-graph compares on the
+                            // main thread and thrashes low-memory TVs (ANR 4b063625).
+                            val signature = latest.joinToString("|") { v ->
+                                "${v.id}:${v.ingestProgress}:${v.ingestStage}:${v.tier}:${v.inMyList}:${v.resumePositionSeconds}:${v.title}:${v.posterUrl}"
+                            }
+                            if (signature != lastSignature) {
+                                lastSignature = signature
+                                cachedVideos = latest
+                                libraryVideos = latest
+                            }
                         }
                         // Network is up again — drain any queued offline progress (R-3).
                         flushProgressQueue()

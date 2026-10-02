@@ -85,7 +85,36 @@ class CablegramApi(
         // Progress (resume position, Continue Watching) is per profile; without
         // profile_id the catalog carries no progress at all.
         val request = authenticatedRequest(catalogPath(profileId), token).get().build()
-        val catalog = execute<CatalogResponse>(request)
+        return buildLibrary(execute<CatalogResponse>(request), token, lanCapability)
+    }
+
+    /** What a conditional library fetch found. */
+    sealed interface LibraryFetch {
+        data class Changed(val library: VideoLibrary, val etag: String?) : LibraryFetch
+        /** The control plane answered 304: the list the caller already has is current. */
+        data object NotModified : LibraryFetch
+    }
+
+    /**
+     * [getVideos] with If-None-Match, for the TV's periodic sync: an unchanged library costs one small
+     * 304 instead of the full list and a device lookup.
+     */
+    suspend fun getVideosIfChanged(token: String, lanCapability: String?, profileId: String?, etag: String?): LibraryFetch {
+        val builder = authenticatedRequest(catalogPath(profileId), token)
+        if (!etag.isNullOrBlank()) builder.header("If-None-Match", etag)
+        val request = builder.get().build()
+        val fetched = withContext(Dispatchers.IO) {
+            client.newCall(request).execute().use { response ->
+                if (response.code == 304) return@use null
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw decodeApiError(response.code, body, json)
+                json.decodeFromString<CatalogResponse>(body) to response.header("ETag")
+            }
+        } ?: return LibraryFetch.NotModified
+        return LibraryFetch.Changed(buildLibrary(fetched.first, token, lanCapability), fetched.second)
+    }
+
+    private suspend fun buildLibrary(catalog: CatalogResponse, token: String, lanCapability: String?): VideoLibrary {
         val devices = if (lanCapability.isNullOrBlank()) emptyList() else runCatching {
             execute<MeDto>(authenticatedRequest("api/me", token).get().build()).devices
         }.getOrDefault(emptyList())

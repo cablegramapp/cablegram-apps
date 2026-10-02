@@ -242,3 +242,8 @@ fun previewFrameTimesUs(durationMs: Long, count: Int = 4, random: kotlin.random.
         (center + jitter).toLong().coerceIn(start, end)
     }
 }
+
+private val PERMANENT_WEB_IMPORT_ERRORS = setOf("unsupported_site", "no_video", "unsafe_url", "invalid_url")
+
+/** A web import the server rejected for good: submitting the same link again cannot succeed. */
+internal fun isPermanentWebImportError(error: String?): Boolean = error in PERMANENT_WEB_IMPORT_ERRORS
