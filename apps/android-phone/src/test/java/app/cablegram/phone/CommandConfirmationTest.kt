@@ -9,7 +9,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommandConfirmationTest {
-    private fun known(state: String, reason: String? = null, expiresAtMs: Long = 0) = CommandStatus.Known(state, reason, expiresAtMs)
+    private fun known(state: String, reason: String? = null, expiresInMs: Long? = null) = CommandStatus.Known(state, reason, expiresInMs)
 
     @Test
     fun `confirmed once the TV completes it`() = runTest {
@@ -43,10 +43,27 @@ class CommandConfirmationTest {
     @Test
     fun `a title start waits until the command expires`() = runTest {
         val expires = 120_000L
-        val outcome = awaitOutcome("c", ConfirmationWait.TitleStart, { known("delivered", expiresAtMs = expires) }, { currentTime })
+        // The server reports the time left; each read re-anchors it on this phone's clock.
+        val outcome = awaitOutcome("c", ConfirmationWait.TitleStart, { known("delivered", expiresInMs = expires - currentTime) }, { currentTime })
         assertEquals(Outcome.TimedOut, outcome)
         assertTrue(currentTime >= expires)
         assertTrue(currentTime < expires + 3_000)
+    }
+
+    @Test
+    fun `a phone clock far from the server's does not cut a title start short`() = runTest {
+        // Ten minutes ahead: an absolute server expiry would already be in the past.
+        val skewed = { currentTime + 600_000L }
+        val outcome = awaitOutcome("c", ConfirmationWait.TitleStart, { known("delivered", expiresInMs = 120_000L - currentTime) }, skewed)
+        assertEquals(Outcome.TimedOut, outcome)
+        assertTrue(currentTime >= 120_000L)
+    }
+
+    @Test
+    fun `a title start never waits past the cap`() = runTest {
+        val outcome = awaitOutcome("c", ConfirmationWait.TitleStart, { known("delivered", expiresInMs = 3_600_000L) }, { currentTime })
+        assertEquals(Outcome.TimedOut, outcome)
+        assertTrue(currentTime in 310_000L..312_000L)
     }
 
     @Test

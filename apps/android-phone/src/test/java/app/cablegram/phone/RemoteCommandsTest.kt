@@ -65,4 +65,27 @@ class RemoteCommandsTest {
         assertEquals(TargetResult.Target("tv-1", "Living room"), resolveTarget(living, null))
         assertTrue(resolveTarget(null, null) is TargetResult.Failed)
     }
+
+    private val legacy = PairedTv(pin = "9", name = "Old TV")
+
+    @Test
+    fun `a TV paired without a device id uses the household's only TV`() {
+        assertEquals(TargetResult.Target("tv-2", "Old TV"), resolveTarget(legacy, listOf(device("tv-2", "Bedroom"))))
+    }
+
+    @Test
+    fun `a TV paired without a device id asks for a choice when there are several`() {
+        assertEquals(
+            TargetResult.Failed("Choose which TV to control in Settings."),
+            resolveTarget(legacy, listOf(device("tv-2"), device("tv-3"))),
+        )
+        assertTrue(resolveTarget(legacy, emptyList()) is TargetResult.Failed)
+        assertTrue(resolveTarget(legacy, null) is TargetResult.Failed)
+    }
+
+    @Test
+    fun `superseded and cancelled title starts say what happened`() {
+        assertEquals("Another title was started on Den.", rejectionMessage("superseded", "Den"))
+        assertEquals("Playback was cancelled on Den.", rejectionMessage("cancelled", "Den"))
+    }
 }
