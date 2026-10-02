@@ -115,6 +115,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     var remoteStatus by mutableStateOf<String?>(null)
         private set
+    /** The title a TV was asked to start and has not answered for yet; null otherwise. */
+    var startingTitle by mutableStateOf<String?>(null)
+        private set
+    private var titleStartToken = 0L
     private var pausedState by mutableStateOf(false)
     var paused: Boolean
         get() = pausedState
@@ -2437,7 +2441,16 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val ready = ensurePlayable(item) ?: return@launch
             // Only show "now playing" once the TV confirmed that playback started.
-            val sent = sendCommand("play", ready.id, wait = ConfirmationWait.TitleStart) ?: run {
+            val token = ++titleStartToken
+            val sent = try {
+                sendCommand("play", ready.id, wait = ConfirmationWait.TitleStart, onAccepted = { tv ->
+                    startingTitle = ready.title
+                    status = "Starting ${ready.title} on $tv…"
+                })
+            } finally {
+                // A newer title start owns the field; this one only clears its own.
+                if (titleStartToken == token) startingTitle = null
+            } ?: run {
                 status = remoteStatus
                 return@launch
             }
@@ -2857,13 +2870,15 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * Sends a command and waits for the TV's outcome, narrating it in [remoteStatus] while it is the
-     * newest command. Returns null when the control service did not accept the command.
+     * newest command. Returns null when the control service did not accept the command. [onAccepted]
+     * runs once the service accepted it, before the wait, and only while it is still the newest.
      */
     private suspend fun sendCommand(
         command: String,
         videoId: String? = null,
         arguments: JsonObject = buildJsonObject {},
         wait: ConfirmationWait = ConfirmationWait.Control(),
+        onAccepted: ((tvName: String) -> Unit)? = null,
     ): SentCommand? {
         val generation = ++commandGeneration
         fun report(text: String) { if (generation == commandGeneration) remoteStatus = text }
@@ -2882,6 +2897,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
         }
         report(if (command == "play" && videoId != null) "Starting on ${sent.tvName}…" else "Sent to ${sent.tvName}…")
+        // Only the newest command may touch what the screens show.
+        if (generation == commandGeneration) onAccepted?.invoke(sent.tvName)
         val outcome = CastSession.confirm(client, sent, wait)
         reportFinal(when (outcome) {
             Outcome.Confirmed -> "Done on ${sent.tvName}"

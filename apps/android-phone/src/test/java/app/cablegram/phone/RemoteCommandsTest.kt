@@ -88,4 +88,23 @@ class RemoteCommandsTest {
         assertEquals("Another title was started on Den.", rejectionMessage("superseded", "Den"))
         assertEquals("Playback was cancelled on Den.", rejectionMessage("cancelled", "Den"))
     }
+
+    @Test
+    fun `a title being started takes over the mini-player instead of the one playing`() {
+        val lines = miniPlayerLines("Old film", "New film", "Den", "Starting on Den…")!!
+        assertEquals("New film", lines.title)
+        assertEquals("Starting on Den…", lines.caption)
+        assertFalse(lines.canToggle)
+    }
+
+    @Test
+    fun `the mini-player shows the playing title and falls back to the TV name`() {
+        assertEquals(MiniPlayerLines("Old film", "Den", canToggle = true), miniPlayerLines("Old film", null, "Den", null))
+        assertEquals("Den didn't confirm. Check the TV.", miniPlayerLines("Old film", null, "Den", "Den didn't confirm. Check the TV.")!!.caption)
+    }
+
+    @Test
+    fun `the mini-player is hidden with nothing playing or starting`() {
+        assertNull(miniPlayerLines(null, null, "Den", "Done on Den"))
+    }
 }

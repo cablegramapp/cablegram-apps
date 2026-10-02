@@ -69,3 +69,16 @@ fun rejectionMessage(reason: String?, tvName: String): String = when (reason) {
     "invalid_payload" -> "$tvName didn't understand that command. Update the app on the TV."
     else -> "$tvName couldn't do that."
 }
+
+/** What the mini-player shows. [canToggle] is false while a title is starting, as there is nothing to pause yet. */
+internal data class MiniPlayerLines(val title: String, val caption: String, val canToggle: Boolean)
+
+/**
+ * The title being started takes over the mini-player until the TV answers, so its "Starting…" status
+ * never reads as a status of the title that was playing before. Null when there is nothing to show.
+ */
+internal fun miniPlayerLines(playing: String?, starting: String?, tvName: String, status: String?): MiniPlayerLines? {
+    if (starting != null) return MiniPlayerLines(starting, status ?: tvName, canToggle = false)
+    if (playing != null) return MiniPlayerLines(playing, status ?: tvName, canToggle = true)
+    return null
+}
