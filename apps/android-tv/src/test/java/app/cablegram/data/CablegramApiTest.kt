@@ -10,6 +10,7 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -169,12 +170,12 @@ class CablegramApiTest {
         assertEquals("Video is unavailable.", error.message)
     }
 
-    private val r2Item = """{"id":"item-1","title":"Film","sources":[{"kind":"phone_local","origin_identity":"phone-video","serving_device_id":"p1"},{"kind":"cloud_r2","origin_identity":"r2:abc","availability":"available"}]}"""
+    private val r2Item = """{"id":"item-1","title":"Film","sources":[{"kind":"phone_local","origin_identity":"phone-video","serving_device_id":"p1"},{"kind":"own_cloud","origin_identity":"r2:abc","availability":"available"}]}"""
     private val r2Resolve = """{"status":"ready","url":"https://acct.r2.cloudflarestorage.com/h/u/film.mkv?X-Amz-Signature=sig"}"""
 
     @Test
     fun `a title that only lives in the household R2 bucket plays from it without asking a phone`() = runBlocking {
-        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"cloud_r2","origin_identity":"r2:abc","availability":"available"}]}]}"""))
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"r2:abc","availability":"available"}]}]}"""))
         server.enqueue(MockResponse().setBody(r2Resolve))
 
         val playback = api.getPlayback("item-1", "jwt")
@@ -215,6 +216,96 @@ class CablegramApiTest {
         assertEquals("the R2 lookup is made once", before + 1, server.requestCount)
     }
 
+    private val driveResolve = """{"status":"ready","url":"https://www.googleapis.com/drive/v3/files/f1?alt=media","headers":{"Authorization":"Bearer ya29.test"},"mime_type":"video/x-matroska","expiresAt":"2026-10-02T12:50:00.000Z","title":"Film"}"""
+
+    @Test
+    fun `a Google Drive copy plays with its bearer header and its short expiry`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"gdrive:abc","availability":"available"}]}]}"""))
+        server.enqueue(MockResponse().setBody(driveResolve))
+
+        val playback = api.getPlayback("item-1", "jwt")
+
+        assertEquals("ready", playback.status)
+        assertEquals("https://www.googleapis.com/drive/v3/files/f1?alt=media", playback.url)
+        assertEquals(mapOf("Authorization" to "Bearer ya29.test"), playback.headers)
+        assertEquals("video/x-matroska", playback.mimeType)
+        assertEquals("2026-10-02T12:50:00.000Z", playback.expiresAt)
+        assertEquals("Film", playback.title)
+    }
+
+    @Test
+    fun `a fallback never carries the cloud token, and the cloud copy is not a bare-URL fallback`() = runBlocking {
+        // Phone off this Wi-Fi: Drive first, the relay behind it; the relay is looked up without any header.
+        server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone"}]}"""))
+        server.enqueue(MockResponse().setBody(driveResolve))
+        val cloudFirst = api.getPlayback("item-1", "jwt")
+        assertEquals(mapOf("Authorization" to "Bearer ya29.test"), cloudFirst.headers)
+        assertTrue("the fallback has its own, empty, headers", cloudFirst.fallbackHeaders.isEmpty())
+
+        // LAN first: when it stalls, a copy that needs a header is not offered as a bare URL.
+        server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
+        server.enqueue(MockResponse().setResponseCode(404)) // the relay ticket
+        server.enqueue(MockResponse().setBody(driveResolve))
+        val lan = api.getPlayback("item-1", "jwt")
+        val fallback = lan.fallbackResolver!!.invoke()
+        assertTrue("no Drive URL as a fallback: $fallback", fallback == null || !fallback.contains("googleapis"))
+    }
+
+    @Test
+    fun `when the TV can add the header itself the player gets a plain local URL with no token`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"gdrive:abc","availability":"available"}]}]}"""))
+        server.enqueue(MockResponse().setBody(driveResolve))
+        var proxied: Pair<String, Map<String, String>>? = null
+
+        val playback = api.getPlayback("item-1", "jwt", cloudStream = { url, headers ->
+            proxied = url to headers
+            "http://127.0.0.1:5555/cloud/abc"
+        })
+
+        assertEquals("http://127.0.0.1:5555/cloud/abc", playback.url)
+        assertTrue("the header travels to the local stream, not to the player", playback.headers.isEmpty())
+        assertEquals("https://www.googleapis.com/drive/v3/files/f1?alt=media", proxied!!.first)
+        assertEquals(mapOf("Authorization" to "Bearer ya29.test"), proxied!!.second)
+        assertEquals("2026-10-02T12:50:00.000Z", playback.expiresAt)
+    }
+
+    @Test
+    fun `a presigned R2 URL is played directly, with no local stream`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"r2:abc","availability":"available"}]}]}"""))
+        server.enqueue(MockResponse().setBody(r2Resolve))
+        var asked = false
+
+        val playback = api.getPlayback("item-1", "jwt", cloudStream = { _, _ -> asked = true; "http://127.0.0.1:1/x" })
+
+        assertTrue(playback.url!!.startsWith("https://acct.r2.cloudflarestorage.com/"))
+        assertFalse(asked)
+    }
+
+    @Test
+    fun `Drive limiting downloads is explained, not shown as a phone that is away`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"gdrive:abc","availability":"available"}]}]}"""))
+        server.enqueue(MockResponse().setResponseCode(429).setBody("""{"error":"provider_rate_limited"}"""))
+
+        val playback = api.getPlayback("item-1", "jwt")
+
+        assertEquals("denied", playback.status)
+        assertTrue(playback.prepareLabel!!.contains("limiting downloads"))
+    }
+
+    @Test
+    fun `a title whose cloud source went away does not wait for a phone that has nothing`() = runBlocking {
+        // The control plane answers 404 source_unavailable once it finds the file gone.
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"gdrive:abc","availability":"available"}]}]}"""))
+        server.enqueue(MockResponse().setResponseCode(404).setBody("""{"error":"source_unavailable"}"""))
+
+        val playback = api.getPlayback("item-1", "jwt")
+
+        assertTrue(playback.status != "ready")
+        assertTrue(playback.url == null)
+    }
+
     @Test
     fun `a cloud copy is never mistaken for a phone to stream from`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
@@ -229,7 +320,7 @@ class CablegramApiTest {
 
     @Test
     fun `an unavailable R2 copy is not tried`() = runBlocking {
-        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"cloud_r2","origin_identity":"r2:abc","availability":"unavailable"}]}]}"""))
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"r2:abc","availability":"unavailable"}]}]}"""))
 
         val playback = api.getPlayback("item-1", "jwt")
 

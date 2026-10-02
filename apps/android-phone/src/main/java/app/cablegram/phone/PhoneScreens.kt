@@ -162,8 +162,8 @@ private fun LibraryNav(viewModel: PhoneViewModel) {
         items.forEach { (tab, icon, label) ->
             NavigationBarItem(
                 selected = viewModel.tab == tab || (tab == PhoneTab.Settings && viewModel.tab == PhoneTab.Storage),
-                // A cloud sheet is a full-screen overlay: leaving for another tab must not leave it covering that tab.
-                onClick = { viewModel.dismissCloudSheet(); viewModel.tab = tab; viewModel.closeItem() },
+                // A cloud sheet, a title page and a series page are full-screen overlays: leaving for another tab must not leave them covering it.
+                onClick = { viewModel.dismissCloudSheet(); viewModel.tab = tab; viewModel.closeItem(); viewModel.closeSeries() },
                 icon = { Icon(icon, contentDescription = label) },
                 label = { Text(label, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 modifier = Modifier.maestro(
@@ -438,7 +438,7 @@ private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series
                     }
                     TextButton(
                         onClick = { viewModel.playOnTv(episode) },
-                        enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.r2Copy || episode.sourceKind == "telegram",
+                        enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.ownCloudCopy || episode.sourceKind == "telegram",
                     ) { Text("Play") }
                     ItemActionMenu(viewModel, episode, viewModel.actionMenuId == rowKey)
                 }
@@ -517,7 +517,7 @@ private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: Phon
 @Composable
 private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expanded: Boolean) {
     DropdownMenu(expanded = expanded, onDismissRequest = { viewModel.actionMenuId = null }) {
-        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.r2Copy || item.sourceKind == "telegram") {
+        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy || item.sourceKind == "telegram") {
             viewModel.actionMenuId = null
             viewModel.playOnTv(item)
         }
@@ -527,7 +527,7 @@ private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expande
         if (canSaveToTelegram(item) && viewModel.telegramLink?.linked == true && PhoneTelegram.configured) {
             CompactMenuItem("Save to Telegram") { viewModel.actionMenuId = null; viewModel.saveToTelegram(item) }
         }
-        if ((item.cloudObjectPresent || item.r2Copy) && !item.copied) {
+        if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) {
             CompactMenuItem("Download from Cloud") { viewModel.actionMenuId = null; viewModel.downloadFromCloud(item) }
         }
         if (canRemoveLocalCopy(item)) {
@@ -806,7 +806,7 @@ private fun StorageScreen(viewModel: PhoneViewModel) {
         }
         SectionCard("Cloud storage") {
             StorageMetric("Media saved", formatBytes(cloudMediaBytes(viewModel.items)))
-            StorageMetric("Available", if (viewModel.cloudUnlimited) "Your storage" else formatBytes(viewModel.cloudAvailable))
+            StorageMetric("Available", if (viewModel.cloudUnlimited) destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable) else formatBytes(viewModel.cloudAvailable))
             if (viewModel.cloudConnected) Text("Connected: ${viewModel.storage?.connection?.displayLabel ?: "your own storage"}", color = Color(0xFF79D6B0))
             OutlinedButton(onClick = { viewModel.cloudSheet = CloudSheet.Manage }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.STORAGE_MANAGE)) { Text("Manage cloud storage") }
         }
@@ -1038,7 +1038,7 @@ private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> U
 
 @Composable
 private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
-    val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent && !item.r2Copy
+    val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent && !item.ownCloudCopy
     var title by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.title) }
     var year by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.year?.toString().orEmpty()) }
     var mediaType by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.mediaType) }
@@ -1107,7 +1107,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 if (viewModel.telegramLink?.linked == true && PhoneTelegram.configured && canSaveToTelegram(item) && item.webTransferError != TELEGRAM_SAVE_FAILED) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Save to Telegram") }
                 }
-                if ((item.cloudObjectPresent || item.r2Copy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
+                if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
                 if (canRemoveLocalCopy(item)) TextButton(onClick = { viewModel.askFreeUp(item) }) { Text("Free up phone space") }
             }
             if (viewModel.collections.isNotEmpty()) SectionCard("Collections") {

@@ -1074,8 +1074,33 @@ class CatalogClient(
         }
     }
 
-    /** Save to Cloud against the household's own R2 bucket (spec 005); [token] is the phone's account token. */
-    fun r2Api(token: String): R2UploadApi = object : R2UploadApi {
+    /**
+     * Starts the Google Drive sign-in (spec 006): the server makes the state and PKCE and answers with the Google URL to
+     * open in a Custom Tab. [GoogleConnectStart.error] is the server's stable error string when it could not.
+     */
+    suspend fun connectGoogle(token: String): GoogleConnectStart = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/connect/google")
+            .header("Authorization", "Bearer $token")
+            .post("{}".toRequestBody("application/json".toMediaType()))
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (response.isSuccessful) {
+                    val url = runCatching { json.parseToJsonElement(text).jsonObject["authorize_url"]?.jsonPrimitive?.contentOrNull }.getOrNull()
+                    return@use if (url != null && url.startsWith("https://")) GoogleConnectStart(url, null) else GoogleConnectStart(null, "invalid_response")
+                }
+                val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
+                GoogleConnectStart(null, code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: "http_${response.code}")
+            }
+        } catch (_: java.io.IOException) {
+            GoogleConnectStart(null, "offline")
+        }
+    }
+
+    /** Save to Cloud against the household's own storage (specs 005, 006); [token] is the phone's account token. */
+    fun ownCloudApi(token: String): OwnCloudApi = object : OwnCloudApi {
         private suspend fun call(path: String, method: String, body: String? = null): String = withContext(Dispatchers.IO) {
             val builder = Request.Builder().url("${baseUrl.trimEnd('/')}$path").header("Authorization", "Bearer $token")
             when (method) {
@@ -1110,13 +1135,22 @@ class CatalogClient(
                 put("parts", buildJsonArray { parts.forEach { add(buildJsonObject { put("part", it.part); put("etag", it.etag) }) } })
             })))
 
+        override suspend fun session(uploadId: String): DriveSession =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/session", "GET"))
+
+        override suspend fun complete(uploadId: String): R2Done =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/complete", "POST", "{}"))
+
         override suspend fun abort(uploadId: String) {
             call("/api/storage/uploads/$uploadId", "DELETE")
         }
     }
 
-    /** A presigned URL for reading this phone title's copy in the household's bucket back; null if it has none. */
-    suspend fun r2ReadUrl(token: String, originIdentity: String): String? = withContext(Dispatchers.IO) {
+    /**
+     * Where to read this phone title's copy in the household's own storage back from, with the headers that request needs
+     * (a presigned R2 URL needs none; Google Drive needs a short-lived bearer token). Null if it has no copy.
+     */
+    suspend fun ownCloudReadUrl(token: String, originIdentity: String): ReadUrl? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/storage/read-url")
             .header("Authorization", "Bearer $token")
@@ -1125,7 +1159,7 @@ class CatalogClient(
         runCatching {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@use null
-                json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["url"]?.jsonPrimitive?.contentOrNull
+                parseReadUrl(response.body?.string().orEmpty())
             }
         }.getOrNull()
     }

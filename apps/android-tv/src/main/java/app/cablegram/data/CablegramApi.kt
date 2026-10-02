@@ -92,7 +92,7 @@ class CablegramApi(
         return VideoLibrary(
             videos = catalog.items.map { item ->
                 val source = item.sources.firstOrNull { it.isPhoneSource() }
-                    ?: item.sources.firstOrNull { it.kind != CLOUD_R2 && !it.originIdentity.isNullOrBlank() }
+                    ?: item.sources.firstOrNull { it.kind != OWN_CLOUD && !it.originIdentity.isNullOrBlank() }
                     ?: item.sources.firstOrNull()
                 val phone = servingPhone(devices, source)
                 val localPosterUrl = if (phone != null && !source?.originIdentity.isNullOrBlank()) {
@@ -322,6 +322,11 @@ class CablegramApi(
         telegramUrl: suspend (String) -> String? = { null },
         /** The phone that can stream Telegram titles to this TV (spec 004 US8); null when unknown. */
         telegramPhoneId: () -> String? = { null },
+        /**
+         * Spec 006: a local URL that plays [url] with [headers] for a player that cannot send them (LibVLC), or null when
+         * there is none. Used only for a cloud copy that needs a header (Google Drive).
+         */
+        cloudStream: (url: String, headers: Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
         val catalog = execute<CatalogResponse>(authenticatedRequest("api/catalog/items", token).get().build())
         val item = catalog.items.firstOrNull { it.id == videoId }
@@ -351,18 +356,42 @@ class CablegramApi(
         }
         // Spec 005: a copy in the household's own R2 bucket. The control plane turns it into a short-lived
         // presigned URL, so playback needs neither the phone nor the relay.
-        val hasR2 = item.sources.any { it.kind == CLOUD_R2 && it.availability != "unavailable" && it.archiveState != "archived" }
-        var r2Looked = false
-        var r2Found: String? = null
-        val r2Url: suspend () -> String? = {
-            if (!r2Looked) {
-                r2Looked = true
-                r2Found = runCatching { resolveWebPlayback(videoId, token) }.getOrNull()?.takeIf { it.status == "ready" }?.url
+        val hasR2 = item.sources.any { it.kind == OWN_CLOUD && it.availability != "unavailable" && it.archiveState != "archived" }
+        // Spec 006: for Google Drive the answer also carries the bearer header and a short expiry, so the whole response is kept.
+        var ownCloudLooked = false
+        var ownCloudFound: PlaybackResponse? = null
+        var ownCloudLimited = false
+        val ownCloud: suspend () -> PlaybackResponse? = {
+            if (!ownCloudLooked) {
+                ownCloudLooked = true
+                ownCloudFound = try {
+                    resolveWebPlayback(videoId, token).takeIf { it.status == "ready" && it.url != null }?.let { resolved ->
+                        // A header the player cannot send is added by the local stream instead; the token stays out of the URL.
+                        val local = if (resolved.headers.isNotEmpty()) cloudStream(resolved.url!!, resolved.headers) else null
+                        if (local != null) resolved.copy(url = local, headers = emptyMap()) else resolved
+                    }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (failure: ApiException) {
+                    if (failure.statusCode == 429) ownCloudLimited = true
+                    null
+                } catch (_: Exception) {
+                    null
+                }
             }
-            r2Found
+            ownCloudFound
+        }
+        val limitedNotice = {
+            PlaybackResponse(
+                status = "denied",
+                prepareLabel = "Your cloud storage is limiting downloads of this video. Try again in a little while.",
+                title = item.title,
+                posterUrl = item.posterUrl,
+            )
         }
         if (source == null && hasR2) {
-            r2Url()?.let { return PlaybackResponse(status = "ready", url = it, title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram) }
+            ownCloud()?.let { return it.copy(title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram) }
+            if (ownCloudLimited && telegram == null) return limitedNotice()
         }
         if (source == null) {
             // No Telegram session on this TV (temporary TV, or not signed in yet): the phone streams it.
@@ -396,8 +425,8 @@ class CablegramApi(
             // Spec 005: LAN, then the user's R2 bucket, then the relay. R2 beats the relay because it
             // costs the phone's mobile data and Cablegram's relay quota nothing.
             if (lan == null && hasR2) {
-                r2Url()?.let {
-                    return PlaybackResponse(status = "ready", url = it, title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram ?: relay)
+                ownCloud()?.let {
+                    return it.copy(title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram ?: relay)
                 }
             }
             val primary = lan ?: relay
@@ -408,14 +437,16 @@ class CablegramApi(
                     title = item.title,
                     posterUrl = item.posterUrl,
                     fallbackUrl = if (lan != null) telegram ?: (if (hasR2) null else relay) else telegram,
-                    // Looked up only if the LAN stalls: R2 first, the relay when R2 cannot be reached.
-                    fallbackResolver = if (lan != null && telegram == null && hasR2) ({ r2Url() ?: relay }) else null,
+                    // Looked up only if the LAN stalls: the cloud copy first, the relay when it cannot be reached. A copy that
+                    // needs a header (Drive) is skipped here: a fallback is a bare URL and must not carry a cloud token.
+                    fallbackResolver = if (lan != null && telegram == null && hasR2) ({ ownCloud()?.takeIf { it.headers.isEmpty() }?.url ?: relay }) else null,
                 )
             }
         }
         // No phone to ask on this Wi‑Fi and no relay: the bucket still has it.
         if (hasR2) {
-            r2Url()?.let { return PlaybackResponse(status = "ready", url = it, title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram) }
+            ownCloud()?.let { return it.copy(title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram) }
+            if (ownCloudLimited && telegram == null) return limitedNotice()
         }
         if (telegram != null) {
             return PlaybackResponse(status = "ready", url = telegram, title = item.title, posterUrl = item.posterUrl)
@@ -496,7 +527,7 @@ class CablegramApi(
                 "approved" -> {
                     val current = execute<CatalogResponse>(authenticatedRequest("api/catalog/items", token).get().build())
                         .items.firstOrNull { it.id == videoId }
-                    if (current?.sources?.any { it.kind == "web" || it.kind == "cloud_object" || it.kind == CLOUD_R2 } == true) {
+                    if (current?.sources?.any { it.kind == "web" || it.kind == "cloud_object" || it.kind == OWN_CLOUD } == true) {
                         return resolveWebPlayback(videoId, token, attemptId)
                     }
                     val source = current?.sources?.firstOrNull { !it.originIdentity.isNullOrBlank() }
@@ -801,10 +832,10 @@ internal fun servingPhone(devices: List<DeviceHintDto>, servingDeviceId: String?
     return phones.firstOrNull { !it.lastLanHost.isNullOrBlank() }
 }
 
-/** `cloud_r2` is a copy in the household's own Cloudflare R2 bucket (spec 005), not a phone to ask. */
-private const val CLOUD_R2 = "cloud_r2"
+/** `own_cloud` is a copy in the household's own cloud storage (specs 005, 006), not a phone to ask. */
+private const val OWN_CLOUD = "own_cloud"
 
-private fun CatalogSourceDto.isPhoneSource() = kind != "telegram" && kind != CLOUD_R2 && !originIdentity.isNullOrBlank()
+private fun CatalogSourceDto.isPhoneSource() = kind != "telegram" && kind != OWN_CLOUD && !originIdentity.isNullOrBlank()
 
 private fun servingPhone(devices: List<DeviceHintDto>, source: CatalogSourceDto?) =
     servingPhone(devices, source?.servingDeviceId)

@@ -27,6 +27,8 @@ class CloudTransferService : Service() {
     private val queue = ConcurrentLinkedQueue<String>()
     /** Titles whose save goes to the household's own R2 bucket instead of Cablegram Cloud. */
     private val ownR2 = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    /** Where saves are going, for the notification: "Google Drive", or "Cloud" for Cablegram Cloud. */
+    @Volatile private var destination = "Cloud"
     private val running = AtomicBoolean(false)
     private val store by lazy { LibraryStore(this) }
 
@@ -39,6 +41,7 @@ class CloudTransferService : Service() {
             return START_NOT_STICKY
         }
         if (intent.getBooleanExtra(EXTRA_OWN_R2, false)) ownR2.add(id)
+        intent.getStringExtra(EXTRA_DESTINATION)?.takeIf { it.isNotBlank() }?.let { destination = it }
         queue.add(id)
         val item = store.get(id)
         startAsForeground(item?.title ?: "Video", 0, item?.fileSizeBytes ?: 0)
@@ -96,7 +99,7 @@ class CloudTransferService : Service() {
         try {
             if (ownR2.remove(id)) {
                 saveToOwnR2(item, progress)
-                notifyDone(item.title, ok = true, detail = "Saved to your Cloudflare storage")
+                notifyDone(item.title, ok = true, detail = "Saved to $destination")
                 return
             }
             store.saveToCloud(item) { copied, total ->
@@ -123,13 +126,13 @@ class CloudTransferService : Service() {
             store.get(id)?.let { store.update(it.copy(transferStatus = TRANSFER_FAILED)) }
             // Stopped (service destroyed): shown as "Save failed"; saving again resumes an R2 upload where it stopped.
             if (error is kotlinx.coroutines.CancellationException) throw error
-            notifyDone(item.title, ok = false, detail = (error as? R2ApiException)?.friendly ?: error.message)
+            notifyDone(item.title, ok = false, detail = (error as? R2ApiException)?.friendly(destination) ?: error.message)
         }
     }
 
     /**
-     * Streams the video to the household's bucket in parts. The control plane verifies the stored size before it
-     * records the copy, so [LibraryItem.r2Copy] is only set for a copy that Free up space may rely on.
+     * Streams the video to the household's own storage (R2 parts or Drive chunks, as the server says). The control plane verifies the stored size before it
+     * records the copy, so [LibraryItem.ownCloudCopy] is only set for a copy that Free up space may rely on.
      */
     private suspend fun saveToOwnR2(item: LibraryItem, onProgress: (Long, Long) -> Unit) {
         val pairing = PairingStore(this)
@@ -140,11 +143,11 @@ class CloudTransferService : Service() {
                 val extension = item.filename.substringAfterLast('.', "").lowercase()
                 val contentType = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
                     ?.takeIf { type -> type.startsWith("video/") } ?: "video/mp4"
-                val done = R2Uploader(CatalogClient(pairing.apiBaseUrl, pairing).r2Api(token))
+                val done = OwnCloudUploader(CatalogClient(pairing.apiBaseUrl, pairing).ownCloudApi(token), log = { PairLog.i(it) })
                     .upload(item.id, item.filename, contentType, stream.channel, onProgress)
                 store.updateItem(item.id) { current ->
                     current.copy(
-                        r2Copy = true,
+                        ownCloudCopy = true,
                         transferStatus = TRANSFER_IDLE,
                         webTransferError = null,
                         uploadBytes = done.bytes,
@@ -198,7 +201,7 @@ class CloudTransferService : Service() {
             etaLabel(remaining, bytesPerSec),
         ).filter { it.isNotBlank() }
         return builder()
-            .setContentTitle("Saving to Cloud")
+            .setContentTitle("Saving to $destination")
             .setContentText(title)
             .setStyle(Notification.BigTextStyle().bigText("$title\n${bits.joinToString(" · ")}"))
             .setSmallIcon(R.drawable.ic_stat_cablegram)
@@ -244,14 +247,16 @@ class CloudTransferService : Service() {
     companion object {
         const val EXTRA_ITEM_ID = "item_id"
         const val EXTRA_OWN_R2 = "own_r2"
+        const val EXTRA_DESTINATION = "destination"
         private const val CHANNEL_ID = "cloud_saves"
         private const val NOTIFY_ID = 42
         private const val NOTIFY_DONE_ID = 43
 
-        fun start(context: Context, itemId: String, ownR2: Boolean = false) {
+        fun start(context: Context, itemId: String, ownR2: Boolean = false, destination: String = "Cloud") {
             val intent = Intent(context, CloudTransferService::class.java)
                 .putExtra(EXTRA_ITEM_ID, itemId)
                 .putExtra(EXTRA_OWN_R2, ownR2)
+                .putExtra(EXTRA_DESTINATION, destination)
             context.startForegroundService(intent)
         }
     }

@@ -53,7 +53,7 @@ data class LibraryItem(
      * A verified copy of this title's video is in the household's own Cloudflare R2 bucket (spec 005). Set from the
      * catalog on every sync, so it clears when the bucket is disconnected (the copy is then unreachable).
      */
-    val r2Copy: Boolean = false,
+    val ownCloudCopy: Boolean = false,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
     val seasonNumber: Int? = null,
@@ -288,11 +288,31 @@ data class StorageConnection(
     val status: String? = null,
     val bucketName: String? = null,
     val displayLabel: String? = null,
+    /** The signed-in account (Google email); null for providers that connect by keys. */
+    val accountLabel: String? = null,
+    /** Where files go: the Drive folder name. */
+    val locationLabel: String? = null,
+    /** A stable code such as `reauthorization_required`, never provider text. */
+    val lastError: String? = null,
+    val quota: StorageQuota? = null,
+)
+
+@Serializable
+data class StorageQuota(val usedBytes: Long = 0, val limitBytes: Long? = null)
+
+/** A storage provider the server offers (spec 006). `configured` is false when the server lacks what it needs. */
+@Serializable
+data class StorageProviderInfo(
+    val id: String,
+    val name: String = id,
+    val connectMethod: String = "keys",
+    val configured: Boolean = false,
 )
 
 @Serializable
 data class StorageStatusResponse(
     val configured: Boolean = false,
+    val providers: List<StorageProviderInfo> = emptyList(),
     val connection: StorageConnection? = null,
     val connections: List<StorageConnection> = emptyList(),
 )

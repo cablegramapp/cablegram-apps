@@ -23,9 +23,13 @@ import kotlin.coroutines.coroutineContext
 @Serializable
 data class R2UploadStart(
     @SerialName("upload_id") val uploadId: String,
-    @SerialName("part_size") val partSize: Long,
-    @SerialName("part_count") val partCount: Int,
+    @SerialName("part_size") val partSize: Long = 0,
+    @SerialName("part_count") val partCount: Int = 0,
     val resumed: Boolean = false,
+    /** Which uploader runs it (spec 006): `s3_multipart` or `gdrive_resumable`. Older servers do not say. */
+    val protocol: String = "s3_multipart",
+    /** Drive only: the size of each chunk. */
+    @SerialName("chunk_size") val chunkSize: Long = 0,
 )
 
 @Serializable
@@ -48,16 +52,22 @@ data class R2PartRef(val part: Int, val etag: String)
 
 /** A control-plane refusal; [code] is its stable error string, never free text from the bucket. */
 class R2ApiException(val status: Int, val code: String) : IOException("R2 $status $code") {
-    /** Said to the person, not logged: what to do about it. */
-    val friendly: String
-        get() = when (code) {
-            "storage_not_connected" -> "Your Cloudflare storage is disconnected. Connect it again in Storage."
-            "size_mismatch" -> "Cloudflare stored a different size than the phone sent. Save it again."
-            "file_too_large" -> "This video is too large to save to Cloudflare R2."
-            "storage_unavailable" -> "Cloudflare R2 isn't answering. Try again later."
-            "upload_gone" -> "The upload expired. Save it again."
-            else -> "Couldn't save to Cloudflare ($code)."
-        }
+    /** Said to the person, not logged: what to do about it. Names Cloudflare, the provider this class began with. */
+    val friendly: String get() = friendly("Cloudflare")
+
+    /** The same, naming where the video was going ([provider] is "Google Drive", "Cloudflare R2", …). */
+    fun friendly(provider: String): String = when (code) {
+        "storage_not_connected" -> "Your $provider storage is disconnected. Connect it again in Storage."
+        "size_mismatch" -> "$provider stored a different size than the phone sent. Save it again."
+        "file_too_large" -> "This video is too large to save to $provider."
+        "storage_unavailable" -> "$provider isn't answering. Try again later."
+        "upload_gone" -> "The upload expired. Save it again."
+        "insufficient_storage" -> "Your $provider doesn't have enough free space for this video."
+        "reauthorization_required" -> "$provider needs you to sign in again. Open Storage and sign in."
+        "provider_rate_limited" -> "$provider is limiting uploads right now. Try again later."
+        "upload_incomplete" -> "$provider hasn't received the whole video yet. Save it again to continue."
+        else -> "Couldn't save to $provider ($code)."
+    }
 }
 
 /** The control plane's side of Save to Cloud. The video bytes never go through it. */
@@ -90,13 +100,23 @@ class R2Uploader(
     ): R2Done = withContext(Dispatchers.IO) {
         val size = channel.size()
         require(size > 0) { "Nothing to upload" }
-        val start = api.start(originIdentity, size, contentType, fileName)
+        run(api.start(originIdentity, size, contentType, fileName), { api.start(originIdentity, size, contentType, fileName) }, channel, size, onProgress)
+    }
+
+    /** Runs an upload the control plane has already started; [restart] begins a fresh one if it was lost. */
+    suspend fun run(
+        start: R2UploadStart,
+        restart: suspend () -> R2UploadStart,
+        channel: FileChannel,
+        size: Long,
+        onProgress: (sent: Long, total: Long) -> Unit,
+    ): R2Done = withContext(Dispatchers.IO) {
         try {
             send(start, channel, size, onProgress)
         } catch (gone: R2ApiException) {
             // The open upload vanished (aborted, or the bucket was disconnected meanwhile): begin again once.
             if (gone.code != "upload_gone") throw gone
-            send(api.start(originIdentity, size, contentType, fileName), channel, size, onProgress)
+            send(restart(), channel, size, onProgress)
         }
     }
 
@@ -162,35 +182,35 @@ class R2Uploader(
         }
     }
 
-    /** Reads one part straight from the file, positionally, so retries and resumes never copy it into memory. */
-    private class ChannelRegionBody(
-        private val channel: FileChannel,
-        private val offset: Long,
-        private val length: Long,
-        private val onBytes: (Long) -> Unit,
-    ) : RequestBody() {
-        override fun contentType(): MediaType? = null
-        override fun contentLength(): Long = length
-        override fun writeTo(sink: BufferedSink) {
-            val buffer = ByteBuffer.allocate(256 * 1024)
-            var position = offset
-            var remaining = length
-            while (remaining > 0) {
-                buffer.clear()
-                buffer.limit(minOf(buffer.capacity().toLong(), remaining).toInt())
-                val read = channel.read(buffer, position)
-                if (read <= 0) throw IOException("The video ended early")
-                sink.write(buffer.array(), 0, read)
-                position += read
-                remaining -= read
-                onBytes(length - remaining)
-            }
-        }
-    }
-
     private companion object {
         const val BATCH = 4
         const val MAX_ATTEMPTS = 4
+    }
+}
+
+/** Reads one part or chunk straight from the file, positionally, so retries and resumes never copy it into memory. */
+internal class ChannelRegionBody(
+    private val channel: FileChannel,
+    private val offset: Long,
+    private val length: Long,
+    private val onBytes: (Long) -> Unit,
+) : RequestBody() {
+    override fun contentType(): MediaType? = null
+    override fun contentLength(): Long = length
+    override fun writeTo(sink: BufferedSink) {
+        val buffer = ByteBuffer.allocate(256 * 1024)
+        var position = offset
+        var remaining = length
+        while (remaining > 0) {
+            buffer.clear()
+            buffer.limit(minOf(buffer.capacity().toLong(), remaining).toInt())
+            val read = channel.read(buffer, position)
+            if (read <= 0) throw IOException("The video ended early")
+            sink.write(buffer.array(), 0, read)
+            position += read
+            remaining -= read
+            onBytes(length - remaining)
+        }
     }
 }
 

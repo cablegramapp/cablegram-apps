@@ -417,15 +417,15 @@ class LibraryStore private constructor(private val context: Context) {
      * Makes a phone copy of [item]. With [remoteUrl] (a presigned read URL for the user's own R2 bucket, spec 005)
      * the bytes come from there, which is how a title freed up from the phone comes back.
      */
-    fun materialize(item: LibraryItem, remoteUrl: String? = null, onProgress: (Long, Long) -> Unit = { _, _ -> }): LibraryItem {
+    fun materialize(item: LibraryItem, remote: ReadUrl? = null, onProgress: (Long, Long) -> Unit = { _, _ -> }): LibraryItem {
         if (videoFile(item).exists()) return item.copy(copied = true)
         val dest = videoFile(item)
         val total = item.fileSizeBytes ?: 0L
-        if (remoteUrl != null) {
-            val request = okhttp3.Request.Builder().url(remoteUrl).build()
+        if (remote != null) {
+            val request = okhttp3.Request.Builder().url(remote.url).apply { remote.headers.forEach { (name, value) -> header(name, value) } }.build()
             okhttp3.OkHttpClient.Builder().readTimeout(2, java.util.concurrent.TimeUnit.MINUTES).build().newCall(request).execute().use { response ->
-                check(response.isSuccessful) { "Cloudflare didn't send the video (${response.code})." }
-                val body = response.body ?: error("Cloudflare sent an empty answer.")
+                check(response.isSuccessful) { cloudDownloadMessage(response.code) }
+                val body = response.body ?: error("Your cloud storage sent an empty answer.")
                 body.byteStream().use { copyWithProgress(it, dest, total.takeIf { t -> t > 0 } ?: body.contentLength(), onProgress) }
             }
         } else {
