@@ -336,6 +336,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         // the TV giver timeout is ~2 minutes).
         private const val PENDING_APPROVAL_POLL_MS = 5_000L
         private const val HOUSEHOLD_TVS_REFRESH_MS = 60_000L
+        /** How long a finished command's result stays in [remoteStatus] before it clears. */
+        private const val REMOTE_STATUS_LINGER_MS = 6_000L
     }
 
     fun refresh() {
@@ -655,6 +657,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private var householdTvsCheckedAt = 0L
+    /** The household's TVs as of the last refresh; routing uses it instead of a request per press. */
+    private var householdTvsCache: List<MeDevice>? = null
 
     /**
      * The control plane is the source of truth for the household's TVs: TVs paired by another phone
@@ -664,6 +668,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val token = pairing.accountToken ?: return
         val server = catalog().householdTvs(token) ?: return
         householdTvsCheckedAt = System.currentTimeMillis()
+        householdTvsCache = server
         val activeIds = server.map { it.id }.toSet()
         val local = pairing.tvs
         val kept = local.filter { it.deviceId == null || it.deviceId in activeIds }
@@ -2431,16 +2436,20 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             val ready = ensurePlayable(item) ?: return@launch
-            // Only show "now playing" once the control service accepted it.
-            val target = sendCommand("play", ready.id) ?: run {
+            // Only show "now playing" once the TV confirmed that playback started.
+            val sent = sendCommand("play", ready.id, wait = ConfirmationWait.TitleStart) ?: run {
                 status = remoteStatus
                 return@launch
             }
+            // A later command owns the status line; this one only applies what the TV confirmed.
+            if (sent.latest) status = remoteStatus
+            if (!sent.outcome.applies()) return@launch
             nowPlaying = ready
             paused = false
             store.setWatchProgress(ready.id, ready.positionSeconds.coerceAtLeast(1))
             refresh()
-            status = "Playing ${ready.title} on $target"
+            if (sent.latest) status = if (sent.outcome == Outcome.Confirmed) "Playing ${ready.title} on ${sent.tvName}"
+                else "Sent ${ready.title} to ${sent.tvName} (not confirmed by TV)"
         }
     }
 
@@ -2455,16 +2464,31 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         enqueue("seek", arguments = buildJsonObject { put("seconds", delta) })
     }
 
+    /** True while a play/pause waits for the TV, so a second tap cannot resend the same command. */
+    private var toggleInFlight = false
+
     fun togglePlayPause() {
-        paused = !paused
+        if (toggleInFlight) return
+        toggleInFlight = true
         // A play command without a video ID resumes the current player.
-        enqueue(if (paused) "pause" else "play")
+        val command = if (paused) "play" else "pause"
+        viewModelScope.launch {
+            try {
+                val outcome = sendCommand(command)?.outcome ?: return@launch
+                if (outcome.applies()) paused = command == "pause"
+            } finally {
+                toggleInFlight = false
+            }
+        }
     }
 
     fun stopCast() {
-        enqueue("stop")
-        nowPlaying = null
-        paused = false
+        viewModelScope.launch {
+            val outcome = sendCommand("stop")?.outcome ?: return@launch
+            if (!outcome.applies()) return@launch
+            nowPlaying = null
+            paused = false
+        }
     }
 
     fun selectTv(tv: PairedTv) {
@@ -2822,13 +2846,50 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { sendCommand(command, videoId, arguments) }
     }
 
-    /** Returns the TV name, or null on failure. */
-    private suspend fun sendCommand(command: String, videoId: String? = null, arguments: JsonObject = buildJsonObject {}): String? {
-        remoteStatus = "Sending…"
-        return when (val result = CastSession.send(pairing, catalog(), command, videoId, arguments)) {
-            is CastSession.Result.Sent -> result.tvName.also { remoteStatus = "Sent to $it" }
-            is CastSession.Result.Failed -> null.also { remoteStatus = result.message }
+    /** Whether the TV's result (or the lack of a way to read it) lets the phone update its state. */
+    private fun Outcome.applies() = this == Outcome.Confirmed || this == Outcome.Unconfirmable
+
+    /** A command the control service accepted. [latest] is false once a newer command was sent. */
+    private data class SentCommand(val tvName: String, val outcome: Outcome, val latest: Boolean)
+
+    /** Counts sends, so only the newest command narrates [remoteStatus]. */
+    private var commandGeneration = 0L
+
+    /**
+     * Sends a command and waits for the TV's outcome, narrating it in [remoteStatus] while it is the
+     * newest command. Returns null when the control service did not accept the command.
+     */
+    private suspend fun sendCommand(
+        command: String,
+        videoId: String? = null,
+        arguments: JsonObject = buildJsonObject {},
+        wait: ConfirmationWait = ConfirmationWait.Control(),
+    ): SentCommand? {
+        val generation = ++commandGeneration
+        fun report(text: String) { if (generation == commandGeneration) remoteStatus = text }
+        // A finished command's result stays long enough to read, then clears if nothing newer replaced it.
+        fun reportFinal(text: String) {
+            report(text)
+            viewModelScope.launch {
+                delay(REMOTE_STATUS_LINGER_MS)
+                if (generation == commandGeneration && remoteStatus == text) remoteStatus = null
+            }
         }
+        report("Sending…")
+        val client = catalog()
+        val sent = when (val result = CastSession.send(pairing, client, command, videoId, arguments, householdTvsCache)) {
+            is CastSession.Result.Sent -> result
+            is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
+        }
+        report(if (command == "play" && videoId != null) "Starting on ${sent.tvName}…" else "Sent to ${sent.tvName}…")
+        val outcome = CastSession.confirm(client, sent, wait)
+        reportFinal(when (outcome) {
+            Outcome.Confirmed -> "Done on ${sent.tvName}"
+            is Outcome.Rejected -> rejectionMessage(outcome.reason, sent.tvName)
+            Outcome.TimedOut -> "${sent.tvName} didn't confirm. Check the TV."
+            Outcome.Unconfirmable -> "Sent (not confirmed by TV)"
+        })
+        return SentCommand(sent.tvName, outcome, latest = generation == commandGeneration)
     }
 
     private fun publishCast() {

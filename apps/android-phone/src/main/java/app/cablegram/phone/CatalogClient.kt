@@ -13,9 +13,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resumeWithException
 import okhttp3.Authenticator
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -782,7 +785,7 @@ class CatalogClient(
             .get()
             .build()
         runCatching {
-            client.newCall(request).execute().use { response ->
+            client.newCall(request).await().use { response ->
                 if (!response.isSuccessful) return@use null
                 json.decodeFromString<MeResponse>(response.body?.string().orEmpty())
                     .devices.filter { it.kind == "tv" && it.revokedAt.isNullOrBlank() }
@@ -894,22 +897,80 @@ class CatalogClient(
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
     }
 
-    /** T078 / R-8: send a remote-control command, optionally targeted at one TV. */
+    /**
+     * T078 / R-8: send a remote-control command to one TV. [Accepted] means the server stored it,
+     * not that the TV ran it; see [commandStatus]. A network error is retried once with the same
+     * body, so the same client-generated ID makes the retry harmless. If both attempts fail on the
+     * network, the status is read once: the first attempt may have reached the server after all.
+     */
     suspend fun postCommand(
         token: String,
         command: String,
         videoId: String? = null,
         targetDeviceId: String? = null,
         arguments: kotlinx.serialization.json.JsonObject = buildJsonObject {},
-    ): Boolean = withContext(Dispatchers.IO) {
-        if (targetDeviceId.isNullOrBlank()) return@withContext false
-        val payload = remoteCommandBody(command, targetDeviceId, videoId, arguments)
+    ): CommandSend = withContext(Dispatchers.IO) {
+        if (targetDeviceId.isNullOrBlank()) return@withContext CommandSend.Failed
+        val id = java.util.UUID.randomUUID().toString()
+        val payload = json.encodeToString(remoteCommandBody(command, targetDeviceId, videoId, arguments, id))
+        suspend fun attempt(): CommandSend = client.newCall(
+            Request.Builder()
+                .url("${baseUrl.trimEnd('/')}/api/control/commands")
+                .header("Authorization", "Bearer $token")
+                .post(payload.toRequestBody("application/json".toMediaType()))
+                .build(),
+        ).await().use { response ->
+            when {
+                response.isSuccessful -> CommandSend.Accepted(id)
+                // The server names the revoked or removed TV; anything else stays a plain failure.
+                response.code == 400 && response.body?.string()?.contains("unknown_target_device") == true -> CommandSend.TargetGone
+                else -> CommandSend.Failed
+            }
+        }
+        try {
+            attempt()
+        } catch (_: java.io.IOException) {
+            try {
+                attempt()
+            } catch (_: java.io.IOException) {
+                // Stored by a request whose response was lost: the TV will run it, so report it as sent.
+                if (commandStatus(token, id) is CommandStatus.Known) CommandSend.Accepted(id) else CommandSend.Failed
+            } catch (_: Exception) { CommandSend.Failed }
+        } catch (_: Exception) { CommandSend.Failed }
+    }
+
+    /** What the TV did with a command; null when the status could not be read right now. */
+    suspend fun commandStatus(token: String, id: String): CommandStatus? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/control/commands")
+            .url("${baseUrl.trimEnd('/')}/api/control/commands/$id")
             .header("Authorization", "Bearer $token")
-            .post(json.encodeToString(payload).toRequestBody("application/json".toMediaType()))
+            .get()
             .build()
-        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+        runCatching {
+            client.newCall(request).await().use { response ->
+                when {
+                    // This endpoint answers an unknown command with `not_found`, which is not final:
+                    // keep asking. Any other 404 (Fastify's route-not-found, or a proxy page) is a
+                    // server without the endpoint, so the TV's result cannot be read.
+                    response.code == 404 -> {
+                        val error = runCatching {
+                            (json.parseToJsonElement(response.body?.string().orEmpty()) as? JsonObject)
+                                ?.get("error")?.jsonPrimitive?.contentOrNull
+                        }.getOrNull()
+                        if (error == "not_found") null else CommandStatus.Unsupported
+                    }
+                    !response.isSuccessful -> null
+                    else -> {
+                        val body = json.parseToJsonElement(response.body?.string().orEmpty()) as JsonObject
+                        CommandStatus.Known(
+                            state = (body["status"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+                            reason = (body["reason"] as? JsonPrimitive)?.contentOrNull,
+                            expiresInMs = (body["expires_in_ms"] as? JsonPrimitive)?.longOrNull,
+                        )
+                    }
+                }
+            }
+        }.getOrNull()
     }
 
     suspend fun pushLibrary(
@@ -1088,3 +1149,16 @@ class CatalogClient(
 enum class AccountDeletionResult { Deleted, WrongPassword, RateLimited, SessionExpired, Offline, Failed }
 
 enum class PhoneDeviceStatus { Registered, Missing, Unknown }
+
+/**
+ * Runs the call so that cancelling the coroutine cancels the request. A blocking `execute()` keeps
+ * running until OkHttp's own timeout, which would defeat a caller's time budget.
+ */
+private suspend fun okhttp3.Call.await(): okhttp3.Response = suspendCancellableCoroutine { cont ->
+    cont.invokeOnCancellation { cancel() }
+    enqueue(object : okhttp3.Callback {
+        override fun onFailure(call: okhttp3.Call, e: java.io.IOException) = cont.resumeWithException(e)
+        override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) =
+            cont.resume(response) { _, value, _ -> value.close() }
+    })
+}

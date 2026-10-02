@@ -30,4 +30,62 @@ class RemoteCommandsTest {
     fun `missing target cannot broadcast a remote action`() {
         remoteCommandBody("stop", "")
     }
+
+    @Test
+    fun `the body carries a client-generated UUID id`() {
+        val body = remoteCommandBody("pause", "living-room")
+        val id = body["id"]?.jsonPrimitive?.content
+        assertEquals(id, java.util.UUID.fromString(id).toString())
+        assertEquals("fixed", remoteCommandBody("pause", "living-room", id = "fixed")["id"]?.jsonPrimitive?.content)
+    }
+
+    private fun device(id: String, name: String? = null) = MeDevice(id = id, kind = "tv", displayName = name)
+    private val living = PairedTv(pin = "1", name = "Living room", deviceId = "tv-1")
+
+    @Test
+    fun `a selected TV present in the household is the target`() {
+        val target = resolveTarget(living, listOf(device("tv-2", "Bedroom"), device("tv-1")))
+        assertEquals(TargetResult.Target("tv-1", "Living room"), target)
+    }
+
+    @Test
+    fun `a selected TV missing from the household fails instead of using another TV`() {
+        val result = resolveTarget(living, listOf(device("tv-2", "Bedroom")))
+        assertEquals(TargetResult.Failed("Living room is no longer connected. Choose a TV in Settings."), result)
+    }
+
+    @Test
+    fun `with no selection the first household TV is the default`() {
+        assertEquals(TargetResult.Target("tv-2", "Bedroom"), resolveTarget(null, listOf(device("tv-2", "Bedroom"), device("tv-3"))))
+        assertTrue(resolveTarget(null, emptyList()) is TargetResult.Failed)
+    }
+
+    @Test
+    fun `offline uses the selected TV's stored id`() {
+        assertEquals(TargetResult.Target("tv-1", "Living room"), resolveTarget(living, null))
+        assertTrue(resolveTarget(null, null) is TargetResult.Failed)
+    }
+
+    private val legacy = PairedTv(pin = "9", name = "Old TV")
+
+    @Test
+    fun `a TV paired without a device id uses the household's only TV`() {
+        assertEquals(TargetResult.Target("tv-2", "Old TV"), resolveTarget(legacy, listOf(device("tv-2", "Bedroom"))))
+    }
+
+    @Test
+    fun `a TV paired without a device id asks for a choice when there are several`() {
+        assertEquals(
+            TargetResult.Failed("Choose which TV to control in Settings."),
+            resolveTarget(legacy, listOf(device("tv-2"), device("tv-3"))),
+        )
+        assertTrue(resolveTarget(legacy, emptyList()) is TargetResult.Failed)
+        assertTrue(resolveTarget(legacy, null) is TargetResult.Failed)
+    }
+
+    @Test
+    fun `superseded and cancelled title starts say what happened`() {
+        assertEquals("Another title was started on Den.", rejectionMessage("superseded", "Den"))
+        assertEquals("Playback was cancelled on Den.", rejectionMessage("cancelled", "Den"))
+    }
 }
