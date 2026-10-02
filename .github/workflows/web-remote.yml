@@ -1,0 +1,36 @@
+name: Web remote
+# Publishes apps/web-remote to Cloudflare (Workers static assets, as the homepage is) from a tagged commit, so the live site is exactly a commit of this
+# repository. Tag it `web-v1.0.0`; the Android releases use `v*` tags and are not affected.
+on:
+  push:
+    tags: ["web-v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-remote-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Tests
+        working-directory: apps/web-remote
+        run: npm test
+      - name: Assemble the site
+        working-directory: apps/web-remote
+        # Also writes version.txt and SHA256SUMS, so anyone can compare what is live with this repository.
+        run: npm run build
+      - name: Publish with Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/web-remote
+          command: deploy

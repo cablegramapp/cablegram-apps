@@ -48,3 +48,22 @@ GitHub release is the copy you can check against this repository.
 It shows that an APK was built from a public commit and signed with the release key. It does not show that
 the Cablegram servers are honest: they are not part of this repository. Builds are not yet reproducible, so
 you cannot rebuild the identical file yourself; that is planned.
+
+## The web remote
+
+The web remote is a web app, not an APK, so there is no signature to check. It is published by the
+[Web remote workflow](.github/workflows/web-remote.yml) from a `web-v*` tag. The live site serves
+`/version.txt` (the tag and the commit) and `/SHA256SUMS` (a hash of every file). Check out that commit and
+compare:
+
+```sh
+curl -s https://app.cablegram.app/version.txt     # line 1: the tag, line 2: the commit
+git checkout <that commit>
+cd apps/web-remote
+GITHUB_REF_NAME=<that tag> GITHUB_SHA=<that commit> npm run build
+cd dist && curl -s https://app.cablegram.app/SHA256SUMS | sha256sum -c -
+```
+
+Every line must say `OK`. A web app is delivered fresh each time it loads, so this
+shows what is served now, not what a later visit will serve. The app never holds a Telegram session, which is
+what the code in `src/` lets you confirm.
