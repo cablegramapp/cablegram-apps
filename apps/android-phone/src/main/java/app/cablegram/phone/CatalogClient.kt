@@ -11,9 +11,11 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -526,6 +528,40 @@ class CatalogClient(
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
     }
 
+    suspend fun patchMetadata(token: String, item: LibraryItem): MetadataSyncResult = withContext(Dispatchers.IO) {
+        val catalogId = item.catalogItemId ?: return@withContext MetadataSyncResult.Failed
+        val editId = item.metadataEditId ?: return@withContext MetadataSyncResult.Failed
+        val body = json.encodeToString(buildJsonObject {
+            put("expected_revision", item.metadataRevision)
+            put("edit_id", editId)
+            for (field in item.pendingMetadataFields) when (field) {
+                "title" -> put("title", item.title)
+                "year" -> put("year", item.year?.let(::JsonPrimitive) ?: JsonNull)
+                "overview" -> put("overview", item.overview?.let(::JsonPrimitive) ?: JsonNull)
+                "mediaType" -> put("media_type", item.mediaType)
+            }
+        })
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/catalog/items/$catalogId")
+            .header("Authorization", "Bearer $token").patch(body.toRequestBody("application/json".toMediaType())).build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (response.isSuccessful) {
+                    val wire = Json.parseToJsonElement(text).jsonObject
+                    if (wire["metadata_revision"]?.jsonPrimitive?.intOrNull == null || wire["user_metadata_fields"] == null) return@use MetadataSyncResult.Failed
+                    val saved = json.decodeFromString<RemoteCatalogItem>(text)
+                    val sentFields = item.pendingMetadataFields.map { if (it == "mediaType") "media_type" else it }.toSet()
+                    if (saved.id != catalogId || saved.metadataRevision <= item.metadataRevision || !saved.userMetadataFields.containsAll(sentFields)) return@use MetadataSyncResult.Failed
+                    MetadataSyncResult.Saved(saved)
+                }
+                else if (response.code == 409) {
+                    val current = Json.parseToJsonElement(text).jsonObject["current"] ?: return@use MetadataSyncResult.Failed
+                    MetadataSyncResult.Conflict(json.decodeFromString<RemoteCatalogItem>(current.toString()))
+                } else MetadataSyncResult.Failed
+            }
+        }.getOrDefault(MetadataSyncResult.Failed)
+    }
+
     /** Hides or deletes a title (`hide`, `delete`, `delete_source`); null when the request failed. */
     suspend fun removeTelegramTitle(token: String, itemId: String, mode: String, stableSourceKey: String? = null): TelegramRemovalResult? = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
@@ -981,7 +1017,7 @@ class CatalogClient(
     ): Boolean {
         var all = true
         for (item in items) {
-            if (!pushLibraryItem(token, item, deviceId, posterProvider)) all = false
+            if (!pushLibraryItem(token, item, deviceId, posterProvider = posterProvider)) all = false
         }
         return all
     }
@@ -991,15 +1027,16 @@ class CatalogClient(
         token: String,
         item: LibraryItem,
         deviceId: String? = null,
+        onImported: (String) -> Unit = {},
         posterProvider: suspend (LibraryItem) -> ByteArray? = { null },
     ): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("origin_filename", item.filename.ifBlank { item.title })
             put("origin_identity", item.id)
-            if (!isWeakLocalTitle(item)) put("title", item.title)
+            if ("title" !in item.pendingMetadataFields && !isWeakLocalTitle(item)) put("title", item.title)
             item.posterUrl?.let { put("poster_url", it) }
             item.durationSeconds?.let { put("duration_seconds", it) }
-            put("media_type", item.mediaType)
+            if ("mediaType" !in item.pendingMetadataFields) put("media_type", item.mediaType)
             put("private", item.isPrivate)
             if (item.genres.isNotEmpty()) put("genres", buildJsonArray { item.genres.forEach(::add) })
             if (item.sourceUri != null) {
@@ -1020,6 +1057,7 @@ class CatalogClient(
                 response.body?.string()?.let { json.decodeFromString<CatalogImportResponse>(it) }
             }
         }.getOrNull() ?: return@withContext false
+        onImported(imported.id)
         if (item.posterUrl.isNullOrBlank() && !item.isPrivate) {
             val poster = posterProvider(item)
             if (poster != null && !uploadPoster(token, imported.id, poster)) return@withContext false

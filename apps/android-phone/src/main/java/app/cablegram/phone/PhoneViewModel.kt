@@ -1306,7 +1306,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 fingerprinted.forEach { item ->
                     val prior = before.firstOrNull { b -> b.id == item.id }
                     if (item.fingerprint != null && prior?.fingerprint != item.fingerprint) {
-                        store.update(item)
+                        store.updateItem(item.id) { it.copy(fingerprint = item.fingerprint) }
                     }
                 }
                 val phoneItems = fingerprinted.filter { it.sourceKind == "phone_local" }
@@ -1316,7 +1316,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 // changes availability; it must never delete the user's catalog.
                 phoneItems.forEach { item ->
                     val available = item.id in presentIds
-                    if (item.sourceAvailable != available) store.update(item.copy(sourceAvailable = available))
+                    if (item.sourceAvailable != available) store.updateItem(item.id) { it.copy(sourceAvailable = available) }
                 }
                 check(client.reconcileSources(token, present, pairing.phoneDeviceId) { it.fingerprint }) {
                     "Could not sync source availability"
@@ -1328,7 +1328,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     prepareProgress = (index + 1f) / items.size
                     prepareStep = "Syncing ${item.title}"
                     val ok = runCatching {
-                        client.pushLibraryItem(token, item, pairing.phoneDeviceId) { _ ->
+                        client.pushLibraryItem(token, item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) { _ ->
                             store.posterFile(item)?.readBytes()
                         }
                     }.getOrDefault(false)
@@ -1338,6 +1338,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 prepareStep = null
                 prepareProgress = 0f
+                var metadataFailed = false
+                // Edits are persisted independently of source availability and survive process death.
+                for (item in store.list().filter { it.pendingMetadataFields.isNotEmpty() }) {
+                    if (item.metadataConflict) { metadataFailed = true; continue }
+                    val result = client.patchMetadata(token, item)
+                    store.acceptMetadata(item, result)
+                    if (result !is MetadataSyncResult.Saved) metadataFailed = true
+                }
                 val remotes = client.fetchCatalog(token, failOnError = true)
                 // Restore household titles this phone doesn't list (reinstall, new phone): re-link the
                 // ones whose file is still here by fingerprint, keep the rest as "not on this phone".
@@ -1391,21 +1399,19 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                     if (local != null) {
-                        store.update((store.get(local.id) ?: local).copy(
-                            title = if ("title" in local.userMetadataFields) local.title else remote.title?.takeIf { it.isNotBlank() } ?: local.title,
+                        store.updateItem(local.id) { current -> mergeManualMetadata(current.copy(
                             durationSeconds = remote.durationSeconds ?: local.durationSeconds,
                             // What groups a series' episodes under one poster comes from the household catalog.
                             tmdbId = remote.tmdbId ?: local.tmdbId,
                             seasonNumber = remote.seasonNumber ?: local.seasonNumber,
                             episodeNumber = remote.episodeNumber ?: local.episodeNumber,
-                            mediaType = if ("mediaType" in local.userMetadataFields) local.mediaType else remote.mediaType ?: local.mediaType,
                             posterUrl = if (catalogMayReplaceArtwork(local)) remote.posterUrl ?: local.posterUrl else local.posterUrl,
                             cloudObjectPresent = hasCloudObject || local.cloudObjectPresent,
                             // Saved to Telegram (here or on another phone): the server knows the verified copy.
                             telegramCopy = hasTelegramCopy && local.sourceKind == "phone_local",
                             storageState = if (hasCloudObject) STORAGE_CLOUD else local.storageState,
                             transferStatus = if (hasCloudObject) TRANSFER_IDLE else local.transferStatus,
-                        ))
+                        ), remote) }
                     } else {
                         val web = remote.sources.firstOrNull { it.kind == "web" && !it.canonicalUrl.isNullOrBlank() }
                         if (web != null) {
@@ -1416,7 +1422,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             durationSeconds = remote.durationSeconds,
                             canonicalUrl = web.canonicalUrl!!,
                             ))
-                            if (hasCloudObject) store.update(added.copy(cloudObjectPresent = true, storageState = STORAGE_CLOUD))
+                            store.mergeRemoteMetadata(added.id, remote)
+                            if (hasCloudObject) store.updateItem(added.id) { it.copy(cloudObjectPresent = true, storageState = STORAGE_CLOUD) }
                         } else {
                             val phoneSource = remote.sources.firstOrNull { it.kind == "phone_local" && it.archiveState != "archived" }
                             if (phoneSource != null && remote.id !in dismissed) {
@@ -1446,11 +1453,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 // Re-linked files become this phone's sources right away, so the TV can play them.
                 relinked.forEach { item ->
-                    store.update(item)
+                    store.updateItem(item.id) { it.copy(fingerprint = item.fingerprint) }
                     runCatching {
-                        client.pushLibraryItem(token, item, pairing.phoneDeviceId) { _ -> store.posterFile(item)?.readBytes() }
+                        client.pushLibraryItem(token, store.get(item.id) ?: item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) { _ -> store.posterFile(item)?.readBytes() }
                     }
                 }
+                check(!metadataFailed) { "Your detail edits are saved on this phone. Review any conflicting edits, or retry sync when connected." }
             }
             refresh()
             // Never interrupt a dialog that is already open; the queued titles follow it.
@@ -1995,12 +2003,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Saves a title edit on the phone; for a Telegram title (no phone file to push) the new title goes to the household too. */
-    private fun editMetadataAndSync(id: String, title: String, year: Int?, mediaType: String) {
-        store.editMetadata(id, title, year, mediaType)
-        val item = store.get(id) ?: return
-        val token = pairing.accountToken ?: return
-        if (item.sourceKind == "telegram") viewModelScope.launch { catalog().patchTitle(token, id, item.title) }
+    /** Commits locally; the library sync sends the durable edit independently of its video source. */
+    private fun editMetadataAndSync(id: String, title: String, year: Int?, mediaType: String, overview: String? = store.get(id)?.overview) {
+        store.editMetadata(id, title, year, mediaType, overview)
     }
 
     private fun clearTitlePromptUi() {
@@ -2158,9 +2163,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         promptNextTitle()
     }
 
-    fun saveMetadata(title: String, year: Int?, mediaType: String) {
-        val id = selectedId ?: return
-        editMetadataAndSync(id, title, year, mediaType)
+    fun saveMetadata(base: LibraryItem, title: String, year: Int?, mediaType: String, overview: String?) {
+        if (selectedId != base.id) return
+        store.editMetadataDraft(base, title, year, mediaType, overview)
         editingMetadata = false
         refresh()
         viewModelScope.launch { syncLibrary() }

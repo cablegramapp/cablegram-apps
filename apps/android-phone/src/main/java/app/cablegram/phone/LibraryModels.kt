@@ -61,6 +61,13 @@ data class LibraryItem(
     val householdOnly: Boolean = false,
     /** Fields explicitly saved by the user. Catalog refreshes must not replace them. */
     val userMetadataFields: Set<String> = emptySet(),
+    /** Server id differs from the local id for files imported on this phone. */
+    val catalogItemId: String? = null,
+    val metadataRevision: Int = 0,
+    /** Durable edits are retried on the next sync, including web and offline-only titles. */
+    val pendingMetadataFields: Set<String> = emptySet(),
+    val metadataEditId: String? = null,
+    val metadataConflict: Boolean = false,
     /** The user-selected artwork source. `legacy` preserves pre-migration posters. */
     val artworkOrigin: String = ARTWORK_LEGACY,
     /** True only after an explicit artwork choice; automatic thumbnails stay replaceable. */
@@ -198,6 +205,8 @@ data class RemoteCatalogItem(
     @SerialName("media_type") val mediaType: String? = null,
     val year: Int? = null,
     val overview: String? = null,
+    @SerialName("user_metadata_fields") val userMetadataFields: Set<String> = emptySet(),
+    @SerialName("metadata_revision") val metadataRevision: Int = 0,
     val genres: List<String> = emptyList(),
     @SerialName("tmdb_id") val tmdbId: Int? = null,
     @SerialName("season_number") val seasonNumber: Int? = null,

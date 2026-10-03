@@ -215,6 +215,9 @@ class LibraryStore private constructor(private val context: Context) {
             fingerprint = source.sourceFingerprint,
             isPrivate = source.isPrivate,
             householdOnly = true,
+            catalogItemId = remote.id,
+            metadataRevision = remote.metadataRevision,
+            userMetadataFields = remote.userMetadataFields.map { if (it == "media_type") "mediaType" else it }.toSet(),
             artworkOrigin = if (remote.posterUrl == null) ARTWORK_PLACEHOLDER else ARTWORK_CATALOG,
         )
         save(snapshot().copy(items = list() + item))
@@ -238,19 +241,15 @@ class LibraryStore private constructor(private val context: Context) {
             householdOnly = false,
             artworkOrigin = if (remote.posterUrl == null) ARTWORK_PLACEHOLDER else ARTWORK_CATALOG,
         )).copy(
-            title = if (existing != null && "title" in existing.userMetadataFields) existing.title
-            else remote.title?.takeIf { it.isNotBlank() } ?: existing?.title ?: name.substringBeforeLast('.'),
             durationSeconds = remote.durationSeconds ?: existing?.durationSeconds,
             genres = remote.genres,
             tmdbId = remote.tmdbId, seasonNumber = remote.seasonNumber, episodeNumber = remote.episodeNumber,
-            year = if (existing != null && "year" in existing.userMetadataFields) existing.year else remote.year,
-            overview = remote.overview,
             posterUrl = remote.posterUrl ?: existing?.posterUrl,
-            mediaType = if (existing != null && "mediaType" in existing.userMetadataFields) existing.mediaType else remote.mediaType ?: "movie",
             sourceAvailable = source.availability != "unavailable",
         )
-        if (existing == null) save(snapshot().copy(items = list() + item)) else update(item)
-        return item
+        val merged = mergeManualMetadata(item, remote)
+        if (existing == null) save(snapshot().copy(items = list() + merged)) else update(merged)
+        return merged
     }
 
     fun promptedTelegramIds(): Set<String> = snapshot().promptedTelegramIds.toSet()
@@ -445,6 +444,7 @@ class LibraryStore private constructor(private val context: Context) {
         get(response.id)?.let { return it }
         val item = LibraryItem(
             id = response.id,
+            catalogItemId = response.id,
             title = response.title,
             filename = response.canonicalUrl,
             fileName = response.id,
@@ -529,6 +529,7 @@ class LibraryStore private constructor(private val context: Context) {
         return updated
     }
 
+    @Synchronized
     fun applyCatalog(id: String, metadata: CatalogMetadata, posterFile: File?): LibraryItem? {
         val item = get(id) ?: return null
         val updated = item.copy(
@@ -770,14 +771,37 @@ class LibraryStore private constructor(private val context: Context) {
         )
     }
 
-    fun editMetadata(id: String, title: String, year: Int?, mediaType: String) {
+    @Synchronized
+    fun editMetadata(id: String, title: String, year: Int?, mediaType: String, overview: String? = get(id)?.overview) {
         val item = get(id) ?: return
-        update(item.copy(
-            title = title.trim().ifBlank { item.title },
-            year = year,
-            mediaType = mediaType,
-            userMetadataFields = item.userMetadataFields + setOf("title", "year", "mediaType"),
-        ))
+        update(commitManualMetadata(item, title, year, mediaType, overview))
+    }
+
+    @Synchronized
+    fun editMetadataDraft(base: LibraryItem, title: String, year: Int?, mediaType: String, overview: String?) {
+        get(base.id)?.let { update(commitManualMetadataDraft(it, base, title, year, mediaType, overview)) }
+    }
+
+    @Synchronized
+    fun setCatalogIdentity(id: String, catalogId: String) {
+        get(id)?.let { update(it.copy(catalogItemId = catalogId)) }
+    }
+
+    @Synchronized
+    fun acceptMetadata(sent: LibraryItem, result: MetadataSyncResult) {
+        val current = get(sent.id) ?: return
+        when (result) {
+            is MetadataSyncResult.Saved -> update(acknowledgeManualMetadata(current, sent, result.item))
+            is MetadataSyncResult.Conflict -> if (current.metadataEditId == sent.metadataEditId) update(current.copy(
+                metadataConflict = true, metadataRevision = result.item.metadataRevision,
+            ))
+            MetadataSyncResult.Failed -> Unit
+        }
+    }
+
+    @Synchronized
+    fun mergeRemoteMetadata(id: String, remote: RemoteCatalogItem) {
+        get(id)?.let { update(mergeManualMetadata(it, remote)) }
     }
 
     @Synchronized
