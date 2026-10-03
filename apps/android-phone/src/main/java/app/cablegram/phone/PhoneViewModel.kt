@@ -264,6 +264,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         refresh()
         restoreHouseholdName()
         refreshPendingApprovals()
+        // One poller serves the notification and this list: ApprovalWatcher, in LanLibraryService.
+        viewModelScope.launch { PrivateApprovals.pending.collect { pendingApprovals = it } }
         refreshPhoneIps()
         viewModelScope.launch { ads = catalog().ads() }
         refreshStorage()
@@ -307,7 +309,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                         status = "Your session expired. Sign in again to keep this TV connected."
                     }
                 }
-                if (paired) refreshPendingApprovals()
                 if (System.currentTimeMillis() - householdTvsCheckedAt > HOUSEHOLD_TVS_REFRESH_MS &&
                     !pairing.accountToken.isNullOrBlank()) {
                     householdTvsCheckedAt = System.currentTimeMillis()
@@ -357,11 +358,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** T075: refresh pending private-playback approvals for the in-app card. */
     fun refreshPendingApprovals() {
         val token = pairing.accountToken ?: run {
-            pendingApprovals = emptyList()
+            PrivateApprovals.pending.value = emptyList()
             return
         }
         viewModelScope.launch {
-            pendingApprovals = runCatching { catalog().fetchPendingPrivateApprovals(token) }.getOrDefault(emptyList())
+            PrivateApprovals.pending.value = runCatching { catalog().fetchPendingPrivateApprovals(token) }.getOrDefault(emptyList())
         }
     }
 
@@ -370,7 +371,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val token = pairing.accountToken ?: return
         val app = getApplication<Application>()
         PrivateApprovals.cancelNotification(app, approval.attemptId)
-        pendingApprovals = pendingApprovals.filterNot { it.attemptId == approval.attemptId }
+        PrivateApprovals.pending.value = PrivateApprovals.pending.value.filterNot { it.attemptId == approval.attemptId }
         viewModelScope.launch {
             runCatching {
                 val accepted = if (approve) catalog().approvePrivatePlayback(token, approval.attemptId) != null
@@ -804,7 +805,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         clearSignedInState()
         items = store.list()
         collections = store.collections()
-        pendingApprovals = emptyList()
+        PrivateApprovals.pending.value = emptyList()
         relayUsage = null
         emailVerified = null
         verifyingEmail = false
@@ -1544,7 +1545,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun resumePendingWebImports() {
         if (pairing.accountToken.isNullOrBlank()) return
-        store.snapshot().pendingWebImports.forEach { submitPendingWebImport(it, announce = false) }
+        // A link the server rejected for good (kept by older versions) is dropped, not sent again.
+        val (rejected, retryable) = store.snapshot().pendingWebImports.partition { isPermanentWebImportError(it.lastError) }
+        rejected.forEach { store.completeWebImport(it.id) }
+        retryable.forEach { submitPendingWebImport(it, announce = false) }
     }
 
     private fun submitPendingWebImport(pending: PendingWebImport, announce: Boolean) {
@@ -1567,7 +1571,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 status = "Added ${item.title} to your library"
             } catch (error: Exception) {
                 PairLog.e("Web import failed", error)
-                withContext(Dispatchers.IO) { store.failWebImport(pending.id, error.message ?: "web_import_failed") }
+                withContext(Dispatchers.IO) {
+                    // Only a transient failure stays queued for the next launch.
+                    if (isPermanentWebImportError(error.message)) store.completeWebImport(pending.id)
+                    else store.failWebImport(pending.id, error.message ?: "web_import_failed")
+                }
                 status = when (error.message) {
                     "unsupported_site" -> "Cablegram cannot extract video from this site yet."
                     "no_video" -> "No playable video was found at that link."

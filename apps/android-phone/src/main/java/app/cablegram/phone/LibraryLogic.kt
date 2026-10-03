@@ -272,3 +272,7 @@ internal fun sharedImportResume(alreadyRegistered: Boolean, sourceReadable: Bool
     sourceReadable -> SharedImportResume.Copy
     else -> SharedImportResume.Drop
 }
+private val PERMANENT_WEB_IMPORT_ERRORS = setOf("unsupported_site", "no_video", "unsafe_url", "invalid_url")
+
+/** A web import the server rejected for good: submitting the same link again cannot succeed. */
+internal fun isPermanentWebImportError(error: String?): Boolean = error in PERMANENT_WEB_IMPORT_ERRORS

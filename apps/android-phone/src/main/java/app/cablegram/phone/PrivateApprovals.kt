@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -36,8 +37,12 @@ class ApprovalWatcher(private val context: Context, private val scope: Coroutine
             val seen = mutableSetOf<String>()
             while (isActive) {
                 val token = store.accountToken
-                if (!token.isNullOrBlank()) {
+                if (token.isNullOrBlank()) {
+                    PrivateApprovals.pending.value = emptyList()
+                } else {
                     runCatching { client.fetchPendingPrivateApprovals(token) }.onSuccess { pending ->
+                        // The in-app card reads this, so the app does not poll a second time.
+                        PrivateApprovals.pending.value = pending
                         // Notify only new attempts; an approved/denied/expired attempt stays out.
                         pending.filter { seen.add(it.attemptId) }.forEach { approval ->
                             PairLog.i("Approval pending attempt=${PairLog.pinTail(approval.attemptId)} title=${approval.title}")
@@ -52,7 +57,7 @@ class ApprovalWatcher(private val context: Context, private val scope: Coroutine
                         }
                     }.onFailure { PairLog.e("Approval watch poll failed", it) }
                 }
-                delay(POLL_MS)
+                delay(approvalPollDelayMs(PrivateApprovals.appVisible))
             }
         }
     }
@@ -62,12 +67,16 @@ class ApprovalWatcher(private val context: Context, private val scope: Coroutine
         job = null
     }
 
-    private companion object {
-        const val POLL_MS = 15_000L
-    }
 }
 
+/** The one poll for pending approvals: quick while the app is on screen, slow in the background. */
+internal fun approvalPollDelayMs(appVisible: Boolean): Long = if (appVisible) 6_000L else 15_000L
+
 object PrivateApprovals {
+    /** What the single poller ([ApprovalWatcher]) last saw; the in-app approval card shows this list. */
+    val pending = MutableStateFlow<List<PendingApproval>>(emptyList())
+    /** True while the app is on screen. */
+    @Volatile var appVisible = false
     private const val CHANNEL_ID = "private_approvals"
     /** Channel of the removed standalone watcher service; deleted so it leaves system settings. */
     private const val LEGACY_WATCH_CHANNEL_ID = "private_approvals_watcher"
