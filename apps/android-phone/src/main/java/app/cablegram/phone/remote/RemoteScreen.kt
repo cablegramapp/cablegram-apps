@@ -64,13 +64,13 @@ fun RemoteScreen(viewModel: PhoneViewModel) {
         SectionCard("Playback") {
             viewModel.nowPlaying?.let { Text(it.title, color = Color.White, style = MaterialTheme.typography.titleMedium) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                RemoteKey(Icons.Default.FastRewind, "Back 15 seconds") { viewModel.skipSeconds(-15) }
+                RemoteKey(Icons.Default.FastRewind, "Back ${CastRemoteReceiver.SEEK_SECONDS} seconds") { viewModel.skipSeconds(-CastRemoteReceiver.SEEK_SECONDS) }
                 FilledIconButton(onClick = viewModel::togglePlayPause, modifier = Modifier.size(64.dp)) {
                     Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, if (viewModel.paused) "Resume playback" else "Pause playback", Modifier.size(32.dp))
                 }
-                RemoteKey(Icons.Default.FastForward, "Forward 15 seconds") { viewModel.skipSeconds(15) }
+                RemoteKey(Icons.Default.FastForward, "Forward ${CastRemoteReceiver.SEEK_SECONDS} seconds") { viewModel.skipSeconds(CastRemoteReceiver.SEEK_SECONDS) }
             }
-            Text("Seek 15 seconds at a time", color = VlcMuted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterHorizontally))
+            Text("Seek ${CastRemoteReceiver.SEEK_SECONDS} seconds at a time", color = VlcMuted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.align(Alignment.CenterHorizontally))
             OutlinedButton(onClick = viewModel::remoteStop, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Stop, null); Spacer(Modifier.width(8.dp)); Text("Stop playback") }
         }
         SectionCard("Set TV volume") {

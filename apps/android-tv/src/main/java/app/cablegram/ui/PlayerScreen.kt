@@ -350,8 +350,9 @@ fun PlayerScreen(
             }
             KeyEvent.KEYCODE_MEDIA_REWIND -> {
                 if (event.action == KeyEvent.ACTION_DOWN) {
-                    player.seekTo(player.positionMs - PlaybackHud.SEEK_STEP_MS)
-                    currentPositionMs = (player.positionMs - PlaybackHud.SEEK_STEP_MS).coerceAtLeast(0)
+                    val target = PlaybackHud.seekTargetMs(player.positionMs, -PlaybackHud.SEEK_STEP_MS)
+                    player.seekTo(target)
+                    currentPositionMs = target
                     hud = hud.copy(seekFlashDeltaMs = -PlaybackHud.SEEK_STEP_MS, controlsVisible = false)
                     userInteractionCount++
                 }
@@ -587,9 +588,15 @@ fun PlayerScreen(
                     userInteractionCount++
                 }
                 "stop" -> exit()
-                "seek" -> player.seekTo(
-                    player.positionMs + (c.payload["seconds"]?.jsonPrimitive?.intOrNull ?: c.payload["value"]?.jsonPrimitive?.intOrNull ?: 0) * 1000L,
-                )
+                "seek" -> {
+                    val deltaMs = (c.payload["seconds"]?.jsonPrimitive?.intOrNull ?: c.payload["value"]?.jsonPrimitive?.intOrNull ?: 0) * 1000L
+                    player.seekTo(PlaybackHud.seekTargetMs(player.positionMs, deltaMs))
+                    // Same feedback as a D-pad seek.
+                    if (deltaMs != 0L) {
+                        hud = hud.copy(seekFlashDeltaMs = deltaMs, controlsVisible = false)
+                        userInteractionCount++
+                    }
+                }
                 "volume" -> c.payload["level"]?.jsonPrimitive?.intOrNull?.let {
                     val level = it.coerceIn(0, 100)
                     lastVolume = level / 100f
@@ -634,7 +641,7 @@ fun PlayerScreen(
                     userInteractionCount++
                 }
                 "previous" -> {
-                    player.seekTo((player.positionMs - PlaybackHud.SEEK_STEP_MS).coerceAtLeast(0L))
+                    player.seekTo(PlaybackHud.seekTargetMs(player.positionMs, -PlaybackHud.SEEK_STEP_MS))
                     hud = hud.copy(seekFlashDeltaMs = -PlaybackHud.SEEK_STEP_MS, controlsVisible = false)
                     userInteractionCount++
                 }
