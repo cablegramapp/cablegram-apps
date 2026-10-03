@@ -121,7 +121,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 // A single measured stack reserves space instead of covering content.
                 if (viewModel.prepareStep != null) PrepareCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 TransferCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                if (viewModel.nowPlaying != null && viewModel.cloudSheet == CloudSheet.None) {
+                if ((viewModel.nowPlaying != null || viewModel.startingTitle != null) && viewModel.cloudSheet == CloudSheet.None) {
                     RemoteBar(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
                 LibraryNav(viewModel)
@@ -1170,7 +1170,7 @@ private fun StackedDialogButtons(content: @Composable androidx.compose.foundatio
 
 @Composable
 private fun RemoteBar(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
-    val item = viewModel.nowPlaying ?: return
+    val lines = miniPlayerLines(viewModel.nowPlaying?.title, viewModel.startingTitle, viewModel.tvName, viewModel.remoteStatus) ?: return
     Row(
         modifier
             .fillMaxWidth()
@@ -1182,12 +1182,12 @@ private fun RemoteBar(viewModel: PhoneViewModel, modifier: Modifier = Modifier) 
     ) {
         Icon(Icons.Default.Tv, contentDescription = null, tint = VlcOrange)
         Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-            Text(item.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(lines.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
             // The command's progress and result show here, so a TV that does not confirm is visible
             // without opening the Remote tab.
-            Text(viewModel.remoteStatus ?: viewModel.tvName, color = VlcMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(lines.caption, color = VlcMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        IconButton(onClick = viewModel::togglePlayPause) {
+        if (lines.canToggle) IconButton(onClick = viewModel::togglePlayPause) {
             Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = if (viewModel.paused) "Resume playback" else "Pause playback", tint = Color.White)
         }
     }
