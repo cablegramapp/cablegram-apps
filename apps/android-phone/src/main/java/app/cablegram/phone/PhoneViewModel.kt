@@ -115,6 +115,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     var remoteStatus by mutableStateOf<String?>(null)
         private set
+    /** The title a TV was asked to start and has not answered for yet; null otherwise. */
+    var startingTitle by mutableStateOf<String?>(null)
+        private set
+    private var titleStartToken = 0L
     private var pausedState by mutableStateOf(false)
     var paused: Boolean
         get() = pausedState
@@ -260,9 +264,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         refresh()
         restoreHouseholdName()
         refreshPendingApprovals()
+        // One poller serves the notification and this list: ApprovalWatcher, in LanLibraryService.
+        viewModelScope.launch { PrivateApprovals.pending.collect { pendingApprovals = it } }
         refreshPhoneIps()
         viewModelScope.launch { ads = catalog().ads() }
         refreshStorage()
+        recoverSharedImports()
         resumePendingWebImports()
         resumeWebTransfers()
         if (paired) {
@@ -302,7 +309,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                         status = "Your session expired. Sign in again to keep this TV connected."
                     }
                 }
-                if (paired) refreshPendingApprovals()
                 if (System.currentTimeMillis() - householdTvsCheckedAt > HOUSEHOLD_TVS_REFRESH_MS &&
                     !pairing.accountToken.isNullOrBlank()) {
                     householdTvsCheckedAt = System.currentTimeMillis()
@@ -352,11 +358,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** T075: refresh pending private-playback approvals for the in-app card. */
     fun refreshPendingApprovals() {
         val token = pairing.accountToken ?: run {
-            pendingApprovals = emptyList()
+            PrivateApprovals.pending.value = emptyList()
             return
         }
         viewModelScope.launch {
-            pendingApprovals = runCatching { catalog().fetchPendingPrivateApprovals(token) }.getOrDefault(emptyList())
+            PrivateApprovals.pending.value = runCatching { catalog().fetchPendingPrivateApprovals(token) }.getOrDefault(emptyList())
         }
     }
 
@@ -365,7 +371,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val token = pairing.accountToken ?: return
         val app = getApplication<Application>()
         PrivateApprovals.cancelNotification(app, approval.attemptId)
-        pendingApprovals = pendingApprovals.filterNot { it.attemptId == approval.attemptId }
+        PrivateApprovals.pending.value = PrivateApprovals.pending.value.filterNot { it.attemptId == approval.attemptId }
         viewModelScope.launch {
             runCatching {
                 val accepted = if (approve) catalog().approvePrivatePlayback(token, approval.attemptId) != null
@@ -799,7 +805,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         clearSignedInState()
         items = store.list()
         collections = store.collections()
-        pendingApprovals = emptyList()
+        PrivateApprovals.pending.value = emptyList()
         relayUsage = null
         emailVerified = null
         verifyingEmail = false
@@ -1514,6 +1520,24 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Cleans up after a process death mid-import, then finishes any shared import it left unfinished. */
+    private fun recoverSharedImports() {
+        viewModelScope.launch {
+            val results = withContext(Dispatchers.IO) {
+                store.sweepVideos()
+                store.resumeSharedImports()
+            }
+            if (results.isEmpty()) return@launch
+            refresh()
+            val dropped = results.filterIsInstance<LibraryStore.SharedImportResult.Dropped>()
+            status = if (dropped.isNotEmpty()) {
+                "Could not finish importing ${dropped.joinToString { it.displayName }}: the file is no longer available."
+            } else {
+                "Finished importing ${results.filterIsInstance<LibraryStore.SharedImportResult.Imported>().joinToString { it.item.title }}."
+            }
+        }
+    }
+
     fun importWeb(url: String, caption: String? = null) {
         val pending = store.queueWebImport(url, caption)
         submitPendingWebImport(pending, announce = true)
@@ -1521,7 +1545,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun resumePendingWebImports() {
         if (pairing.accountToken.isNullOrBlank()) return
-        store.snapshot().pendingWebImports.forEach { submitPendingWebImport(it, announce = false) }
+        // A link the server rejected for good (kept by older versions) is dropped, not sent again.
+        val (rejected, retryable) = store.snapshot().pendingWebImports.partition { isPermanentWebImportError(it.lastError) }
+        rejected.forEach { store.completeWebImport(it.id) }
+        retryable.forEach { submitPendingWebImport(it, announce = false) }
     }
 
     private fun submitPendingWebImport(pending: PendingWebImport, announce: Boolean) {
@@ -1544,7 +1571,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 status = "Added ${item.title} to your library"
             } catch (error: Exception) {
                 PairLog.e("Web import failed", error)
-                withContext(Dispatchers.IO) { store.failWebImport(pending.id, error.message ?: "web_import_failed") }
+                withContext(Dispatchers.IO) {
+                    // Only a transient failure stays queued for the next launch.
+                    if (isPermanentWebImportError(error.message)) store.completeWebImport(pending.id)
+                    else store.failWebImport(pending.id, error.message ?: "web_import_failed")
+                }
                 status = when (error.message) {
                     "unsupported_site" -> "Cablegram cannot extract video from this site yet."
                     "no_video" -> "No playable video was found at that link."
@@ -2437,7 +2468,16 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val ready = ensurePlayable(item) ?: return@launch
             // Only show "now playing" once the TV confirmed that playback started.
-            val sent = sendCommand("play", ready.id, wait = ConfirmationWait.TitleStart) ?: run {
+            val token = ++titleStartToken
+            val sent = try {
+                sendCommand("play", ready.id, wait = ConfirmationWait.TitleStart, onAccepted = { tv ->
+                    startingTitle = ready.title
+                    status = "Starting ${ready.title} on $tv…"
+                })
+            } finally {
+                // A newer title start owns the field; this one only clears its own.
+                if (titleStartToken == token) startingTitle = null
+            } ?: run {
                 status = remoteStatus
                 return@launch
             }
@@ -2857,13 +2897,15 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     /**
      * Sends a command and waits for the TV's outcome, narrating it in [remoteStatus] while it is the
-     * newest command. Returns null when the control service did not accept the command.
+     * newest command. Returns null when the control service did not accept the command. [onAccepted]
+     * runs once the service accepted it, before the wait, and only while it is still the newest.
      */
     private suspend fun sendCommand(
         command: String,
         videoId: String? = null,
         arguments: JsonObject = buildJsonObject {},
         wait: ConfirmationWait = ConfirmationWait.Control(),
+        onAccepted: ((tvName: String) -> Unit)? = null,
     ): SentCommand? {
         val generation = ++commandGeneration
         fun report(text: String) { if (generation == commandGeneration) remoteStatus = text }
@@ -2882,6 +2924,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
         }
         report(if (command == "play" && videoId != null) "Starting on ${sent.tvName}…" else "Sent to ${sent.tvName}…")
+        // Only the newest command may touch what the screens show.
+        if (generation == commandGeneration) onAccepted?.invoke(sent.tvName)
         val outcome = CastSession.confirm(client, sent, wait)
         reportFinal(when (outcome) {
             Outcome.Confirmed -> "Done on ${sent.tvName}"
