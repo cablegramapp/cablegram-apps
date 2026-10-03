@@ -41,6 +41,28 @@ android {
         }
     }
     packaging { jniLibs.useLegacyPackaging = false }
+    // Sideload releases get one APK per ABI instead of a universal one (LibVLC and TDLib ship native
+    // code for four ABIs). -PCABLEGRAM_ABIS is an ndk filter and cannot be combined with splits, so a
+    // build that sets it still gets a single APK of those ABIs. Debug builds keep every ABI, x86_64
+    // included, for emulators. AGP cannot build a bundle with splits on, so run `assembleRelease` and
+    // `bundleRelease` as separate Gradle invocations (both in one gives a universal APK and the bundle).
+    splits {
+        abi {
+            val tasks = gradle.startParameter.taskNames
+            isEnable = project.findProperty("CABLEGRAM_ABIS") == null &&
+                tasks.any { it.contains("release", ignoreCase = true) } && tasks.none { it.contains("bundle", ignoreCase = true) }
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = false
+        }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
     buildFeatures {
         compose = true
         buildConfig = true
