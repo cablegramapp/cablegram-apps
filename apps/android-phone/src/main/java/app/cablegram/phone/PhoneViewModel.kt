@@ -267,6 +267,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         refreshPhoneIps()
         viewModelScope.launch { ads = catalog().ads() }
         refreshStorage()
+        recoverSharedImports()
         resumePendingWebImports()
         resumeWebTransfers()
         if (paired) {
@@ -1514,6 +1515,24 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 status = error.message ?: "Could not import that file"
             } finally {
                 busy = false
+            }
+        }
+    }
+
+    /** Cleans up after a process death mid-import, then finishes any shared import it left unfinished. */
+    private fun recoverSharedImports() {
+        viewModelScope.launch {
+            val results = withContext(Dispatchers.IO) {
+                store.sweepVideos()
+                store.resumeSharedImports()
+            }
+            if (results.isEmpty()) return@launch
+            refresh()
+            val dropped = results.filterIsInstance<LibraryStore.SharedImportResult.Dropped>()
+            status = if (dropped.isNotEmpty()) {
+                "Could not finish importing ${dropped.joinToString { it.displayName }}: the file is no longer available."
+            } else {
+                "Finished importing ${results.filterIsInstance<LibraryStore.SharedImportResult.Imported>().joinToString { it.item.title }}."
             }
         }
     }

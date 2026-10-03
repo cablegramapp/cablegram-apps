@@ -343,15 +343,101 @@ class LibraryStore private constructor(private val context: Context) {
         return UploadFile(target, temporary = true)
     }
 
+    /** Files being copied in right now (by stored name), which the sweep must leave alone. */
+    private val importing: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    /** Ids of shared imports running in this process, which a resume must not start a second time. */
+    private val importingIds: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    @Synchronized
+    private fun queueSharedImport(uri: Uri, displayName: String): PendingSharedImport {
+        val pending = PendingSharedImport(UUID.randomUUID().toString(), uri.toString(), displayName, Instant.now().toString())
+        val file = snapshot()
+        save(file.copy(pendingSharedImports = file.pendingSharedImports + pending))
+        return pending
+    }
+
+    @Synchronized
+    private fun completeSharedImport(id: String) {
+        val file = snapshot()
+        save(file.copy(pendingSharedImports = file.pendingSharedImports.filterNot { it.id == id }))
+    }
+
+    /**
+     * Records the import before copying, so a process death mid-copy is picked up by
+     * [resumeSharedImports]. A failure that is reported to the caller drops the record again.
+     */
     fun importUri(uri: Uri, displayName: String, metadata: CatalogMetadata?): LibraryItem {
-        val id = UUID.randomUUID().toString()
-        val ext = displayName.substringAfterLast('.', "mp4").ifBlank { "mp4" }
-        val storedName = "$id.$ext"
+        val pending = queueSharedImport(uri, displayName)
+        importingIds += pending.id
+        return try {
+            copyShared(pending, metadata)
+        } finally {
+            importingIds -= pending.id
+            completeSharedImport(pending.id)
+        }
+    }
+
+    /** Copies to `<name>.part`, renames it into place in one step, then registers it. */
+    private fun copyShared(pending: PendingSharedImport, metadata: CatalogMetadata?): LibraryItem {
+        val ext = pending.displayName.substringAfterLast('.', "mp4").ifBlank { "mp4" }
+        val storedName = "${pending.id}.$ext"
         val dest = File(videosDir, storedName)
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            dest.outputStream().use { input.copyTo(it) }
-        } ?: error("Could not read shared file")
-        return registerCopied(id, dest, storedName, displayName, uri.toString(), metadata)
+        val part = File(videosDir, "$storedName.part")
+        importing += storedName
+        try {
+            context.contentResolver.openInputStream(Uri.parse(pending.uri))?.use { input ->
+                part.outputStream().use { input.copyTo(it) }
+            } ?: error("Could not read shared file")
+            java.nio.file.Files.move(part.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+            return registerCopied(pending.id, dest, storedName, pending.displayName, pending.uri, metadata)
+        } catch (error: Exception) {
+            part.delete()
+            if (get(pending.id) == null) dest.delete()
+            throw error
+        } finally {
+            importing -= storedName
+        }
+    }
+
+    /** What happened to a shared import that a previous run left unfinished. */
+    sealed interface SharedImportResult {
+        data class Imported(val item: LibraryItem) : SharedImportResult
+        data class Dropped(val displayName: String) : SharedImportResult
+    }
+
+    /** Finishes shared imports a process death interrupted; one whose file can't be read any more is dropped. */
+    fun resumeSharedImports(): List<SharedImportResult> = snapshot().pendingSharedImports.filter { it.id !in importingIds }.map { pending ->
+        val registered = get(pending.id)
+        val readable = registered == null && runCatching {
+            context.contentResolver.openInputStream(Uri.parse(pending.uri))?.use { true } ?: false
+        }.getOrDefault(false)
+        when (sharedImportResume(registered != null, readable)) {
+            SharedImportResume.Finish -> SharedImportResult.Imported(registered!!)
+            SharedImportResume.Copy -> try {
+                SharedImportResult.Imported(copyShared(pending, null))
+            } catch (error: Exception) {
+                PairLog.e("Resuming shared import failed", error)
+                SharedImportResult.Dropped(pending.displayName)
+            }
+            SharedImportResume.Drop -> SharedImportResult.Dropped(pending.displayName)
+        }.also { completeSharedImport(pending.id) }
+    }
+
+    /**
+     * Deletes `.part` files and files in the videos folder that no library row points to (the current
+     * library and any set-aside one). Does nothing if a set-aside library can't be read.
+     */
+    fun sweepVideos(now: Long = System.currentTimeMillis()): Int {
+        val referenced = HashSet<String>()
+        list().forEach { referenced += it.fileName }
+        root.listFiles { file -> file.name.startsWith("index-") && file.name.endsWith(".json") }.orEmpty().forEach { stash ->
+            val stashed = runCatching { json.decodeFromString<LibraryFile>(stash.readText()) }.getOrNull() ?: return 0
+            stashed.items.forEach { referenced += it.fileName }
+        }
+        val files = videosDir.listFiles().orEmpty().filter { it.isFile }
+        val doomed = orphanedVideoFiles(files.map { VideoFileInfo(it.name, it.lastModified()) }, referenced, importing.toSet(), now)
+        doomed.forEach { File(videosDir, it).delete() }
+        return doomed.size
     }
 
     @Synchronized
