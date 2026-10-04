@@ -25,14 +25,14 @@ Results use: **pass**, **fail**, **not run** (nothing was tried), **needs physic
 | Pair (PIN from the TV, confirmed on the phone) | pass (physical) | pass (emulator) | The PIN rotates quickly; type it soon after reading it. |
 | Import (video from the phone's storage) | pass (physical, one clip and a multi-select of three) | pass (emulator) | The picker is multi-select; the app asks the approval question and the title lookup once per file. |
 | Select TV | pass (physical) | pass (emulator) | Pairing a second TV selects it; the chooser lists every household TV, stale ones included. |
-| Prepare (title is made ready before playing) | not run | not run | |
+| Prepare (the import-finish flow: "Preparing…", artwork lookup, "Saving library details") | pass (physical: Continue in the title dialog finished in under a second and the status ended "Added …") | not run | The intermediate steps were too short to catch at 0.6 s sampling. |
 | Play | pass (physical; H.264 clip, TV timecode advancing) | pass (emulator, 2026-10-02) | The relay run used a verified email and a device under the free limit. |
-| Pause / seek / resume | pause: pass (physical: mini-player and notification; TV timecode froze); seek and resume: not run on physical | pause and resume: pass (emulator); seek: not run | Seek is unit-tested only. |
+| Pause / seek / resume | pass (physical: forward moved the TV from 24 s to 38 s, back to 31 s; pause froze it at 32.667 s twice; resume ran on to 36.8 s and 41.3 s) | pause and resume: pass (emulator); seek: not run | The Remote tab reads "Seek 10 seconds at a time". |
 | TV offline (TV app stopped) | pass (physical) | pass (emulator) | Phone said "Sent to TV…", then "TV didn't confirm. Check the TV." about 8 s later, then cleared to the TV name about 6 s after that; its pause/play state never changed. |
 | TV restart | app restart: pass (physical: force-stop, relaunch, pick the profile, play again worked); device reboot: not run | not run | A reboot was not tried: wireless adb may not come back on a Chromecast. |
 | Phone in background | pass (physical: app sent Home, the notification's Pause froze the TV and the notification read "Paused on TV") | pass (emulator, notification remote) | Not a kill under memory pressure. |
-| Phone in doze (`adb shell dumpsys deviceidle force-idle`) | pass (physical: deep state `IDLE`, the TV played the 20 s, 70 MB clip to the end with no error) | not run | Short clip. A longer stream under Doze, and the notification remote in Doze, were not tried. |
-| Network change (Wi-Fi to mobile, or a drop and return) | not run | not run | adb was over Wi-Fi, so toggling Wi-Fi would have cut the connection. Needs USB. |
+| Phone in doze (`adb shell dumpsys deviceidle force-idle`) | pass (physical: deep state `IDLE`; the TV played a 3 min, 10 Mbps, 200 MB clip at normal speed, timecode 10 s to 118 s over about 107 s, and an earlier 20 s, 70 MB clip to the end) | not run | The notification's Pause during Doze could not be tried: its control was not in the shade that time. |
+| Network change (Wi-Fi to mobile, or a drop and return) | inconclusive (physical) | not run | A Wi-Fi drop was attempted twice, with an on-device script restoring Wi-Fi, but in the second run the TV had already stalled at 0:38 about 10 s before the script ran, showing "Free relay needs a confirmed email… or use the same Wi-Fi". The phone's address was unchanged (192.168.3.179) and the TV's log showed no network error, so the stall is unexplained and the row is open. Toggling Wi-Fi also dropped the Pixel's USB adb transport. |
 | Source unavailable (phone app killed during playback) | pass (physical) | not run | After the phone app was force-stopped, the TV kept playing the 12 MB clip (fully cached); for the 70 MB clip it showed "Your phone isn't reachable. Open Cablegram on the phone and check that it has internet." about 5 s later, without crashing. |
 | Codec: H.264 (8-bit, 1080p) | pass (physical, hardware `c2.amlogic.avc.decoder`) | pass (emulator) | |
 | Codec: HEVC (8-bit, 1080p) | pass (physical, hardware `c2.amlogic.hevc.decoder`) | not run | |
@@ -42,9 +42,9 @@ Results use: **pass**, **fail**, **not run** (nothing was tried), **needs physic
 ## Still open
 
 - Relay on the physical devices (needs a verified email and a device under the free limit).
-- Network change and device reboot (need USB, or a way to restore wireless adb).
-- Seek and resume on the physical devices, and a longer stream under Doze.
-- Prepare.
+- Network change: repeat on a quiet run, and find out why the TV stalled once at 0:38 with no network event.
+- Device reboot (wireless adb may not come back on a Chromecast).
+- The notification's Pause while in Doze.
 
 ## Found while testing
 
@@ -64,6 +64,7 @@ Results use: **pass**, **fail**, **not run** (nothing was tried), **needs physic
 - **After account deletion the TV stays signed in.** The control plane treats a TV device whose row no longer
   exists as "not revoked" (`isTvRevoked` in `src/http/authorize.ts`), so the TV's token keeps working and it just
   shows an empty library. This fails step 3 of the release gate in `docs/play-data-safety.md`; not fixed.
+- **A reinstalled test package gets its old data back.** Android's auto-backup restored the earlier session's library into a freshly installed `.verify` copy (the same thing as the \"Your session expired\" screen on a fresh emulator install). Clear the app's data after installing a test copy.
 - **Emulators are heavy.** Two emulators plus Gradle builds on one laptop made the runs slow, and both
   emulators eventually died. Run the matrix with one emulator at a time where possible.
 
@@ -75,3 +76,6 @@ Results use: **pass**, **fail**, **not run** (nothing was tried), **needs physic
 | 2026-10-03 | Pair, import, play | LAN (forwarded) | Pixel_10_Pro AVD, API 37, arm64 | CG_TV_1080p AVD, API 36 Android TV, arm64 | Emulator NAT, host-forwarded port 8765 | pass | R8 release builds from `build/apk-size`, against a local control plane. |
 | 2026-10-03 | Pair, import, select TV, play, pause, TV offline, background, doze, source unavailable, codecs | LAN | Pixel 8 Pro, Android 17 (API 37), arm64 | Chromecast with Google TV, Android 14 (API 34), armeabi-v7a | Home Wi-Fi, same subnet | pass | Debug builds from `origin/main` installed as `.verify` copies next to the owner's own builds, against `api.cablegram.app`; removed afterwards. |
 | 2026-10-03 | Account deletion (release gate step 3) | n/a | Pixel 8 Pro | Chromecast | Home Wi-Fi | sign-in fails: pass; rows gone: pass; TV signed out: **fail** | See "Found while testing". |
+| 2026-10-04 | Prepare, seek, resume, longer doze | LAN | Pixel 8 Pro, Android 17 (API 37), arm64 | Chromecast with Google TV, Android 14 (API 34), armeabi-v7a | Home Wi-Fi, same subnet | pass | Debug builds from `origin/main` (`53a62e1`), `.verify` copies; removed afterwards. |
+| 2026-10-04 | Network change (Wi-Fi drop and return) | LAN | as above | as above | as above | inconclusive | One unexplained stall at 0:38 before the drop; see the matrix row. |
+
