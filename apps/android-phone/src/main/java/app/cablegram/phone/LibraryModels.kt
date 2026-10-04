@@ -51,6 +51,8 @@ data class LibraryItem(
     val telegramCopy: Boolean = false,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
+    /** Exact identity explicitly reviewed in the editor; background lookup must not replace it. */
+    val catalogIdentityUserSelected: Boolean = false,
     val seasonNumber: Int? = null,
     val episodeNumber: Int? = null,
     @SerialName("private") val isPrivate: Boolean = false,
@@ -209,6 +211,7 @@ data class RemoteCatalogItem(
     @SerialName("metadata_revision") val metadataRevision: Int = 0,
     val genres: List<String> = emptyList(),
     @SerialName("tmdb_id") val tmdbId: Int? = null,
+    @SerialName("series_identity") val seriesIdentity: String? = null,
     @SerialName("season_number") val seasonNumber: Int? = null,
     @SerialName("episode_number") val episodeNumber: Int? = null,
     @SerialName("match_status") val matchStatus: String? = null,

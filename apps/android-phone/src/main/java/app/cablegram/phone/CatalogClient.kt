@@ -28,6 +28,8 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
+class CatalogLookupException(val status: Int) : Exception("Catalog request failed")
+
 class CatalogClient(
     private val baseUrl: String = BuildConfig.API_BASE_URL,
     /** Renews the two-hour access token on 401; omit only for anonymous calls. */
@@ -112,6 +114,7 @@ class CatalogClient(
         episodeNumber: Int? = null,
         year: Int? = null,
         imdbId: String? = null,
+        strict: Boolean = false,
     ): CatalogMetadata? = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("query", query)
@@ -128,13 +131,19 @@ class CatalogClient(
         if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer $token")
         runCatching {
             client.newCall(builder.build()).execute().use { response ->
-                if (!response.isSuccessful) return@use null
+                if (!response.isSuccessful) {
+                    if (strict) throw CatalogLookupException(response.code)
+                    return@use null
+                }
                 json.decodeFromString<MatchResponse>(response.body?.string().orEmpty()).metadata
             }
-        }.getOrNull()
+        }.getOrElse {
+            if (strict || it is kotlinx.coroutines.CancellationException) throw it
+            null
+        }
     }
 
-    suspend fun resolveTitle(query: String, token: String?): TitleResolveResponse = withContext(Dispatchers.IO) {
+    suspend fun resolveTitle(query: String, token: String?, strict: Boolean = false): TitleResolveResponse = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject { put("query", query) })
         val builder = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/library/resolve-title")
@@ -142,10 +151,16 @@ class CatalogClient(
         if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer $token")
         runCatching {
             client.newCall(builder.build()).execute().use { response ->
-                if (!response.isSuccessful) return@use TitleResolveResponse(found = false)
+                if (!response.isSuccessful) {
+                    if (strict) throw CatalogLookupException(response.code)
+                    return@use TitleResolveResponse(found = false)
+                }
                 json.decodeFromString<TitleResolveResponse>(response.body?.string().orEmpty())
             }
-        }.getOrDefault(TitleResolveResponse(found = false))
+        }.getOrElse {
+            if (strict || it is kotlinx.coroutines.CancellationException) throw it
+            TitleResolveResponse(found = false)
+        }
     }
 
     suspend fun pingHealth(): String? = withContext(Dispatchers.IO) {
@@ -1035,6 +1050,12 @@ class CatalogClient(
             put("origin_identity", item.id)
             if ("title" !in item.pendingMetadataFields && !isWeakLocalTitle(item)) put("title", item.title)
             item.posterUrl?.let { put("poster_url", it) }
+            if (item.mediaType == "tv" && item.catalogIdentityUserSelected) {
+                item.tmdbId?.let { put("series_identity", "tmdb:$it") }
+                // Existing API accepts positive seasons; special season 0 remains a local choice.
+                item.seasonNumber?.takeIf { it > 0 }?.let { put("season_number", it) }
+                item.episodeNumber?.takeIf { it > 0 }?.let { put("episode_number", it) }
+            }
             item.durationSeconds?.let { put("duration_seconds", it) }
             if ("mediaType" !in item.pendingMetadataFields) put("media_type", item.mediaType)
             put("private", item.isPrivate)

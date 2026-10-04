@@ -130,6 +130,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize().background(VlcBlack)) {
             Column(Modifier.fillMaxSize()) {
+                AddedVideosCard(viewModel)
                 if (viewModel.pendingApprovals.isNotEmpty()) ApprovalCard(viewModel, Modifier.padding(16.dp))
                 Box(Modifier.weight(1f)) {
                     when (viewModel.tab) {
@@ -1051,7 +1052,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             }
             Spacer(Modifier.weight(1f))
             if (!viewModel.editingMetadata) {
-                TextButton(onClick = { viewModel.editingMetadata = true }) { Text("Edit details") }
+                TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }, modifier = Modifier.maestro("detail_edit_artwork")) { Text("Edit details & cover") }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1066,7 +1067,6 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 }
             }
         }
-        if (!viewModel.editingMetadata) TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }) { Text("Find details & artwork") }
         if (item.metadataConflict) Text("Details changed on another device. Your edits are kept on this phone. Review them and save again to use your version.", color = VlcOrange)
         else if (item.pendingMetadataFields.isNotEmpty()) Text("Details saved on this phone · Waiting to sync", color = VlcMuted)
         if (viewModel.editingMetadata) {
