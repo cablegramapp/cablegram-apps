@@ -1,8 +1,9 @@
 name: CI
+# Paused for pull requests and pushes for now; to be switched back on later. Releases still run the Android
+# unit tests (release.yml, on v* tags) and the web remote its own tests (web-remote.yml, on web-v* tags).
+# This workflow can still be started by hand from the Actions tab.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   android:
