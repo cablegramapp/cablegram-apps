@@ -1,28 +1,13 @@
 name: CI
-# Paused for pull requests and pushes for now; to be switched back on later. Releases still run the Android
-# unit tests (release.yml, on v* tags) and the web remote its own tests (web-remote.yml, on web-v* tags).
-# This workflow can still be started by hand from the Actions tab.
+# The Android unit tests are not run here for now: they take long, and releases run them (release.yml, on v* tags).
+# Re-add the `android` job (matrix android-phone, android-tv: ./gradlew testDebugUnitTest) to bring them back.
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 jobs:
-  android:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        app: [android-phone, android-tv]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Unit tests
-        working-directory: apps/${{ matrix.app }}
-        run: ./gradlew testDebugUnitTest
-
   telegram-sync:
     runs-on: ubuntu-latest
     steps:
