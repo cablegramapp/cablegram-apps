@@ -85,6 +85,18 @@ class CablegramApiTest {
     }
 
     @Test
+    fun `completing a command over HTTP sends a JSON body, not an empty one`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+        api.completeCommand("cmd-1", "tv-token")
+        val request = server.takeRequest(3, TimeUnit.SECONDS)!!
+        assertEquals("POST", request.method)
+        assertEquals("/api/control/commands/cmd-1/complete", request.path)
+        assertTrue(request.getHeader("Content-Type")!!.startsWith("application/json"))
+        // The control plane's JSON parser rejects an empty body sent as application/json with a 400.
+        assertEquals("{}", request.body.readUtf8())
+    }
+
+    @Test
     fun `HTTP result failure is surfaced for durable retry and reliable polling is requested`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(503))
         assertTrue(runCatching { api.completeCommand("id", "token") }.exceptionOrNull() is ApiException)
