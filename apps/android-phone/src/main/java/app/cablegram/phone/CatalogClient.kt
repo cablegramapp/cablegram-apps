@@ -41,6 +41,18 @@ class CatalogClient(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    suspend fun subtitleRequest(path: String, token: String, method: String = "GET", body: String? = null): String = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/subtitles/$path")
+            .header("Authorization", "Bearer $token")
+            .method(method, body?.toRequestBody("application/json".toMediaType())).build()
+        val longClient = client.newBuilder().callTimeout(100, TimeUnit.SECONDS).readTimeout(100, TimeUnit.SECONDS).build()
+        longClient.newCall(request).await().use { response ->
+            val text = response.body?.string().orEmpty()
+            check(response.isSuccessful) { runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull() ?: "network_unavailable" }
+            text
+        }
+    }
+
     suspend fun importWeb(url: String, caption: String?, token: String, idempotencyKey: String): WebImportResponse = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("url", url)
