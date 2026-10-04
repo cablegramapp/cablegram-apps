@@ -12,6 +12,7 @@ class TelegramLogAuditTest {
     private val roots = listOf(
         "src/main/java/app/cablegram/telegram",
         "src/main/java/app/cablegram/phone/TelegramTvApprovals.kt",
+        "src/main/java/app/cablegram/phone/TelegramPasswordRequests.kt",
         "src/main/java/app/cablegram/phone/TelegramRemoval.kt",
         "src/main/java/app/cablegram/phone/TelegramMediaBridge.kt",
         "src/main/java/app/cablegram/phone/PhoneTelegram.kt",

@@ -466,6 +466,41 @@ class CatalogClient(
         }.getOrNull()
     }
 
+    /** TVs waiting for the Telegram two-step password; null when offline. */
+    suspend fun pendingTvPasswordRequests(token: String): List<PendingTvPasswordRequest>? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/telegram/tv-password-requests/pending")
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                json.decodeFromString<PendingTvPasswordRequests>(response.body?.string().orEmpty()).requests
+            }
+        }.getOrNull()
+    }
+
+    /** Sends the password, already sealed to the TV's key ([app.cablegram.telegram.PasswordSeal]); true when stored. */
+    suspend fun sealTvPassword(token: String, requestId: String, sealed: String): Boolean = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject { put("sealed", sealed) })
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/telegram/tv-password-requests/$requestId/seal")
+            .header("Authorization", "Bearer $token")
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
+    suspend fun cancelTvPassword(token: String, requestId: String): Boolean = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/telegram/tv-password-requests/$requestId/cancel")
+            .header("Authorization", "Bearer $token")
+            .post("".toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
     /** Reports the outcome of a TV login; [error] must be a Telegram error name (never free text). */
     suspend fun postTvLoginResult(token: String, requestId: String, outcome: String, error: String? = null): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
