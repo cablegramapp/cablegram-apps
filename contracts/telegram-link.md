@@ -111,6 +111,35 @@ it gives the holder of that link a session on the user's Telegram account. So:
 The login link is deleted from storage as soon as a result is recorded, or when
 the request expires.
 
+### The Telegram two-step password, typed on the phone
+
+A TV that Telegram asks for the account's two-step password can ask the household phone to type it. The password is
+sealed on the phone to a one-time key the TV made, so the control plane relays bytes it cannot read.
+
+`POST /api/telegram/tv-password-requests` (TV only) `{ "public_key": "<base64 SPKI of a P-256 key>", "hint": "…" }`
+returns `201 { "request_id", "expires_in_ms" }`. It replaces any earlier open request of the same TV, expires after
+5 minutes, and answers `409 telegram_not_linked` or `403 telegram_not_allowed_on_temporary_tv` like a TV login.
+`hint` is Telegram's own password hint.
+
+`GET /api/telegram/tv-password-requests/pending` (phone only) returns
+`{ "requests": [ { "request_id", "tv_device_id", "tv_name", "tv_public_key", "hint", "expires_in_ms" } ] }`.
+
+`POST /api/telegram/tv-password-requests/:id/seal` (phone only) `{ "sealed": "<base64>" }` stores the sealed password
+for the TV (`409 already_resolved` with its `state` if it is no longer pending, including once it has expired).
+`POST /api/telegram/tv-password-requests/:id/cancel` (phone only) drops the request.
+
+`DELETE /api/telegram/tv-password-requests/:id` (TV only, its own request) withdraws it once the TV no longer waits
+(signed in another way, gave up, or Telegram moved on), so the phone stops asking; `404` when it is no longer open.
+
+`GET /api/telegram/tv-password-requests/:id` (TV only) returns `{ "state" }`, and once the phone has sealed it,
+`{ "state": "delivered", "sealed": "…" }` exactly one time: the sealed bytes are deleted as they are handed over (and
+when the request is cancelled, or within a minute of it expiring). States: `pending`, `sealed`, `delivered`, `cancelled`, `expired`.
+
+Sealing (identical on both apps): the phone makes an ephemeral P-256 key pair, derives the shared secret with the TV's
+public key (ECDH), and uses `SHA-256(secret || "cablegram-tg-password-v1:" || request_id)` as an AES-256-GCM key, with
+`request_id` as associated data and a random 12-byte IV. `sealed = base64(phone SPKI (91 bytes) || IV || ciphertext || tag)`.
+The password is UTF-8 text. The TV checks it with Telegram itself; Cablegram never learns whether it was right.
+
 ## Catalog sources
 
 `POST /api/catalog/items` with `source_kind: "telegram"` (phone or TV):
@@ -347,8 +376,14 @@ Restores a `hidden` title. Deleting tombstones cannot be restored.
 ### Registration against tombstones
 
 `POST /api/catalog/items` with a `stable_source_key` that has a tombstone
-returns `409 source_removed` and creates nothing. Devices then skip that
-message in later scans.
+returns `409 source_removed` and creates nothing when the message was already
+in the channel at removal: its id is at or below the newest channel message the
+library had registered then (message ids only grow in a channel). Devices then
+skip that message in later scans. A message above that mark is a new forward of
+the file: the tombstone is dropped and the title (hidden or deleted) comes back
+with that message as its source. While a `delete` is still `deleting`, every
+registration of the file is refused, because the phone deletes every message of
+the file (FR-013) and would delete the new forward too.
 
 ## Playback
 

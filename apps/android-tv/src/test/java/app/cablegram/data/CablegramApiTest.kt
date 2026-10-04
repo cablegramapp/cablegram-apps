@@ -85,6 +85,18 @@ class CablegramApiTest {
     }
 
     @Test
+    fun `completing a command over HTTP sends a JSON body, not an empty one`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+        api.completeCommand("cmd-1", "tv-token")
+        val request = server.takeRequest(3, TimeUnit.SECONDS)!!
+        assertEquals("POST", request.method)
+        assertEquals("/api/control/commands/cmd-1/complete", request.path)
+        assertTrue(request.getHeader("Content-Type")!!.startsWith("application/json"))
+        // The control plane's JSON parser rejects an empty body sent as application/json with a 400.
+        assertEquals("{}", request.body.readUtf8())
+    }
+
+    @Test
     fun `HTTP result failure is surfaced for durable retry and reliable polling is requested`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(503))
         assertTrue(runCatching { api.completeCommand("id", "token") }.exceptionOrNull() is ApiException)
@@ -126,6 +138,20 @@ class CablegramApiTest {
         assertEquals("Christopher Nolan", library.videos.single().director)
         assertEquals("item-1", library.videos.single().id)
         assertEquals("Bearer jwt", server.takeRequest().getHeader("Authorization"))
+    }
+
+    @Test
+    fun `shared manual metadata and cleared fields appear on the next catalog refresh`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"My film","year":2013,"overview":"My summary","media_type":"movie","metadata_revision":1,"user_metadata_fields":["title","year","overview"],"sources":[]}]}"""))
+        val first = api.getVideos("jwt").videos.single()
+        assertEquals("My film", first.title)
+        assertEquals(2013, first.releaseYear)
+        assertEquals("My summary", first.overview)
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Corrected film","year":null,"overview":null,"media_type":"movie","metadata_revision":2,"user_metadata_fields":["title","year","overview"],"sources":[]}]}"""))
+        val next = api.getVideos("jwt").videos.single()
+        assertEquals("Corrected film", next.title)
+        assertEquals(null, next.releaseYear)
+        assertEquals(null, next.overview)
     }
 
     @Test

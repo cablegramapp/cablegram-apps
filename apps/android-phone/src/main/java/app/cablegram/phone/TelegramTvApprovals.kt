@@ -39,6 +39,7 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
         startTrustWork()
         job = scope.launch {
             val asked = mutableSetOf<String>()
+            val askedPassword = mutableSetOf<String>()
             while (isActive) {
                 val token = store.accountToken
                 if (!token.isNullOrBlank() && PhoneTelegram.wasLinked(context)) {
@@ -51,6 +52,10 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
                         }
                     }
                     if (pending.isEmpty()) TelegramTvApprovals.cancel(context)
+                    // A TV that Telegram asks for the two-step password: the phone's keyboard types it (sealed to the TV).
+                    val passwords = client.pendingTvPasswordRequests(token)
+                    passwords?.forEach { if (askedPassword.add(it.requestId)) TelegramPasswordRequests.ask(context, it) }
+                    if (passwords != null && passwords.isEmpty()) TelegramPasswordRequests.cancel(context)
                 }
                 delay(POLL_MS)
             }
