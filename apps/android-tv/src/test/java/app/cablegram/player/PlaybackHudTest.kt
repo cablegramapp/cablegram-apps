@@ -163,4 +163,18 @@ class PlaybackHudTest {
         assertEquals(ControlsFocus.PLAYER_SETTINGS, closed.focus)
         assertTrue(closeEffects.isEmpty())
     }
+
+    @Test
+    fun `a relative seek never lands before the start`() {
+        assertEquals(0L, PlaybackHud.seekTargetMs(4_000L, -10_000L))
+        assertEquals(0L, PlaybackHud.seekTargetMs(0L, -PlaybackHud.SEEK_STEP_MS))
+        assertEquals(25_000L, PlaybackHud.seekTargetMs(15_000L, 10_000L))
+    }
+
+    @Test
+    fun `the seek step is 10 seconds and holding the key scales it`() {
+        assertEquals(10_000L, PlaybackHud.SEEK_STEP_MS)
+        assertEquals(10_000L, PlaybackHud.seekStepMs(0))
+        assertEquals(20_000L, PlaybackHud.seekStepMs(6))
+    }
 }

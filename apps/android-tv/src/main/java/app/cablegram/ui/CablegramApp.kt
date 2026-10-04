@@ -379,7 +379,9 @@ private fun ProfilePickerScreen(
                 NewProfileChoice(enabled = !state.pending, requestFocus = state.profiles.isEmpty(), onClick = onStartPairing)
             }
             Spacer(Modifier.height(36.dp))
-            Button(onClick = onSignOut, colors = ButtonDefaults.colors(containerColor = Color.Transparent, contentColor = Muted)) {
+            val unpair = remember { UnpairConfirmState() }
+            UnpairConfirmDialog(unpair, onSignOut)
+            Button(onClick = unpair::ask, colors = ButtonDefaults.colors(containerColor = Color.Transparent, contentColor = Muted)) {
                 Text("Unpair this TV")
             }
         }
@@ -783,7 +785,9 @@ private fun ErrorScreen(
                     Button(onClick = onRemove, colors = ButtonDefaults.colors(containerColor = Coral)) { Text("Remove") }
                 }
                 if (onSignOut != null) {
-                    Button(onClick = onSignOut, colors = ButtonDefaults.colors(containerColor = Panel)) {
+                    val unpair = remember { UnpairConfirmState() }
+                    UnpairConfirmDialog(unpair, onSignOut)
+                    Button(onClick = unpair::ask, colors = ButtonDefaults.colors(containerColor = Panel)) {
                         Text("Unpair TV")
                     }
                 }

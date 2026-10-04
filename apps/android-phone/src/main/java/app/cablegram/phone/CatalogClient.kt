@@ -11,18 +11,24 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resumeWithException
 import okhttp3.Authenticator
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+
+class CatalogLookupException(val status: Int) : Exception("Catalog request failed")
 
 class CatalogClient(
     private val baseUrl: String = BuildConfig.API_BASE_URL,
@@ -108,6 +114,7 @@ class CatalogClient(
         episodeNumber: Int? = null,
         year: Int? = null,
         imdbId: String? = null,
+        strict: Boolean = false,
     ): CatalogMetadata? = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("query", query)
@@ -124,13 +131,19 @@ class CatalogClient(
         if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer $token")
         runCatching {
             client.newCall(builder.build()).execute().use { response ->
-                if (!response.isSuccessful) return@use null
+                if (!response.isSuccessful) {
+                    if (strict) throw CatalogLookupException(response.code)
+                    return@use null
+                }
                 json.decodeFromString<MatchResponse>(response.body?.string().orEmpty()).metadata
             }
-        }.getOrNull()
+        }.getOrElse {
+            if (strict || it is kotlinx.coroutines.CancellationException) throw it
+            null
+        }
     }
 
-    suspend fun resolveTitle(query: String, token: String?): TitleResolveResponse = withContext(Dispatchers.IO) {
+    suspend fun resolveTitle(query: String, token: String?, strict: Boolean = false): TitleResolveResponse = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject { put("query", query) })
         val builder = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/library/resolve-title")
@@ -138,10 +151,16 @@ class CatalogClient(
         if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer $token")
         runCatching {
             client.newCall(builder.build()).execute().use { response ->
-                if (!response.isSuccessful) return@use TitleResolveResponse(found = false)
+                if (!response.isSuccessful) {
+                    if (strict) throw CatalogLookupException(response.code)
+                    return@use TitleResolveResponse(found = false)
+                }
                 json.decodeFromString<TitleResolveResponse>(response.body?.string().orEmpty())
             }
-        }.getOrDefault(TitleResolveResponse(found = false))
+        }.getOrElse {
+            if (strict || it is kotlinx.coroutines.CancellationException) throw it
+            TitleResolveResponse(found = false)
+        }
     }
 
     suspend fun pingHealth(): String? = withContext(Dispatchers.IO) {
@@ -559,6 +578,40 @@ class CatalogClient(
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
     }
 
+    suspend fun patchMetadata(token: String, item: LibraryItem): MetadataSyncResult = withContext(Dispatchers.IO) {
+        val catalogId = item.catalogItemId ?: return@withContext MetadataSyncResult.Failed
+        val editId = item.metadataEditId ?: return@withContext MetadataSyncResult.Failed
+        val body = json.encodeToString(buildJsonObject {
+            put("expected_revision", item.metadataRevision)
+            put("edit_id", editId)
+            for (field in item.pendingMetadataFields) when (field) {
+                "title" -> put("title", item.title)
+                "year" -> put("year", item.year?.let(::JsonPrimitive) ?: JsonNull)
+                "overview" -> put("overview", item.overview?.let(::JsonPrimitive) ?: JsonNull)
+                "mediaType" -> put("media_type", item.mediaType)
+            }
+        })
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/catalog/items/$catalogId")
+            .header("Authorization", "Bearer $token").patch(body.toRequestBody("application/json".toMediaType())).build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (response.isSuccessful) {
+                    val wire = Json.parseToJsonElement(text).jsonObject
+                    if (wire["metadata_revision"]?.jsonPrimitive?.intOrNull == null || wire["user_metadata_fields"] == null) return@use MetadataSyncResult.Failed
+                    val saved = json.decodeFromString<RemoteCatalogItem>(text)
+                    val sentFields = item.pendingMetadataFields.map { if (it == "mediaType") "media_type" else it }.toSet()
+                    if (saved.id != catalogId || saved.metadataRevision <= item.metadataRevision || !saved.userMetadataFields.containsAll(sentFields)) return@use MetadataSyncResult.Failed
+                    MetadataSyncResult.Saved(saved)
+                }
+                else if (response.code == 409) {
+                    val current = Json.parseToJsonElement(text).jsonObject["current"] ?: return@use MetadataSyncResult.Failed
+                    MetadataSyncResult.Conflict(json.decodeFromString<RemoteCatalogItem>(current.toString()))
+                } else MetadataSyncResult.Failed
+            }
+        }.getOrDefault(MetadataSyncResult.Failed)
+    }
+
     /** Hides or deletes a title (`hide`, `delete`, `delete_source`); null when the request failed. */
     suspend fun removeTelegramTitle(token: String, itemId: String, mode: String, stableSourceKey: String? = null): TelegramRemovalResult? = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
@@ -818,7 +871,7 @@ class CatalogClient(
             .get()
             .build()
         runCatching {
-            client.newCall(request).execute().use { response ->
+            client.newCall(request).await().use { response ->
                 if (!response.isSuccessful) return@use null
                 json.decodeFromString<MeResponse>(response.body?.string().orEmpty())
                     .devices.filter { it.kind == "tv" && it.revokedAt.isNullOrBlank() }
@@ -933,7 +986,8 @@ class CatalogClient(
     /**
      * T078 / R-8: send a remote-control command to one TV. [Accepted] means the server stored it,
      * not that the TV ran it; see [commandStatus]. A network error is retried once with the same
-     * body, so the same client-generated ID makes the retry harmless.
+     * body, so the same client-generated ID makes the retry harmless. If both attempts fail on the
+     * network, the status is read once: the first attempt may have reached the server after all.
      */
     suspend fun postCommand(
         token: String,
@@ -945,19 +999,30 @@ class CatalogClient(
         if (targetDeviceId.isNullOrBlank()) return@withContext CommandSend.Failed
         val id = java.util.UUID.randomUUID().toString()
         val payload = json.encodeToString(remoteCommandBody(command, targetDeviceId, videoId, arguments, id))
-        fun attempt(): Boolean = client.newCall(
+        suspend fun attempt(): CommandSend = client.newCall(
             Request.Builder()
                 .url("${baseUrl.trimEnd('/')}/api/control/commands")
                 .header("Authorization", "Bearer $token")
                 .post(payload.toRequestBody("application/json".toMediaType()))
                 .build(),
-        ).execute().use { it.isSuccessful }
-        val accepted = try {
+        ).await().use { response ->
+            when {
+                response.isSuccessful -> CommandSend.Accepted(id)
+                // The server names the revoked or removed TV; anything else stays a plain failure.
+                response.code == 400 && response.body?.string()?.contains("unknown_target_device") == true -> CommandSend.TargetGone
+                else -> CommandSend.Failed
+            }
+        }
+        try {
             attempt()
         } catch (_: java.io.IOException) {
-            try { attempt() } catch (_: java.io.IOException) { false }
-        }
-        if (accepted) CommandSend.Accepted(id) else CommandSend.Failed
+            try {
+                attempt()
+            } catch (_: java.io.IOException) {
+                // Stored by a request whose response was lost: the TV will run it, so report it as sent.
+                if (commandStatus(token, id) is CommandStatus.Known) CommandSend.Accepted(id) else CommandSend.Failed
+            } catch (_: Exception) { CommandSend.Failed }
+        } catch (_: Exception) { CommandSend.Failed }
     }
 
     /** What the TV did with a command; null when the status could not be read right now. */
@@ -968,17 +1033,25 @@ class CatalogClient(
             .get()
             .build()
         runCatching {
-            client.newCall(request).execute().use { response ->
+            client.newCall(request).await().use { response ->
                 when {
-                    // A command that was just accepted is unknown only to a server without this endpoint.
-                    response.code == 404 -> CommandStatus.Unsupported
+                    // This endpoint answers an unknown command with `not_found`, which is not final:
+                    // keep asking. Any other 404 (Fastify's route-not-found, or a proxy page) is a
+                    // server without the endpoint, so the TV's result cannot be read.
+                    response.code == 404 -> {
+                        val error = runCatching {
+                            (json.parseToJsonElement(response.body?.string().orEmpty()) as? JsonObject)
+                                ?.get("error")?.jsonPrimitive?.contentOrNull
+                        }.getOrNull()
+                        if (error == "not_found") null else CommandStatus.Unsupported
+                    }
                     !response.isSuccessful -> null
                     else -> {
                         val body = json.parseToJsonElement(response.body?.string().orEmpty()) as JsonObject
                         CommandStatus.Known(
                             state = (body["status"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
                             reason = (body["reason"] as? JsonPrimitive)?.contentOrNull,
-                            expiresAtMs = (body["expires_at_ms"] as? JsonPrimitive)?.longOrNull ?: 0L,
+                            expiresInMs = (body["expires_in_ms"] as? JsonPrimitive)?.longOrNull,
                         )
                     }
                 }
@@ -994,7 +1067,7 @@ class CatalogClient(
     ): Boolean {
         var all = true
         for (item in items) {
-            if (!pushLibraryItem(token, item, deviceId, posterProvider)) all = false
+            if (!pushLibraryItem(token, item, deviceId, posterProvider = posterProvider)) all = false
         }
         return all
     }
@@ -1004,15 +1077,22 @@ class CatalogClient(
         token: String,
         item: LibraryItem,
         deviceId: String? = null,
+        onImported: (String) -> Unit = {},
         posterProvider: suspend (LibraryItem) -> ByteArray? = { null },
     ): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("origin_filename", item.filename.ifBlank { item.title })
             put("origin_identity", item.id)
-            if (!isWeakLocalTitle(item)) put("title", item.title)
+            if ("title" !in item.pendingMetadataFields && !isWeakLocalTitle(item)) put("title", item.title)
             item.posterUrl?.let { put("poster_url", it) }
+            if (item.mediaType == "tv" && item.catalogIdentityUserSelected) {
+                item.tmdbId?.let { put("series_identity", "tmdb:$it") }
+                // Existing API accepts positive seasons; special season 0 remains a local choice.
+                item.seasonNumber?.takeIf { it > 0 }?.let { put("season_number", it) }
+                item.episodeNumber?.takeIf { it > 0 }?.let { put("episode_number", it) }
+            }
             item.durationSeconds?.let { put("duration_seconds", it) }
-            put("media_type", item.mediaType)
+            if ("mediaType" !in item.pendingMetadataFields) put("media_type", item.mediaType)
             put("private", item.isPrivate)
             if (item.genres.isNotEmpty()) put("genres", buildJsonArray { item.genres.forEach(::add) })
             if (item.sourceUri != null) {
@@ -1033,6 +1113,7 @@ class CatalogClient(
                 response.body?.string()?.let { json.decodeFromString<CatalogImportResponse>(it) }
             }
         }.getOrNull() ?: return@withContext false
+        onImported(imported.id)
         if (item.posterUrl.isNullOrBlank() && !item.isPrivate) {
             val poster = posterProvider(item)
             if (poster != null && !uploadPoster(token, imported.id, poster)) return@withContext false
@@ -1162,3 +1243,16 @@ class CatalogClient(
 enum class AccountDeletionResult { Deleted, WrongPassword, RateLimited, SessionExpired, Offline, Failed }
 
 enum class PhoneDeviceStatus { Registered, Missing, Unknown }
+
+/**
+ * Runs the call so that cancelling the coroutine cancels the request. A blocking `execute()` keeps
+ * running until OkHttp's own timeout, which would defeat a caller's time budget.
+ */
+private suspend fun okhttp3.Call.await(): okhttp3.Response = suspendCancellableCoroutine { cont ->
+    cont.invokeOnCancellation { cancel() }
+    enqueue(object : okhttp3.Callback {
+        override fun onFailure(call: okhttp3.Call, e: java.io.IOException) = cont.resumeWithException(e)
+        override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) =
+            cont.resume(response) { _, value, _ -> value.close() }
+    })
+}

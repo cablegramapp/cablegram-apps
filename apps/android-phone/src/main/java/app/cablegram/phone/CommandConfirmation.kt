@@ -6,12 +6,17 @@ import kotlinx.coroutines.delay
 sealed interface CommandSend {
     data class Accepted(val id: String) : CommandSend
     data object Failed : CommandSend
+    /** The control plane no longer knows the target TV (revoked or removed), as opposed to being unreachable. */
+    data object TargetGone : CommandSend
 }
 
 /** What the control plane reports for a command. [Unsupported] is a server without the status endpoint. */
 sealed interface CommandStatus {
-    /** [state] is pending, delivered, completed or rejected. */
-    data class Known(val state: String, val reason: String?, val expiresAtMs: Long) : CommandStatus
+    /**
+     * [state] is pending, delivered, completed or rejected. [expiresInMs] is the time left before the
+     * command expires, by the server's clock (null from a server that does not send it).
+     */
+    data class Known(val state: String, val reason: String?, val expiresInMs: Long? = null) : CommandStatus
     data object Unsupported : CommandStatus
 }
 
@@ -33,8 +38,9 @@ const val CONTROL_CAP_MS = 8_000L
 private const val FAST_POLL_MS = 500L
 private const val SLOW_POLL_MS = 1_000L
 private const val FAST_POLL_WINDOW_MS = 2_000L
-// Slack past expires_at_ms so the server's own "expired" verdict is read, and a bound against a skewed clock.
+// Slack past the command's expiry so the server's own "expired" verdict is read.
 private const val EXPIRY_GRACE_MS = 1_500L
+// Upper bound for a title start whatever the server reports (its TTL is 300 s).
 private const val TITLE_START_MAX_MS = 310_000L
 
 /**
@@ -58,8 +64,10 @@ suspend fun awaitOutcome(
             is CommandStatus.Known -> when (status.state) {
                 "completed" -> return Outcome.Confirmed
                 "rejected" -> return Outcome.Rejected(status.reason)
-                else -> if (wait == ConfirmationWait.TitleStart && status.expiresAtMs > 0) {
-                    deadline = minOf(status.expiresAtMs + EXPIRY_GRACE_MS, start + TITLE_START_MAX_MS)
+                // Anchored on this phone's clock at the read: the server's absolute expiry would
+                // end the wait early on a phone whose clock runs ahead.
+                else -> if (wait == ConfirmationWait.TitleStart && status.expiresInMs != null) {
+                    deadline = minOf(clock() + status.expiresInMs + EXPIRY_GRACE_MS, start + TITLE_START_MAX_MS)
                 }
             }
             null -> Unit // a transient read failure; keep polling until the deadline

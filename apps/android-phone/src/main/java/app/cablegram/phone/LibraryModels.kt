@@ -51,6 +51,8 @@ data class LibraryItem(
     val telegramCopy: Boolean = false,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
+    /** Exact identity explicitly reviewed in the editor; background lookup must not replace it. */
+    val catalogIdentityUserSelected: Boolean = false,
     val seasonNumber: Int? = null,
     val episodeNumber: Int? = null,
     @SerialName("private") val isPrivate: Boolean = false,
@@ -61,6 +63,13 @@ data class LibraryItem(
     val householdOnly: Boolean = false,
     /** Fields explicitly saved by the user. Catalog refreshes must not replace them. */
     val userMetadataFields: Set<String> = emptySet(),
+    /** Server id differs from the local id for files imported on this phone. */
+    val catalogItemId: String? = null,
+    val metadataRevision: Int = 0,
+    /** Durable edits are retried on the next sync, including web and offline-only titles. */
+    val pendingMetadataFields: Set<String> = emptySet(),
+    val metadataEditId: String? = null,
+    val metadataConflict: Boolean = false,
     /** The user-selected artwork source. `legacy` preserves pre-migration posters. */
     val artworkOrigin: String = ARTWORK_LEGACY,
     /** True only after an explicit artwork choice; automatic thumbnails stay replaceable. */
@@ -90,6 +99,8 @@ data class LibraryFile(
     val collections: List<UserCollection> = emptyList(),
     val folders: List<IndexedFolder> = emptyList(),
     val pendingWebImports: List<PendingWebImport> = emptyList(),
+    /** Shared files being copied in; a process death mid-copy leaves the entry for the next start. */
+    val pendingSharedImports: List<PendingSharedImport> = emptyList(),
     /** Telegram titles the phone already asked about, so "Find details" never repeats for them. */
     val promptedTelegramIds: List<String> = emptyList(),
 )
@@ -101,6 +112,15 @@ data class PendingWebImport(
     val caption: String? = null,
     val createdAt: String,
     val lastError: String? = null,
+)
+
+/** A shared file whose copy into the library has begun. [id] becomes the library item id, so a resume cannot register it twice. */
+@Serializable
+data class PendingSharedImport(
+    val id: String,
+    val uri: String,
+    val displayName: String,
+    val createdAt: String,
 )
 
 const val STORAGE_LOCAL = "local"
@@ -187,8 +207,11 @@ data class RemoteCatalogItem(
     @SerialName("media_type") val mediaType: String? = null,
     val year: Int? = null,
     val overview: String? = null,
+    @SerialName("user_metadata_fields") val userMetadataFields: Set<String> = emptySet(),
+    @SerialName("metadata_revision") val metadataRevision: Int = 0,
     val genres: List<String> = emptyList(),
     @SerialName("tmdb_id") val tmdbId: Int? = null,
+    @SerialName("series_identity") val seriesIdentity: String? = null,
     @SerialName("season_number") val seasonNumber: Int? = null,
     @SerialName("episode_number") val episodeNumber: Int? = null,
     @SerialName("match_status") val matchStatus: String? = null,

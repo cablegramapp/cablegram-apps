@@ -37,12 +37,18 @@ sealed interface TargetResult {
  * Picks the TV a remote command goes to. A selected TV that the household no longer lists is a
  * failure: a command must never fall back to a different TV. Only with nothing selected does the
  * first household TV serve as the default. [household] is null when it could not be loaded.
+ *
+ * A TV paired before device IDs were stored has none to match. It can only mean the household's
+ * TV when there is exactly one; with several, the user must choose rather than risk another room.
  */
 fun resolveTarget(selected: PairedTv?, household: List<MeDevice>?): TargetResult {
     val none = TargetResult.Failed("No TV is paired with this household. Pair a TV to use the remote.")
     fun MeDevice.label() = displayName?.takeIf(String::isNotBlank) ?: "TV"
     return when {
-        household == null -> selected?.deviceId?.let { TargetResult.Target(it, selected.name) } ?: none
+        household == null -> selected?.deviceId?.let { TargetResult.Target(it, selected.name) }
+            ?: if (selected != null) TargetResult.Failed("Can't reach the control service to find ${selected.name}. Check your connection.") else none
+        selected != null && selected.deviceId == null -> household.singleOrNull()?.let { TargetResult.Target(it.id, selected.name) }
+            ?: if (household.isEmpty()) none else TargetResult.Failed("Choose which TV to control in Settings.")
         selected != null -> household.firstOrNull { it.id == selected.deviceId }?.let { TargetResult.Target(it.id, selected.name) }
             ?: TargetResult.Failed("${selected.name} is no longer connected. Choose a TV in Settings.")
         else -> household.firstOrNull()?.let { TargetResult.Target(it.id, it.label()) } ?: none
@@ -56,5 +62,23 @@ fun rejectionMessage(reason: String?, tvName: String): String = when (reason) {
     "screen_unavailable" -> "$tvName can't do that on its current screen."
     "expired" -> "$tvName didn't respond in time. Check the TV."
     "execution_interrupted" -> "$tvName was interrupted. Try again."
+    "superseded" -> "Another title was started on $tvName."
+    "cancelled" -> "Playback was cancelled on $tvName."
+    "not_applicable", "not_handled", "player_closed" -> "Nothing is playing on $tvName."
+    "session_closed", "inactive_account" -> "$tvName is signed in to another account or closed the session."
+    "invalid_payload" -> "$tvName didn't understand that command. Update the app on the TV."
     else -> "$tvName couldn't do that."
+}
+
+/** What the mini-player shows. [canToggle] is false while a title is starting, as there is nothing to pause yet. */
+internal data class MiniPlayerLines(val title: String, val caption: String, val canToggle: Boolean)
+
+/**
+ * The title being started takes over the mini-player until the TV answers, so its "Starting…" status
+ * never reads as a status of the title that was playing before. Null when there is nothing to show.
+ */
+internal fun miniPlayerLines(playing: String?, starting: String?, tvName: String, status: String?): MiniPlayerLines? {
+    if (starting != null) return MiniPlayerLines(starting, status ?: tvName, canToggle = false)
+    if (playing != null) return MiniPlayerLines(playing, status ?: tvName, canToggle = true)
+    return null
 }

@@ -65,4 +65,55 @@ class RemoteCommandsTest {
         assertEquals(TargetResult.Target("tv-1", "Living room"), resolveTarget(living, null))
         assertTrue(resolveTarget(null, null) is TargetResult.Failed)
     }
+
+    private val legacy = PairedTv(pin = "9", name = "Old TV")
+
+    @Test
+    fun `a TV paired without a device id uses the household's only TV`() {
+        assertEquals(TargetResult.Target("tv-2", "Old TV"), resolveTarget(legacy, listOf(device("tv-2", "Bedroom"))))
+    }
+
+    @Test
+    fun `a TV paired without a device id asks for a choice when there are several`() {
+        assertEquals(
+            TargetResult.Failed("Choose which TV to control in Settings."),
+            resolveTarget(legacy, listOf(device("tv-2"), device("tv-3"))),
+        )
+        assertTrue(resolveTarget(legacy, emptyList()) is TargetResult.Failed)
+        assertTrue(resolveTarget(legacy, null) is TargetResult.Failed)
+    }
+
+    @Test
+    fun `superseded and cancelled title starts say what happened`() {
+        assertEquals("Another title was started on Den.", rejectionMessage("superseded", "Den"))
+        assertEquals("Playback was cancelled on Den.", rejectionMessage("cancelled", "Den"))
+    }
+
+    @Test
+    fun `the phone remote seeks 10 seconds in both directions`() {
+        assertEquals(10, CastRemoteReceiver.SEEK_SECONDS)
+        val back = remoteCommandBody("seek", "den", arguments = buildJsonObject { put("seconds", -CastRemoteReceiver.SEEK_SECONDS) })
+        val forward = remoteCommandBody("seek", "den", arguments = buildJsonObject { put("seconds", CastRemoteReceiver.SEEK_SECONDS) })
+        assertEquals(-10, back.getValue("payload").jsonObject["seconds"]?.jsonPrimitive?.int)
+        assertEquals(10, forward.getValue("payload").jsonObject["seconds"]?.jsonPrimitive?.int)
+    }
+
+    @Test
+    fun `a title being started takes over the mini-player instead of the one playing`() {
+        val lines = miniPlayerLines("Old film", "New film", "Den", "Starting on Den…")!!
+        assertEquals("New film", lines.title)
+        assertEquals("Starting on Den…", lines.caption)
+        assertFalse(lines.canToggle)
+    }
+
+    @Test
+    fun `the mini-player shows the playing title and falls back to the TV name`() {
+        assertEquals(MiniPlayerLines("Old film", "Den", canToggle = true), miniPlayerLines("Old film", null, "Den", null))
+        assertEquals("Den didn't confirm. Check the TV.", miniPlayerLines("Old film", null, "Den", "Den didn't confirm. Check the TV.")!!.caption)
+    }
+
+    @Test
+    fun `the mini-player is hidden with nothing playing or starting`() {
+        assertNull(miniPlayerLines(null, null, "Den", "Done on Den"))
+    }
 }

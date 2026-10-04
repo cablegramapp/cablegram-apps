@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -47,13 +48,16 @@ object CastSession {
         if (token.isNullOrBlank()) return Result.Failed("Sign in to use the remote.")
         val selected = pairing.tvs.lastOrNull()
         var list = household
-        if (list == null || selected != null && list.none { it.id == selected.deviceId }) list = client.householdTvs(token) ?: list
+        // A failed refresh means offline (null), not the stale cache: offline sends to the stored
+        // device ID, and the server refuses a revoked TV.
+        if (list == null || selected != null && list.none { it.id == selected.deviceId }) list = client.householdTvs(token)
         val target = when (val resolved = resolveTarget(selected, list)) {
             is TargetResult.Failed -> return Result.Failed(resolved.message)
             is TargetResult.Target -> resolved
         }
         return when (val sent = client.postCommand(token, command, videoId, target.deviceId, arguments)) {
             is CommandSend.Accepted -> Result.Sent(target.name, sent.id, token)
+            CommandSend.TargetGone -> Result.Failed("${target.name} is no longer connected. Choose a TV in Settings.")
             CommandSend.Failed -> Result.Failed("Could not reach the control service. Check your connection and try again.")
         }
     }
@@ -80,17 +84,23 @@ class CastRemoteReceiver : BroadcastReceiver() {
             try {
                 val pairing = PairingStore(context)
                 val client = CatalogClient(pairing.apiBaseUrl, pairing)
-                when (val result = CastSession.send(pairing, client, command, arguments = arguments)) {
-                    is CastSession.Result.Failed -> PairLog.e("Notification remote $command failed: ${result.message}", null)
-                    is CastSession.Result.Sent -> {
-                        // Stay under the receiver's ~10 s window; update only what the TV confirmed.
-                        val outcome = CastSession.confirm(client, result, ConfirmationWait.Control(NOTIFICATION_WAIT_MS))
-                        if (outcome == Outcome.Confirmed || outcome == Outcome.Unconfirmable) when (intent.action) {
-                            ACTION_TOGGLE -> CastSession.update(cast.copy(paused = command == "pause"))
-                            ACTION_STOP -> CastSession.update(null)
-                        } else PairLog.e("Notification remote $command not confirmed: $outcome", null)
+                // The whole send and wait stays under the receiver's ~10 s window.
+                withTimeoutOrNull(RECEIVER_BUDGET_MS) {
+                    when (val result = CastSession.send(pairing, client, command, arguments = arguments)) {
+                        is CastSession.Result.Failed -> PairLog.e("Notification remote $command failed: ${result.message}", null)
+                        is CastSession.Result.Sent -> {
+                            val outcome = CastSession.confirm(client, result, ConfirmationWait.Control(NOTIFICATION_WAIT_MS))
+                            // Update only what the TV confirmed, and only if the same title is still current.
+                            val now = CastSession.state.value
+                            if (outcome != Outcome.Confirmed && outcome != Outcome.Unconfirmable) {
+                                PairLog.e("Notification remote $command not confirmed: $outcome", null)
+                            } else if (now?.videoId == cast.videoId) when (intent.action) {
+                                ACTION_TOGGLE -> CastSession.update(now.copy(paused = command == "pause"))
+                                ACTION_STOP -> CastSession.update(null)
+                            }
+                        }
                     }
-                }
+                } ?: PairLog.e("Notification remote $command ran out of time", null)
             } finally {
                 pending.finish()
             }
@@ -102,7 +112,8 @@ class CastRemoteReceiver : BroadcastReceiver() {
         const val ACTION_TOGGLE = "app.cablegram.phone.REMOTE_TOGGLE"
         const val ACTION_FORWARD = "app.cablegram.phone.REMOTE_FORWARD"
         const val ACTION_STOP = "app.cablegram.phone.REMOTE_STOP"
-        const val SEEK_SECONDS = 15
+        const val SEEK_SECONDS = 10
         private const val NOTIFICATION_WAIT_MS = 7_000L
+        private const val RECEIVER_BUDGET_MS = 9_000L
     }
 }

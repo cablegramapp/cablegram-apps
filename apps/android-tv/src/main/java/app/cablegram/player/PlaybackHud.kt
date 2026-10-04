@@ -112,6 +112,9 @@ object PlaybackHud {
     const val AUTO_HIDE_MS = 4_000L
     const val SEEK_FLASH_MS = 1_500L
 
+    /** Where a relative seek lands: never before the start. */
+    fun seekTargetMs(positionMs: Long, deltaMs: Long): Long = (positionMs + deltaMs).coerceAtLeast(0L)
+
     fun seekStepMs(repeatCount: Int): Long {
         val multiplier = holdMultiplier(repeatCount)
         return SEEK_STEP_MS * multiplier
