@@ -1156,9 +1156,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                             // Cheap staleness check first: a full structural equals of the
                             // library every cycle costs O(n) object-graph compares on the
                             // main thread and thrashes low-memory TVs (ANR 4b063625).
-                            val signature = latest.joinToString("|") { v ->
-                                "${v.id}:${v.ingestProgress}:${v.ingestStage}:${v.tier}:${v.inMyList}:${v.resumePositionSeconds}:${v.title}:${v.posterUrl}"
-                            }
+                            val signature = librarySyncSignature(latest)
                             if (signature != lastSignature) {
                                 lastSignature = signature
                                 cachedVideos = latest

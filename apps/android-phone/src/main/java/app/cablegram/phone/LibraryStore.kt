@@ -215,6 +215,9 @@ class LibraryStore private constructor(private val context: Context) {
             fingerprint = source.sourceFingerprint,
             isPrivate = source.isPrivate,
             householdOnly = true,
+            catalogItemId = remote.id,
+            metadataRevision = remote.metadataRevision,
+            userMetadataFields = remote.userMetadataFields.map { if (it == "media_type") "mediaType" else it }.toSet(),
             artworkOrigin = if (remote.posterUrl == null) ARTWORK_PLACEHOLDER else ARTWORK_CATALOG,
         )
         save(snapshot().copy(items = list() + item))
@@ -238,19 +241,15 @@ class LibraryStore private constructor(private val context: Context) {
             householdOnly = false,
             artworkOrigin = if (remote.posterUrl == null) ARTWORK_PLACEHOLDER else ARTWORK_CATALOG,
         )).copy(
-            title = if (existing != null && "title" in existing.userMetadataFields) existing.title
-            else remote.title?.takeIf { it.isNotBlank() } ?: existing?.title ?: name.substringBeforeLast('.'),
             durationSeconds = remote.durationSeconds ?: existing?.durationSeconds,
             genres = remote.genres,
             tmdbId = remote.tmdbId, seasonNumber = remote.seasonNumber, episodeNumber = remote.episodeNumber,
-            year = if (existing != null && "year" in existing.userMetadataFields) existing.year else remote.year,
-            overview = remote.overview,
             posterUrl = remote.posterUrl ?: existing?.posterUrl,
-            mediaType = if (existing != null && "mediaType" in existing.userMetadataFields) existing.mediaType else remote.mediaType ?: "movie",
             sourceAvailable = source.availability != "unavailable",
         )
-        if (existing == null) save(snapshot().copy(items = list() + item)) else update(item)
-        return item
+        val merged = mergeManualMetadata(item, remote)
+        if (existing == null) save(snapshot().copy(items = list() + merged)) else update(merged)
+        return merged
     }
 
     fun promptedTelegramIds(): Set<String> = snapshot().promptedTelegramIds.toSet()
@@ -445,6 +444,7 @@ class LibraryStore private constructor(private val context: Context) {
         get(response.id)?.let { return it }
         val item = LibraryItem(
             id = response.id,
+            catalogItemId = response.id,
             title = response.title,
             filename = response.canonicalUrl,
             fileName = response.id,
@@ -529,6 +529,7 @@ class LibraryStore private constructor(private val context: Context) {
         return updated
     }
 
+    @Synchronized
     fun applyCatalog(id: String, metadata: CatalogMetadata, posterFile: File?): LibraryItem? {
         val item = get(id) ?: return null
         val updated = item.copy(
@@ -537,9 +538,9 @@ class LibraryStore private constructor(private val context: Context) {
             overview = if ("overview" in item.userMetadataFields) item.overview else metadata.overview ?: item.overview,
             genres = metadata.genres.ifEmpty { item.genres },
             mediaType = if ("mediaType" in item.userMetadataFields) item.mediaType else metadata.mediaType.ifBlank { item.mediaType },
-            tmdbId = metadata.tmdbId ?: item.tmdbId,
-            seasonNumber = metadata.seasonNumber ?: item.seasonNumber,
-            episodeNumber = metadata.episodeNumber ?: item.episodeNumber,
+            tmdbId = if (item.catalogIdentityUserSelected) item.tmdbId else metadata.tmdbId ?: item.tmdbId,
+            seasonNumber = if (item.catalogIdentityUserSelected) item.seasonNumber else metadata.seasonNumber ?: item.seasonNumber,
+            episodeNumber = if (item.catalogIdentityUserSelected) item.episodeNumber else metadata.episodeNumber ?: item.episodeNumber,
             posterPath = if (!catalogMayReplaceArtwork(item)) item.posterPath else posterFile?.absolutePath ?: item.posterPath,
             posterUrl = if (!catalogMayReplaceArtwork(item)) item.posterUrl else metadata.posterUrl ?: item.posterUrl,
             artworkOrigin = if (!catalogMayReplaceArtwork(item)) item.artworkOrigin else ARTWORK_CATALOG,
@@ -579,7 +580,53 @@ class LibraryStore private constructor(private val context: Context) {
         return updated
     }
 
-    fun extractPreviewFrames(item: LibraryItem, count: Int = 4): List<String> {
+    /** Temporary preview bytes are never published as the item's cover. */
+    fun stageArtwork(session: Long, revision: Long, bytes: ByteArray): String {
+        require(bytes.isNotEmpty())
+        val directory = File(context.cacheDir, "artwork-editor-$session").apply { mkdirs() }
+        val file = File(directory, "catalog-$revision.jpg")
+        file.writeBytes(bytes)
+        require(decodePosterBitmap(file.absolutePath) != null) { "Invalid cover image" }
+        return file.absolutePath
+    }
+
+    fun discardArtworkPreviews(session: Long) {
+        File(context.cacheDir, "artwork-editor-$session").deleteRecursively()
+    }
+
+    /** A versioned image plus one atomic index write keeps the old cover intact on failure. */
+    @Synchronized
+    fun saveArtworkDraft(draft: ArtworkDraft): LibraryItem {
+        require(draft.valid)
+        val current = get(draft.base.id) ?: error("Video no longer exists")
+        require(!hasDuplicateEpisode(list(), draft) || draft.keepBoth) { "Episode already exists" }
+        var updated = commitArtworkDraft(current, draft)
+        val source = when (val choice = draft.cover) {
+            CoverChoice.Keep -> null
+            is CoverChoice.Frame -> File(choice.path)
+            is CoverChoice.Catalog -> File(choice.path)
+        }
+        var committedImage: File? = null
+        try {
+            if (source != null) {
+                require(source.exists() && decodePosterBitmap(source.absolutePath) != null) { "Cover unavailable" }
+                val target = File(postersDir, "${current.id}-chosen-${UUID.randomUUID()}.jpg")
+                committedImage = target
+                source.copyTo(target)
+                updated = updated.copy(posterPath = target.absolutePath,
+                    posterUrl = (draft.cover as? CoverChoice.Catalog)?.url,
+                    posterVersion = current.posterVersion + 1, artworkUserSelected = true,
+                    artworkOrigin = if (draft.cover is CoverChoice.Catalog) ARTWORK_CATALOG else ARTWORK_FRAME)
+            }
+            update(updated)
+            return updated
+        } catch (error: Exception) {
+            committedImage?.delete()
+            throw error
+        }
+    }
+
+    fun extractPreviewFrames(item: LibraryItem, count: Int = 4, sessionTag: String = "legacy"): List<String> {
         val retriever = MediaMetadataRetriever()
         return try {
             val local = videoFile(item).takeIf { it.exists() }
@@ -593,7 +640,8 @@ class LibraryStore private constructor(private val context: Context) {
             val paths = mutableListOf<String>()
             previewFrameTimesUs(durationMs, count).forEachIndexed { index, timeUs ->
                 val bitmap = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC) ?: return@forEachIndexed
-                val out = File(postersDir, "${item.id}-frame-$index.jpg")
+                val directory = if (sessionTag == "legacy") postersDir else File(context.cacheDir, "artwork-editor-$sessionTag").apply { mkdirs() }
+                val out = File(directory, "${item.id}-frame-$index.jpg")
                 writeScaledJpeg(bitmap, out)
                 paths += out.absolutePath
             }
@@ -770,14 +818,37 @@ class LibraryStore private constructor(private val context: Context) {
         )
     }
 
-    fun editMetadata(id: String, title: String, year: Int?, mediaType: String) {
+    @Synchronized
+    fun editMetadata(id: String, title: String, year: Int?, mediaType: String, overview: String? = get(id)?.overview) {
         val item = get(id) ?: return
-        update(item.copy(
-            title = title.trim().ifBlank { item.title },
-            year = year,
-            mediaType = mediaType,
-            userMetadataFields = item.userMetadataFields + setOf("title", "year", "mediaType"),
-        ))
+        update(commitManualMetadata(item, title, year, mediaType, overview))
+    }
+
+    @Synchronized
+    fun editMetadataDraft(base: LibraryItem, title: String, year: Int?, mediaType: String, overview: String?) {
+        get(base.id)?.let { update(commitManualMetadataDraft(it, base, title, year, mediaType, overview)) }
+    }
+
+    @Synchronized
+    fun setCatalogIdentity(id: String, catalogId: String) {
+        get(id)?.let { update(it.copy(catalogItemId = catalogId)) }
+    }
+
+    @Synchronized
+    fun acceptMetadata(sent: LibraryItem, result: MetadataSyncResult) {
+        val current = get(sent.id) ?: return
+        when (result) {
+            is MetadataSyncResult.Saved -> update(acknowledgeManualMetadata(current, sent, result.item))
+            is MetadataSyncResult.Conflict -> if (current.metadataEditId == sent.metadataEditId) update(current.copy(
+                metadataConflict = true, metadataRevision = result.item.metadataRevision,
+            ))
+            MetadataSyncResult.Failed -> Unit
+        }
+    }
+
+    @Synchronized
+    fun mergeRemoteMetadata(id: String, remote: RemoteCatalogItem) {
+        get(id)?.let { update(mergeManualMetadata(it, remote)) }
     }
 
     @Synchronized
