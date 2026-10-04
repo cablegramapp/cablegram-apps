@@ -129,6 +129,20 @@ class CablegramApiTest {
     }
 
     @Test
+    fun `shared manual metadata and cleared fields appear on the next catalog refresh`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"My film","year":2013,"overview":"My summary","media_type":"movie","metadata_revision":1,"user_metadata_fields":["title","year","overview"],"sources":[]}]}"""))
+        val first = api.getVideos("jwt").videos.single()
+        assertEquals("My film", first.title)
+        assertEquals(2013, first.releaseYear)
+        assertEquals("My summary", first.overview)
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Corrected film","year":null,"overview":null,"media_type":"movie","metadata_revision":2,"user_metadata_fields":["title","year","overview"],"sources":[]}]}"""))
+        val next = api.getVideos("jwt").videos.single()
+        assertEquals("Corrected film", next.title)
+        assertEquals(null, next.releaseYear)
+        assertEquals(null, next.overview)
+    }
+
+    @Test
     fun `decodes signed playback and subtitle tracks`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Inception","sources":[{"origin_identity":"video-1"}]}]}"""))
         server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))

@@ -22,6 +22,7 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "app.cablegram"
+        (project.findProperty("CABLEGRAM_APP_ID_SUFFIX") as String?)?.let { applicationIdSuffix = it }
         minSdk = 26
         targetSdk = 36
         versionCode = 3
