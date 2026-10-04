@@ -287,7 +287,7 @@ class CablegramApi(
         execute(authenticatedRequest("api/control/commands?delivery=ack", token).get().build())
 
     suspend fun completeCommand(commandId: String, token: String) {
-        executeNoContent(authenticatedRequest("api/control/commands/$commandId/complete", token).post("".toRequestBody(jsonMediaType)).build())
+        executeNoContent(authenticatedRequest("api/control/commands/$commandId/complete", token).post("{}".toRequestBody(jsonMediaType)).build())
     }
 
     suspend fun rejectCommand(commandId: String, reason: String, token: String) {
