@@ -266,15 +266,14 @@ private fun ResultsContent(
     else if (language == null || language in preferences.languages) discoveryNotice(shown)?.takeUnless { analysisNote != null && shown.status == "no_confident_match" }?.let { StatusNote(it) }
     analysisNote?.let { StatusNote(it) }
     if (language == null) discovery.selected?.let { StatusNote("${languageName(it.language)} subtitles were selected automatically.") }
-    val best = usable.firstOrNull()
+    val (best, others) = splitOptions(usable, more)
     if (best != null) {
-        OptionCard(best, primary = true, busy = busyId == best.id, details = details, onUse = { choose(best) })
+        OptionCard(best, primary = true, busy = busyId == best.id, details = details, canCheck = analysisNote == null, onUse = { choose(best) })
         TextButton(onClick = { details = !details }) { Text(if (details) "Hide details" else "Details") }
     }
-    val others = usable.drop(if (best != null) 1 else 0) + more
     if (others.isNotEmpty()) {
         TextButton(onClick = { showOthers = !showOthers }, modifier = Modifier.maestro(MaestroIds.SUBTITLES_OTHERS)) { Text("Other matches (${others.size})") }
-        if (showOthers) others.forEach { OptionCard(it, primary = false, busy = busyId == it.id, details = details, onUse = { choose(it) }) }
+        if (showOthers) others.forEach { OptionCard(it, primary = false, busy = busyId == it.id, details = details, canCheck = analysisNote == null, onUse = { choose(it) }) }
     }
     SectionCard("Another language") {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -289,8 +288,8 @@ private fun ResultsContent(
 @Serializable private data class PreviewResponse(val candidate: SubtitleMatch, val cues: List<SubtitleCue>)
 
 @Composable
-private fun OptionCard(match: SubtitleMatch, primary: Boolean, busy: Boolean, details: Boolean, onUse: () -> Unit) {
-    val h = headline(match)
+private fun OptionCard(match: SubtitleMatch, primary: Boolean, busy: Boolean, details: Boolean, canCheck: Boolean, onUse: () -> Unit) {
+    val h = headline(match, canCheck)
     Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, if (h.verified) VlcOrange else PhoneOutline.copy(alpha = 0.55f))) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(h.language, color = Color.White, style = MaterialTheme.typography.titleLarge)

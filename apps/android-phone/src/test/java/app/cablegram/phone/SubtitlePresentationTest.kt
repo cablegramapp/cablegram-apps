@@ -58,3 +58,27 @@ class SubtitleUncheckedTest {
         org.junit.Assert.assertFalse(h.verified); org.junit.Assert.assertTrue(h.timing.startsWith("Not checked yet"))
     }
 }
+
+class SubtitleSplitTest {
+    private fun m(id: String) = SubtitleMatch(id, "fa", "Likely Match")
+    @org.junit.Test fun aCheckedOptionIsFeaturedFirst() {
+        val (best, rest) = splitOptions(listOf(m("a")), listOf(m("b"), m("c")))
+        org.junit.Assert.assertEquals("a", best?.id); org.junit.Assert.assertEquals(listOf("b", "c"), rest.map { it.id })
+    }
+    @org.junit.Test fun withNothingCheckedTheTopRankedOneIsStillFeatured() {
+        val (best, rest) = splitOptions(emptyList(), listOf(m("b"), m("c"), m("d")))
+        org.junit.Assert.assertEquals("b", best?.id); org.junit.Assert.assertEquals(listOf("c", "d"), rest.map { it.id })
+    }
+    @org.junit.Test fun noCandidatesFeaturesNothing() {
+        val (best, rest) = splitOptions(emptyList(), emptyList())
+        org.junit.Assert.assertNull(best); org.junit.Assert.assertTrue(rest.isEmpty())
+    }
+}
+
+class SubtitleCannotCheckTest {
+    @org.junit.Test fun saysSoWhenTheVideoCannotBeChecked() {
+        val m = SubtitleMatch("1", "fa", "Likely Match", null, cues = null)
+        org.junit.Assert.assertTrue(headline(m, canCheck = false).timing.startsWith("Can't be checked"))
+        org.junit.Assert.assertTrue(headline(m, canCheck = true).timing.startsWith("Not checked yet"))
+    }
+}

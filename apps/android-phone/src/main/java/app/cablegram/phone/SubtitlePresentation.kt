@@ -11,7 +11,7 @@ fun languageName(code: String): String = Locale.forLanguageTag(code).getDisplayL
 fun formatSyncOffset(seconds: Double): String = "%+.2f sec".format(Locale.US, seconds)
 
 /** Verification is only claimed when the speech check actually succeeded on the server. */
-fun headline(match: SubtitleMatch): SubtitleHeadline {
+fun headline(match: SubtitleMatch, canCheck: Boolean = true): SubtitleHeadline {
     val alignment = match.alignment
     val verified = alignment?.verified == true && match.confidence in setOf("Perfect Match", "Verified Match")
     val partial = !verified && alignment?.reason == "partial_match"
@@ -26,6 +26,7 @@ fun headline(match: SubtitleMatch): SubtitleHeadline {
         partial -> "Adjusted from the little dialogue we could hear · ${formatSyncOffset(alignment!!.offset)}"
         verified && abs(alignment!!.offset) >= 0.05 -> "Automatically synchronized · ${formatSyncOffset(alignment.offset)}"
         verified -> "Timing already matches"
+        alignment == null && match.cues == null && !canCheck -> "Can't be checked against this video's audio — line it up while you watch"
         alignment == null && match.cues == null -> "Not checked yet — it's checked against your video when you pick it"
         alignment?.reason == "different_cut" -> "Timing differs from your copy — it may be another cut"
         alignment?.reason == "audio_unavailable" -> "Timing couldn't be checked against your video"
@@ -78,3 +79,14 @@ fun initialShift(match: SubtitleMatch): Pair<Double, Double> =
 
 fun unsupportedAudioNote(format: String): String =
     "This video's sound is $format, which this phone can't play or analyse. The preview will be silent and matches can't be checked against the audio. It will still play normally on your TV."
+
+/**
+ * The option to feature and the rest. A candidate the server already checked against the video comes first, but when
+ * none was checked (or none was usable) the top-ranked unchecked one is featured instead, so a language never ends
+ * up as a collapsed list with nothing recommended.
+ */
+fun splitOptions(checked: List<SubtitleMatch>, unchecked: List<SubtitleMatch>): Pair<SubtitleMatch?, List<SubtitleMatch>> {
+    val all = checked + unchecked
+    val best = all.firstOrNull()
+    return best to all.drop(1)
+}
