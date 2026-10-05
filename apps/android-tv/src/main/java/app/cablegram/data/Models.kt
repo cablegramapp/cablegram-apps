@@ -202,8 +202,15 @@ data class PlaybackResponse(
     @kotlinx.serialization.Transient val fallbackResolver: (suspend () -> String?)? = null,
 )
 
-/** Inline subtitle documents (smart subtitles), in track order. */
-fun PlaybackResponse.subtitleDocuments(): List<String> = subtitles.mapNotNull { it.content?.takeIf(String::isNotBlank) }
+/** A saved Cablegram subtitle: [id] changes whenever the person picks a new one, [label] is what the TV menu shows. */
+data class SmartSubtitle(val id: String, val label: String, val content: String)
+
+/** Inline subtitles (smart subtitles), in track order. */
+fun PlaybackResponse.smartSubtitles(): List<SmartSubtitle> = subtitles.mapNotNull { track ->
+    val content = track.content?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+    val name = track.label?.takeIf(String::isNotBlank) ?: track.language?.takeIf(String::isNotBlank) ?: "Subtitles"
+    SmartSubtitle(track.trackId, "$name · Cablegram", content)
+}
 
 @Serializable
 data class LoadingVideosResponse(

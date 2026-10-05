@@ -94,7 +94,7 @@ import app.cablegram.player.SubtitlePreference
 import app.cablegram.player.matchSubtitleTrack
 import app.cablegram.player.PlayerEvent
 import app.cablegram.player.PlayerSource
-import app.cablegram.data.subtitleDocuments
+import app.cablegram.data.smartSubtitles
 import app.cablegram.player.VlcCableGramPlayer
 import app.cablegram.player.menuOptions
 import app.cablegram.player.reducePlaybackHud
@@ -187,7 +187,7 @@ fun PlayerScreen(
             }
             val resumeAt = ((resumeAtMs ?: player.positionMs) - 2_000).coerceAtLeast(0)
             activePlayback = activePlayback.copy(url = next, fallbackUrl = current)
-            player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers, activePlayback.subtitleDocuments()))
+            player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers, activePlayback.smartSubtitles()))
             transportNotice = transportNoticeFor(next)
             Log.i(PLAYBACK_LOG_TAG, "Switched source to ${if (isRelayUrl(next)) "relay" else "LAN"} at ${resumeAt / 1000}s")
             return true
@@ -227,6 +227,17 @@ fun PlayerScreen(
     fun applySavedSubtitleIfNeeded() {
         if (subtitleChoiceApplied) return
         val saved = playbackPrefs.subtitle(videoId)
+        // A Cablegram subtitle the person just added or changed is the one to show, even over an older "Off" or
+        // another track remembered for this video. Once they choose again for that subtitle, that choice is kept.
+        val smart = activePlayback.smartSubtitles().firstOrNull()
+        if (smart != null && saved?.smartId != smart.id) {
+            val track = player.subtitleTracks.firstOrNull { it.label == smart.label } ?: return  // not listed yet: try on the next update
+            selectedSubtitleId = track.id.toString()
+            player.selectSubtitle(selectedSubtitleId)
+            playbackPrefs.saveSubtitle(videoId, SubtitlePreference(off = false, trackId = selectedSubtitleId, label = smart.label, smartId = smart.id))
+            subtitleChoiceApplied = true
+            return
+        }
         if (saved == null) {
             // VLC may automatically enable a default/forced embedded track. Reflect the
             // actual player selection so the subtitle menu does not incorrectly show Off.
@@ -274,7 +285,7 @@ fun PlayerScreen(
                     val label = player.subtitleTracks.firstOrNull { it.id.toString() == effect.trackId }?.label
                     playbackPrefs.saveSubtitle(
                         videoId,
-                        SubtitlePreference(off = effect.trackId == null, trackId = effect.trackId, label = label),
+                        SubtitlePreference(off = effect.trackId == null, trackId = effect.trackId, label = label, smartId = activePlayback.smartSubtitles().firstOrNull()?.id),
                     )
                 }
                 is HudEffect.SetPlaybackSpeed -> {
@@ -434,7 +445,7 @@ fun PlayerScreen(
             }
         }
         val url = checkNotNull(activePlayback.url)
-        player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers, activePlayback.subtitleDocuments()))
+        player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers, activePlayback.smartSubtitles()))
         player.setPlaybackSpeed(playerSettings.playbackSpeed)
         player.setAspectRatio(playerSettings.aspectRatio)
         player.setAudioDelayMs(playerSettings.audioDelayMs)
@@ -537,7 +548,7 @@ fun PlayerScreen(
                     }
                     val playing = player.isPlaying
                     activePlayback = renewed
-                    player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers, renewed.subtitleDocuments()))
+                    player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers, renewed.smartSubtitles()))
                     if (!playing) player.pause()
                 }
             }

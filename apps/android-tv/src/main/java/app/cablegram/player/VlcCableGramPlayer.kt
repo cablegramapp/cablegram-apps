@@ -66,7 +66,13 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     private var requestedSubtitleTrackId: Int? = null
     private var currentUrl: String? = null
     private var currentHeaders: Map<String, String> = emptyMap()
-    private var currentSubtitles: List<String> = emptyList()
+    private var currentSubtitles: List<app.cablegram.data.SmartSubtitle> = emptyList()
+    /** VLC names an external track just "Track 14", so the Cablegram subtitles are attached to the playing video and the
+     * tracks that appear afterwards are theirs: track id to the label the menu shows. */
+    private var smartTracks: Map<Int, String> = emptyMap()
+    private var spuIdsBeforeSmart: Set<Int>? = null
+    private var smartAdded = false
+    private val addSmartSubtitles = Runnable { attachSmartSubtitles() }
     private var pendingSeekMs: Long? = null
     private var startedOnce = false
     private var viewsAttached = false
@@ -102,6 +108,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
                     eventFlow.tryEmit(PlayerEvent.Buffering(percent))
                 }
                 MediaPlayer.Event.Playing -> {
+                    if (!startedOnce && currentSubtitles.isNotEmpty() && !smartAdded) handler.postDelayed(addSmartSubtitles, SMART_SUBTITLE_DELAY_MS)
                     startedOnce = true
                     restorePlaybackSettings()
                     restoreTrackSelections()
@@ -152,6 +159,8 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         currentUrl = source.url
         currentHeaders = source.headers
         currentSubtitles = source.subtitles
+        handler.removeCallbacks(addSmartSubtitles)
+        smartTracks = emptyMap(); spuIdsBeforeSmart = null; smartAdded = false
         pendingSeekMs = null
         startedOnce = false
         resumeAfterSeek = true
@@ -265,13 +274,6 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
                 }
             addOption(":http-reconnect")
             if (startPositionMs > 0) addOption(":start-time=${startPositionMs / 1000.0}")
-            // Saved subtitles are plain files, so they work the same over LAN, relay, Telegram or cloud storage.
-            currentSubtitles.forEachIndexed { index, document ->
-                runCatching {
-                    val file = java.io.File(appContext.cacheDir, "subtitle-$index.vtt").apply { writeText(document) }
-                    addSlave(IMedia.Slave(IMedia.Slave.Type.Subtitle, if (index == 0) 4 else 2, Uri.fromFile(file).toString()))
-                }
-            }
         }
         mediaPlayer.media = media
         media.release()
@@ -355,9 +357,32 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         eventFlow.tryEmit(PlayerEvent.Settling(false))
     }
 
+    /** Saved subtitles are plain files, so they work the same over LAN, relay, Telegram or cloud storage. */
+    private fun attachSmartSubtitles() {
+        if (smartAdded || currentSubtitles.isEmpty()) return
+        smartAdded = true
+        spuIdsBeforeSmart = mediaPlayer.spuTracks?.map { it.id }?.toSet() ?: emptySet()
+        currentSubtitles.forEachIndexed { index, subtitle ->
+            runCatching {
+                val file = java.io.File(appContext.cacheDir, "cablegram-subtitle-$index.vtt").apply { writeText(subtitle.content) }
+                mediaPlayer.addSlave(IMedia.Slave.Type.Subtitle, Uri.fromFile(file), index == 0)
+            }
+        }
+    }
+
     private fun refreshTracks() {
         availableAudioTracks = mediaPlayer.audioTracks?.map { PlayerTrack(it.id, it.name ?: "Audio ${it.id}") } ?: emptyList()
-        availableSubtitleTracks = mediaPlayer.spuTracks?.map { PlayerTrack(it.id, it.name ?: "Subtitle ${it.id}") } ?: emptyList()
+        val tracks = mediaPlayer.spuTracks.orEmpty()
+        val before = spuIdsBeforeSmart
+        if (before != null && smartTracks.isEmpty()) {
+            // The tracks that appeared after attaching are the Cablegram subtitles, in the order they were added.
+            val fresh = tracks.filter { it.id >= 0 && it.id !in before }.sortedBy { it.id }
+            smartTracks = fresh.zip(currentSubtitles).associate { (track, subtitle) -> track.id to subtitle.label }
+        }
+        availableSubtitleTracks = tracks.map { track ->
+            PlayerTrack(track.id, smartTracks[track.id] ?: track.name?.trim()?.takeIf { it.isNotEmpty() } ?: "Subtitle ${track.id}")
+        }
+        runCatching { android.util.Log.d("SubtitleTracks", "spu tracks: ${mediaPlayer.spuTracks?.map { "${it.id}='${it.name}'" }}") }
         eventFlow.tryEmit(PlayerEvent.TracksChanged)
     }
 
@@ -438,3 +463,6 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         }
     }
 }
+
+/** Long enough for the video's own tracks to be listed first, so the Cablegram track is the only new one. */
+private const val SMART_SUBTITLE_DELAY_MS = 1_200L
