@@ -82,6 +82,9 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
     var job by remember { mutableStateOf<Job?>(null) }
     var requestId by remember { mutableStateOf<String?>(null) }
     var requestedLanguage by remember { mutableStateOf<String?>(null) }
+    // The video is read once per visit; a language change reuses what was learned from it.
+    var analysis by remember { mutableStateOf<Pair<SubtitleTechnical?, SubtitleFingerprint?>?>(null) }
+    var analysisNote by remember { mutableStateOf<String?>(null) }
     val token = viewModel.accountTokenOrNull()
 
     fun cancelSearch() {
@@ -97,16 +100,22 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
         job = scope.launch {
             try {
                 progress = "Looking at your video…"
-                val (technical, fingerprint) = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val (technical, fingerprint) = analysis ?: withContext(kotlinx.coroutines.Dispatchers.IO) {
                     progress = if (item.sourceKind == "telegram") "Opening your video from Telegram…" else "Looking at your video…"
                     val media = runCatching { viewModel.openVideo(item) }.getOrNull()
-                    if (media == null) null to null else media.use {
+                    if (media == null) { analysisNote = "Your video couldn't be opened, so matches can't be checked against its audio."; null to null }
+                    else media.use {
                         val tech = runCatching { LocalSubtitleAnalysis.probe(it) }.getOrNull()
                         progress = "Listening for dialogue…"
                         val print = tech?.duration?.let { d -> runCatching { LocalSubtitleAnalysis.fingerprint(it, d) }.getOrNull() }
+                        analysisNote = when {
+                            tech?.duration == null -> "This video's format couldn't be read, so matches can't be checked against its audio."
+                            print == null -> "Not enough clear dialogue could be heard in your video, so matches can't be checked against its audio."
+                            else -> null
+                        }
                         tech to print
                     }
-                }
+                }.also { analysis = it }
                 progress = "Searching for subtitles…"
                 val body = subtitleJson.encodeToString(SubtitleSearchRequest(id, item.id, language, technical, fingerprint))
                 val text = viewModel.subtitleRequest("discoveries", t, "POST", body)
@@ -146,7 +155,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                 StatusNote(s.message)
                 Button(onClick = { search(requestedLanguage) }, modifier = Modifier.fillMaxWidth()) { Text("Try again") }
             }
-            is SubtitleStage.Results -> ResultsContent(viewModel, item, s.discovery, preferences, requestedLanguage,
+            is SubtitleStage.Results -> ResultsContent(viewModel, item, s.discovery, analysisNote, preferences, requestedLanguage,
                 onSearchLanguage = ::search,
                 onPreferences = { updated -> preferences = updated; token?.let { t -> scope.launch { runCatching { viewModel.subtitleRequest("preferences", t, "PUT", subtitleJson.encodeToString(updated)) } } } },
                 onSelected = { match, id -> viewModel.refreshSubtitleStatus(item); stage = SubtitleStage.Adjust(s.discovery, match, id) },
@@ -158,7 +167,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
 
 @Composable
 private fun ResultsContent(
-    viewModel: PhoneViewModel, item: LibraryItem, discovery: SubtitleDiscovery, preferences: SubtitlePreferences, language: String?,
+    viewModel: PhoneViewModel, item: LibraryItem, discovery: SubtitleDiscovery, analysisNote: String?, preferences: SubtitlePreferences, language: String?,
     onSearchLanguage: (String?) -> Unit, onPreferences: (SubtitlePreferences) -> Unit,
     onSelected: (SubtitleMatch, String) -> Unit, onError: (String) -> Unit,
 ) {
@@ -187,6 +196,7 @@ private fun ResultsContent(
     }
 
     discoveryNotice(discovery)?.let { StatusNote(it) }
+    analysisNote?.let { StatusNote(it) }
     discovery.selected?.let { StatusNote("${languageName(it.language)} subtitles were selected automatically.") }
     val best = usable.firstOrNull()
     if (best != null) {
