@@ -138,6 +138,13 @@ fun PlayerScreen(
     // Shown with the Cablegram loop from the moment a path is lost until the new one plays.
     var transition by remember(playback.url) { mutableStateOf<SourceTransition?>(null) }
     var lastSourceError by remember(playback.url) { mutableStateOf<String?>(null) }
+    // CAB-15: the source is opened (it passed its probe) and nothing has played yet; bounds the silent start.
+    var loaded by remember(playback.url) { mutableStateOf(false) }
+    var startupSwitched by remember(playback.url) { mutableStateOf(false) }
+    // Retry reopens the title; it resumes where playback last moved, not at a seek target that never played.
+    var retryCount by remember(playback.url) { mutableIntStateOf(0) }
+    var reachedMs by remember(playback.url) { mutableLongStateOf(0L) }
+    var recoveryChoice by remember(playback.url) { mutableStateOf(RecoveryChoice.RETRY) }
     LaunchedEffect(remoteTitleCommandId, hasStarted, isPlaying, error) {
         if (error != null) onRemotePlaybackResult("playback_failed")
         else if (hasStarted && isPlaying) onRemotePlaybackResult(null)
@@ -195,8 +202,10 @@ fun PlayerScreen(
     }
 
     fun exit() {
-        if (player.positionMs > 0) {
-            val p = (player.positionMs / 1000).toInt()
+        // After a failure the player may sit on a seek target that never played; report where it really got to.
+        val exitMs = if (error != null) reachedMs else player.positionMs
+        if (exitMs > 0) {
+            val p = (exitMs / 1000).toInt()
             val totalD = currentDurationMs.takeIf { it > 0 }?.div(1000)?.toInt()
             // R-3: final state on exit so stop/completed is persisted, not just positions.
             onState(p, totalD, false, (player.volume * 100).toInt(), player.volume == 0f, "libvlc")
@@ -365,6 +374,21 @@ fun PlayerScreen(
         }
         val dpad = mapDpad(event.keyCode) ?: return false
         if (event.action != KeyEvent.ACTION_DOWN) return true
+        if (error != null) {
+            // The failure panel owns the remote: Retry or Back, nothing else.
+            when (dpad) {
+                DpadKey.LEFT, DpadKey.RIGHT, DpadKey.UP, DpadKey.DOWN -> recoveryChoice = recoveryChoice.toggled()
+                DpadKey.OK -> if (recoveryChoice == RecoveryChoice.RETRY) {
+                    val from = reachedMs
+                    error = null; lastSourceError = null
+                    hasStarted = false; isPlaying = false; settling = false; loaded = false; startupSwitched = false
+                    currentPositionMs = from
+                    retryCount++
+                } else exit()
+                DpadKey.BACK -> exit()
+            }
+            return true
+        }
         userInteractionCount++
         val (next, effects) = reducePlaybackHud(hud, dpad, event.repeatCount, hudContext())
         hud = next
@@ -381,8 +405,9 @@ fun PlayerScreen(
     }
     DisposableEffect(player) {
         onDispose {
-            if (player.positionMs > 0) {
-                val p = (player.positionMs / 1000).toInt()
+            val leftAtMs = if (error != null) reachedMs else player.positionMs
+            if (leftAtMs > 0) {
+                val p = (leftAtMs / 1000).toInt()
                 val totalD = currentDurationMs.takeIf { it > 0 }?.div(1000)?.toInt()
                 onState(p, totalD, false, 0, true, "libvlc")
             }
@@ -409,8 +434,9 @@ fun PlayerScreen(
             hud = hud.copy(controlsVisible = false, previewPositionMs = null, holdMultiplier = 1)
         }
     }
-    LaunchedEffect(player, start) {
-        val position = start ?: return@LaunchedEffect
+    LaunchedEffect(player, start, retryCount) {
+        val position = (if (retryCount > 0) reachedMs else start) ?: return@LaunchedEffect
+        if (retryCount == 0) reachedMs = position // a failure before anything played still resumes from here
         if (!isLive) {
             // LAN first with a short probe when a relay path exists; otherwise the full preflight.
             val primary = checkNotNull(activePlayback.url)
@@ -433,6 +459,7 @@ fun PlayerScreen(
         }
         val url = checkNotNull(activePlayback.url)
         player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers))
+        loaded = true
         player.setPlaybackSpeed(playerSettings.playbackSpeed)
         player.setAspectRatio(playerSettings.aspectRatio)
         player.setAudioDelayMs(playerSettings.audioDelayMs)
@@ -487,27 +514,63 @@ fun PlayerScreen(
         }
     }
     // Spec 003: a stream that stops advancing while "playing" (Wi‑Fi gone, phone asleep) is re-opened
-    // on the other path at the current position.
+    // on the other path at the current position. CAB-15: this also covers a seek that never recovers (the hold
+    // ends on a frozen picture); no fallback or a failed one ends in the Retry / Back panel.
     LaunchedEffect(player, start) {
         if (start == null || isLive) return@LaunchedEffect
         var lastPosition = -1L
-        var stalledSeconds = 0
+        var timerLimit = stallSwitchSeconds(activePlayback.url)
+        var timer = NoProgressTimer(timerLimit)
+        val seekTimer = NoProgressTimer(SEEK_STALL_SECONDS)
+        var afterHold = false
         while (true) {
             delay(1_000)
+            val position = player.positionMs
             if (error != null || switchingSource || !hasStarted || settling) {
-                stalledSeconds = 0
+                timer.reset(); seekTimer.reset()
+                if (settling) afterHold = true
+                lastPosition = position // a seek target is not progress
                 continue
             }
-            val position = player.positionMs
-            stalledSeconds = if (player.isPlaying && position == lastPosition) stalledSeconds + 1 else 0
+            if (stallSwitchSeconds(activePlayback.url) != timerLimit) {
+                timerLimit = stallSwitchSeconds(activePlayback.url)
+                timer = NoProgressTimer(timerLimit)
+            }
+            val stalled = streamStalled(hasStarted, settling, isPlaying, error != null, switchingSource, position, lastPosition)
+            if (!stalled && position != lastPosition) { reachedMs = position; afterHold = false }
             lastPosition = position
-            if (stalledSeconds >= stallSwitchSeconds(activePlayback.url)) {
-                stalledSeconds = 0
-                if (!switchSource()) {
+            // After a seek the hold has already waited; a stream still frozen then gets the shorter limit.
+            val limitReached = if (afterHold) seekTimer.tick(stalled) else timer.tick(stalled)
+            if (limitReached) {
+                afterHold = false
+                if (!switchSource(resumeAtMs = reachedMs)) {
                     error = lastSourceError ?: lostSourceMessage(activePlayback.url)
                 }
             }
         }
+    }
+    // CAB-15: nothing played within the startup deadline. Try the other path once, then stop and let the viewer decide.
+    LaunchedEffect(player, start) {
+        if (start == null || isLive) return@LaunchedEffect
+        val timer = NoProgressTimer(STARTUP_DEADLINE_SECONDS)
+        while (true) {
+            delay(1_000)
+            if (!timer.tick(startupWaiting(loaded, hasStarted, error != null, switchingSource))) continue
+            Log.w(PLAYBACK_LOG_TAG, "Nothing played within ${STARTUP_DEADLINE_SECONDS}s of opening the source")
+            if (!startupSwitched) {
+                startupSwitched = true
+                if (switchSource()) continue
+            }
+            error = lastSourceError ?: "Playback didn't start. Check that your phone is online with Cablegram open, then try again."
+        }
+    }
+    // CAB-15: a failed playback stops: no sound or picture left running, and the screen no longer reports "playing".
+    LaunchedEffect(error) {
+        if (error == null) return@LaunchedEffect
+        player.pause()
+        isPlaying = false
+        transition = null
+        recoveryChoice = RecoveryChoice.RETRY
     }
     LaunchedEffect(transition) {
         val shown = transition ?: return@LaunchedEffect
@@ -839,8 +902,17 @@ fun PlayerScreen(
                 }
             }
         }
-        error?.let {
-            Text(it, Modifier.align(Alignment.Center).background(Color(0xCC10120F)).padding(24.dp), color = Coral, fontSize = 18.sp)
+        error?.let { message ->
+            Column(
+                Modifier.align(Alignment.Center).background(Color(0xE610120F), RoundedCornerShape(16.dp)).padding(28.dp).widthIn(max = 640.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(message, color = Coral, fontSize = 18.sp)
+                Row(Modifier.padding(top = 22.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    TransportButton(label = "Retry", focused = recoveryChoice == RecoveryChoice.RETRY)
+                    TransportButton(label = "Back", focused = recoveryChoice == RecoveryChoice.BACK)
+                }
+            }
         }
         // Spec 003: while the phone is asked to allow mobile data, show the Cablegram loop and what
         // to do on the phone instead of a frozen frame.
