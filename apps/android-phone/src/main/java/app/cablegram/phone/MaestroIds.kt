@@ -53,6 +53,7 @@ object MaestroIds {
     const val SUBTITLES_SEARCHING = "subtitles_searching"
     const val SUBTITLES_USE = "subtitles_use"
     const val SUBTITLES_SEEK = "subtitles_seek"
+    const val SUBTITLES_SKIP = "subtitles_skip"
     const val SUBTITLES_OTHERS = "subtitles_others"
     const val DETAIL_PLAY_TV = "detail_play_on_tv"
     const val CLOUD_CONTINUE = "cloud_continue"

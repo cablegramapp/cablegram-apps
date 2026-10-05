@@ -50,7 +50,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -89,6 +92,9 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
     var others by remember { mutableStateOf<SubtitleDiscovery?>(null) }
     var loadingOthers by remember { mutableStateOf(false) }
     var othersNote by remember { mutableStateOf<String?>(null) }
+    // The audio check can take a minute on a long film or over Telegram, so the person can skip it at any point.
+    var listening by remember { mutableStateOf<Deferred<SubtitleFingerprint?>?>(null) }
+    var skipped by remember { mutableStateOf(false) }
     val token = viewModel.accountTokenOrNull()
 
     fun cancelSearch() {
@@ -109,8 +115,13 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             val tech = runCatching { LocalSubtitleAnalysis.probe(it) }.getOrNull()
             val unsupported = LocalSubtitleAnalysis.unsupportedAudio(it)
             progress = "Listening for dialogue…"
-            val print = if (unsupported != null) null else tech?.duration?.let { d -> runCatching { LocalSubtitleAnalysis.fingerprint(it, d) }.getOrNull() }
+            val print = if (unsupported != null || tech?.duration == null) null else coroutineScope {
+                val task = async { runCatching { LocalSubtitleAnalysis.fingerprint(it, tech.duration, onZone = { done, total -> progress = "Listening for dialogue… (${done + 1} of $total)" }) }.getOrNull() }
+                listening = task
+                try { task.await() } catch (e: CancellationException) { if (skipped) null else throw e } finally { listening = null }
+            }
             analysisNote = when {
+                skipped -> "You skipped the audio check, so matches aren't verified. Use the preview to line the subtitles up by ear or by eye."
                 unsupported != null -> unsupportedAudioNote(unsupported)
                 tech?.duration == null -> "This video's format couldn't be read, so matches can't be checked against its audio."
                 print == null -> "Not enough clear dialogue could be heard in your video, so matches can't be checked against its audio."
@@ -178,6 +189,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                     CircularProgressIndicator(Modifier.width(28.dp).height(28.dp), color = VlcOrange); Text(progress, color = Color.White)
                 }
                 Text("Your video stays on your phone. Only a short timing pattern is sent for matching.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                if (listening != null) OutlinedButton(onClick = { skipped = true; listening?.cancel() }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SKIP)) { Text("Skip — I'll line it up myself") }
                 OutlinedButton(onClick = { cancelSearch(); stage = SubtitleStage.Failed(errorMessage("cancelled")) }) { Text("Cancel") }
             }
             is SubtitleStage.Failed -> {
@@ -235,7 +247,7 @@ private fun ResultsContent(
     }
     othersNote?.let { StatusNote(it) }
     if (!loadingOthers && othersNote == null && language != null && inView.isEmpty()) StatusNote("No ${languageName(language)} subtitles were found for this title.")
-    else if (language == null || language in preferences.languages) discoveryNotice(shown)?.let { StatusNote(it) }
+    else if (language == null || language in preferences.languages) discoveryNotice(shown)?.takeUnless { analysisNote != null && shown.status == "no_confident_match" }?.let { StatusNote(it) }
     analysisNote?.let { StatusNote(it) }
     if (language == null) discovery.selected?.let { StatusNote("${languageName(it.language)} subtitles were selected automatically.") }
     val best = usable.firstOrNull()

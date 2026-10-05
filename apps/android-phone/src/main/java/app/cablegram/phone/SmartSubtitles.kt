@@ -125,11 +125,13 @@ object LocalSubtitleAnalysis {
     }
     /** Six zones across the film; inside a zone a quiet stretch (action, music, no dialogue) is replaced by a nearby
      * one, because a window without speech can neither confirm nor contradict a subtitle. */
-    suspend fun fingerprint(input: SubtitleMediaInput, duration: Double): SubtitleFingerprint? {
+    suspend fun fingerprint(input: SubtitleMediaInput, duration: Double, onZone: (done: Int, total: Int) -> Unit = { _, _ -> }): SubtitleFingerprint? {
         if (duration < 120) return null
         val windows = mutableListOf<SubtitleActivityWindow>()
         val budgetEnd = android.os.SystemClock.elapsedRealtime() + 120_000
-        for (zone in listOf(.03, .15, .35, .55, .75, .90)) {
+        val zones = listOf(.03, .15, .35, .55, .75, .90)
+        for ((index, zone) in zones.withIndex()) {
+            onZone(index, zones.size)
             var best: SubtitleActivityWindow? = null
             for (shift in listOf(0.0, .06, -.06, .11)) {
                 currentCoroutineContext().ensureActive()
