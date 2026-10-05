@@ -95,15 +95,19 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
     // The audio check can take a minute on a long film or over Telegram, so the person can skip it at any point.
     var listening by remember { mutableStateOf<Deferred<SubtitleFingerprint?>?>(null) }
     var skipped by remember { mutableStateOf(false) }
+    var activeInput by remember { mutableStateOf<SubtitleMediaInput?>(null) }
+    var analysing by remember { mutableStateOf(false) }
     val token = viewModel.accountTokenOrNull()
 
     fun cancelSearch() {
-        job?.cancel()
+        job?.cancel(); activeInput?.close()
         val id = requestId; val t = token
         if (id != null && t != null) scope.launch(NonCancellable) { runCatching { viewModel.subtitleRequest("discoveries/$id", t, "DELETE") } }
     }
 
     suspend fun ensureAnalysis(): Pair<SubtitleTechnical?, SubtitleFingerprint?> = analysis ?: withContext(kotlinx.coroutines.Dispatchers.IO) {
+        analysing = true
+        try {
         progress = if (item.sourceKind == "telegram") "Opening your video from Telegram…" else "Looking at your video…"
         val media = runCatching { viewModel.openVideo(item) }
         if (media.isFailure) {
@@ -112,13 +116,14 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             analysisNote = (reason as? VideoUnavailable)?.message ?: "Your video couldn't be opened, so matches can't be checked against its audio."
             null to null
         } else media.getOrThrow().use {
+            activeInput = it
             val tech = runCatching { LocalSubtitleAnalysis.probe(it) }.getOrNull()
             val unsupported = LocalSubtitleAnalysis.unsupportedAudio(it)
             progress = "Listening for dialogue…"
             val print = if (unsupported != null || tech?.duration == null) null else coroutineScope {
                 val task = async { runCatching { LocalSubtitleAnalysis.fingerprint(it, tech.duration, onZone = { done, total -> progress = "Listening for dialogue… (${done + 1} of $total)" }) }.getOrNull() }
                 listening = task
-                try { task.await() } catch (e: CancellationException) { if (skipped) null else throw e } finally { listening = null }
+                try { task.await() } catch (e: CancellationException) { if (skipped) null else throw e } finally { listening = null; activeInput = null }
             }
             analysisNote = when {
                 skipped -> "You skipped the audio check, so matches aren't verified. Use the preview to line the subtitles up by ear or by eye."
@@ -129,6 +134,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             }
             tech to print
         }
+        } finally { analysing = false }
     }.also { analysis = it }
 
     /** The one search of this visit: the person's preferred languages. */
@@ -189,7 +195,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                     CircularProgressIndicator(Modifier.width(28.dp).height(28.dp), color = VlcOrange); Text(progress, color = Color.White)
                 }
                 Text("Your video stays on your phone. Only a short timing pattern is sent for matching.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-                if (listening != null) OutlinedButton(onClick = { skipped = true; listening?.cancel() }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SKIP)) { Text("Skip — I'll line it up myself") }
+                if (analysing) OutlinedButton(onClick = { skipped = true; activeInput?.close(); listening?.cancel() }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SKIP)) { Text("Skip — I'll line it up myself") }
                 OutlinedButton(onClick = { cancelSearch(); stage = SubtitleStage.Failed(errorMessage("cancelled")) }) { Text("Cancel") }
             }
             is SubtitleStage.Failed -> {
@@ -337,11 +343,16 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
         withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { viewModel.openVideo(item) } }.fold({ input = it }, { openError = (it as? VideoUnavailable)?.message })
         opening = false
     }
-    DisposableEffect(item.id) { onDispose { runCatching { player?.release() }; runCatching { input?.close() } } }
+    // MediaPlayer calls can wait on the data source (a slow Telegram read), so none of them may run on the UI thread.
+    val control = remember { java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "subtitle-preview").apply { isDaemon = true } } }
+    fun withPlayer(block: (MediaPlayer) -> Unit) { player?.let { p -> control.execute { runCatching { block(p) } } } }
+    DisposableEffect(item.id) { onDispose { val p = player; val i = input; player = null; control.execute { runCatching { p?.release() }; runCatching { i?.close() }; control.shutdown() } } }
     var audioNote by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(input) { input?.let { i -> audioNote = withContext(kotlinx.coroutines.Dispatchers.IO) { LocalSubtitleAnalysis.unsupportedAudio(i) }?.let(::unsupportedAudioNote) } }
-    LaunchedEffect(player) { while (true) { player?.let { runCatching { position = it.currentPosition / 1000.0 } }; delay(150) } }
-    fun seek(ms: Int) { player?.seekTo(ms.coerceIn(0, maxOf(durationMs, 1)).toLong(), MediaPlayer.SEEK_CLOSEST) }
+    LaunchedEffect(player) { while (true) { val p = player; if (p != null) withContext(kotlinx.coroutines.Dispatchers.Default) { runCatching { p.currentPosition } }.getOrNull()?.let { position = it / 1000.0 }; delay(150) } }
+    // A video that never starts (a slow Telegram read) must not leave a black box with no explanation.
+    LaunchedEffect(input) { if (input?.remote == true) { delay(45_000); if (player == null && message == null) message = "This video is taking too long to open from Telegram, so it can't be previewed right now. You can still shift the timing." } }
+    fun seek(ms: Int) { withPlayer { it.seekTo(ms.coerceIn(0, maxOf(durationMs, 1)).toLong(), MediaPlayer.SEEK_CLOSEST) } }
     fun adjust(delta: Double) { offset = clampOffset(offset + delta) }
     fun save(body: String) {
         val t = token ?: return
@@ -368,7 +379,7 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
                         }.onFailure { message = "This video can't be previewed right now, but you can still adjust the timing." }
                     }
                     override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hh: Int) {}
-                    override fun surfaceDestroyed(h: SurfaceHolder) { runCatching { player?.release() }; player = null }
+                    override fun surfaceDestroyed(h: SurfaceHolder) { val p = player; player = null; control.execute { runCatching { p?.release() } } }
                 })
             }
         }, modifier = Modifier.fillMaxWidth().height(200.dp))
@@ -376,9 +387,9 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
             Slider(value = (position * 1000 / durationMs).toFloat().coerceIn(0f, 1f), onValueChange = { f -> position = f * durationMs / 1000.0; seek((f * durationMs).toInt()) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SEEK))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { player?.let { if (it.isPlaying) it.pause() else it.start() } }) { Text("Play / pause") }
-            OutlinedButton(onClick = { seek(((player?.currentPosition ?: 0) - 10_000)) }) { Text("−10 s") }
-            OutlinedButton(onClick = { seek(((player?.currentPosition ?: 0) + 10_000)) }) { Text("+10 s") }
+            OutlinedButton(onClick = { withPlayer { if (it.isPlaying) it.pause() else it.start() } }) { Text("Play / pause") }
+            OutlinedButton(onClick = { seek((position * 1000).toInt() - 10_000) }) { Text("−10 s") }
+            OutlinedButton(onClick = { seek((position * 1000).toInt() + 10_000) }) { Text("+10 s") }
         }
     } else if (opening) StatusNote("Opening your video…")
     else StatusNote((openError ?: "This video can't be opened right now, so it can't be previewed.") + " You can still shift the timing.")

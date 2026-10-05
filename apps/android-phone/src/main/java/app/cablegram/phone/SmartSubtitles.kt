@@ -30,6 +30,8 @@ import kotlin.math.sqrt
 /** A video the phone can analyse and preview: a local file, or a Telegram title read in small windows. */
 interface SubtitleMediaInput : AutoCloseable {
     val size: Long
+    /** True when reading means fetching over the network, which can be slow and must stay cancellable. */
+    val remote: Boolean get() = false
     fun attach(extractor: MediaExtractor)
     fun attach(player: MediaPlayer)
     /** Up to [length] bytes at [position], or null when nothing could be read. */
@@ -48,23 +50,43 @@ class FileMediaInput(private val pfd: ParcelFileDescriptor) : SubtitleMediaInput
     override fun close() = pfd.close()
 }
 
-/** Reads a Telegram title through the phone's own session; nothing is stored beyond the reader's small window. */
+/**
+ * Reads a Telegram title through the phone's own session; nothing is stored beyond the reader's small window.
+ * Every read is bounded and can be abandoned: [close] makes pending and later reads return at once, so skipping
+ * or leaving the screen never waits on Telegram.
+ */
 class TelegramMediaInput(private val media: TelegramMedia, private val file: TelegramFileRef) : SubtitleMediaInput {
     override val size: Long get() = file.size
-    private val source = object : MediaDataSource() {
+    override val remote: Boolean get() = true
+    @Volatile private var closed = false
+    private val readers = java.util.concurrent.Executors.newCachedThreadPool { r -> Thread(r, "subtitle-telegram-read").apply { isDaemon = true } }
+
+    private fun read(position: Long, length: Int): ByteArray? {
+        if (closed) return null
+        val pending = readers.submit<ByteArray?> { media.read(file.fileId, position, length) }
+        val deadline = System.nanoTime() + READ_TIMEOUT_MS * 1_000_000
+        while (true) {
+            try { return pending.get(200, java.util.concurrent.TimeUnit.MILLISECONDS) }
+            catch (e: java.util.concurrent.TimeoutException) { if (closed || System.nanoTime() > deadline) { pending.cancel(true); return null } }
+            catch (e: Exception) { return null }
+        }
+    }
+    private val source by lazy { object : MediaDataSource() {
         override fun readAt(position: Long, buffer: ByteArray, offset: Int, size: Int): Int {
             if (position >= file.size) return -1
-            val bytes = media.read(file.fileId, position, minOf(size.toLong(), file.size - position).toInt()) ?: return -1
+            val bytes = read(position, minOf(size.toLong(), file.size - position).toInt()) ?: return -1
             System.arraycopy(bytes, 0, buffer, offset, bytes.size)
             return bytes.size.takeIf { it > 0 } ?: -1
         }
         override fun getSize(): Long = file.size
         override fun close() {}
-    }
+    } }
     override fun attach(extractor: MediaExtractor) = extractor.setDataSource(source)
     override fun attach(player: MediaPlayer) = player.setDataSource(source)
-    override fun readAt(position: Long, length: Int): ByteArray? = media.read(file.fileId, position, length)
-    override fun close() {}
+    override fun readAt(position: Long, length: Int): ByteArray? = read(position, length)
+    override fun close() { closed = true; readers.shutdownNow() }
+
+    private companion object { const val READ_TIMEOUT_MS = 20_000L }
 }
 
 /** Only sparse PCM is decoded; raw audio never leaves memory. The energy/ZCR gate is intentionally
@@ -128,7 +150,8 @@ object LocalSubtitleAnalysis {
     suspend fun fingerprint(input: SubtitleMediaInput, duration: Double, onZone: (done: Int, total: Int) -> Unit = { _, _ -> }): SubtitleFingerprint? {
         if (duration < 120) return null
         val windows = mutableListOf<SubtitleActivityWindow>()
-        val budgetEnd = android.os.SystemClock.elapsedRealtime() + 120_000
+        // Over the network each section means fetching from a different part of the file, so give up sooner.
+        val budgetEnd = android.os.SystemClock.elapsedRealtime() + if (input.remote) 45_000 else 120_000
         val zones = listOf(.03, .15, .35, .55, .75, .90)
         for ((index, zone) in zones.withIndex()) {
             onZone(index, zones.size)

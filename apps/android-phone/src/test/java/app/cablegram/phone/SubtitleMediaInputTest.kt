@@ -43,3 +43,22 @@ class SubtitleMediaInputTest {
         assertNull(LocalSubtitleAnalysis.hash(Chunked(ByteArray(1000), chunk = 100)))
     }
 }
+
+class TelegramMediaInputTest {
+    private class Stuck : TelegramMedia {
+        val started = java.util.concurrent.CountDownLatch(1)
+        override fun resolve(uniqueId: String): TelegramFileRef? = null
+        override fun read(fileId: Int, position: Long, want: Int): ByteArray? { started.countDown(); Thread.sleep(60_000); return null }
+    }
+
+    @Test fun aReadThatNeverReturnsIsAbandonedAsSoonAsTheInputIsClosed() {
+        val media = Stuck(); val input = TelegramMediaInput(media, TelegramFileRef(1, 1_000_000, "video/mp4"))
+        val result = java.util.concurrent.atomic.AtomicReference<Any?>("pending")
+        val reader = Thread { result.set(input.readAt(0, 1024)) }.also { it.start() }
+        assertEquals(true, media.started.await(2, java.util.concurrent.TimeUnit.SECONDS))
+        val closedAt = System.nanoTime(); input.close(); reader.join(3_000)
+        assertEquals(false, reader.isAlive); assertNull(result.get())
+        assertEquals(true, (System.nanoTime() - closedAt) / 1_000_000 < 2_000)
+        assertNull(input.readAt(0, 1024))
+    }
+}
