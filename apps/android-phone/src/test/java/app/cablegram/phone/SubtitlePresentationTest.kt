@@ -42,4 +42,12 @@ class SubtitlePresentationTest {
         val d = SubtitleDiscovery("i", "s", status = "provider_unavailable", errors = listOf(SubtitleProviderFailure("os", "provider_rate_limited", 300)))
         assertEquals("Subtitle sources are busy. Try again in about 5 min.", discoveryNotice(d))
     }
+
+    @Test fun partlyCheckedMatchIsLabelledHonestlyAndKeepsItsShift() {
+        val m = match("Likely Match", SubtitleAlignment(verified = false, offset = -1.5, reason = "partial_match"))
+        val h = headline(m)
+        assertFalse(h.verified); assertEquals("Likely match · partly checked", h.trust)
+        assertEquals("Adjusted from the little dialogue we could hear · -1.50 sec", h.timing)
+        assertEquals(-1.5 to 1.0, initialShift(m)); assertEquals(0.0 to 1.0, initialShift(match("Likely Match", null)))
+    }
 }

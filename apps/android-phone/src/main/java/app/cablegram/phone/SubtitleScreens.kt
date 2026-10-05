@@ -102,9 +102,13 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                 progress = "Looking at your video…"
                 val (technical, fingerprint) = analysis ?: withContext(kotlinx.coroutines.Dispatchers.IO) {
                     progress = if (item.sourceKind == "telegram") "Opening your video from Telegram…" else "Looking at your video…"
-                    val media = runCatching { viewModel.openVideo(item) }.getOrNull()
-                    if (media == null) { analysisNote = "Your video couldn't be opened, so matches can't be checked against its audio."; null to null }
-                    else media.use {
+                    val media = runCatching { viewModel.openVideo(item) }
+                    if (media.isFailure) {
+                        val reason = media.exceptionOrNull()
+                        android.util.Log.w("Subtitles", "video unavailable: ${reason?.message}")
+                        analysisNote = (reason as? VideoUnavailable)?.message ?: "Your video couldn't be opened, so matches can't be checked against its audio."
+                        null to null
+                    } else media.getOrThrow().use {
                         val tech = runCatching { LocalSubtitleAnalysis.probe(it) }.getOrNull()
                         progress = "Listening for dialogue…"
                         val print = tech?.duration?.let { d -> runCatching { LocalSubtitleAnalysis.fingerprint(it, d) }.getOrNull() }
@@ -267,8 +271,8 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
     val scope = rememberCoroutineScope(); val context = LocalContext.current
     val token = viewModel.accountTokenOrNull()
     val cues = match.cues.orEmpty()
-    var offset by remember { mutableStateOf(match.alignment?.takeIf { it.verified }?.offset ?: 0.0) }
-    var scale by remember { mutableStateOf(match.alignment?.takeIf { it.verified }?.scale ?: 1.0) }
+    var offset by remember { mutableStateOf(initialShift(match).first) }
+    var scale by remember { mutableStateOf(initialShift(match).second) }
     var position by remember { mutableStateOf(0.0) }
     var message by remember { mutableStateOf<String?>(null) }
     var pointA by remember { mutableStateOf<SyncPoint?>(null) }
@@ -278,10 +282,11 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
     // The preview reads the same bytes as the analysis: the local file, or the Telegram copy in small windows.
     var input by remember { mutableStateOf<SubtitleMediaInput?>(null) }
     var opening by remember { mutableStateOf(true) }
+    var openError by remember { mutableStateOf<String?>(null) }
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
     var durationMs by remember { mutableStateOf(0) }
     LaunchedEffect(item.id) {
-        input = withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { viewModel.openVideo(item) }.getOrNull() }
+        withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { viewModel.openVideo(item) } }.fold({ input = it }, { openError = (it as? VideoUnavailable)?.message })
         opening = false
     }
     DisposableEffect(item.id) { onDispose { runCatching { player?.release() }; runCatching { input?.close() } } }
@@ -325,7 +330,7 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
             OutlinedButton(onClick = { seek(((player?.currentPosition ?: 0) + 10_000)) }) { Text("+10 s") }
         }
     } else if (opening) StatusNote("Opening your video…")
-    else StatusNote("This video can't be opened on this phone right now, so it can't be previewed here. You can still shift the timing.")
+    else StatusNote((openError ?: "This video can't be opened right now, so it can't be previewed.") + " You can still shift the timing.")
     Surface(color = Color.Black, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
         Text(visibleCue(cues, position, offset, scale)?.text.orEmpty(), Modifier.padding(14.dp), color = Color.White, style = MaterialTheme.typography.bodyLarge)
     }

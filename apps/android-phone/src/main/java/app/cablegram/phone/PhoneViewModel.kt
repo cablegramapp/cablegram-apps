@@ -181,11 +181,15 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     /** The title's bytes for analysis and preview: the local file, or the Telegram channel copy. Blocking; call off the main thread. */
-    fun openVideo(item: LibraryItem): SubtitleMediaInput? {
+    fun openVideo(item: LibraryItem): SubtitleMediaInput {
         store.openPfd(item)?.let { return FileMediaInput(it) }
-        val key = item.telegramFileKey?.removePrefix("tgfile:") ?: return null
-        if (!PhoneTelegram.configured) return null
-        return telegramMedia.resolve(key)?.let { TelegramMediaInput(telegramMedia, it) }
+        if (item.sourceKind != "telegram") throw VideoUnavailable("This video isn't stored on this phone, so it can't be checked or previewed here.")
+        val key = item.telegramFileKey?.removePrefix("tgfile:")
+            ?: throw VideoUnavailable("Pull to refresh your library once so this Telegram video can be linked, then try again.")
+        if (!PhoneTelegram.configured) throw VideoUnavailable("Telegram isn't set up in this version of the app.")
+        val file = runCatching { telegramMedia.resolve(key) }.getOrNull()
+            ?: throw VideoUnavailable("Telegram didn't provide this video. Check that Telegram is connected in Settings, then try again.")
+        return TelegramMediaInput(telegramMedia, file)
     }
     /** Reads what the TV will use for this title, so the detail screen can say which subtitle is saved. */
     fun refreshSubtitleStatus(item: LibraryItem) {

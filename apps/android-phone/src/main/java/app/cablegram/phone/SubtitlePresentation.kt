@@ -14,13 +14,16 @@ fun formatSyncOffset(seconds: Double): String = "%+.2f sec".format(Locale.US, se
 fun headline(match: SubtitleMatch): SubtitleHeadline {
     val alignment = match.alignment
     val verified = alignment?.verified == true && match.confidence in setOf("Perfect Match", "Verified Match")
+    val partial = !verified && alignment?.reason == "partial_match"
     val trust = when {
         match.confidence == "Poor Match" -> "Poor match"
+        partial -> "Likely match · partly checked"
         verified -> "✓ ${match.confidence}"
         match.confidence == "Likely Match" -> "Likely match · not verified"
         else -> "Not verified"
     }
     val timing = when {
+        partial -> "Adjusted from the little dialogue we could hear · ${formatSyncOffset(alignment!!.offset)}"
         verified && abs(alignment!!.offset) >= 0.05 -> "Automatically synchronized · ${formatSyncOffset(alignment.offset)}"
         verified -> "Timing already matches"
         alignment?.reason == "different_cut" -> "Timing differs from your copy — it may be another cut"
@@ -67,3 +70,7 @@ fun canApplyTwoPoint(a: Pair<SubtitleCue, Double>?, b: Pair<SubtitleCue, Double>
     a != null && b != null && b.first.start - a.first.start >= 60 && b.second > a.second
 
 fun clampOffset(value: Double): Double = value.coerceIn(-600.0, 600.0)
+
+/** The shift to start from in the preview: measured for verified and partly checked matches, otherwise none. */
+fun initialShift(match: SubtitleMatch): Pair<Double, Double> =
+    match.alignment?.takeIf { it.verified || it.reason == "partial_match" }?.let { it.offset to it.scale } ?: (0.0 to 1.0)

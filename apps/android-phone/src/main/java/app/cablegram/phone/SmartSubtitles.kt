@@ -124,7 +124,8 @@ object LocalSubtitleAnalysis {
             }
             best?.takeIf { speechFraction(it) >= .08 }?.let { windows += it }
         }
-        return windows.takeIf { it.size >= 3 }?.let { SubtitleFingerprint(windows = it) }
+        // Two informative sections are enough for the server to suggest a shift (never to verify); a film with little dialogue often has no more.
+        return windows.takeIf { it.size >= 2 }?.let { SubtitleFingerprint(windows = it) }
     }
     private val INFORMATIVE = .12..0.85
     private fun speechFraction(w: SubtitleActivityWindow?): Double = w?.let { it.bits.count { c -> c == '1' }.toDouble() / it.bits.length } ?: -1.0
@@ -182,3 +183,6 @@ object LocalSubtitleAnalysis {
 
 @Serializable data class SavedSubtitle(val language: String)
 @Serializable data class SavedSubtitleList(val subtitles: List<SavedSubtitle> = emptyList())
+
+/** A title whose bytes can't be read for subtitle matching; the message is shown to the person as is. */
+class VideoUnavailable(message: String) : Exception(message)
