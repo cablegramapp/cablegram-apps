@@ -122,3 +122,8 @@ input[type=range] { padding: 0; min-height: 36px; margin: 0; border: 0; backgrou
 /* Confirmations drop in under the header, clear of the remote's buttons */
 .toast { position: fixed; left: 50%; top: calc(env(safe-area-inset-top) + 64px); z-index: 30; max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 999px; background: #e9eef3; color: #0b0f14; font-size: 14px; font-weight: 500; box-shadow: 0 6px 24px rgba(0, 0, 0, .4); opacity: 0; transform: translate(-50%, -12px); transition: opacity .18s, transform .18s; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.outcome { position: fixed; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 76px); z-index: 7; display: flex; align-items: center; gap: 8px; max-width: 520px; margin: 0 auto; padding: 10px 12px 10px 16px; border-radius: 14px; background: var(--raised); border: 1px solid var(--line); font-size: 14px; box-shadow: 0 6px 24px rgba(0, 0, 0, .4); }
+.outcome .grow { white-space: normal; }
+.outcome[data-outcome="confirmed"] { border-color: var(--accent); }
+.outcome[data-outcome="rejected"], .outcome[data-outcome="unconfirmed"] { border-color: var(--danger); }
