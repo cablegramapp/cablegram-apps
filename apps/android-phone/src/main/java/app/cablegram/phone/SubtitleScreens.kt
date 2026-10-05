@@ -123,6 +123,8 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             null to null
         } else media.getOrThrow().use {
             activeInput = it
+            // Reading a Telegram video is data the person pays for: cap the whole check and each section of it.
+            it.limitAnalysis(totalBytes = 160L * 1024 * 1024, sectionBytes = 64L * 1024 * 1024)
             val tech = runCatching { LocalSubtitleAnalysis.probe(it) }.getOrNull()
             val unsupported = LocalSubtitleAnalysis.unsupportedAudio(it)
             progress = "Listening for dialogue…"
@@ -135,6 +137,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                 skipped -> "You skipped the audio check, so matches aren't verified. Use the preview to line the subtitles up by ear or by eye."
                 unsupported != null -> unsupportedAudioNote(unsupported)
                 tech?.duration == null -> "This video's format couldn't be read, so matches can't be checked against its audio."
+                print == null && it.budgetHit -> "Stopped early to limit how much of this video is downloaded from Telegram, so matches aren't verified. Skip the check next time, or use the preview to line them up."
                 print == null -> "Not enough clear dialogue could be heard in your video, so matches can't be checked against its audio."
                 else -> null
             }
@@ -386,7 +389,12 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
                         val mp = MediaPlayer()
                         runCatching {
                             source.attach(mp); mp.setDisplay(h)
-                            mp.setOnPreparedListener { durationMs = it.duration; it.seekTo(1L, MediaPlayer.SEEK_CLOSEST); player = it }
+                            mp.setOnPreparedListener {
+                                durationMs = it.duration; it.seekTo(1L, MediaPlayer.SEEK_CLOSEST)
+                                player = it
+                                // Reads the file header, so never on the UI thread.
+                                control.execute { LocalSubtitleAnalysis.selectPlayableAudio(it, source) }
+                            }
                             mp.setOnSeekCompleteListener { seeking = false }
                             mp.setOnInfoListener { _, what, _ ->
                                 if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) buffering = true

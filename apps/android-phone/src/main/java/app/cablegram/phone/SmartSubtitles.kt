@@ -34,6 +34,10 @@ interface SubtitleMediaInput : AutoCloseable {
     val remote: Boolean get() = false
     /** Bytes fetched over the network so far (0 for local files); shown so a slow fetch doesn't look like nothing happening. */
     val bytesFetched: Long get() = 0
+    /** Caps what the audio check may fetch (whole check, and each section); past it reads end as if the file stopped. */
+    fun limitAnalysis(totalBytes: Long, sectionBytes: Long) {}
+    fun startSection() {}
+    val budgetHit: Boolean get() = false
     fun attach(extractor: MediaExtractor)
     fun attach(player: MediaPlayer)
     /** Up to [length] bytes at [position], or null when nothing could be read. */
@@ -63,6 +67,17 @@ class TelegramMediaInput(private val media: TelegramMedia, private val file: Tel
     @Volatile private var closed = false
     private val fetched = java.util.concurrent.atomic.AtomicLong(0)
     override val bytesFetched: Long get() = fetched.get()
+    @Volatile private var totalLimit = Long.MAX_VALUE
+    @Volatile private var sectionLimit = Long.MAX_VALUE
+    @Volatile private var sectionStart = 0L
+    @Volatile private var hit = false
+    override val budgetHit: Boolean get() = hit
+    override fun limitAnalysis(totalBytes: Long, sectionBytes: Long) { totalLimit = totalBytes; sectionLimit = sectionBytes }
+    override fun startSection() { sectionStart = fetched.get() }
+    private fun overBudget(): Boolean {
+        val now = fetched.get()
+        return (now > totalLimit || now - sectionStart > sectionLimit).also { if (it) hit = true }
+    }
     private val readers = java.util.concurrent.Executors.newCachedThreadPool { r -> Thread(r, "subtitle-telegram-read").apply { isDaemon = true } }
     // Android's extractors ask for a few hundred bytes at a time (one audio frame). One Telegram round trip per request
     // would take minutes, so the file is read in aligned chunks and small requests are answered from memory.
@@ -74,7 +89,7 @@ class TelegramMediaInput(private val media: TelegramMedia, private val file: Tel
         val out = java.io.ByteArrayOutputStream(length)
         val began = System.nanoTime(); val deadline = began + READ_TIMEOUT_MS * 1_000_000
         while (out.size() < length) {
-            if (closed || System.nanoTime() > deadline) break
+            if (closed || overBudget() || System.nanoTime() > deadline) break
             val pending = try { readers.submit<ByteArray?> { media.read(file.fileId, start + out.size(), length - out.size()) } } catch (e: java.util.concurrent.RejectedExecutionException) { break }
             var part: ByteArray? = null
             while (true) {
@@ -96,7 +111,12 @@ class TelegramMediaInput(private val media: TelegramMedia, private val file: Tel
         var at = position
         while (out.size() < length && at < file.size) {
             val index = at / CHUNK
-            val chunk = synchronized(chunks) { chunks[index] } ?: (fetchChunk(index) ?: break).also { synchronized(chunks) { chunks[index] = it } }
+            val chunk = synchronized(chunks) { chunks[index] } ?: run {
+                if (overBudget()) break
+                val fetchedChunk = fetchChunk(index) ?: break
+                synchronized(chunks) { chunks[index] = fetchedChunk }
+                fetchedChunk
+            }
             val offset = (at - index * CHUNK).toInt()
             if (offset >= chunk.size) break
             val n = minOf(length - out.size(), chunk.size - offset)
@@ -160,6 +180,27 @@ object LocalSubtitleAnalysis {
             }
         } catch (e: Exception) { null } finally { extractor.release() }
     }
+    /**
+     * Android plays the first audio track. With several (say Dolby first, AAC second) pick one this phone can decode.
+     * MediaPlayer does not report track formats, so they come from the file's own track list: the n-th audio track
+     * there is the n-th audio track of the player. Blocking (it reads the file header); call off the UI thread.
+     */
+    fun selectPlayableAudio(player: MediaPlayer, input: SubtitleMediaInput) {
+        val extractor = MediaExtractor()
+        try {
+            input.attach(extractor)
+            val codecs = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS)
+            val formats = (0 until extractor.trackCount).map { extractor.getTrackFormat(it) }.filter { it.getString(MediaFormat.KEY_MIME).orEmpty().startsWith("audio/") }
+            val playerAudio = player.trackInfo.withIndex().filter { it.value.trackType == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO }.map { it.index }
+            val supported = formats.map { codecs.findDecoderForFormat(it) != null }
+            runCatching { android.util.Log.d("SubtitleAudio", "audio tracks: ${formats.map { it.getString(MediaFormat.KEY_MIME) }} playable=$supported") }
+            if (formats.size != playerAudio.size || supported.isEmpty()) return
+            val current = runCatching { player.getSelectedTrack(MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO) }.getOrDefault(-1)
+            val currentPosition = playerAudio.indexOf(current)
+            if (currentPosition >= 0 && supported[currentPosition]) return
+            supported.indexOfFirst { it }.takeIf { it >= 0 }?.let { player.selectTrack(playerAudio[it]); runCatching { android.util.Log.d("SubtitleAudio", "selected audio track ${playerAudio[it]}") } }
+        } catch (e: Exception) { runCatching { android.util.Log.d("SubtitleAudio", "track choice failed: ${e.message}") } } finally { extractor.release() }
+    }
     fun probe(input: SubtitleMediaInput): SubtitleTechnical {
         val extractor = MediaExtractor()
         try {
@@ -190,11 +231,14 @@ object LocalSubtitleAnalysis {
         for ((index, zone) in zones.withIndex()) {
             onZone(index, zones.size)
             var best: SubtitleActivityWindow? = null
-            for (shift in listOf(0.0, .06, -.06, .11)) {
+            for (shift in if (input.remote) listOf(0.0, .06) else listOf(0.0, .06, -.06, .11)) {
                 currentCoroutineContext().ensureActive()
                 if (android.os.SystemClock.elapsedRealtime() > budgetEnd) break
-                val start = (duration * (zone + shift).coerceIn(.02, .93)).coerceAtMost(duration - 30)
-                val window = decodeWindow(input, start) ?: continue
+                // Over the network a shorter section means fewer bytes fetched (100+ bins are still plenty to match).
+                val seconds = if (input.remote) 20 else 30
+                val start = (duration * (zone + shift).coerceIn(.02, .93)).coerceAtMost(duration - seconds)
+                input.startSection()
+                val window = decodeWindow(input, start, seconds) ?: continue
                 if (speechFraction(window) > speechFraction(best)) best = window
                 if (speechFraction(window) in INFORMATIVE) break
             }
@@ -205,7 +249,7 @@ object LocalSubtitleAnalysis {
     }
     private val INFORMATIVE = .12..0.85
     private fun speechFraction(w: SubtitleActivityWindow?): Double = w?.let { it.bits.count { c -> c == '1' }.toDouble() / it.bits.length } ?: -1.0
-    private suspend fun decodeWindow(input: SubtitleMediaInput, start: Double): SubtitleActivityWindow? {
+    private suspend fun decodeWindow(input: SubtitleMediaInput, start: Double, seconds: Int): SubtitleActivityWindow? {
         val extractor = MediaExtractor(); var codec: MediaCodec? = null
         try {
             input.attach(extractor)
@@ -216,7 +260,7 @@ object LocalSubtitleAnalysis {
             format.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
             decoder.configure(format, null, null, 0); decoder.start()
             var rate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE); var channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-            val energy = DoubleArray(300); val crossings = IntArray(300); val counts = IntArray(300)
+            val bins = seconds * 10; val energy = DoubleArray(bins); val crossings = IntArray(bins); val counts = IntArray(bins)
             var inputDone = false; var outputDone = false; val info = MediaCodec.BufferInfo()
             val deadline = android.os.SystemClock.elapsedRealtime() + 12000
             while (!outputDone && android.os.SystemClock.elapsedRealtime() < deadline) {
@@ -225,7 +269,7 @@ object LocalSubtitleAnalysis {
                     val index = decoder.dequeueInputBuffer(1000)
                     if (index >= 0) {
                         val input = decoder.getInputBuffer(index)!!; val size = extractor.readSampleData(input, 0); val time = extractor.sampleTime
-                        if (size < 0 || time > (start + 30.5) * 1e6) { decoder.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone = true }
+                        if (size < 0 || time > (start + seconds + .5) * 1e6) { decoder.queueInputBuffer(index, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM); inputDone = true }
                         else { decoder.queueInputBuffer(index, 0, size, time, 0); extractor.advance() }
                     }
                 }
@@ -244,11 +288,11 @@ object LocalSubtitleAnalysis {
                         if (time >= start && bin in energy.indices) { energy[bin] += sample * sample; counts[bin]++; if ((sample > 0) != (previous > 0)) crossings[bin]++ }
                         previous = sample; frame++
                     }
-                    outputDone = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0 || info.presentationTimeUs > (start + 30) * 1e6
+                    outputDone = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0 || info.presentationTimeUs > (start + seconds) * 1e6
                     decoder.releaseOutputBuffer(index, false)
                 }
             }
-            if (!outputDone || counts.count { it > 0 } < 280) return null
+            if (!outputDone || counts.count { it > 0 } < bins - 20) return null
             val rms = energy.mapIndexed { i, value -> sqrt(value / counts[i].coerceAtLeast(1)) }
             val floor = rms.sorted()[rms.size / 5]; val threshold = maxOf(.008, floor * 2.5)
             val bits = rms.mapIndexed { i, value -> val zcr = crossings[i].toDouble() / counts[i].coerceAtLeast(1); if (value > threshold && zcr in .015..0.35) '1' else '0' }.joinToString("")

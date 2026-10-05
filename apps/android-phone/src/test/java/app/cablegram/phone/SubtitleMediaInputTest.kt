@@ -99,3 +99,29 @@ class TelegramChunkingTest {
         input.close()
     }
 }
+
+class TelegramBudgetTest {
+    private class Plenty(val size: Int) : TelegramMedia {
+        override fun resolve(uniqueId: String): TelegramFileRef? = null
+        override fun read(fileId: Int, position: Long, want: Int): ByteArray? = ByteArray(minOf(want, size - position.toInt()).coerceAtLeast(0)).takeIf { it.isNotEmpty() }
+    }
+
+    @Test fun theAnalysisBudgetStopsFetchingAndSaysSo() {
+        val size = 40 * 1024 * 1024
+        val input = TelegramMediaInput(Plenty(size), TelegramFileRef(1, size.toLong(), "video/mp4"))
+        input.limitAnalysis(totalBytes = 5L * 1024 * 1024, sectionBytes = 64L * 1024 * 1024)
+        var position = 0L; var reads = 0
+        while (input.readAt(position, 500_000) != null && reads < 100) { position += 500_000; reads++ }
+        assertEquals(true, input.budgetHit); assertEquals(true, input.bytesFetched <= 7L * 1024 * 1024)
+        input.close()
+    }
+
+    @Test fun eachSectionHasItsOwnAllowance() {
+        val size = 40 * 1024 * 1024
+        val input = TelegramMediaInput(Plenty(size), TelegramFileRef(1, size.toLong(), "video/mp4"))
+        input.limitAnalysis(totalBytes = 100L * 1024 * 1024, sectionBytes = 2L * 1024 * 1024)
+        input.startSection(); var a = 0L; while (input.readAt(a, 500_000) != null && a < 20_000_000) a += 500_000
+        assertEquals(true, input.budgetHit)
+        input.close()
+    }
+}
