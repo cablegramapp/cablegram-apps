@@ -51,3 +51,10 @@ class SubtitlePresentationTest {
         assertEquals(-1.5 to 1.0, initialShift(m)); assertEquals(0.0 to 1.0, initialShift(match("Likely Match", null)))
     }
 }
+
+class SubtitleUncheckedTest {
+    @org.junit.Test fun aCandidateNotCheckedYetSaysSoInsteadOfClaimingAnything() {
+        val h = headline(SubtitleMatch("1", "de", "Likely Match", null, cues = null))
+        org.junit.Assert.assertFalse(h.verified); org.junit.Assert.assertTrue(h.timing.startsWith("Not checked yet"))
+    }
+}

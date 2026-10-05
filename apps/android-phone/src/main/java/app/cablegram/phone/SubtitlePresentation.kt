@@ -26,6 +26,7 @@ fun headline(match: SubtitleMatch): SubtitleHeadline {
         partial -> "Adjusted from the little dialogue we could hear · ${formatSyncOffset(alignment!!.offset)}"
         verified && abs(alignment!!.offset) >= 0.05 -> "Automatically synchronized · ${formatSyncOffset(alignment.offset)}"
         verified -> "Timing already matches"
+        alignment == null && match.cues == null -> "Not checked yet — it's checked against your video when you pick it"
         alignment?.reason == "different_cut" -> "Timing differs from your copy — it may be another cut"
         alignment?.reason == "audio_unavailable" -> "Timing couldn't be checked against your video"
         else -> "Timing couldn't be confirmed — you can adjust it while watching"
@@ -74,3 +75,6 @@ fun clampOffset(value: Double): Double = value.coerceIn(-600.0, 600.0)
 /** The shift to start from in the preview: measured for verified and partly checked matches, otherwise none. */
 fun initialShift(match: SubtitleMatch): Pair<Double, Double> =
     match.alignment?.takeIf { it.verified || it.reason == "partial_match" }?.let { it.offset to it.scale } ?: (0.0 to 1.0)
+
+fun unsupportedAudioNote(format: String): String =
+    "This video's sound is $format, which this phone can't play or analyse. The preview will be silent and matches can't be checked against the audio. It will still play normally on your TV."

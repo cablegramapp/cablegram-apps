@@ -25,7 +25,7 @@ import kotlin.math.sqrt
 @Serializable data class SubtitleActivityWindow(val start: Double, val step: Double = 0.1, val bits: String)
 @Serializable data class SubtitleFingerprint(val version: Int = 1, val windows: List<SubtitleActivityWindow>)
 @Serializable data class SubtitleTechnical(val hash: String? = null, val size: Long? = null, val duration: Double? = null, val fps: Double? = null, val codec: String? = null, val resolution: String? = null, val audioLanguages: List<String> = emptyList(), val embeddedLanguages: List<String> = emptyList())
-@Serializable data class SubtitleSearchRequest(val id: String, val identity: String, val language: String? = null, val technical: SubtitleTechnical? = null, val fingerprint: SubtitleFingerprint? = null)
+@Serializable data class SubtitleSearchRequest(val id: String, val identity: String, val language: String? = null, val languages: List<String>? = null, val technical: SubtitleTechnical? = null, val fingerprint: SubtitleFingerprint? = null)
 
 /** A video the phone can analyse and preview: a local file, or a Telegram title read in small windows. */
 interface SubtitleMediaInput : AutoCloseable {
@@ -86,6 +86,23 @@ object LocalSubtitleAnalysis {
             }
             java.lang.Long.toUnsignedString(total, 16).padStart(16, '0')
         }.getOrNull()
+    }
+    /** The sound format of a video whose audio this phone has no decoder for (Dolby Digital, DTS...), else null. */
+    fun unsupportedAudio(input: SubtitleMediaInput): String? {
+        val extractor = MediaExtractor()
+        return try {
+            input.attach(extractor)
+            val codecs = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS)
+            val audio = (0 until extractor.trackCount).map { extractor.getTrackFormat(it) }.filter { it.getString(MediaFormat.KEY_MIME).orEmpty().startsWith("audio/") }
+            if (audio.isEmpty() || audio.any { codecs.findDecoderForFormat(it) != null }) null
+            else when (val mime = audio.first().getString(MediaFormat.KEY_MIME).orEmpty()) {
+                "audio/ac3" -> "Dolby Digital"
+                "audio/eac3", "audio/eac3-joc" -> "Dolby Digital Plus"
+                "audio/true-hd" -> "Dolby TrueHD"
+                "audio/vnd.dts", "audio/vnd.dts.hd" -> "DTS"
+                else -> mime.removePrefix("audio/")
+            }
+        } catch (e: Exception) { null } finally { extractor.release() }
     }
     fun probe(input: SubtitleMediaInput): SubtitleTechnical {
         val extractor = MediaExtractor()
