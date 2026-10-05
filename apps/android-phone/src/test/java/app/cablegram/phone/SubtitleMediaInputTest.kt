@@ -54,11 +54,48 @@ class TelegramMediaInputTest {
     @Test fun aReadThatNeverReturnsIsAbandonedAsSoonAsTheInputIsClosed() {
         val media = Stuck(); val input = TelegramMediaInput(media, TelegramFileRef(1, 1_000_000, "video/mp4"))
         val result = java.util.concurrent.atomic.AtomicReference<Any?>("pending")
-        val reader = Thread { result.set(input.readAt(0, 1024)) }.also { it.start() }
+        val reader = Thread { try { result.set(input.readAt(0, 1024)) } catch (t: Throwable) { result.set(t) } }.also { it.start() }
         assertEquals(true, media.started.await(2, java.util.concurrent.TimeUnit.SECONDS))
         val closedAt = System.nanoTime(); input.close(); reader.join(3_000)
         assertEquals(false, reader.isAlive); assertNull(result.get())
         assertEquals(true, (System.nanoTime() - closedAt) / 1_000_000 < 2_000)
         assertNull(input.readAt(0, 1024))
+    }
+}
+
+class TelegramChunkingTest {
+    private class Counting(val data: ByteArray) : TelegramMedia {
+        val calls = java.util.concurrent.atomic.AtomicInteger(0)
+        override fun resolve(uniqueId: String): TelegramFileRef? = null
+        override fun read(fileId: Int, position: Long, want: Int): ByteArray? {
+            calls.incrementAndGet()
+            if (position >= data.size) return null
+            val n = minOf(want, data.size - position.toInt(), 300_000)  // Telegram often has only part of a range ready
+            return data.copyOfRange(position.toInt(), position.toInt() + n)
+        }
+    }
+
+    @Test fun thousandsOfTinyReadsBecomeAFewTelegramCalls() {
+        val data = ByteArray(3 * 1024 * 1024 + 123) { (it * 7).toByte() }
+        val media = Counting(data); val input = TelegramMediaInput(media, TelegramFileRef(1, data.size.toLong(), "video/mp4"))
+        var position = 0L
+        repeat(4_000) {
+            val got = input.readAt(position, 700) ?: error("read failed at $position")
+            assertEquals(data.copyOfRange(position.toInt(), position.toInt() + got.size).toList(), got.toList())
+            position += 700
+        }
+        assertEquals(true, media.calls.get() <= 16)
+        assertEquals(true, input.bytesFetched >= 2_800_000L)
+        input.close()
+    }
+
+    @Test fun aReadAcrossAChunkBoundaryAndTheEndOfTheFileIsExact() {
+        val data = ByteArray(1024 * 1024 + 500) { (it % 251).toByte() }
+        val input = TelegramMediaInput(Counting(data), TelegramFileRef(1, data.size.toLong(), "video/mp4"))
+        val across = input.readAt(1024L * 1024 - 100, 400)!!
+        assertEquals(data.copyOfRange(1024 * 1024 - 100, 1024 * 1024 + 300).toList(), across.toList())
+        assertEquals(data.copyOfRange(data.size - 50, data.size).toList(), input.readAt(data.size - 50L, 1000)!!.toList())
+        assertNull(input.readAt(data.size.toLong(), 10))
+        input.close()
     }
 }

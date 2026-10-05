@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -97,6 +101,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
     var skipped by remember { mutableStateOf(false) }
     var activeInput by remember { mutableStateOf<SubtitleMediaInput?>(null) }
     var analysing by remember { mutableStateOf(false) }
+    var fetchedMb by remember { mutableStateOf(0.0) }
     val token = viewModel.accountTokenOrNull()
 
     fun cancelSearch() {
@@ -107,6 +112,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
 
     suspend fun ensureAnalysis(): Pair<SubtitleTechnical?, SubtitleFingerprint?> = analysis ?: withContext(kotlinx.coroutines.Dispatchers.IO) {
         analysing = true
+        val ticker = scope.launch { while (true) { fetchedMb = (activeInput?.bytesFetched ?: 0L) / 1_048_576.0; delay(500) } }
         try {
         progress = if (item.sourceKind == "telegram") "Opening your video from Telegram…" else "Looking at your video…"
         val media = runCatching { viewModel.openVideo(item) }
@@ -134,7 +140,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             }
             tech to print
         }
-        } finally { analysing = false }
+        } finally { analysing = false; ticker.cancel() }
     }.also { analysis = it }
 
     /** The one search of this visit: the person's preferred languages. */
@@ -194,6 +200,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                 Row(Modifier.maestro(MaestroIds.SUBTITLES_SEARCHING), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     CircularProgressIndicator(Modifier.width(28.dp).height(28.dp), color = VlcOrange); Text(progress, color = Color.White)
                 }
+                if (fetchedMb > 0) Text("Fetched ${"%.1f".format(fetchedMb)} MB from Telegram so far", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 Text("Your video stays on your phone. Only a short timing pattern is sent for matching.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 if (analysing) OutlinedButton(onClick = { skipped = true; activeInput?.close(); listening?.cancel() }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SKIP)) { Text("Skip — I'll line it up myself") }
                 OutlinedButton(onClick = { cancelSearch(); stage = SubtitleStage.Failed(errorMessage("cancelled")) }) { Text("Cancel") }
@@ -339,6 +346,10 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
     var openError by remember { mutableStateOf<String?>(null) }
     var player by remember { mutableStateOf<MediaPlayer?>(null) }
     var durationMs by remember { mutableStateOf(0) }
+    var playing by remember { mutableStateOf(false) }
+    var buffering by remember { mutableStateOf(false) }
+    var seeking by remember { mutableStateOf(false) }
+    var fetchedBytes by remember { mutableStateOf(0L) }
     LaunchedEffect(item.id) {
         withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { viewModel.openVideo(item) } }.fold({ input = it }, { openError = (it as? VideoUnavailable)?.message })
         opening = false
@@ -349,10 +360,11 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
     DisposableEffect(item.id) { onDispose { val p = player; val i = input; player = null; control.execute { runCatching { p?.release() }; runCatching { i?.close() }; control.shutdown() } } }
     var audioNote by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(input) { input?.let { i -> audioNote = withContext(kotlinx.coroutines.Dispatchers.IO) { LocalSubtitleAnalysis.unsupportedAudio(i) }?.let(::unsupportedAudioNote) } }
-    LaunchedEffect(player) { while (true) { val p = player; if (p != null) withContext(kotlinx.coroutines.Dispatchers.Default) { runCatching { p.currentPosition } }.getOrNull()?.let { position = it / 1000.0 }; delay(150) } }
+    LaunchedEffect(player) { while (true) { val p = player; if (p != null) withContext(kotlinx.coroutines.Dispatchers.Default) { runCatching { p.currentPosition to p.isPlaying } }.getOrNull()?.let { position = it.first / 1000.0; playing = it.second }; delay(150) } }
+    LaunchedEffect(input) { while (true) { fetchedBytes = input?.bytesFetched ?: 0L; delay(500) } }
     // A video that never starts (a slow Telegram read) must not leave a black box with no explanation.
     LaunchedEffect(input) { if (input?.remote == true) { delay(45_000); if (player == null && message == null) message = "This video is taking too long to open from Telegram, so it can't be previewed right now. You can still shift the timing." } }
-    fun seek(ms: Int) { withPlayer { it.seekTo(ms.coerceIn(0, maxOf(durationMs, 1)).toLong(), MediaPlayer.SEEK_CLOSEST) } }
+    fun seek(ms: Int) { seeking = true; withPlayer { it.seekTo(ms.coerceIn(0, maxOf(durationMs, 1)).toLong(), MediaPlayer.SEEK_CLOSEST) } }
     fun adjust(delta: Double) { offset = clampOffset(offset + delta) }
     fun save(body: String) {
         val t = token ?: return
@@ -366,6 +378,7 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
     val source = input
     audioNote?.let { StatusNote(it) }
     if (source != null) {
+        Box(Modifier.fillMaxWidth().height(200.dp)) {
         AndroidView(factory = { c ->
             SurfaceView(c).apply {
                 holder.addCallback(object : SurfaceHolder.Callback {
@@ -374,6 +387,12 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
                         runCatching {
                             source.attach(mp); mp.setDisplay(h)
                             mp.setOnPreparedListener { durationMs = it.duration; it.seekTo(1L, MediaPlayer.SEEK_CLOSEST); player = it }
+                            mp.setOnSeekCompleteListener { seeking = false }
+                            mp.setOnInfoListener { _, what, _ ->
+                                if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) buffering = true
+                                else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END || what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) buffering = false
+                                false
+                            }
                             mp.setOnErrorListener { _, _, _ -> player = null; message = "This video can't be previewed right now, but you can still adjust the timing."; true }
                             mp.prepareAsync()
                         }.onFailure { message = "This video can't be previewed right now, but you can still adjust the timing." }
@@ -382,12 +401,28 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
                     override fun surfaceDestroyed(h: SurfaceHolder) { val p = player; player = null; control.execute { runCatching { p?.release() } } }
                 })
             }
-        }, modifier = Modifier.fillMaxWidth().height(200.dp))
+        }, modifier = Modifier.fillMaxSize())
+        // Never leave a bare black box: say what is happening, and how much has arrived when it comes over the network.
+        if (player == null || buffering || seeking) Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            CircularProgressIndicator(Modifier.width(32.dp).height(32.dp), color = VlcOrange)
+            Text(
+                when {
+                    player == null && source.remote -> "Fetching your video from Telegram…"
+                    player == null -> "Opening your video…"
+                    seeking -> "Jumping…"
+                    else -> "Loading…"
+                } + if (source.remote && fetchedBytes > 0) " · ${"%.1f".format(fetchedBytes / 1_048_576.0)} MB" else "",
+                color = Color.White, style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        }
         if (durationMs > 0) {
             Slider(value = (position * 1000 / durationMs).toFloat().coerceIn(0f, 1f), onValueChange = { f -> position = f * durationMs / 1000.0; seek((f * durationMs).toInt()) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SEEK))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { withPlayer { if (it.isPlaying) it.pause() else it.start() } }) { Text("Play / pause") }
+            OutlinedButton(onClick = { playing = !playing; withPlayer { if (it.isPlaying) it.pause() else it.start() } }, modifier = Modifier.maestro(MaestroIds.SUBTITLES_PLAY)) {
+                Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (playing) "Pause" else "Play")
+            }
             OutlinedButton(onClick = { seek((position * 1000).toInt() - 10_000) }) { Text("−10 s") }
             OutlinedButton(onClick = { seek((position * 1000).toInt() + 10_000) }) { Text("+10 s") }
         }

@@ -32,6 +32,8 @@ interface SubtitleMediaInput : AutoCloseable {
     val size: Long
     /** True when reading means fetching over the network, which can be slow and must stay cancellable. */
     val remote: Boolean get() = false
+    /** Bytes fetched over the network so far (0 for local files); shown so a slow fetch doesn't look like nothing happening. */
+    val bytesFetched: Long get() = 0
     fun attach(extractor: MediaExtractor)
     fun attach(player: MediaPlayer)
     /** Up to [length] bytes at [position], or null when nothing could be read. */
@@ -59,17 +61,49 @@ class TelegramMediaInput(private val media: TelegramMedia, private val file: Tel
     override val size: Long get() = file.size
     override val remote: Boolean get() = true
     @Volatile private var closed = false
+    private val fetched = java.util.concurrent.atomic.AtomicLong(0)
+    override val bytesFetched: Long get() = fetched.get()
     private val readers = java.util.concurrent.Executors.newCachedThreadPool { r -> Thread(r, "subtitle-telegram-read").apply { isDaemon = true } }
+    // Android's extractors ask for a few hundred bytes at a time (one audio frame). One Telegram round trip per request
+    // would take minutes, so the file is read in aligned chunks and small requests are answered from memory.
+    private val chunks = object : LinkedHashMap<Long, ByteArray>(4, .75f, true) { override fun removeEldestEntry(e: MutableMap.MutableEntry<Long, ByteArray>) = size > 3 }
+
+    private fun fetchChunk(index: Long): ByteArray? {
+        val start = index * CHUNK; val length = minOf(CHUNK, file.size - start).toInt()
+        if (length <= 0) return null
+        val out = java.io.ByteArrayOutputStream(length)
+        val began = System.nanoTime(); val deadline = began + READ_TIMEOUT_MS * 1_000_000
+        while (out.size() < length) {
+            if (closed || System.nanoTime() > deadline) break
+            val pending = try { readers.submit<ByteArray?> { media.read(file.fileId, start + out.size(), length - out.size()) } } catch (e: java.util.concurrent.RejectedExecutionException) { break }
+            var part: ByteArray? = null
+            while (true) {
+                try { part = pending.get(200, java.util.concurrent.TimeUnit.MILLISECONDS); break }
+                catch (e: java.util.concurrent.TimeoutException) { if (closed || System.nanoTime() > deadline) { pending.cancel(true); break } }
+                catch (e: Exception) { break }
+            }
+            if (part == null || part.isEmpty()) break
+            out.write(part); fetched.addAndGet(part.size.toLong())
+        }
+        val ms = (System.nanoTime() - began) / 1_000_000
+        if (ms > 1500 || out.size() < length) runCatching { android.util.Log.d("SubtitleTg", "chunk ${start / 1024} KB: ${out.size() / 1024} of ${length / 1024} KB in $ms ms") }
+        return out.toByteArray().takeIf { it.isNotEmpty() }
+    }
 
     private fun read(position: Long, length: Int): ByteArray? {
-        if (closed) return null
-        val pending = readers.submit<ByteArray?> { media.read(file.fileId, position, length) }
-        val deadline = System.nanoTime() + READ_TIMEOUT_MS * 1_000_000
-        while (true) {
-            try { return pending.get(200, java.util.concurrent.TimeUnit.MILLISECONDS) }
-            catch (e: java.util.concurrent.TimeoutException) { if (closed || System.nanoTime() > deadline) { pending.cancel(true); return null } }
-            catch (e: Exception) { return null }
+        if (closed || position < 0 || position >= file.size) return null
+        val out = java.io.ByteArrayOutputStream(length)
+        var at = position
+        while (out.size() < length && at < file.size) {
+            val index = at / CHUNK
+            val chunk = synchronized(chunks) { chunks[index] } ?: (fetchChunk(index) ?: break).also { synchronized(chunks) { chunks[index] = it } }
+            val offset = (at - index * CHUNK).toInt()
+            if (offset >= chunk.size) break
+            val n = minOf(length - out.size(), chunk.size - offset)
+            out.write(chunk, offset, n); at += n
+            if (chunk.size < CHUNK && index * CHUNK + chunk.size < file.size) break  // a short chunk: stop rather than guess
         }
+        return out.toByteArray().takeIf { it.isNotEmpty() }
     }
     private val source by lazy { object : MediaDataSource() {
         override fun readAt(position: Long, buffer: ByteArray, offset: Int, size: Int): Int {
@@ -86,7 +120,7 @@ class TelegramMediaInput(private val media: TelegramMedia, private val file: Tel
     override fun readAt(position: Long, length: Int): ByteArray? = read(position, length)
     override fun close() { closed = true; readers.shutdownNow() }
 
-    private companion object { const val READ_TIMEOUT_MS = 20_000L }
+    private companion object { const val READ_TIMEOUT_MS = 30_000L; const val CHUNK = 1024L * 1024 }
 }
 
 /** Only sparse PCM is decoded; raw audio never leaves memory. The energy/ZCR gate is intentionally
