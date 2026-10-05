@@ -104,6 +104,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -604,6 +605,11 @@ fun PlayerScreen(
                     player.volume = lastVolume
                     volumeFeedback = VolumeFeedback(level = level, muted = level == 0)
                     volumeFeedbackVersion++
+                }
+                "subtitle_delay" -> c.payload["delay_ms"]?.jsonPrimitive?.longOrNull?.let { ms ->
+                    // Applied to what is playing now only; the saved timing is changed from the phone.
+                    player.setSubtitleDelayMs(ms)
+                    transportNotice = "Subtitles ${if (ms < 0) "−" else "+"}${"%.2f".format(kotlin.math.abs(ms) / 1000.0)} s"
                 }
                 "mute" -> c.payload["muted"]?.jsonPrimitive?.booleanOrNull?.let {
                     if (it) {

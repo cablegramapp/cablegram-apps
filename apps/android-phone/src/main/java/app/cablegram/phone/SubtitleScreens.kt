@@ -368,15 +368,19 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
     // A video that never starts (a slow Telegram read) must not leave a black box with no explanation.
     LaunchedEffect(input) { if (input?.remote == true) { delay(45_000); if (player == null && message == null) message = "This video is taking too long to open from Telegram, so it can't be previewed right now. You can still shift the timing." } }
     fun seek(ms: Int) { seeking = true; withPlayer { it.seekTo(ms.coerceIn(0, maxOf(durationMs, 1)).toLong(), MediaPlayer.SEEK_CLOSEST) } }
-    fun adjust(delta: Double) { offset = clampOffset(offset + delta) }
-    fun save(body: String) {
-        val t = token ?: return
-        scope.launch {
-            runCatching { subtitleJson.decodeFromString<SyncResult>(viewModel.subtitleRequest("$subtitleId/sync", t, "PATCH", body)) }
-                .onSuccess { offset = it.offset; scale = it.scale; message = "Saved. It will be used on your TV." }
-                .onFailure { message = errorMessage(it.message) }
-        }
+    // Set while a TV is playing this title with the timing it loaded (so later shifts are sent to it as a difference).
+    var tvBase by remember { mutableStateOf<Double?>(null) }
+    fun adjust(delta: Double) {
+        offset = clampOffset(offset + delta)
+        tvBase?.let { base -> viewModel.nudgeSubtitleOnTv(Math.round((offset - base) * 1000)) }
     }
+    suspend fun persist(body: String): Boolean {
+        val t = token ?: return false
+        return runCatching { subtitleJson.decodeFromString<SyncResult>(viewModel.subtitleRequest("$subtitleId/sync", t, "PATCH", body)) }
+            .onSuccess { offset = it.offset; scale = it.scale; message = "Saved. It will be used on your TV." }
+            .onFailure { message = errorMessage(it.message) }.isSuccess
+    }
+    fun save(body: String) { scope.launch { persist(body) } }
 
     val source = input
     audioNote?.let { StatusNote(it) }
@@ -445,7 +449,19 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
         listOf(-1.0 to "−1 sec", -0.25 to "−250 ms", 0.25 to "+250 ms", 1.0 to "+1 sec").forEach { (d, label) -> OutlinedButton(onClick = { adjust(d) }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(label) } }
     }
     Button(onClick = { save(subtitleJson.encodeToString(SyncRequest(offset = offset, scale = scale))) }, modifier = Modifier.fillMaxWidth()) { Text("Save timing") }
+    message?.let { StatusNote(it) }
 
+    if (viewModel.paired) SectionCard("Line it up on your TV") {
+        Text(
+            (if (audioNote != null) "Your TV can play this with sound. " else "Want to hear it? ") +
+                "Start it there, then use the shift buttons above: the subtitle moves on the TV straight away.",
+            color = VlcMuted, style = MaterialTheme.typography.bodySmall,
+        )
+        Button(onClick = { scope.launch { if (persist(subtitleJson.encodeToString(SyncRequest(offset = offset, scale = scale)))) { tvBase = offset; viewModel.playOnTv(item) } } }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_ON_TV)) {
+            Text(if (tvBase == null) "Play on TV and adjust there" else "Restart on TV")
+        }
+        tvBase?.let { base -> Text("Live on your TV · ${formatSyncOffset(offset - base)} from what it loaded. Tap Save timing when it matches.", color = VlcMuted, style = MaterialTheme.typography.bodySmall) }
+    }
     TextButton(onClick = { twoPoint = !twoPoint }) { Text(if (twoPoint) "Hide drift fix" else "Still drifting? Fix with two points") }
     if (twoPoint) SectionCard("Two-point sync") {
         Text("Play to a line near the start, tap the line you are hearing, then do the same near the end.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
@@ -463,8 +479,9 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
             save(subtitleJson.encodeToString(SyncRequest(points = listOf(SyncPointDto(a!!.first.start, a.second), SyncPointDto(b!!.first.start, b.second)))))
         }) { Text("Apply") }
     }
-    message?.let { StatusNote(it) }
     OutlinedButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) { Text("Done") }
+    // Room for the "playing on TV" bar that floats over the bottom of the screen.
+    Spacer(Modifier.height(88.dp))
     }
 }
 

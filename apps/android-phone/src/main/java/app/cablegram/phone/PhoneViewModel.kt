@@ -2535,6 +2535,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Shifts the subtitle on the TV that is playing this title, relative to the timing it loaded (positive shows it later). */
+    fun nudgeSubtitleOnTv(delayMs: Long) {
+        enqueue("subtitle_delay", arguments = buildJsonObject { put("delay_ms", delayMs) })
+    }
+
     fun skipSeconds(delta: Int) {
         enqueue("seek", arguments = buildJsonObject { put("seconds", delta) })
     }
