@@ -119,6 +119,8 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
     claimTv: (pin, name) => send("/api/auth/device/claim", { method: "POST", body: { pin, ...(name ? { tv_display_name: name } : {}) } }),
     library: async () => (await send("/api/catalog/items")).items || [],
     command: (body) => send("/api/control/commands", { method: "POST", body }),
+    /** `{ status: pending | delivered | completed | rejected, reason, expires_in_ms, target_device_id }`. */
+    commandStatus: (id) => send(`/api/control/commands/${encodeURIComponent(id)}`),
     telegramLink: () => send("/api/telegram/link"),
     pendingTvLogins: async () => (await send("/api/telegram/tv-logins/pending")).requests || [],
     /** The web client may only answer "approved" or "denied"; the server refuses "failed". */
