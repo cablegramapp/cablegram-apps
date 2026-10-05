@@ -248,6 +248,7 @@ class LibraryStore private constructor(private val context: Context) {
             posterUrl = remote.posterUrl ?: existing?.posterUrl,
             mediaType = if (existing != null && "mediaType" in existing.userMetadataFields) existing.mediaType else remote.mediaType ?: "movie",
             sourceAvailable = source.availability != "unavailable",
+            telegramFileKey = source.stableSourceKey?.takeIf { it.startsWith("tgfile:") } ?: existing?.telegramFileKey,
         )
         if (existing == null) save(snapshot().copy(items = list() + item)) else update(item)
         return item

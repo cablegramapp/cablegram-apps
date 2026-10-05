@@ -169,6 +169,35 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var searchQuery by mutableStateOf("")
     var editingMetadata by mutableStateOf(false)
+    // Smart subtitles: the saved subtitle (if any) for the open title, and whether the Find Subtitles flow is showing.
+    var subtitleFlowOpen by mutableStateOf(false)
+    var savedSubtitle by mutableStateOf<String?>(null)
+        private set
+    fun accountTokenOrNull(): String? = pairing.accountToken?.takeIf { it.isNotBlank() }
+    suspend fun subtitleRequest(path: String, token: String, method: String = "GET", body: String? = null): String = catalog().subtitleRequest(path, token, method, body)
+    private val telegramMedia by lazy {
+        PhoneTelegramMedia(getApplication(), isRemoved = RemovedTelegramSources(catalog(), pairing)::contains) {
+            pairing.accountToken?.let { catalog().telegramLink(it)?.chatId }
+        }
+    }
+    /** The title's bytes for analysis and preview: the local file, or the Telegram channel copy. Blocking; call off the main thread. */
+    fun openVideo(item: LibraryItem): SubtitleMediaInput? {
+        store.openPfd(item)?.let { return FileMediaInput(it) }
+        val key = item.telegramFileKey?.removePrefix("tgfile:") ?: return null
+        if (!PhoneTelegram.configured) return null
+        return telegramMedia.resolve(key)?.let { TelegramMediaInput(telegramMedia, it) }
+    }
+    /** Reads what the TV will use for this title, so the detail screen can say which subtitle is saved. */
+    fun refreshSubtitleStatus(item: LibraryItem) {
+        val token = accountTokenOrNull() ?: return
+        viewModelScope.launch {
+            savedSubtitle = runCatching {
+                val tracks = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    .decodeFromString<SavedSubtitleList>(catalog().subtitleRequest("playback/item/${item.id}", token)).subtitles
+                tracks.firstOrNull()?.let { languageName(it.language) }
+            }.getOrNull()
+        }
+    }
     var deleteTarget by mutableStateOf<LibraryItem?>(null)
     // Declared before `init`, which starts the queued Telegram deletions.
     private val PHONE_LOGIN_WAIT_MS = 120_000L
@@ -2112,6 +2141,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeItem() {
         selectedId = null
+        subtitleFlowOpen = false
+        savedSubtitle = null
         editingMetadata = false
         deleteTarget = null
     }

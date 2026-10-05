@@ -9,6 +9,8 @@ data class PlayerSource(
     val startPositionMs: Long,
     val mimeType: String? = null,
     val headers: Map<String, String> = emptyMap(),
+    /** WebVTT documents to attach as external subtitle tracks; the first is selected by default. */
+    val subtitles: List<String> = emptyList(),
 )
 
 data class PlayerTrack(val id: Int, val label: String)

@@ -49,6 +49,8 @@ data class LibraryItem(
      * after "Save to Telegram" (spec 004 T011). Free up space may then remove the phone copy.
      */
     val telegramCopy: Boolean = false,
+    /** `tgfile:<unique id>` of a Telegram channel title, so its bytes can be read for subtitle matching. */
+    val telegramFileKey: String? = null,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
     val seasonNumber: Int? = null,

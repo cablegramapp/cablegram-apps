@@ -202,6 +202,9 @@ data class PlaybackResponse(
     @kotlinx.serialization.Transient val fallbackResolver: (suspend () -> String?)? = null,
 )
 
+/** Inline subtitle documents (smart subtitles), in track order. */
+fun PlaybackResponse.subtitleDocuments(): List<String> = subtitles.mapNotNull { it.content?.takeIf(String::isNotBlank) }
+
 @Serializable
 data class LoadingVideosResponse(
     val videos: List<String> = emptyList(),
@@ -363,7 +366,12 @@ data class SubtitleTrack(
     val isDefault: Boolean = false,
     val isForced: Boolean = false,
     val url: String,
+    /** Synchronized WebVTT delivered inline so no second authenticated fetch is needed (smart subtitles). */
+    val content: String? = null,
 )
+
+@Serializable
+data class SubtitlePlaybackResponse(val subtitles: List<SubtitleTrack> = emptyList())
 
 @Serializable
 private data class ApiError(

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
+import org.videolan.libvlc.interfaces.IMedia
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
 import app.cablegram.BuildConfig
@@ -54,6 +55,7 @@ private const val SETTLE_SAMPLE_MS = 1_000L
 private const val SETTLE_MIN_PICTURES = 8
 
 class VlcCableGramPlayer(context: Context) : CableGramPlayer {
+    private val appContext = context.applicationContext
     private val libVlc = VlcEngine.get(context)
     private val mediaPlayer = MediaPlayer(libVlc)
     private val videoLayout = VLCVideoLayout(context)
@@ -64,6 +66,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     private var requestedSubtitleTrackId: Int? = null
     private var currentUrl: String? = null
     private var currentHeaders: Map<String, String> = emptyMap()
+    private var currentSubtitles: List<String> = emptyList()
     private var pendingSeekMs: Long? = null
     private var startedOnce = false
     private var viewsAttached = false
@@ -148,6 +151,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     override fun load(source: PlayerSource) {
         currentUrl = source.url
         currentHeaders = source.headers
+        currentSubtitles = source.subtitles
         pendingSeekMs = null
         startedOnce = false
         resumeAfterSeek = true
@@ -261,6 +265,13 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
                 }
             addOption(":http-reconnect")
             if (startPositionMs > 0) addOption(":start-time=${startPositionMs / 1000.0}")
+            // Saved subtitles are plain files, so they work the same over LAN, relay, Telegram or cloud storage.
+            currentSubtitles.forEachIndexed { index, document ->
+                runCatching {
+                    val file = java.io.File(appContext.cacheDir, "subtitle-$index.vtt").apply { writeText(document) }
+                    addSlave(IMedia.Slave(IMedia.Slave.Type.Subtitle, if (index == 0) 4 else 2, Uri.fromFile(file).toString()))
+                }
+            }
         }
         mediaPlayer.media = media
         media.release()

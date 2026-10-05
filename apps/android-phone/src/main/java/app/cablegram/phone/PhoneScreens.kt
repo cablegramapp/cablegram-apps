@@ -142,7 +142,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 }
             }
             viewModel.shownSeries?.let { SeriesOverlay(viewModel, it) }
-            viewModel.selected?.let { DetailOverlay(viewModel, it) }
+            viewModel.selected?.let { if (viewModel.subtitleFlowOpen) SubtitleFlow(viewModel, it) { viewModel.subtitleFlowOpen = false } else DetailOverlay(viewModel, it) }
             viewModel.deleteTarget?.let { DeleteDialog(viewModel, it) }
             CloudFlow(viewModel)
             if (viewModel.telegramSheetOpen) TelegramConnectSheet(viewModel)
@@ -1095,6 +1095,10 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 OutlinedButton(onClick = viewModel::syncNow, enabled = viewModel.librarySyncState != LibrarySyncState.Running) { Text("Check source again") }
             }
             item.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodyLarge) }
+            LaunchedEffect(item.id) { viewModel.refreshSubtitleStatus(item) }
+            OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
+                Text(viewModel.savedSubtitle?.let { "Subtitles: $it · Find another" } ?: "Find Subtitles")
+            }
             SectionCard("Your copy") {
                 StorageMetric("Location", storageStatusLine(item))
                 item.fileSizeBytes?.let { StorageMetric("File size", formatBytes(it)) }

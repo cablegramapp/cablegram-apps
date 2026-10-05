@@ -354,7 +354,25 @@ class CablegramApi(
 
     suspend fun detachProfile(profileId: String, token: String) {}
 
+    /** A saved, already-synchronized subtitle travels with the playback whichever path carries the video. */
     suspend fun getPlayback(
+        videoId: String,
+        token: String,
+        lanPin: String? = null,
+        onStatus: (String) -> Unit = {},
+        onAwaitingApproval: () -> Unit = {},
+        telegramUrl: suspend (String) -> String? = { null },
+        telegramPhoneId: () -> String? = { null },
+    ): PlaybackResponse {
+        val playback = resolvePlayback(videoId, token, lanPin, onStatus, onAwaitingApproval, telegramUrl, telegramPhoneId)
+        if (playback.status != "ready" || playback.subtitles.isNotEmpty()) return playback
+        val subtitles = runCatching {
+            execute<SubtitlePlaybackResponse>(authenticatedRequest("api/subtitles/playback/item/$videoId", token).get().build()).subtitles
+        }.getOrDefault(emptyList())
+        return if (subtitles.isEmpty()) playback else playback.copy(subtitles = subtitles)
+    }
+
+    private suspend fun resolvePlayback(
         videoId: String,
         token: String,
         lanPin: String? = null,

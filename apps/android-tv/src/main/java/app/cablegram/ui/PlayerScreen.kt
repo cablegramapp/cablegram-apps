@@ -94,6 +94,7 @@ import app.cablegram.player.SubtitlePreference
 import app.cablegram.player.matchSubtitleTrack
 import app.cablegram.player.PlayerEvent
 import app.cablegram.player.PlayerSource
+import app.cablegram.data.subtitleDocuments
 import app.cablegram.player.VlcCableGramPlayer
 import app.cablegram.player.menuOptions
 import app.cablegram.player.reducePlaybackHud
@@ -185,7 +186,7 @@ fun PlayerScreen(
             }
             val resumeAt = ((resumeAtMs ?: player.positionMs) - 2_000).coerceAtLeast(0)
             activePlayback = activePlayback.copy(url = next, fallbackUrl = current)
-            player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers))
+            player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers, activePlayback.subtitleDocuments()))
             transportNotice = transportNoticeFor(next)
             Log.i(PLAYBACK_LOG_TAG, "Switched source to ${if (isRelayUrl(next)) "relay" else "LAN"} at ${resumeAt / 1000}s")
             return true
@@ -432,7 +433,7 @@ fun PlayerScreen(
             }
         }
         val url = checkNotNull(activePlayback.url)
-        player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers))
+        player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers, activePlayback.subtitleDocuments()))
         player.setPlaybackSpeed(playerSettings.playbackSpeed)
         player.setAspectRatio(playerSettings.aspectRatio)
         player.setAudioDelayMs(playerSettings.audioDelayMs)
@@ -535,7 +536,7 @@ fun PlayerScreen(
                     }
                     val playing = player.isPlaying
                     activePlayback = renewed
-                    player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers))
+                    player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers, renewed.subtitleDocuments()))
                     if (!playing) player.pause()
                 }
             }
