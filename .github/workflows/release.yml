@@ -1,6 +1,11 @@
 name: Release
 # Builds both apps from a tagged commit, signs them, and publishes the APKs with SHA-256 checksums and a
 # build attestation. See VERIFY.md for how to check a download.
+#
+# Intended artifacts per app: one APK for each of armeabi-v7a and arm64-v8a (sideload; there is no universal APK)
+# and one Play bundle (a run artifact, not attached to the release). The Gradle `splits` block only splits APKs
+# when no bundle task is requested, so the APKs and the bundle are built by separate Gradle invocations, and
+# scripts/release/ checks that exactly the intended files exist, are signed, and are checksummed.
 on:
   push:
     tags: ["v*"]
@@ -22,16 +27,25 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
+      - name: Check the release scripts
+        run: scripts/release/test.sh
       - name: Unit tests
         working-directory: apps/${{ matrix.app }}
         run: ./gradlew testDebugUnitTest
-      - name: Build release APK
+      - name: Build release APKs (one per ABI)
         working-directory: apps/${{ matrix.app }}
         # Environment variables named ORG_GRADLE_PROJECT_<name> reach the build as -P<name>.
         env:
           ORG_GRADLE_PROJECT_TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           ORG_GRADLE_PROJECT_TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-        run: ./gradlew assembleRelease bundleRelease
+        run: ./gradlew assembleRelease
+      - name: Build release bundle
+        working-directory: apps/${{ matrix.app }}
+        # A separate invocation: with a bundle task in the same build, the ABI splits are switched off.
+        env:
+          ORG_GRADLE_PROJECT_TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          ORG_GRADLE_PROJECT_TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: ./gradlew bundleRelease
       - name: Sign
         env:
           KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
@@ -41,22 +55,11 @@ jobs:
           set -euo pipefail
           test -n "$KEYSTORE_BASE64" || { echo "RELEASE_KEYSTORE_BASE64 is not set; a release must be signed." >&2; exit 1; }
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
-          unsigned=$(ls apps/${{ matrix.app }}/build/outputs/apk/release/*.apk | head -n 1)
-          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
-          mkdir -p dist
-          out="dist/cablegram-${{ matrix.app == 'android-phone' && 'phone' || 'tv' }}-${GITHUB_REF_NAME}.apk"
-          "$apksigner" sign --ks "$RUNNER_TEMP/release.jks" --ks-key-alias "$KEY_ALIAS" \
-            --ks-pass env:KEYSTORE_PASSWORD --out "$out" "$unsigned"
-          "$apksigner" verify --print-certs "$out"
-          # The app bundle for Google Play is signed with the same key (the upload key). It is not attached to
-          # the public release: users cannot install a bundle. Download it from this run's artifacts.
-          bundle=$(ls apps/${{ matrix.app }}/build/outputs/bundle/release/*.aab | head -n 1)
-          bundle_out="dist-play/cablegram-${{ matrix.app == 'android-phone' && 'phone' || 'tv' }}-${GITHUB_REF_NAME}.aab"
-          mkdir -p dist-play
-          cp "$bundle" "$bundle_out"
-          jarsigner -keystore "$RUNNER_TEMP/release.jks" -storepass:env KEYSTORE_PASSWORD "$bundle_out" "$KEY_ALIAS"
-          jarsigner -verify "$bundle_out"
-          rm -f "$RUNNER_TEMP/release.jks"
+          trap 'rm -f "$RUNNER_TEMP/release.jks"' EXIT
+          # Signs every intended APK and the Play bundle with the same key (the upload key), and fails if one is
+          # missing, duplicated, unexpected or does not verify.
+          KEYSTORE="$RUNNER_TEMP/release.jks" scripts/release/package-artifacts.sh \
+            ${{ matrix.app == 'android-phone' && 'phone' || 'tv' }} "$GITHUB_REF_NAME" apps/${{ matrix.app }}
       - uses: actions/upload-artifact@v4
         with:
           name: apk-${{ matrix.app }}
@@ -77,14 +80,17 @@ jobs:
       id-token: write
       attestations: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
           pattern: apk-*
           merge-multiple: true
       - name: Checksums
-        working-directory: dist
-        run: sha256sum *.apk | tee SHA256SUMS
+        # Fails unless dist holds exactly the intended APKs of both apps; every one gets a verified checksum.
+        run: |
+          scripts/release/checksums.sh "$GITHUB_REF_NAME" dist
+          cat dist/SHA256SUMS
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/*.apk

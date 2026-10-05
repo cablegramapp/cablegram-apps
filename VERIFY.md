@@ -3,11 +3,24 @@
 Every release is built by [the Release workflow](.github/workflows/release.yml) from a tagged commit of this
 repository. The release lists each APK with a `SHA256SUMS` file, and each APK carries a build attestation.
 
+## Which file to download
+
+Each app is released as one APK per processor type, named `cablegram-<app>-<abi>-<tag>.apk`, with `<app>` `phone`
+or `tv`. There is **no universal APK**: the native video and Telegram libraries make one far too large.
+
+| ABI | Devices |
+| --- | --- |
+| `arm64-v8a` | Almost every phone and current TV |
+| `armeabi-v7a` | Older 32-bit phones and TVs |
+
+If you don't know which one you have, try `arm64-v8a`; Android refuses to install an APK that doesn't fit. The Play
+bundles (`.aab`) are for Google Play and are not attached to the release.
+
 ## 1. The file you downloaded
 
 ```sh
-sha256sum cablegram-phone-v0.2.0.apk       # macOS: shasum -a 256
-grep cablegram-phone-v0.2.0.apk SHA256SUMS
+sha256sum cablegram-phone-arm64-v8a-v0.2.0.apk       # macOS: shasum -a 256
+grep cablegram-phone-arm64-v8a-v0.2.0.apk SHA256SUMS
 ```
 
 The two hashes must be the same. Download `SHA256SUMS` from the release page itself. A hash you were sent
@@ -16,7 +29,7 @@ with the APK by someone else proves nothing.
 ## 2. That GitHub built it from this repository
 
 ```sh
-gh attestation verify cablegram-phone-v0.2.0.apk --repo cablegramapp/cablegram-apps
+gh attestation verify cablegram-phone-arm64-v8a-v0.2.0.apk --repo cablegramapp/cablegram-apps
 ```
 
 This checks that the release workflow in this repository, at the tagged commit, produced that exact file.
@@ -26,7 +39,7 @@ This checks that the release workflow in this repository, at the tagged commit, 
 The signing certificate identifies the publisher. Compare it with the one on the release:
 
 ```sh
-apksigner verify --print-certs cablegram-phone-v0.2.0.apk        # from the release
+apksigner verify --print-certs cablegram-phone-arm64-v8a-v0.2.0.apk        # from the release
 adb shell pm path app.cablegram.phone                             # TV: app.cablegram
 adb pull <path printed above> installed.apk
 apksigner verify --print-certs installed.apk
