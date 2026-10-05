@@ -146,6 +146,7 @@ class TelegramMediaInput(private val media: TelegramMedia, private val file: Tel
 /** Only sparse PCM is decoded; raw audio never leaves memory. The energy/ZCR gate is intentionally
  * conservative. Correlation must independently establish consistency across the film. */
 object LocalSubtitleAnalysis {
+    private fun trace(message: String) { runCatching { android.util.Log.d("SubtitleAudio", message) } }
     fun hash(input: SubtitleMediaInput): String? {
         val size = input.size
         if (size < 131072) return null
@@ -170,7 +171,12 @@ object LocalSubtitleAnalysis {
             input.attach(extractor)
             val codecs = android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS)
             val audio = (0 until extractor.trackCount).map { extractor.getTrackFormat(it) }.filter { it.getString(MediaFormat.KEY_MIME).orEmpty().startsWith("audio/") }
-            if (audio.isEmpty() || audio.any { codecs.findDecoderForFormat(it) != null }) null
+            audio.forEach { trace("audio track mime=${it.getString(MediaFormat.KEY_MIME)} channels=${runCatching { it.getInteger(MediaFormat.KEY_CHANNEL_COUNT) }.getOrNull()} rate=${runCatching { it.getInteger(MediaFormat.KEY_SAMPLE_RATE) }.getOrNull()} decoder=${codecs.findDecoderForFormat(it)}") }
+            trace("tracks=${extractor.trackCount} audio=${audio.size} size=${input.size}")
+            // The file reader lists only audio this phone can decode: a film whose sound (Dolby Digital, DTS...) is missing
+            // from the list has sound the phone can neither play nor analyse, not a film without sound.
+            if (audio.isEmpty()) "an unsupported format (usually Dolby Digital or DTS)"
+            else if (audio.any { codecs.findDecoderForFormat(it) != null }) null
             else when (val mime = audio.first().getString(MediaFormat.KEY_MIME).orEmpty()) {
                 "audio/ac3" -> "Dolby Digital"
                 "audio/eac3", "audio/eac3-joc" -> "Dolby Digital Plus"
@@ -178,7 +184,7 @@ object LocalSubtitleAnalysis {
                 "audio/vnd.dts", "audio/vnd.dts.hd" -> "DTS"
                 else -> mime.removePrefix("audio/")
             }
-        } catch (e: Exception) { null } finally { extractor.release() }
+        } catch (e: Exception) { trace("audio check failed: ${e::class.simpleName}: ${e.message}"); null } finally { extractor.release() }
     }
     /**
      * Android plays the first audio track. With several (say Dolby first, AAC second) pick one this phone can decode.
@@ -238,7 +244,7 @@ object LocalSubtitleAnalysis {
                 val seconds = if (input.remote) 20 else 30
                 val start = (duration * (zone + shift).coerceIn(.02, .93)).coerceAtMost(duration - seconds)
                 input.startSection()
-                val window = decodeWindow(input, start, seconds) ?: continue
+                val window = (try { decodeWindow(input, start, seconds) } catch (e: kotlin.coroutines.cancellation.CancellationException) { throw e } catch (e: Exception) { trace("window at ${start.toInt()}s failed: ${e::class.simpleName}: ${e.message}"); null }) ?: continue
                 if (speechFraction(window) > speechFraction(best)) best = window
                 if (speechFraction(window) in INFORMATIVE) break
             }
@@ -277,7 +283,7 @@ object LocalSubtitleAnalysis {
                 if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                     val output = decoder.outputFormat
                     rate = output.getInteger(MediaFormat.KEY_SAMPLE_RATE); channels = output.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-                    if (output.containsKey(MediaFormat.KEY_PCM_ENCODING) && output.getInteger(MediaFormat.KEY_PCM_ENCODING) != AudioFormat.ENCODING_PCM_16BIT) return null
+                    if (output.containsKey(MediaFormat.KEY_PCM_ENCODING) && output.getInteger(MediaFormat.KEY_PCM_ENCODING) != AudioFormat.ENCODING_PCM_16BIT) { trace("decoder output encoding ${output.getInteger(MediaFormat.KEY_PCM_ENCODING)} is not 16-bit PCM"); return null }
                 } else if (index >= 0) {
                     val output = decoder.getOutputBuffer(index)!!; output.position(info.offset); output.limit(info.offset + info.size); output.order(ByteOrder.LITTLE_ENDIAN)
                     var frame = 0; var previous = 0.0
@@ -292,7 +298,7 @@ object LocalSubtitleAnalysis {
                     decoder.releaseOutputBuffer(index, false)
                 }
             }
-            if (!outputDone || counts.count { it > 0 } < bins - 20) return null
+            if (!outputDone || counts.count { it > 0 } < bins - 20) { trace("window at ${start.toInt()}s unusable: outputDone=$outputDone binsWithAudio=${counts.count { it > 0 }}/$bins"); return null }
             val rms = energy.mapIndexed { i, value -> sqrt(value / counts[i].coerceAtLeast(1)) }
             val floor = rms.sorted()[rms.size / 5]; val threshold = maxOf(.008, floor * 2.5)
             val bits = rms.mapIndexed { i, value -> val zcr = crossings[i].toDouble() / counts[i].coerceAtLeast(1); if (value > threshold && zcr in .015..0.35) '1' else '0' }.joinToString("")
