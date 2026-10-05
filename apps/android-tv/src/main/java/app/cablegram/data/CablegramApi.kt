@@ -32,6 +32,10 @@ class CablegramApi(
         .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .callTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
         .pingInterval(20, java.util.concurrent.TimeUnit.SECONDS)
+        // Learn how far this TV's clock is from the server's, so progress queued offline is stamped in server time.
+        .addInterceptor { chain ->
+            chain.proceed(chain.request()).also { ServerClock.shared.observe(it.headers.getDate("Date")) }
+        }
         .build(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
