@@ -32,6 +32,10 @@ class CablegramApi(
         .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .callTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
         .pingInterval(20, java.util.concurrent.TimeUnit.SECONDS)
+        // Learn how far this TV's clock is from the server's, so progress queued offline is stamped in server time.
+        .addInterceptor { chain ->
+            chain.proceed(chain.request()).also { ServerClock.shared.observe(it.headers.getDate("Date")) }
+        }
         .build(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -221,6 +225,24 @@ class CablegramApi(
     suspend fun telegramTvLoginState(token: String, requestId: String): TelegramTvLoginStateDto =
         execute(authenticatedRequest("api/telegram/tv-logins/$requestId", token).get().build())
 
+    /** Asks the household phone to type the Telegram password; it is sealed to [publicKey], so only this TV can read it. */
+    suspend fun postTelegramPasswordRequest(token: String, publicKey: String, hint: String): String {
+        val body = json.encodeToString(buildJsonObject {
+            put("public_key", publicKey)
+            if (hint.isNotBlank()) put("hint", hint.take(200))
+        })
+        val response: TelegramTvLoginDto = execute(authenticatedRequest("api/telegram/tv-password-requests", token).post(body.toRequestBody(jsonMediaType)).build())
+        return response.requestId
+    }
+
+    /** Withdraws a password request this TV no longer needs, so the phone's notification goes away. */
+    suspend fun cancelTelegramPasswordRequest(token: String, requestId: String) =
+        executeNoContent(authenticatedRequest("api/telegram/tv-password-requests/$requestId", token).delete().build())
+
+    /** The sealed password arrives here exactly once, in the answer where [TelegramPasswordRequestDto.state] is "delivered". */
+    suspend fun telegramPasswordRequest(token: String, requestId: String): TelegramPasswordRequestDto =
+        execute(authenticatedRequest("api/telegram/tv-password-requests/$requestId", token).get().build())
+
     /** Phones waiting for this Home TV to approve their Telegram QR login (spec 004 FR-023). */
     suspend fun pendingPhoneLogins(token: String): List<PendingPhoneLoginDto> =
         execute<PendingPhoneLoginsDto>(authenticatedRequest("api/telegram/phone-logins/pending", token).get().build()).requests
@@ -269,7 +291,7 @@ class CablegramApi(
         execute(authenticatedRequest("api/control/commands?delivery=ack", token).get().build())
 
     suspend fun completeCommand(commandId: String, token: String) {
-        executeNoContent(authenticatedRequest("api/control/commands/$commandId/complete", token).post("".toRequestBody(jsonMediaType)).build())
+        executeNoContent(authenticatedRequest("api/control/commands/$commandId/complete", token).post("{}".toRequestBody(jsonMediaType)).build())
     }
 
     suspend fun rejectCommand(commandId: String, reason: String, token: String) {
@@ -868,6 +890,9 @@ data class PendingPhoneLoginDto(
 
 @Serializable
 data class TelegramTvLoginDto(@kotlinx.serialization.SerialName("request_id") val requestId: String)
+
+@Serializable
+data class TelegramPasswordRequestDto(val state: String, val sealed: String? = null)
 
 @Serializable
 data class TelegramTvLoginStateDto(val state: String, val error: String? = null)

@@ -178,8 +178,8 @@ fun needsTitleInput(vararg labels: String?): Boolean = firstCatalogHint(*labels)
 
 enum class ImportMetadataAction { PromptForCorrection, Ready }
 
-fun importMetadataAction(item: LibraryItem): ImportMetadataAction =
-    ImportMetadataAction.PromptForCorrection
+fun importMetadataAction(@Suppress("UNUSED_PARAMETER") item: LibraryItem): ImportMetadataAction =
+    ImportMetadataAction.Ready
 
 /**
  * A readable filename may skip title correction only after the local probe

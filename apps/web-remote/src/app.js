@@ -1,5 +1,6 @@
 import { API_BASE } from "../config.js";
 import { createApi, REMOTE, ApiError } from "./api.js";
+import { trackCommand, OUTCOME } from "./outcome.js";
 
 const api = createApi({ base: API_BASE });
 const root = document.getElementById("app");
@@ -96,6 +97,7 @@ function toast(text) {
 
 function renderSignIn(error = "", registering = false) {
   stopPolling();
+  stopTracking();
   closeSheet();
   const email = h("input", { type: "email", autocomplete: "email", placeholder: "Email", required: true });
   const password = h("input", { type: "password", autocomplete: registering ? "new-password" : "current-password", placeholder: "Password", required: true, minlength: registering ? 8 : null });
@@ -190,21 +192,71 @@ function tvName() {
 }
 
 function selectTv(id) {
+  // What was sent to the old TV says nothing about the new one.
+  if (id !== state.tv) stopTracking();
   state.tv = id;
   try { localStorage.setItem(TV_KEY, id); } catch { /* fine */ }
 }
 
-/** Sends to the chosen TV; `label` is the confirmation to show ("Paused"), or nothing for arrow keys. */
-async function send(build, label) {
-  if (!state.tv) { toast("Pair a TV first."); return false; }
-  try {
-    await api.command(build(state.tv));
-    if (label) toast(label);
-    return true;
-  } catch (e) {
-    if (!signedOut(e)) toast(message(e));
-    return false;
+// ---- Command outcomes ----
+// The server accepting a command is not the TV doing it: only the TV's own receipt counts as done.
+
+let tracking = null;
+let outcomeTimer = null;
+
+function stopTracking() {
+  tracking?.tracker.cancel();
+  tracking = null;
+  clearTimeout(outcomeTimer);
+  document.getElementById("outcome")?.remove();
+}
+
+/** The one line above the tabs saying what the TV did with the last command, naming the TV it went to. */
+function showOutcome(attempt, update) {
+  let node = document.getElementById("outcome");
+  if (!node) document.body.append(node = h("div", { id: "outcome", class: "outcome", role: "status", "aria-live": "polite" }));
+  clearTimeout(outcomeTimer);
+  const tv = attempt.tvLabel;
+  const command = attempt.command;
+  node.dataset.outcome = update.outcome;
+  const dismiss = () => { if (tracking?.attempt === attempt) tracking = null; node.remove(); };
+  if (update.outcome === OUTCOME.sent) {
+    node.replaceChildren(h("span", { class: "grow" }, `Sent to ${tv}, waiting for it to confirm…`));
+    return;
   }
+  if (update.outcome === OUTCOME.confirmed) {
+    node.replaceChildren(h("span", { class: "grow" }, `${tv}: ${attempt.label || "Done"}`));
+    outcomeTimer = setTimeout(dismiss, 2600);
+    attempt.onConfirmed?.();
+    return;
+  }
+  if (update.error && signedOut(update.error)) { node.remove(); return; }
+  const text = update.outcome === OUTCOME.rejected
+    ? (update.reason === "unknown_target_device" ? `${tv} isn't paired any more.` : `${tv} rejected the ${command} command.`)
+    : `Couldn't confirm that ${tv} did it. It may be off or offline.`;
+  node.replaceChildren(
+    h("span", { class: "grow" }, text),
+    h("button", {
+      class: "small", "aria-label": `Retry ${command} on ${tv}`,
+      // Retrying is always the person's choice. After a lost response the same id keeps the TV from running it twice.
+      onclick: () => send(attempt.build, attempt.label, attempt.onConfirmed, { tvId: attempt.tvId, tvLabel: tv, id: update.reason === "network" ? tracking?.tracker.id : undefined }),
+    }, "Retry"),
+    h("button", { class: "small", "aria-label": "Dismiss", onclick: dismiss }, "Dismiss"),
+  );
+}
+
+/**
+ * Sends to the chosen TV and follows the command until the TV answers. `label` is what to say once the TV confirms
+ * ("Paused"); `onConfirmed` runs only then. Resolves true once the server has accepted the command.
+ */
+async function send(build, label, onConfirmed, { tvId = state.tv, tvLabel = tvName(), id } = {}) {
+  if (!tvId) { toast("Pair a TV first."); return false; }
+  stopTracking();
+  const body = build(tvId);
+  const attempt = { build, label, onConfirmed, tvId, tvLabel, command: body.command };
+  const tracker = trackCommand(api, body, (update) => showOutcome(attempt, update), { id });
+  tracking = { tracker, attempt };
+  return tracker.accepted;
 }
 
 // ---- Shell ----
@@ -373,7 +425,7 @@ function openDetails(entry) {
 
 async function playItem(item, title) {
   if (!state.tv) { closeSheet(); toast("Pair a TV first."); return go("tvs"); }
-  if (await send((id) => REMOTE.play(id, item.id), `Playing “${title}” on ${tvName()}`)) {
+  if (await send((id) => REMOTE.play(id, item.id), `Playing “${title}”`)) {
     closeSheet();
     go("remote");
   }
@@ -391,17 +443,20 @@ function remoteView() {
     h("button", { class: `key ${cls}`, "aria-label": label, onclick: () => send(build, status) }, content);
   const mute = h("button", {
     class: "key mute", "aria-label": state.muted ? "Unmute" : "Mute", "aria-pressed": String(state.muted),
-    onclick: async () => {
-      if (!(await send((id) => REMOTE.mute(id, !state.muted), state.muted ? "Unmuted" : "Muted"))) return;
-      state.muted = !state.muted;
-      mute.replaceChildren(icon(state.muted ? "muted" : "volume"));
-      mute.setAttribute("aria-label", state.muted ? "Unmute" : "Mute");
-      mute.setAttribute("aria-pressed", String(state.muted));
+    onclick: () => {
+      const next = !state.muted;
+      // The button follows the TV, not the tap: it changes only when the TV confirms.
+      send((id) => REMOTE.mute(id, next), next ? "Muted" : "Unmuted", () => {
+        state.muted = next;
+        mute.replaceChildren(icon(state.muted ? "muted" : "volume"));
+        mute.setAttribute("aria-label", state.muted ? "Unmute" : "Mute");
+        mute.setAttribute("aria-pressed", String(state.muted));
+      });
     },
   }, icon(state.muted ? "muted" : "volume"));
   const volume = h("input", {
     type: "range", min: "0", max: "100", value: String(state.volume), "aria-label": "Volume",
-    onchange: (e) => { state.volume = Number(e.target.value); send((id) => REMOTE.volume(id, state.volume), `Volume ${state.volume}`); },
+    onchange: (e) => { const level = Number(e.target.value); send((id) => REMOTE.volume(id, level), `Volume ${level}`, () => { state.volume = level; }); },
   });
   return h("div", { class: "remote" },
     h("div", { class: "dpad" },
@@ -507,6 +562,7 @@ function telegramHelp() {
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+addEventListener("pagehide", stopTracking);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden || !api.signedIn) return;
   refreshTelegram();

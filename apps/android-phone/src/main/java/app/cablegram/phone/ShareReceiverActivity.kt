@@ -43,12 +43,9 @@ class ShareReceiverActivity : ComponentActivity() {
         }
         setContent {
             PhoneTheme {
-                if (viewModel.duplicatePrompt != null) {
-                    DuplicateEpisodeDialog(viewModel)
-                } else if (viewModel.pendingPrivacyItem != null) {
+                if (viewModel.pendingPrivacyItem != null) {
                     PrivacyPrompt(viewModel)
-                } else if (viewModel.pendingTitleItem != null) {
-                    TitlePrompt(viewModel)
+
                 } else {
                     Column(
                         Modifier.fillMaxSize().padding(32.dp),
@@ -76,10 +73,10 @@ class ShareReceiverActivity : ComponentActivity() {
                         }
                     }
                 }
-                LaunchedEffect(viewModel.busy, viewModel.status, viewModel.pendingTitleItem) {
+                LaunchedEffect(viewModel.busy, viewModel.status, viewModel.pendingPrivacyItem) {
                     if (
                         !viewModel.busy &&
-                        viewModel.pendingTitleItem == null &&
+                        viewModel.pendingPrivacyItem == null &&
                         viewModel.status != null &&
                         viewModel.status?.startsWith("Could") != true &&
                         viewModel.status?.startsWith("Name this") != true

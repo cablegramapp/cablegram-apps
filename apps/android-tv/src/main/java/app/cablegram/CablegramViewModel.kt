@@ -20,6 +20,8 @@ import app.cablegram.data.PlaybackResponse
 import app.cablegram.data.Profile
 import app.cablegram.data.Video
 import app.cablegram.data.ProgressQueue
+import app.cablegram.data.ServerClock
+import app.cablegram.data.flushProgress
 import app.cablegram.data.localIpv4
 import app.cablegram.data.localIpv4Addresses
 import android.view.KeyEvent
@@ -68,6 +70,8 @@ sealed interface ScreenState {
         val awaitingApproval: Boolean = false,
     ) : ScreenState
     data class Player(val video: Video, val playback: PlaybackResponse) : ScreenState
+    /** A Telegram title was opened while this TV still waits for the Telegram two-step password. */
+    data class TelegramPassword(val video: Video) : ScreenState
     data class Error(
         val title: String,
         val message: String,
@@ -409,8 +413,18 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         )
     }
 
+    /** The viewer chose to play this Telegram title through the phone instead of signing in to Telegram on this TV. */
+    private var phoneRelayChoice: String? = null
+
+    fun playThroughPhone(video: Video, always: Boolean = false) {
+        phoneRelayChoice = video.id
+        if (always) telegram.setViaPhone(true)
+        play(video)
+    }
+
     fun play(video: Video) {
-        finishRemoteTitle("superseded")
+        // The same title continuing (after the Telegram password prompt, say) keeps the phone's command open.
+        if (remoteTitleCommand?.second != video.id) finishRemoteTitle("superseded")
         if (isLiveChannelId(video.id)) return
         // T077 / R-7: the server catalog is the single source of truth.
         // Playback resolution always goes through the control plane (`getPlayback`),
@@ -424,6 +438,11 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         val currentToken = token ?: return
+        // A Telegram-only title can't start until the owner types the Telegram password on this TV: ask now, then play.
+        if (video.source == "telegram" && telegram.status.value is TvTelegramStatus.NeedsPassword && phoneRelayChoice != video.id && !telegram.viaPhone.value) {
+            screen = ScreenState.TelegramPassword(video)
+            return
+        }
         librarySyncJob?.cancel()
         failedPlaybackVideo = null
         val loadingUrl = getRandomLoadingVideoUrl()
@@ -577,6 +596,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun closePlayer() {
+        phoneRelayChoice = null
         telegram.releasePlayback()
         finishRemoteTitle("cancelled")
         // Do not leave player actions queued for the next title.
@@ -599,6 +619,9 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                 positionSeconds >= durationSeconds * 95 / 100 -> "completed"
             else -> "paused"
         }
+        // The time playback changed, taken before the upload: an upload that fails after a timeout must not date the
+        // update later than a newer one (ProgressQueue orders by this time).
+        val observedAt = ServerClock.shared.now()
         viewModelScope.launch {
             runCatching {
                 api.updateProgress(
@@ -613,7 +636,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                     (error as? ApiException)?.statusCode == 403 -> onProfileGone()
                     (error as? ApiException)?.statusCode == 410 -> onMediaDeleted(videoId)
                     error.isPermanentRejection() -> Unit
-                    else -> progressQueue.enqueue(videoId, activeProfileId, positionSeconds, state, durationSeconds)
+                    else -> progressQueue.enqueue(videoId, activeProfileId, positionSeconds, state, durationSeconds, observedAt)
                 }
             }
         }
@@ -636,25 +659,21 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
 
     suspend fun flushProgressQueue() {
         val currentToken = token ?: return
-        val pending = progressQueue.pending()
-        if (pending.isEmpty()) return
-        for (entry in pending) {
-            val entryRef = entry
-            val lastFailure = runCatching {
+        flushProgress(
+            progressQueue,
+            upload = { entry ->
                 api.updateProgress(
-                    entryRef.videoId,
-                    entryRef.positionSeconds,
+                    entry.videoId,
+                    entry.positionSeconds,
                     currentToken,
-                    entryRef.profileId,
-                    state = entryRef.state,
-                    durationSeconds = entryRef.durationSeconds,
-                    clientUpdatedAt = entryRef.clientUpdatedAt,
+                    entry.profileId,
+                    state = entry.state,
+                    durationSeconds = entry.durationSeconds,
+                    clientUpdatedAt = entry.clientUpdatedAt,
                 )
-            }.exceptionOrNull()
-            // A rejected entry (deleted profile or title) would otherwise block the queue forever.
-            if (lastFailure != null && !lastFailure.isPermanentRejection()) return // still offline; keep the rest queued
-            progressQueue.remove(entryRef.videoId, entryRef.profileId)
-        }
+            },
+            isPermanentRejection = { it.isPermanentRejection() },
+        )
     }
 
     suspend fun renewPlayback(videoId: String): PlaybackResponse? {
@@ -1121,6 +1140,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             finishCommand(command.id, "title_unavailable")
             return
         }
+        finishRemoteTitle("superseded")
         play(video)
         remoteTitleCommand = command.id to video.id
     }
@@ -1167,9 +1187,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                             // Cheap staleness check first: a full structural equals of the
                             // library every cycle costs O(n) object-graph compares on the
                             // main thread and thrashes low-memory TVs (ANR 4b063625).
-                            val signature = latest.joinToString("|") { v ->
-                                "${v.id}:${v.ingestProgress}:${v.ingestStage}:${v.tier}:${v.inMyList}:${v.resumePositionSeconds}:${v.title}:${v.posterUrl}"
-                            }
+                            val signature = librarySyncSignature(latest)
                             if (signature != lastSignature) {
                                 lastSignature = signature
                                 cachedVideos = latest
