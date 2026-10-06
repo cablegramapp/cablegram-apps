@@ -224,6 +224,7 @@ class CablegramApiTest {
     fun `a title that only lives in the household R2 bucket plays from it without asking a phone`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"own_cloud","origin_identity":"r2:abc","availability":"available"}]}]}"""))
         server.enqueue(MockResponse().setBody(r2Resolve))
+        server.enqueue(MockResponse().setBody(noSubtitles)) // the saved-subtitle lookup once playback is ready
 
         val playback = api.getPlayback("item-1", "jwt")
 
@@ -231,7 +232,7 @@ class CablegramApiTest {
         assertEquals("https://acct.r2.cloudflarestorage.com/h/u/film.mkv?X-Amz-Signature=sig", playback.url)
         server.takeRequest()
         assertEquals("/api/playback/resolve", server.takeRequest().path)
-        assertEquals(2, server.requestCount)
+        assertEquals("no phone is asked", 3, server.requestCount)
     }
 
     @Test
@@ -250,6 +251,7 @@ class CablegramApiTest {
         server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
         server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
         server.enqueue(MockResponse().setResponseCode(404)) // the relay ticket: not available in this test
+        server.enqueue(MockResponse().setBody(noSubtitles)) // the saved-subtitle lookup once playback is ready
         server.enqueue(MockResponse().setBody(r2Resolve))
 
         val playback = api.getPlayback("item-1", "jwt")
@@ -262,6 +264,8 @@ class CablegramApiTest {
         playback.fallbackResolver!!.invoke()
         assertEquals("the R2 lookup is made once", before + 1, server.requestCount)
     }
+
+    private val noSubtitles = """{"subtitles":[]}"""
 
     private val driveResolve = """{"status":"ready","url":"https://www.googleapis.com/drive/v3/files/f1?alt=media","headers":{"Authorization":"Bearer ya29.test"},"mime_type":"video/x-matroska","expiresAt":"2026-10-02T12:50:00.000Z","title":"Film"}"""
 
@@ -286,6 +290,7 @@ class CablegramApiTest {
         server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
         server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone"}]}"""))
         server.enqueue(MockResponse().setBody(driveResolve))
+        server.enqueue(MockResponse().setBody(noSubtitles)) // the saved-subtitle lookup once playback is ready
         val cloudFirst = api.getPlayback("item-1", "jwt")
         assertEquals(mapOf("Authorization" to "Bearer ya29.test"), cloudFirst.headers)
         assertTrue("the fallback has its own, empty, headers", cloudFirst.fallbackHeaders.isEmpty())
@@ -294,6 +299,7 @@ class CablegramApiTest {
         server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
         server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
         server.enqueue(MockResponse().setResponseCode(404)) // the relay ticket
+        server.enqueue(MockResponse().setBody(noSubtitles)) // the saved-subtitle lookup once playback is ready
         server.enqueue(MockResponse().setBody(driveResolve))
         val lan = api.getPlayback("item-1", "jwt")
         val fallback = lan.fallbackResolver!!.invoke()

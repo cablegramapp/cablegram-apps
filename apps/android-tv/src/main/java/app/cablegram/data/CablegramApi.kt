@@ -385,8 +385,10 @@ class CablegramApi(
         onAwaitingApproval: () -> Unit = {},
         telegramUrl: suspend (String) -> String? = { null },
         telegramPhoneId: () -> String? = { null },
+        /** Spec 006: the local stream for a cloud copy that needs a header (Google Drive); see [resolvePlayback]. */
+        cloudStream: (url: String, headers: Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
-        val playback = resolvePlayback(videoId, token, lanPin, onStatus, onAwaitingApproval, telegramUrl, telegramPhoneId)
+        val playback = resolvePlayback(videoId, token, lanPin, onStatus, onAwaitingApproval, telegramUrl, telegramPhoneId, cloudStream)
         if (playback.status != "ready" || playback.subtitles.isNotEmpty()) return playback
         val subtitles = runCatching {
             execute<SubtitlePlaybackResponse>(authenticatedRequest("api/subtitles/playback/item/$videoId", token).get().build()).subtitles
