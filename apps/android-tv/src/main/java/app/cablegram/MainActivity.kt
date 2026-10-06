@@ -29,6 +29,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        android.util.Log.i("CAB20_SPIKE", "ON_CREATE wallMs=${System.currentTimeMillis()} action=${intent?.action}")
+        com.google.android.gms.cast.tv.CastReceiverContext.getInstance().mediaManager.onNewIntent(intent)
         enableEdgeToEdge()
         setContent {
             CablegramTheme {
@@ -40,5 +42,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         cablegramViewModel.refreshLibraryOnResume()
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        android.util.Log.i("CAB20_SPIKE", "ON_NEW_INTENT wallMs=${System.currentTimeMillis()} action=${intent.action}")
+        com.google.android.gms.cast.tv.CastReceiverContext.getInstance().mediaManager.onNewIntent(intent)
+        setIntent(intent)
     }
 }

@@ -1,4 +1,5 @@
 # R8 rules for release builds. The libraries below call into native code or are read by reflection,
+-keep class app.cablegram.cast.SpikeReceiverOptions { *; }
 # so what the native side looks up by name must keep its name.
 
 # LibVLC: libvlcjni looks up these classes and methods by name.

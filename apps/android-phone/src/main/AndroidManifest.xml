@@ -23,6 +23,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CablegramPhone"
         android:usesCleartextTraffic="true">
+        <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="app.cablegram.phone.cast.SpikeSenderOptions" />
+        <activity android:name=".cast.SpikeSenderActivity" android:exported="true" />
         <activity
             android:name=".PhoneActivity"
             android:exported="true"
