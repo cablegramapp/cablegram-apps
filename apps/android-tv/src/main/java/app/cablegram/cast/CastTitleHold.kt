@@ -30,9 +30,10 @@ internal class CastTitleHold {
     fun expired(now: Long): Boolean = command?.let { it.expiresAtMs == null || it.expiresAtMs <= now } == true
 
     /** Caller resolves the title only in the profile the viewer actually selected. */
-    fun select(hasTitle: Boolean, now: Long): String? = when {
+    fun select(hasTitle: Boolean, now: Long, selectedDeviceId: String? = launch?.targetDeviceId): String? = when {
         command == null -> "profile_required"
         expired(now) -> "expired"
+        selectedDeviceId != launch?.targetDeviceId -> "inactive_account"
         !hasTitle -> "title_unavailable"
         else -> null
     }

@@ -38,6 +38,15 @@ class CastLaunchTest {
         assertEquals("title_unavailable", hold.select(hasTitle = false, now = 50))
     }
 
+    @Test fun `choosing another signed in household cannot execute the held command`() {
+        val hold = CastTitleHold()
+        hold.signal(CastLaunch("command", "tv"), setOf("tv", "another-household-tv"))
+        assertTrue(hold.hold(command(), "tv"))
+        assertEquals("inactive_account", hold.select(true, 50, "another-household-tv"))
+        assertEquals("inactive_account", hold.select(true, 50, null))
+        assertNull(hold.select(true, 50, "tv"))
+    }
+
     @Test fun `command first waits only for marked title starts within expiry`() {
         val marked = command(expires = 300_000).copy(payload = buildJsonObject {
             put("videoId", "title"); put("castLaunch", true)

@@ -203,7 +203,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     private fun resumeCastTitle() {
         val command = castHold.command ?: return
         val video = findRemoteTitle(cachedVideos, command.payload["videoId"]?.jsonPrimitive?.content)
-        val reason = castHold.select(video != null, System.currentTimeMillis())
+        val reason = castHold.select(video != null, System.currentTimeMillis(), deviceIdOf(token))
         castHold.clear()
         pendingCastLaunch = null
         castPickerBanner = null
@@ -1119,6 +1119,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             cachedVideos = api.getVideos(currentToken, lanToken, activeProfileId).videos
             libraryVideos = cachedVideos
             screen = ScreenState.Library
+            castApp?.mediaSession?.identify(deviceIdOf(currentToken))
             startLibrarySync()
             startCommandPolling()
             resumeCastTitle()
