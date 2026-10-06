@@ -346,6 +346,50 @@ class CablegramApiTest {
         assertTrue("no bearer reaches the player", playback.headers.isEmpty())
     }
 
+    private val privateOnPhoneAndDrive = """{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"phone_local","origin_identity":"phone-video","private":true},{"kind":"own_cloud","origin_identity":"gdrive:abc","availability":"available","private":true}]}]}"""
+
+    @Test
+    fun `an approved private title also in Drive plays from the phone when it answers on this Wi-Fi`() = runBlocking {
+        val phone = MockWebServer().apply { enqueue(MockResponse().setResponseCode(401)); start() }
+        try {
+            server.enqueue(MockResponse().setBody(privateOnPhoneAndDrive))          // catalog
+            server.enqueue(MockResponse().setBody("""{"attempt_id":"att-1","expires_at":"2026-10-02T13:00:00Z"}"""))
+            server.enqueue(MockResponse().setBody("""{"status":"approved"}"""))
+            server.enqueue(MockResponse().setBody(privateOnPhoneAndDrive))          // catalog again after approval
+            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port}}]}"""))
+            server.enqueue(MockResponse().setBody("""{"lan_pass":"pass-1"}"""))      // the approval is spent on the phone path
+            var cloud = false
+
+            val playback = api.getPlayback("item-1", "jwt", cloudStream = { _, _ -> cloud = true; "http://127.0.0.1:5555/cloud/abc" })
+
+            assertEquals("ready", playback.status)
+            assertTrue(playback.url!!.startsWith("http://127.0.0.1:${phone.port}/media/phone-video"))
+            assertTrue(playback.url!!.contains("pass=pass-1"))
+            assertFalse("Drive is not asked while the phone answers", cloud)
+        } finally {
+            phone.shutdown()
+        }
+    }
+
+    @Test
+    fun `an approved private title also in Drive plays from Drive when the phone does not answer`() = runBlocking {
+        val gone = MockWebServer().apply { start() }
+        val port = gone.port
+        gone.shutdown()
+        server.enqueue(MockResponse().setBody(privateOnPhoneAndDrive))
+        server.enqueue(MockResponse().setBody("""{"attempt_id":"att-1","expires_at":"2026-10-02T13:00:00Z"}"""))
+        server.enqueue(MockResponse().setBody("""{"status":"approved"}"""))
+        server.enqueue(MockResponse().setBody(privateOnPhoneAndDrive))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":$port}]}"""))
+        server.enqueue(MockResponse().setBody(driveResolve))
+
+        val playback = api.getPlayback("item-1", "jwt", cloudStream = { _, _ -> "http://127.0.0.1:5555/cloud/abc" })
+
+        assertEquals("ready", playback.status)
+        assertEquals("http://127.0.0.1:5555/cloud/abc", playback.url)
+        assertTrue(playback.headers.isEmpty())
+    }
+
     @Test
     fun `a web title's own headers are left for the player, not sent through the local stream`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"kind":"web","availability":"available"}]}]}"""))

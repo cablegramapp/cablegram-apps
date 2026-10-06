@@ -591,14 +591,28 @@ class CablegramApi(
                 "approved" -> {
                     val current = execute<CatalogResponse>(authenticatedRequest("api/catalog/items", token).get().build())
                         .items.firstOrNull { it.id == videoId }
-                    if (current?.sources?.any { it.kind == "web" || it.kind == "cloud_object" || it.kind == OWN_CLOUD } == true) {
+                    if (current?.sources?.any { it.kind == "web" || it.kind == "cloud_object" } == true) {
+                        return resolveWebPlayback(videoId, token, attemptId)
+                    }
+                    // Spec 006: as for any title, the phone over Wi-Fi comes before the household's own cloud (R2, Drive),
+                    // which costs internet bandwidth and the provider's download limits. One approval opens one path only,
+                    // so the phone is checked before the approval is spent: the cloud copy is used when it doesn't answer.
+                    val phoneSource = current?.sources?.firstOrNull {
+                        it.isPhoneSource() && it.archiveState != "archived" && it.availability != "unavailable"
+                    }
+                    val hasOwnCloud = current?.sources?.any {
+                        it.kind == OWN_CLOUD && it.availability != "unavailable" && it.archiveState != "archived"
+                    } == true
+                    var devices: List<DeviceHintDto>? = null
+                    suspend fun devices() = devices ?: execute<MeDto>(authenticatedRequest("api/me", token).get().build()).devices.also { devices = it }
+                    val phoneOnLan = phoneSource?.let { servingPhone(devices(), it) }
+                    if (hasOwnCloud && (phoneOnLan == null || !answersOnLan(phoneOnLan))) {
                         // A private title in Google Drive needs the local stream too, or the player reaches Drive without its header.
                         return withLocalCloudStream(resolveWebPlayback(videoId, token, attemptId), cloudStream)
                     }
-                    val source = current?.sources?.firstOrNull { !it.originIdentity.isNullOrBlank() }
+                    val source = phoneSource ?: current?.sources?.firstOrNull { it.kind != OWN_CLOUD && !it.originIdentity.isNullOrBlank() }
                     val identity = source?.originIdentity ?: return deniedPlayback(title, posterUrl)
-                    val me = execute<MeDto>(authenticatedRequest("api/me", token).get().build())
-                    val phone = servingPhone(me.devices, source) ?: return deniedPlayback(title, posterUrl)
+                    val phone = phoneOnLan ?: servingPhone(devices(), source) ?: return deniedPlayback(title, posterUrl)
                     // Consume this approval once and get the pass the phone
                     // requires before it streams a private title.
                     val pass = runCatching {
@@ -780,6 +794,15 @@ class CablegramApi(
             }
             .build()
             .toString()
+    }
+
+    /** Whether the phone's library server answers on this Wi-Fi at all; any HTTP reply counts, nothing is fetched. */
+    private suspend fun answersOnLan(phone: DeviceHintDto): Boolean = withContext(Dispatchers.IO) {
+        val host = phone.lastLanHost?.takeIf { it.isNotBlank() } ?: return@withContext false
+        val url = okhttp3.HttpUrl.Builder().scheme("http").host(host).port(phone.lastLanPort ?: 8765).addPathSegment("library").build()
+        val quick = client.newBuilder().connectTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .readTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        runCatching { quick.newCall(Request.Builder().url(url).head().build()).execute().use { true } }.getOrDefault(false)
     }
 
     private fun lanUrl(phone: DeviceHintDto, path: String, capability: String?, privatePass: String? = null): String {
