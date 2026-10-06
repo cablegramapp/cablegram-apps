@@ -39,6 +39,35 @@ Results use: **pass**, **fail**, **not run** (nothing was tried), **needs physic
 | Codec: 10-bit (H.264 High 10, 1080p) | pass (physical, software `avcodec`: the hardware decoder reported "not supported") | not run | No late-frame warnings in the log; smoothness was judged from the log and screenshots only. |
 | Codec: high bitrate (H.264, 30 Mbps, 1080p) | pass (physical, hardware AVC, no late-frame warnings) | not run | The relay's free plan caps at 4 Mbps, so a relay run needs a paid household. |
 
+## Cast Connect (CAB-20)
+
+The spike uses synthetic IDs and never plays or resolves media. Its passes establish launch and
+payload delivery only. Production acceptance requires separate runs on the real phone and TV.
+
+| Case | Physical device result | Evidence / limits |
+|---|---|---|
+| Release-key sideload, closed TV app, session only | pass | A-REL A1: Connect launches the app via LAUNCH before any LOAD, about 0.8 seconds. |
+| Release-key sideload, cold session then LOAD | pass | A-REL A2: exact `{commandId,targetDeviceId}`, status 0; callback about 111 ms after send, corrected for measured clock skew. Session already opened the app, so LOAD-to-onCreate is not applicable. |
+| Release-key sideload, running app LOAD | pass | A-REL A3: ON_NEW_INTENT, exact data, status 0, about 167 ms. |
+| Release-key sideload, real standby wake then LOAD | pass | CEC4: actual standby and Asleep before Connect; owner observed TV on and Cablegram open. Connect triggers CEC wake before LOAD; subsequent LOAD about 128 ms. CEC1 screensaver observation was reclassified inconclusive. |
+| Debug-key sideload, closed app and intact LOAD | pass | DBG-A2 reviewed session-only cold launch about 1.36 s ±0.26 s; DBG-LOAD exact two string IDs, matching UUIDs and status 0 for both cold-session and running LOAD. Callback estimates 83/133 ms with conservative ±167 ms uncertainty. |
+| Debug-key sideload, physical standby wake | not run | Optional additional coverage; release CEC4 supplies the required physically observed spike wake. |
+| Production: closed TV app → Play on TV → title plays | not run | Must confirm server command outcome and actual TV playback. |
+| Production: standby → Play on TV → wake and title plays | not run | Requires physical wake observation and actual playback. |
+| Production: profile picker banner → choose profile → title plays | not run | Include command-before-LOAD ordering; never select a profile automatically. |
+| Production: chosen profile lacks title | not run | TV rejects with `title_unavailable`; phone reflects it. |
+| Production: waiting command expires or viewer leaves picker | not run | Banner clears; result `expired` / `superseded`. |
+| Production: already playing → switch title | not run | Confirm the new title actually starts. |
+| Production: notification pause, resume and seek; TV stop clears phone | not run | Verify TV response and phone state separately. |
+| Production: other network, flag off or no Play services | not run | Existing relay/CAB-18 behavior remains. |
+| Production: wrong TV | not run | Status identifies actual device; retry once only for a paired household TV. |
+
+Evidence root: `/private/tmp/cab-20-qa/`; current reviewed results in `session-summary.md`.
+Correct developer registration uses the Cast software serial, not the hardware/ADB serial. After
+registration propagation, a later power-cycle resolved the initial receiver-app availability blocker.
+Wireless debugging became disabled after restart and required owner recovery; avoid unnecessary
+device reboots during subsequent runs.
+
 ## Still open
 
 - Relay on the physical devices (needs a verified email and a device under the free limit).
@@ -78,4 +107,3 @@ Results use: **pass**, **fail**, **not run** (nothing was tried), **needs physic
 | 2026-10-03 | Account deletion (release gate step 3) | n/a | Pixel 8 Pro | Chromecast | Home Wi-Fi | sign-in fails: pass; rows gone: pass; TV signed out: **fail** | See "Found while testing". |
 | 2026-10-04 | Prepare, seek, resume, longer doze | LAN | Pixel 8 Pro, Android 17 (API 37), arm64 | Chromecast with Google TV, Android 14 (API 34), armeabi-v7a | Home Wi-Fi, same subnet | pass | Debug builds from `origin/main` (`53a62e1`), `.verify` copies; removed afterwards. |
 | 2026-10-04 | Network change (Wi-Fi drop and return) | LAN | as above | as above | as above | inconclusive | One unexplained stall at 0:38 before the drop; see the matrix row. |
-
