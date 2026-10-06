@@ -14,6 +14,8 @@ data class AccountCredential(
     val sessionId: String,
     val token: String,
     val userId: String? = null,
+    /** The LAN credential minted when this account's phone paired the TV; each account has its own. */
+    val lanCapability: String? = null,
 ) {
     val effectiveUserId: String?
         get() = userId ?: extractUserIdFromToken(token)

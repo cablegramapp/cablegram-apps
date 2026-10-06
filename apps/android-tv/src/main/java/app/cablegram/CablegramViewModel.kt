@@ -163,9 +163,25 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         private set
     var tvLanIp by mutableStateOf<String?>(null)
         private set
-    private var lanToken: String?
-        get() = lanPrefs.getString("token", null)
-        set(value) { lanPrefs.edit().putString("token", value).apply() }
+    /** Paired accounts as last read from [authStore]; [lanToken] follows whichever one is active. */
+    @Volatile private var accountCredentials: List<AccountCredential> = emptyList()
+
+    /**
+     * The LAN credential of the active account. One TV can hold several accounts, and the phone
+     * serving a library only accepts the credential minted by that account's pairing. Accounts paired
+     * before credentials were stored per account fall back to the single value the TV kept then.
+     */
+    private val lanToken: String?
+        get() = accountCredentials.firstOrNull { it.sessionId == sessionId }?.lanCapability
+            ?: lanPrefs.getString("token", null)
+
+    /**
+     * With no account yet, the PIN a phone can scan offline is the only credential there is.
+     * Reads the store rather than [accountCredentials], which still lists the accounts after a sign-out.
+     */
+    private suspend fun rememberOfflineLanToken(pin: String) {
+        if (authStore.getAccounts().isEmpty()) lanPrefs.edit().putString("token", pin).apply()
+    }
     private var phoneJob: Job? = null
 
     fun selectLibrarySection(section: String) {
@@ -234,6 +250,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             libraryAds = api.getLibraryAds()
             val accounts = authStore.getAccounts()
+            accountCredentials = accounts
             if (accounts.isEmpty()) {
                 createPairingSession()
             } else {
@@ -827,7 +844,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             // A New PIN press can still be in flight when the reviewer gesture
             // opens demo mode; a late session must not replace it.
             if (isDemoMode) return
-            lanToken = session.pin
+            rememberOfflineLanToken(session.pin)
             PairLog.i("TV session ok ${PairLog.pinTail(session.pin)} session=${session.sessionId} tvIp=$tvLanIp")
             screen = ScreenState.Pairing(session)
             pairingJob = viewModelScope.launch { pollPairing(session) }
@@ -836,7 +853,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         } catch (error: Exception) {
             if (isDemoMode) return
             val pin = (0..999_999).random().toString().padStart(6, '0')
-            lanToken = pin
+            rememberOfflineLanToken(pin)
             val qr = "cablegram://pair?token=$pin&name=${java.net.URLEncoder.encode(deviceName, "UTF-8")}"
             screen = ScreenState.Pairing(
                 DeviceSession(
@@ -865,25 +882,21 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                 if (result.status == "paired" && result.token != null) {
                     val pairedSessionId = result.sessionId ?: session.sessionId
                     val pairedToken = result.token
+                    // The device capability authenticates LAN media (FR-016 / R-1). It is kept with
+                    // this account: pairing another account on the same TV must not replace it.
+                    // An older phone build sends none; it accepts the pairing PIN instead.
+                    val lanCapability = result.lanCapability?.takeIf { it.isNotBlank() } ?: session.pin
                     val account = AccountCredential(
                         sessionId = pairedSessionId,
                         token = pairedToken,
                         userId = extractUserIdFromToken(pairedToken),
+                        lanCapability = lanCapability,
                     )
                     authStore.saveAccount(account)
+                    accountCredentials = authStore.getAccounts()
                     token = pairedToken
                     sessionId = pairedSessionId
-                    // Store the device capability for LAN media auth. The pairing
-                    // PIN is no longer the LAN secret (FR-016 / R-1).
-                    if (!result.lanCapability.isNullOrBlank()) {
-                        lanToken = result.lanCapability
-                        PairLog.i("LAN capability stored ${PairLog.pinTail(result.lanCapability)}")
-                    } else if (lanPrefs.getString("token", null) == null) {
-                        // Transition: older phone build that has not stored a
-                        // capability yet. Fall back to the PIN, matching the
-                        // phone's legacy behavior, until both apps are updated.
-                        lanToken = session.pin
-                    }
+                    PairLog.i("LAN capability stored ${PairLog.pinTail(lanCapability)}")
                     // A fresh pairing always goes through "Who's watching?": opening
                     // the library here skipped profile selection (no progress, no
                     // resume) and bypassed profile PINs.
@@ -918,6 +931,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
 
     private suspend fun loadProfiles() {
         val accounts = authStore.getAccounts()
+        accountCredentials = accounts
         if (accounts.isEmpty()) {
             token = null
             sessionId = null
