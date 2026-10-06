@@ -100,6 +100,10 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
     private val lanPrefs = application.getSharedPreferences("cablegram_lan", Context.MODE_PRIVATE)
     private val progressQueue = ProgressQueue(application)
+    init {
+        // Progress is stamped in server time; keep the learned correction across app restarts (CAB-23).
+        ServerClock.attachTo(application)
+    }
     private var flushJob: Job? = null
     private var token: String? = null
     private var pairingJob: Job? = null
@@ -628,11 +632,16 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         // The time playback changed, taken before the upload: an upload that fails after a timeout must not date the
         // update later than a newer one (ProgressQueue orders by this time).
         val observedAt = ServerClock.shared.now()
+        val clockKnown = ServerClock.shared.learnedThisBoot
         viewModelScope.launch {
             runCatching {
                 api.updateProgress(
                     videoId, positionSeconds, currentToken, activeProfileId,
                     state = state, durationSeconds = durationSeconds,
+                    // Updates go out in parallel and can arrive out of order; with the time they were made the server
+                    // keeps the newest (CAB-23). Until this boot has seen the server's clock, the server's arrival
+                    // time is safer than a guess that could be minutes ahead and block later updates.
+                    clientUpdatedAt = observedAt.takeIf { clockKnown },
                 )
             }.onFailure { error ->
                 when {
