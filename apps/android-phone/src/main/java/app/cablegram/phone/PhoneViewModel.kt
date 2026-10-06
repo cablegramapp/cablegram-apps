@@ -1,5 +1,7 @@
 package app.cablegram.phone
 
+import app.cablegram.phone.cast.*
+import kotlinx.coroutines.CancellationException
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -19,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -34,6 +37,75 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     private val pairing = PairingStore(application)
     private val commands = CommandQueue(application)
     private val webTransferPolls = mutableSetOf<String>()
+
+    var castConnect by mutableStateOf(pairing.castConnect)
+        private set
+    var legacyRemote by mutableStateOf(pairing.legacyRemote)
+        private set
+    var castRoutes by mutableStateOf<List<CastRoute>>(emptyList())
+        private set
+    var castPickerOpen by mutableStateOf(false)
+        private set
+    private var castSender: CastConnectSender? = null
+    private var castRoutesJob: Job? = null
+    private var castVisible = false
+    private var pickerTitle: LibraryItem? = null
+    private var pickerDiscoveryJob: Job? = null
+    private var castPlaybackOwned = false
+    private var lastCastDeviceStatus: CastDeviceStatus? = null
+
+    fun setCastVisible(visible: Boolean) {
+        castVisible = visible
+        if (castConnect && castSender == null) {
+            castSender = CastConnectSender(getApplication()).also { sender ->
+                sender.onDevice = { status, routeId ->
+                    lastCastDeviceStatus = status
+                    // The server's household list and existing pairing bound this untrusted hint.
+                    if (householdTvsCache?.any { it.id == status.deviceId } == true) {
+                        pairing.attachCastDeviceId(status.deviceId, routeId)
+                        tvs = pairing.tvs
+                    }
+                }
+                sender.onPlayback = { isPaused, terminal ->
+                    if (castPlaybackOwned) {
+                        if (terminal) { nowPlaying = null; paused = false; castPlaybackOwned = false }
+                        else isPaused?.let { paused = it }
+                    }
+                }
+                castRoutesJob = viewModelScope.launch { sender.routes.collect { castRoutes = it } }
+            }
+        }
+        castSender?.setVisible(visible)
+        if (!visible) dismissCastPicker()
+    }
+
+    fun updateCastConnect(value: Boolean) {
+        pairing.castConnect = value
+        castConnect = value
+        if (!value) {
+            dismissCastPicker(); castRoutesJob?.cancel(); castSender?.release()
+            castSender = null; castRoutes = emptyList(); castPlaybackOwned = false
+        } else setCastVisible(castVisible)
+    }
+
+    fun updateLegacyRemote(value: Boolean) {
+        pairing.legacyRemote = value
+        legacyRemote = value
+        if (!value && tab == PhoneTab.Remote) tab = PhoneTab.Library
+    }
+
+    fun dismissCastPicker() {
+        pickerDiscoveryJob?.cancel(); pickerDiscoveryJob = null
+        castPickerOpen = false; pickerTitle = null
+        castSender?.setVisible(castVisible)
+    }
+
+    fun chooseCastRoute(route: CastRoute) {
+        if (route !in castRoutes) return
+        val title = pickerTitle ?: return
+        dismissCastPicker()
+        startTitleOnTv(title, route)
+    }
 
     val artworkEditor = ArtworkEditorController(store, { catalog() }, { pairing.accountToken }, viewModelScope) { saved ->
         refresh()
@@ -2146,6 +2218,27 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun playOnTv(item: LibraryItem) {
+        pickerDiscoveryJob?.cancel()
+        val sender = castSender?.takeIf { castConnect && it.available }
+        if (!paired || sender == null) { startTitleOnTv(item, null); return }
+        matchingCastRoute(pairing.tvs.lastOrNull(), castRoutes)?.let { startTitleOnTv(item, it); return }
+        pickerDiscoveryJob = viewModelScope.launch {
+            sender.scanForPicker()
+            // Give discovery a bounded chance; no route keeps the existing relay behavior.
+            val routes = sender.routes.value.takeIf { it.isNotEmpty() }
+                ?: withTimeoutOrNull(3_000) { sender.routes.first { it.isNotEmpty() } }
+            if (!useCastForTitle(castConnect, sender.available, !routes.isNullOrEmpty())) {
+                sender.setVisible(castVisible)
+                startTitleOnTv(item, null)
+            } else {
+                val matching = matchingCastRoute(pairing.tvs.lastOrNull(), routes.orEmpty())
+                if (matching != null) { sender.setVisible(castVisible); startTitleOnTv(item, matching) }
+                else { pickerTitle = item; castPickerOpen = true }
+            }
+        }
+    }
+
+    private fun startTitleOnTv(item: LibraryItem, route: CastRoute?) {
         if (!paired) {
             selectedId = item.id
             startAddTv()
@@ -2154,10 +2247,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             val ready = ensurePlayable(item) ?: return@launch
+            val effectiveRoute = route?.takeIf { castConnect && castSender?.available == true }
             // Only show "now playing" once the TV confirmed that playback started.
             val token = ++titleStartToken
+            castPlaybackOwned = false
             val sent = try {
-                sendCommand("play", ready.id, wait = ConfirmationWait.TitleStart, onAccepted = { tv ->
+                sendCommand("play", ready.id, castRoute = effectiveRoute, castTitle = ready, wait = ConfirmationWait.TitleStart, onAccepted = { tv ->
                     startingTitle = ready.title
                     status = "Starting ${ready.title} on $tv…"
                 })
@@ -2170,7 +2265,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             }
             // A later command owns the status line; this one only applies what the TV confirmed.
             if (sent.latest) status = remoteStatus
-            if (!sent.outcome.applies()) return@launch
+            if (!sent.latest || titleStartToken != token || !sent.outcome.applies()) return@launch
+            if (effectiveRoute != null && castSender?.playbackTerminated != false) return@launch
+            castPlaybackOwned = effectiveRoute != null
             nowPlaying = ready
             paused = false
             store.setWatchProgress(ready.id, ready.positionSeconds.coerceAtLeast(1))
@@ -2634,6 +2731,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         arguments: JsonObject = buildJsonObject {},
         wait: ConfirmationWait = ConfirmationWait.Control(),
         onAccepted: ((tvName: String) -> Unit)? = null,
+        castRoute: CastRoute? = null,
+        castTitle: LibraryItem? = null,
     ): SentCommand? {
         val generation = ++commandGeneration
         fun report(text: String) { if (generation == commandGeneration) remoteStatus = text }
@@ -2647,7 +2746,15 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         report("Sending…")
         val client = catalog()
-        val sent = when (val result = CastSession.send(pairing, client, command, videoId, arguments, householdTvsCache)) {
+        val castTarget = if (castRoute != null) pairing.tvs.lastOrNull()?.deviceId else null
+        if (castRoute != null && castTarget == null) return null.also { reportFinal("Choose a paired TV in Settings.") }
+        val payload = if (castRoute != null && castTitle != null) buildJsonObject {
+            arguments.forEach { (key, value) -> put(key, value) }
+            put("castLaunch", true)
+            put("title", castTitle.title.take(160))
+            put("senderName", pairing.displayName.take(80).ifBlank { "Your phone" })
+        } else arguments
+        var sent = when (val result = CastSession.send(pairing, client, command, videoId, payload, householdTvsCache, castTarget)) {
             is CastSession.Result.Sent -> result
             is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
         }
@@ -2663,6 +2770,31 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         })
         // Only the newest command may touch what the screens show.
         if (generation == commandGeneration) onAccepted?.invoke(sent.tvName)
+        if (castRoute != null && castTitle != null && castTarget != null) {
+            try {
+                lastCastDeviceStatus = null
+                val status = castSender?.load(castRoute.deviceId, sent.commandId, castTarget,
+                    castTitle.id, castTitle.title, castTitle.posterUrl) ?: lastCastDeviceStatus
+                val household = client.householdTvs(sent.token)
+                val retry = wrongTvRetry(status, pairing.tvs, household.orEmpty().map { it.id }.toSet(), false)
+                if (status?.wrongTv == true) {
+                    if (retry == null) return null.also { reportFinal("That Cast device isn't your selected TV. Choose a paired TV.") }
+                    sent = when (val result = CastSession.send(pairing, client, command, videoId, payload, household, retry.deviceId)) {
+                        is CastSession.Result.Sent -> result
+                        is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
+                    }
+                    val retried = castSender?.load(castRoute.deviceId, sent.commandId, retry.deviceId!!,
+                        castTitle.id, castTitle.title, castTitle.posterUrl)
+                    if (retried?.wrongTv == true) return null.also { reportFinal("TV changed. Choose a TV and try again.") }
+                    selectTv(retry)
+                    pairing.attachCastDeviceId(retry.deviceId!!, castRoute.deviceId)
+                    tvs = pairing.tvs
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                return null.also { reportFinal(error.message ?: "Could not open the TV. Try again.") }
+            }
+        }
         val outcome = CastSession.confirm(client, sent, wait)
         reportFinal(when (outcome) {
             Outcome.Confirmed -> "Done on ${sent.tvName}"
@@ -2675,6 +2807,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun publishCast() {
         CastSession.update(nowPlayingState?.let { Cast(it.id, it.title, tvName, pausedState) })
+    }
+
+    override fun onCleared() {
+        castRoutesJob?.cancel()
+        castSender?.release()
+        super.onCleared()
     }
 
     private fun persistRead(uri: Uri) {

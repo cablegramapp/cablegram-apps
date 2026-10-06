@@ -121,7 +121,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 // A single measured stack reserves space instead of covering content.
                 if (viewModel.prepareStep != null) PrepareCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 TransferCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                if ((viewModel.nowPlaying != null || viewModel.startingTitle != null) && viewModel.cloudSheet == CloudSheet.None) {
+                if (viewModel.legacyRemote && (viewModel.nowPlaying != null || viewModel.startingTitle != null) && viewModel.cloudSheet == CloudSheet.None) {
                     RemoteBar(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
                 LibraryNav(viewModel)
@@ -136,7 +136,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                     when (viewModel.tab) {
                         PhoneTab.Library -> LibraryHome(viewModel)
                         PhoneTab.Browse -> BrowseScreen(viewModel, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) })
-                        PhoneTab.Remote -> RemoteScreen(viewModel)
+                        PhoneTab.Remote -> if (viewModel.legacyRemote) RemoteScreen(viewModel) else LibraryHome(viewModel)
                         PhoneTab.Storage -> StorageScreen(viewModel)
                         PhoneTab.Settings -> SettingsScreen(viewModel)
                     }
@@ -146,6 +146,18 @@ fun LibraryShell(viewModel: PhoneViewModel) {
             viewModel.selected?.let { if (viewModel.subtitleFlowOpen) SubtitleFlow(viewModel, it) { viewModel.subtitleFlowOpen = false } else DetailOverlay(viewModel, it) }
             viewModel.deleteTarget?.let { DeleteDialog(viewModel, it) }
             viewModel.removeCloudCopyTarget?.let { RemoveCloudCopyDialog(viewModel, it) }
+            if (viewModel.castPickerOpen) AlertDialog(
+                onDismissRequest = viewModel::dismissCastPicker,
+                title = { Text("Play on TV") },
+                text = { Column {
+                    viewModel.castRoutes.forEach { route ->
+                        TextButton(onClick = { viewModel.chooseCastRoute(route) }) { Text(route.name) }
+                    }
+                    if (viewModel.castRoutes.isEmpty()) Text("Looking for TVs…")
+                } },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = viewModel::dismissCastPicker) { Text("Cancel") } },
+            )
             CloudFlow(viewModel)
             if (viewModel.telegramSheetOpen) TelegramConnectSheet(viewModel)
         }
@@ -160,8 +172,9 @@ private fun LibraryNav(viewModel: PhoneViewModel) {
         Triple(PhoneTab.Remote, Icons.Default.Tv, "Remote"),
         Triple(PhoneTab.Settings, Icons.Default.Settings, "Settings"),
     )
+    val visibleItems = items.filter { viewModel.legacyRemote || it.first != PhoneTab.Remote }
     NavigationBar(containerColor = VlcBlack, tonalElevation = 0.dp) {
-        items.forEach { (tab, icon, label) ->
+        visibleItems.forEach { (tab, icon, label) ->
             NavigationBarItem(
                 selected = viewModel.tab == tab || (tab == PhoneTab.Settings && viewModel.tab == PhoneTab.Storage),
                 // A cloud sheet, a title page and a series page are full-screen overlays: leaving for another tab must not leave them covering it.
@@ -248,7 +261,7 @@ private fun LibraryHome(viewModel: PhoneViewModel) {
                     Text(if (viewModel.paired) viewModel.tvName else "Made for your big screen", color = Color.White, style = MaterialTheme.typography.titleSmall)
                     Text(if (viewModel.paired) "Keep your phone on the same Wi-Fi" else "Connect a TV when you're ready to watch", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 }
-                TextButton(onClick = if (viewModel.paired) ({ viewModel.tab = PhoneTab.Remote }) else viewModel::startAddTv) {
+                if (!viewModel.paired || viewModel.legacyRemote) TextButton(onClick = if (viewModel.paired) ({ viewModel.tab = PhoneTab.Remote }) else viewModel::startAddTv) {
                     Text(if (viewModel.paired) "Remote" else "Connect")
                 }
             }
@@ -939,6 +952,8 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             }
         }
         SectionCard("Transfers & privacy") {
+            PrefSwitch("Open TV with Cast", viewModel.castConnect, viewModel::updateCastConnect, MaestroIds.SETTINGS_CAST_CONNECT)
+            PrefSwitch("Show Remote controls", viewModel.legacyRemote, viewModel::updateLegacyRemote, MaestroIds.SETTINGS_LEGACY_REMOTE)
             PrefSwitch("Transfer on Wi-Fi only", viewModel.wifiOnlyTransfers, viewModel::setWifiOnly)
             PrefSwitch("Transfer only while charging", viewModel.transferWhileCharging, viewModel::updateChargingOnly)
             HorizontalDivider(color = PhoneOutline)
@@ -1034,10 +1049,11 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
 }
 
 @Composable
-private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit, maestroId: String? = null) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = Color.White, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = onChange,
+            modifier = maestroId?.let { Modifier.maestro(it) } ?: Modifier)
     }
 }
 
