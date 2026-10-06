@@ -32,7 +32,7 @@ the same model Telegram uses for its own apps.
 | `apps/android-phone` | Phone app (Kotlin, Jetpack Compose). Package `app.cablegram.phone`. |
 | `apps/android-tv` | TV app (Kotlin, Compose for TV, LibVLC). Package `app.cablegram`. |
 | `apps/web-remote` | Web remote for iPhone and other phones without the app: a Home Screen web app, no App Store. |
-| `contracts/` | The API and protocols the apps speak: [control API](contracts/control-api.yaml), [pairing](contracts/pairing.md), [LAN media](contracts/lan-media.md), [remote commands](contracts/remote-and-lan.md), [relay](contracts/relay-protocol.md), [Telegram link](contracts/telegram-link.md). |
+| `contracts/` | The API and protocols the apps speak: [control API](contracts/control-api.yaml), [pairing](contracts/pairing.md), [LAN media](contracts/lan-media.md), [remote commands](contracts/remote-and-lan.md), [relay](contracts/relay-protocol.md), [Telegram link](contracts/telegram-link.md), [your own R2 storage](contracts/r2-storage.md). |
 | `scripts/check-telegram-sync.mjs` | Fails when the phone and TV copies of the Telegram package differ. |
 
 The Telegram package is copied into both apps on purpose, until a shared module exists. Keep both copies

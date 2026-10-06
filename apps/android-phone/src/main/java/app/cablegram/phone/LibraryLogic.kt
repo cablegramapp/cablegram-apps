@@ -9,6 +9,9 @@ fun storageBadge(item: LibraryItem): StorageBadge = when {
     // Saved to Telegram: still on the phone too (Both), or only in Telegram once the phone copy was freed.
     item.telegramCopy && item.sourceAvailable == false -> StorageBadge.Telegram
     item.telegramCopy && !item.cloudObjectPresent -> StorageBadge.Both
+    // Saved to the user's own R2 bucket: same two states.
+    item.ownCloudCopy && item.sourceAvailable == false -> StorageBadge.Cloud
+    item.ownCloudCopy && !item.cloudObjectPresent -> StorageBadge.Both
     item.sourceAvailable == false -> when {
         item.cloudObjectPresent -> StorageBadge.Cloud
         item.householdOnly -> StorageBadge.NotOnPhone
@@ -137,9 +140,30 @@ fun fitsInCloud(item: LibraryItem, available: Long): Boolean {
     return size <= available
 }
 
-/** Free up space: only once a verified copy exists elsewhere (Cablegram cloud, or Telegram after Save to Telegram). */
+/**
+ * Free up space: only once a verified copy exists elsewhere (Cablegram cloud, Telegram after Save to Telegram, or the
+ * user's own R2 bucket, which the control plane verifies by size before it records the copy).
+ */
 fun canRemoveLocalCopy(item: LibraryItem): Boolean =
-    item.sourceAvailable != false && (item.cloudObjectPresent || item.telegramCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
+    item.sourceAvailable != false && (item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
+
+/**
+ * The phone still has this title's video: stored inside the app, or readable at its original place on the phone (a title
+ * imported by reference has `copied` false but plays from there). A source known to be gone does not count.
+ */
+fun phoneStillHoldsVideo(item: LibraryItem): Boolean =
+    item.copied || (item.sourceUri != null && item.sourceAvailable != false)
+
+/**
+ * Remove just the copy in the household's own storage (spec 006). Only while this phone still holds the video: removing the
+ * only copy of a title is a different, bigger step ("Remove title"), so it is not offered here.
+ */
+fun canRemoveOwnCloudCopy(item: LibraryItem): Boolean =
+    item.ownCloudCopy && item.ownCloudSourceId != null && phoneStillHoldsVideo(item) && item.transferStatus != TRANSFER_SAVING
+
+/** The catalog id of a title's usable copy in the household's own storage, or null. */
+fun ownCloudSourceIdOf(sources: List<RemoteCatalogSource>): String? =
+    sources.firstOrNull { it.kind == "own_cloud" && it.archiveState != "archived" && it.availability != "unavailable" }?.id
 
 /**
  * Save to Telegram (spec 004 T011). Private titles never go to Telegram: the channel would hold a copy that any
@@ -160,7 +184,7 @@ fun telegramUploadRefusal(sizeBytes: Long, limitBytes: Long): String? = when {
 private fun formatGigabytes(bytes: Long): String = String.format(java.util.Locale.US, "%.1f", bytes / (1024.0 * 1024 * 1024))
 
 fun canSaveToCloud(item: LibraryItem): Boolean =
-    item.sourceKind != "telegram" && item.sourceAvailable != false && !item.cloudObjectPresent && item.transferStatus != TRANSFER_SAVING
+    item.sourceKind != "telegram" && item.sourceAvailable != false && !item.cloudObjectPresent && !item.ownCloudCopy && item.transferStatus != TRANSFER_SAVING
 
 fun freeUpCandidates(items: List<LibraryItem>): List<LibraryItem> =
     items.filter(::canRemoveLocalCopy).sortedByDescending { it.fileSizeBytes ?: 0L }
@@ -172,7 +196,7 @@ fun itemMatchesCollection(item: LibraryItem, collectionId: String): Boolean =
     collectionId in item.collectionIds
 
 fun cloudFiles(items: List<LibraryItem>): List<LibraryItem> =
-    items.filter { it.cloudObjectPresent }.sortedByDescending { it.fileSizeBytes ?: 0L }
+    items.filter { it.cloudObjectPresent || it.ownCloudCopy }.sortedByDescending { it.fileSizeBytes ?: 0L }
 
 fun needsTitleInput(vararg labels: String?): Boolean = firstCatalogHint(*labels) == null
 

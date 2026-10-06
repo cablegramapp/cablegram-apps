@@ -147,6 +147,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var searchQuery by mutableStateOf("")
     var editingMetadata by mutableStateOf(false)
     var deleteTarget by mutableStateOf<LibraryItem?>(null)
+    /** The title whose copy in the household's own storage the owner is being asked to remove (spec 006). */
+    var removeCloudCopyTarget by mutableStateOf<LibraryItem?>(null)
     // Declared before `init`, which starts the queued Telegram deletions.
     private val PHONE_LOGIN_WAIT_MS = 120_000L
     private val telegramDeletions by lazy { TelegramDeletionQueue.forContext(getApplication()) }
@@ -292,7 +294,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 delay(PENDING_APPROVAL_POLL_MS)
                 val saving = runCatching { store.list().any { it.transferStatus == TRANSFER_SAVING } }.getOrDefault(false)
-                if (saving) withContext(Dispatchers.Main) { runCatching { refresh() } }
+                // One more refresh when a save has just ended: its last state (saved, or failed) is written by the
+                // service, and without this the screen stays on the last progress it drew.
+                if (saving || wasSaving) withContext(Dispatchers.Main) { runCatching { refresh() } }
+                wasSaving = saving
                 delay(800)
             }
         }
@@ -312,6 +317,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    private var wasSaving = false
 
     private companion object {
         // T075: in-app approval card refresh cadence (needs to be snappy;
@@ -367,43 +374,109 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { storage = catalog().storageStatus(token) }
     }
 
-    fun markStorageReturned() {
-        status = "Cloudflare storage updated."
-        refreshStorage()
+    /** Why the last "Connect your own storage" attempt failed; null while untried or after it worked. */
+    var r2ConnectError by mutableStateOf<String?>(null)
+        private set
+
+    fun beginConnectR2() {
+        r2ConnectError = null
+        cloudSheet = CloudSheet.ConnectR2
+        tab = PhoneTab.Storage
     }
 
-    fun connectCloudflareStorage(openUrl: (String) -> Unit) {
+    /** Sends the owner's R2 account ID, bucket and keys once; the server verifies them with a real write. */
+    fun connectR2Storage(accountId: String, bucket: String, accessKeyId: String, secret: String) {
         val token = pairing.accountToken ?: run {
-            status = "Pair a TV first so Cablegram can attach storage to this household."
+            r2ConnectError = "Pair a TV first so Cablegram can attach storage to this household."
             return
         }
         viewModelScope.launch {
             busy = true
+            r2ConnectError = null
             try {
-                val connect = catalog().connectCloudflare(token)
-                if (connect?.authUrl.isNullOrBlank()) {
-                    status = if (storage?.configured == false) {
-                        "Cloudflare connect is not enabled on this API yet."
-                    } else {
-                        "Could not start Cloudflare sign-in."
-                    }
-                    return@launch
+                val result = catalog().connectR2(token, r2AccountIdFrom(accountId) ?: accountId.trim().lowercase(), bucket.trim(), accessKeyId.trim(), secret.trim())
+                if (result.error == null) {
+                    status = "Connected to your R2 storage."
+                    // Back to the Storage page, which now shows the bucket; the guide does not stay on top.
+                    cloudSheet = CloudSheet.None
+                    tab = PhoneTab.Storage
+                    refreshStorage()
+                } else {
+                    r2ConnectError = r2ConnectMessage(result.error)
                 }
-                status = "Sign in to Cloudflare, then come back here."
-                openUrl(connect.authUrl)
             } finally {
                 busy = false
             }
         }
     }
 
+    /** Why the last "Sign in with Google" could not start; null while untried or after it worked. */
+    var googleConnectError by mutableStateOf<String?>(null)
+        private set
+
+    /** Where a save goes, in the words on every save sheet: the connected provider, else Cablegram Cloud. */
+    val saveDestinationName: String get() = saveDestination(storage)
+
+    /** True while the "tick the box" note is on screen, before Google's sign-in opens. */
+    var googleSignInNoteOpen by mutableStateOf(false)
+
+    /** Asks the server for Google's sign-in URL and hands it to [open] (a Custom Tab); the link back lands in [applyStorageReturn]. */
+    fun connectGoogle(open: (String) -> Unit) {
+        val token = pairing.accountToken ?: run {
+            googleConnectError = "Pair a TV first so Cablegram can attach storage to this household."
+            return
+        }
+        viewModelScope.launch {
+            busy = true
+            googleConnectError = null
+            try {
+                val start = catalog().connectGoogle(token)
+                val url = start.authorizeUrl
+                if (url != null) {
+                    status = "Finish signing in with Google, then come back."
+                    open(url)
+                } else {
+                    googleConnectError = googleStartMessage(start.error ?: "failed")
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    /** The Google sign-in ended and the browser sent the owner back with `cablegram://storage?provider=…&result=…`. */
+    fun applyStorageReturn(uri: String) {
+        val ret = parseStorageReturn(uri) ?: return
+        tab = PhoneTab.Storage
+        cloudSheet = CloudSheet.Manage
+        // Any app or page can open this link, so "connected" is said only once the server confirms it.
+        if (ret.result != "connected") {
+            val message = storageReturnMessage(ret, storage)
+            status = message
+            // A missed permission box is shown on the sheet itself, beside the button to try again.
+            googleConnectError = if (signInNeedsAnotherTry(ret)) message else null
+            refreshStorage()
+            return
+        }
+        googleConnectError = null
+        val token = pairing.accountToken ?: return
+        viewModelScope.launch {
+            val confirmed = catalog().storageStatus(token)
+            storage = confirmed
+            val connection = confirmed?.connection
+            if (connection?.provider == ret.provider && connection.status == "active") status = storageReturnMessage(ret, confirmed)
+        }
+    }
+
     fun disconnectStorage() {
         val token = pairing.accountToken ?: return
+        val provider = storage?.connection?.provider
+        val named = storage
         viewModelScope.launch {
             busy = true
             try {
                 if (catalog().disconnectStorage(token)) {
-                    status = "Storage disconnected. New videos stay on this phone."
+                    status = disconnectMessage(provider, named)
                     refreshStorage()
                 } else {
                     status = "Could not disconnect storage."
@@ -1335,7 +1408,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     // appear a second time as a Telegram title, nor after its phone copy was freed up.
                     val phoneCopy = store.get(remote.id)?.takeIf { it.sourceKind != "telegram" }
                         ?: remote.sources.firstNotNullOfOrNull { s ->
-                            if (s.kind == "telegram") null else s.originIdentity?.let(store::get)?.takeIf { it.sourceKind != "telegram" }
+                            if (s.kind == "telegram" || s.kind == "own_cloud") null else s.originIdentity?.let(store::get)?.takeIf { it.sourceKind != "telegram" }
                         }
                     val livePhoneSource = remote.sources.any { it.kind == "phone_local" && it.archiveState != "archived" }
                     if (phoneCopy == null && !livePhoneSource) {
@@ -1346,7 +1419,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     val hasCloudObject = remote.sources.any { it.kind == "cloud_object" && it.archiveState != "archived" }
                     // A Telegram copy's identity (`tg:…`) is not a phone file id.
-                    val source = remote.sources.firstOrNull { it.kind != "telegram" && !it.originIdentity.isNullOrBlank() }
+                    val source = remote.sources.firstOrNull { it.kind != "telegram" && it.kind != "own_cloud" && !it.originIdentity.isNullOrBlank() }
+                    // A verified copy in the user's own R2 bucket. Dynamic: it clears when the bucket is disconnected.
+                    val hasOwnCloudCopy = remote.sources.any { it.kind == "own_cloud" && it.archiveState != "archived" && it.availability != "unavailable" }
                     val hasTelegramCopy = remote.sources.any { it.kind == "telegram" && it.archiveState != "archived" && it.availability != "unavailable" }
                     val local = source?.originIdentity?.let(store::get)
                         ?: remote.sources.firstNotNullOfOrNull { remoteSource ->
@@ -1375,6 +1450,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             cloudObjectPresent = hasCloudObject || local.cloudObjectPresent,
                             // Saved to Telegram (here or on another phone): the server knows the verified copy.
                             telegramCopy = hasTelegramCopy && local.sourceKind == "phone_local",
+                            ownCloudCopy = hasOwnCloudCopy && local.sourceKind == "phone_local",
+                            ownCloudSourceId = if (hasOwnCloudCopy && local.sourceKind == "phone_local") ownCloudSourceIdOf(remote.sources) else null,
                             storageState = if (hasCloudObject) STORAGE_CLOUD else local.storageState,
                             transferStatus = if (hasCloudObject) TRANSFER_IDLE else local.transferStatus,
                         ), remote) }
@@ -2152,9 +2229,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             busy = true
             status = "Downloading ${item.title}…"
             try {
+                // A title freed up from the phone comes back from the user's own storage (R2, or Google Drive with its header).
+                val remote = if (item.ownCloudCopy && !store.hasSource(item)) {
+                    pairing.accountToken?.let { catalog().ownCloudReadUrl(it, item.id) }
+                        ?: throw IllegalStateException("Couldn't reach your cloud storage. Check that it is still connected in Storage.")
+                } else null
                 val ready = withContext(Dispatchers.IO) {
                     store.update(item.copy(downloadBytes = 0, downloadTotal = item.fileSizeBytes ?: 0))
-                    store.materialize(item) { copied, total ->
+                    store.materialize(item, remote) { copied, total ->
                         store.update(item.copy(downloadBytes = copied, downloadTotal = total))
                     }
                 }
@@ -2300,7 +2382,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             pollWebTransfer(item.id)
             return
         }
-        runCatching { CloudTransferService.start(getApplication(), item.id) }
+        runCatching { CloudTransferService.start(getApplication(), item.id, ownR2 = cloudConnected, destination = saveDestinationName) }
             .onFailure {
                 PairLog.e("Could not start cloud save service", it)
                 status = it.message ?: "Could not start cloud save"
@@ -2368,6 +2450,32 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         transferCardDismissed = true
     }
 
+    fun askRemoveCloudCopy(item: LibraryItem) {
+        if (canRemoveOwnCloudCopy(item)) removeCloudCopyTarget = item
+    }
+
+    /** Deletes just the cloud copy; the video stays on the phone and the title keeps its other sources. */
+    fun removeCloudCopy(item: LibraryItem) {
+        removeCloudCopyTarget = null
+        val sourceId = item.ownCloudSourceId ?: return
+        val token = pairing.accountToken ?: return
+        val destination = saveDestinationName
+        viewModelScope.launch {
+            busy = true
+            try {
+                val result = catalog().removeOwnCloudSource(token, sourceId)
+                if (result.error == null || result.error == "not_found") {
+                    store.updateItem(item.id) { it.copy(ownCloudCopy = false, ownCloudSourceId = null) }
+                    refresh()
+                    refreshStorage()
+                }
+                status = removeCopyMessage(result, destination)
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     fun openFreeUp() {
         cloudSheet = CloudSheet.FreeUp
     }
@@ -2394,10 +2502,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         store.removeLocalCopy(item.id)
         // Only in Telegram now: the phone file is gone, so this phone no longer serves it.
-        if (item.telegramCopy && !item.cloudObjectPresent) store.updateItem(item.id) { it.copy(sourceAvailable = false) }
+        val elsewhereOnly = !item.cloudObjectPresent && (item.telegramCopy || item.ownCloudCopy)
+        if (elsewhereOnly) store.updateItem(item.id) { it.copy(sourceAvailable = false) }
         refresh()
-        status = if (item.telegramCopy && !item.cloudObjectPresent) "Removed the phone copy. ${item.title} stays in Telegram."
-        else "Removed the phone copy. ${item.title} stays in the cloud."
+        status = when {
+            elsewhereOnly && item.ownCloudCopy -> "Removed the phone copy. ${item.title} stays in your Cloudflare storage."
+            elsewhereOnly -> "Removed the phone copy. ${item.title} stays in Telegram."
+            else -> "Removed the phone copy. ${item.title} stays in the cloud."
+        }
     }
 
     fun keepOnPhone(item: LibraryItem) {
@@ -2521,7 +2633,7 @@ enum class PhoneTab { Library, Browse, Remote, Storage, Settings }
 
 enum class TelegramHealth { Unknown, Ok, ChannelLost, SignedOut }
 
-enum class CloudSheet { None, Setup, Confirm, Oversize, Manage, FreeUp, FreeUpConfirm }
+enum class CloudSheet { None, Setup, Confirm, Oversize, Manage, ConnectR2, FreeUp, FreeUpConfirm }
 
 private typealias File = java.io.File
 
