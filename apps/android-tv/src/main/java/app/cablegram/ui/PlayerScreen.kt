@@ -95,6 +95,7 @@ import app.cablegram.player.SubtitlePreference
 import app.cablegram.player.matchSubtitleTrack
 import app.cablegram.player.PlayerEvent
 import app.cablegram.player.PlayerSource
+import app.cablegram.data.smartSubtitles
 import app.cablegram.player.VlcCableGramPlayer
 import app.cablegram.player.menuOptions
 import app.cablegram.player.reducePlaybackHud
@@ -104,6 +105,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -174,6 +176,8 @@ fun PlayerScreen(
         mutableStateOf<Long?>(if (resume <= 0) 0L else if (remoteTitleCommandId != null) resume else null)
     }
     val focus = remember { FocusRequester() }
+    /** The live shift the phone sends while lining subtitles up (`subtitle_delay`), added to the viewer's own delay. */
+    var phoneSubtitleShiftMs by remember { mutableStateOf(0L) }
 
     /** Re-open the title on the other path (LAN ↔ relay) at the current position. */
     suspend fun switchSource(resumeAtMs: Long? = null): Boolean {
@@ -196,7 +200,7 @@ fun PlayerScreen(
             activePlayback = activePlayback.copy(
                 url = next, headers = activePlayback.fallbackHeaders, fallbackUrl = current, fallbackHeaders = activePlayback.headers,
             )
-            player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers))
+            player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers, activePlayback.smartSubtitles()))
             transportNotice = transportNoticeFor(next)
             Log.i(PLAYBACK_LOG_TAG, "Switched source to ${if (isRelayUrl(next)) "relay" else "LAN"} at ${resumeAt / 1000}s")
             return true
@@ -238,6 +242,17 @@ fun PlayerScreen(
     fun applySavedSubtitleIfNeeded() {
         if (subtitleChoiceApplied) return
         val saved = playbackPrefs.subtitle(videoId)
+        // A Cablegram subtitle the person just added or changed is the one to show, even over an older "Off" or
+        // another track remembered for this video. Once they choose again for that subtitle, that choice is kept.
+        val smart = activePlayback.smartSubtitles().firstOrNull()
+        if (smart != null && saved?.smartId != smart.id) {
+            val track = player.subtitleTracks.firstOrNull { it.label == smart.label } ?: return  // not listed yet: try on the next update
+            selectedSubtitleId = track.id.toString()
+            player.selectSubtitle(selectedSubtitleId)
+            playbackPrefs.saveSubtitle(videoId, SubtitlePreference(off = false, trackId = selectedSubtitleId, label = smart.label, smartId = smart.id))
+            subtitleChoiceApplied = true
+            return
+        }
         if (saved == null) {
             // VLC may automatically enable a default/forced embedded track. Reflect the
             // actual player selection so the subtitle menu does not incorrectly show Off.
@@ -285,7 +300,7 @@ fun PlayerScreen(
                     val label = player.subtitleTracks.firstOrNull { it.id.toString() == effect.trackId }?.label
                     playbackPrefs.saveSubtitle(
                         videoId,
-                        SubtitlePreference(off = effect.trackId == null, trackId = effect.trackId, label = label),
+                        SubtitlePreference(off = effect.trackId == null, trackId = effect.trackId, label = label, smartId = activePlayback.smartSubtitles().firstOrNull()?.id),
                     )
                 }
                 is HudEffect.SetPlaybackSpeed -> {
@@ -308,7 +323,7 @@ fun PlayerScreen(
                 }
                 is HudEffect.SetSubtitleDelay -> {
                     playerSettings = playerSettings.copy(subtitleDelayMs = effect.delayMs).also {
-                        player.setSubtitleDelayMs(it.subtitleDelayMs)
+                        player.setSubtitleDelayMs(it.subtitleDelayMs + phoneSubtitleShiftMs)
                         playbackPrefs.savePlayerSettings(it)
                     }
                 }
@@ -466,12 +481,12 @@ fun PlayerScreen(
             }
         }
         val url = checkNotNull(activePlayback.url)
-        player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers))
+        player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers, activePlayback.smartSubtitles()))
         loaded = true
         player.setPlaybackSpeed(playerSettings.playbackSpeed)
         player.setAspectRatio(playerSettings.aspectRatio)
         player.setAudioDelayMs(playerSettings.audioDelayMs)
-        player.setSubtitleDelayMs(playerSettings.subtitleDelayMs)
+        player.setSubtitleDelayMs(playerSettings.subtitleDelayMs + phoneSubtitleShiftMs)
         player.events().collect { event ->
             when (event) {
                 is PlayerEvent.IsPlayingChanged -> {
@@ -611,7 +626,7 @@ fun PlayerScreen(
                     Log.i(PLAYBACK_LOG_TAG, "Playback renewed, reloading the player at ${player.positionMs / 1000}s")
                     val playing = player.isPlaying
                     activePlayback = renewed
-                    player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers))
+                    player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers, renewed.smartSubtitles()))
                     if (!playing) player.pause()
                 }
             }
@@ -679,6 +694,13 @@ fun PlayerScreen(
                     player.volume = lastVolume
                     volumeFeedback = VolumeFeedback(level = level, muted = level == 0)
                     volumeFeedbackVersion++
+                }
+                "subtitle_delay" -> c.payload["delay_ms"]?.jsonPrimitive?.longOrNull?.let { ms ->
+                    // Applied to what is playing now only, on top of the viewer's own subtitle delay; the saved timing
+                    // is changed from the phone.
+                    phoneSubtitleShiftMs = ms
+                    player.setSubtitleDelayMs(playerSettings.subtitleDelayMs + ms)
+                    transportNotice = "Subtitles ${if (ms < 0) "−" else "+"}${"%.2f".format(kotlin.math.abs(ms) / 1000.0)} s"
                 }
                 "mute" -> c.payload["muted"]?.jsonPrimitive?.booleanOrNull?.let {
                     if (it) {

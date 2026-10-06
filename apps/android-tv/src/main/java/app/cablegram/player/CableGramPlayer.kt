@@ -9,6 +9,8 @@ data class PlayerSource(
     val startPositionMs: Long,
     val mimeType: String? = null,
     val headers: Map<String, String> = emptyMap(),
+    /** Subtitles to attach as external tracks; the first is selected by default. */
+    val subtitles: List<app.cablegram.data.SmartSubtitle> = emptyList(),
 )
 
 data class PlayerTrack(val id: Int, val label: String)
