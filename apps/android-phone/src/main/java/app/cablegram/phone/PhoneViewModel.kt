@@ -2051,6 +2051,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             // A later command owns the status line; this one only applies what the TV confirmed.
             if (sent.latest) status = remoteStatus
             if (!sent.outcome.applies()) return@launch
+            // Nothing plays on a TV that isn't on: no "now playing" until it opens and confirms.
+            if (sent.offline && sent.outcome != Outcome.Confirmed) return@launch
             nowPlaying = ready
             paused = false
             store.setWatchProgress(ready.id, ready.positionSeconds.coerceAtLeast(1))
@@ -2457,7 +2459,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     private fun Outcome.applies() = this == Outcome.Confirmed || this == Outcome.Unconfirmable
 
     /** A command the control service accepted. [latest] is false once a newer command was sent. */
-    private data class SentCommand(val tvName: String, val outcome: Outcome, val latest: Boolean)
+    private data class SentCommand(val tvName: String, val outcome: Outcome, val latest: Boolean, val offline: Boolean = false)
 
     /** Counts sends, so only the newest command narrates [remoteStatus]. */
     private var commandGeneration = 0L
@@ -2490,18 +2492,33 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             is CastSession.Result.Sent -> result
             is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
         }
-        report(if (command == "play" && videoId != null) "Starting on ${sent.tvName}…" else "Sent to ${sent.tvName}…")
+        if (sent.switchedFrom != null) {
+            // The command went to the TV that is on, which is now the current TV.
+            tvs = pairing.tvs
+            tvName = pairing.tvName
+        }
+        report(when {
+            sent.switchedFrom != null -> "${sent.switchedFrom} isn't on, so ${if (command == "play" && videoId != null) "starting" else "sending"} on ${sent.tvName}…"
+            command == "play" && videoId != null -> "Starting on ${sent.tvName}…"
+            else -> "Sent to ${sent.tvName}…"
+        })
         // Only the newest command may touch what the screens show.
         if (generation == commandGeneration) onAccepted?.invoke(sent.tvName)
         val outcome = CastSession.confirm(client, sent, wait)
         reportFinal(when (outcome) {
             Outcome.Confirmed -> "Done on ${sent.tvName}"
             is Outcome.Rejected -> rejectionMessage(outcome.reason, sent.tvName)
-            Outcome.TimedOut -> "${sent.tvName} didn't confirm. Check the TV."
-            Outcome.Unconfirmable -> "Sent (not confirmed by TV)"
+            Outcome.TimedOut, Outcome.Unconfirmable -> if (sent.offline) offlineTvMessage(sent.tvName, command, videoId)
+                else if (outcome == Outcome.TimedOut) "${sent.tvName} didn't confirm. Check the TV."
+                else "Sent (not confirmed by TV)"
         })
-        return SentCommand(sent.tvName, outcome, latest = generation == commandGeneration)
+        return SentCommand(sent.tvName, outcome, latest = generation == commandGeneration, offline = sent.offline)
     }
+
+    /** The control plane said [tvName] isn't on: a title start waits for it a few minutes, anything else is dropped. */
+    private fun offlineTvMessage(tvName: String, command: String, videoId: String?) =
+        if (command == "play" && videoId != null) "$tvName isn't on. Open Cablegram on it in the next few minutes and the title starts."
+        else "$tvName isn't on. Open Cablegram on it first."
 
     private fun publishCast() {
         CastSession.update(nowPlayingState?.let { Cast(it.id, it.title, tvName, pausedState) })
