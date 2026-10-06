@@ -39,6 +39,11 @@ class TvMediaSession(context: Context, private val manager: MediaManager) {
         manager.broadcastMediaStatus()
     }
 
+    /** Keep the sanitized placeholder on an empty picker; existing player metadata stays authoritative. */
+    fun restoreMetadataAfterLoad() {
+        if (session.controller.metadata != null) manager.mediaStatusModifier.mediaInfoModifier?.clear()
+    }
+
     fun begin(videoId: String, title: String, poster: String?, durationMs: Long?) {
         terminal = false
         val metadata = MediaMetadataCompat.Builder()
@@ -48,6 +53,7 @@ class TvMediaSession(context: Context, private val manager: MediaManager) {
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durationMs ?: 0)
         publicPosterUrl(poster)?.let { metadata.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, it) }
+        manager.mediaStatusModifier.mediaInfoModifier?.clear()
         session.setMetadata(metadata.build())
         positionMs = 0
         state = PlaybackStateCompat.STATE_BUFFERING

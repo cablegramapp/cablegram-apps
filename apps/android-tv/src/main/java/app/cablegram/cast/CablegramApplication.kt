@@ -41,7 +41,7 @@ class CablegramApplication : Application(), DefaultLifecycleObserver {
                         .setCustomData(JSONObject().put("commandId", launch.commandId)
                             .put("targetDeviceId", launch.targetDeviceId)).build()
                     manager.setDataFromLoad(resolved)
-                    manager.mediaStatusModifier.mediaInfoModifier?.clear()
+                    mediaSession?.restoreMetadataAfterLoad()
                     // Neither contentId nor incoming metadata participates in media resolution.
                     onLaunch?.invoke(launch) ?: run { queuedLaunch = launch }
                     return Tasks.forResult(resolved)
