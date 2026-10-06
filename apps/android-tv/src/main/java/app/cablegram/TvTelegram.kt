@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** What the TV shows about Telegram in Settings (spec 004 US2). */
+/** This TV has started signing in to the household's Telegram but can't stream from it yet. */
+fun TvTelegramStatus.isSigningIn(): Boolean =
+    this is TvTelegramStatus.Connecting || this is TvTelegramStatus.WaitingForPhone || this is TvTelegramStatus.NeedsPassword
+
 sealed interface TvTelegramStatus {
     /** The household hasn't connected Telegram (or this build has no Telegram credentials). */
     data object Off : TvTelegramStatus
