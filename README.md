@@ -50,7 +50,9 @@ cd apps/android-phone   # or apps/android-tv
 
 Telegram features need your own API credentials. Register an application at <https://my.telegram.org>, then
 pass them as `-PTELEGRAM_API_ID=... -PTELEGRAM_API_HASH=...` or put `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`
-in the app's git-ignored `local.properties`. Without them the app builds with Telegram switched off.
+in the app's git-ignored `local.properties`. Without them `assemble`, `bundle` and `install` stop with an error, because the
+app would build with Telegram switched off; add `-PALLOW_NO_TELEGRAM=true` to build that way on purpose. Tests and
+compiling don't need them.
 
 By default the apps talk to `https://api.cablegram.app/`. Override it with `-PCABLEGRAM_API_BASE=https://...`.
 The backend is not part of this repository, so a build pointed at your own host needs a server that implements

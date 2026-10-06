@@ -7,5 +7,6 @@
   "assets": { "directory": "./dist" },
   "workers_dev": false,
   "preview_urls": false,
+  "previews": {},
   "routes": [{ "pattern": "app.cablegram.app", "custom_domain": true }]
 }

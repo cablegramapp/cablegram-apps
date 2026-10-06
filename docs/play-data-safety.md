@@ -97,8 +97,14 @@ Posters note above.)
 
 ## Before you submit
 
-1. Deploy the server branch `account-deletion` and confirm `https://api.cablegram.app/delete-account` loads.
-   Release the phone app with the Delete account screen (branch `account-deletion-in-app`). Only then answer "Yes" to the deletion questions.
+1. **Release gate for account deletion.** All of these must hold before any public release that shows Delete
+   account, and before answering "Yes" to the Data Safety deletion questions:
+   1. The server deletion endpoints are merged to `main` and deployed.
+   2. `GET https://api.cablegram.app/delete-account` returns 200. (It returned 404 on 2026-10-02.)
+   3. An end-to-end check passes: create a test account, connect a TV, import a title, delete the account in
+      the app, then confirm sign-in fails, the TV is signed out, and the catalog rows are gone.
+
+   Until then: no public release that shows Delete account, and no "Yes" to the deletion questions.
 2. The privacy policy (`https://cablegram.app/privacy.html`) must list every data type above, Gemini, TMDB, the
    mail provider, IP addresses in server logs, web-imported video storage with its retention, and how to delete
    an account. Reviewers compare it with this form.

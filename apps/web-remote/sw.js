@@ -1,7 +1,7 @@
 // Caches the app shell so the remote opens instantly. It never touches the API: every other
 // origin, and every non-GET request, goes straight to the network.
 const CACHE = "cablegram-remote-v1";
-const SHELL = ["./", "index.html", "styles.css", "config.js", "src/app.js", "src/api.js", "manifest.webmanifest", "icons/icon-192.png"];
+const SHELL = ["./", "index.html", "styles.css", "config.js", "src/app.js", "src/api.js", "src/outcome.js", "manifest.webmanifest", "icons/icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));

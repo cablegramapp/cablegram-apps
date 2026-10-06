@@ -6,11 +6,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryLogicTest {
-    @Test fun `every imported filename requires explicit title confirmation`() {
-        assertEquals(ImportMetadataAction.PromptForCorrection, importMetadataAction(item(title = "38", filename = "38.mp4")))
-        assertEquals(ImportMetadataAction.PromptForCorrection, importMetadataAction(item(title = "a1b2c3d4e5f6", filename = "a1b2c3d4e5f6.mp4")))
+    @Test fun `imported videos are ready without mandatory artwork editing`() {
+        assertEquals(ImportMetadataAction.Ready, importMetadataAction(item(title = "38", filename = "38.mp4")))
+        assertEquals(ImportMetadataAction.Ready, importMetadataAction(item(title = "a1b2c3d4e5f6", filename = "a1b2c3d4e5f6.mp4")))
         assertEquals(
-            ImportMetadataAction.PromptForCorrection,
+            ImportMetadataAction.Ready,
             importMetadataAction(
                 item(title = "Dune", filename = "Dune.2021.mkv").copy(
                     posterPath = "/posters/dune.jpg",
@@ -20,7 +20,7 @@ class LibraryLogicTest {
         )
     }
 
-    @Test fun `readable titles still open frame chooser when thumbnail extraction failed`() {
+    @Test fun `missing artwork stays playable without mandatory editing`() {
         val withoutThumbnail = item(title = "Dune", filename = "Dune.2021.mkv").copy(
             posterPath = null,
             posterUrl = null,
@@ -28,7 +28,7 @@ class LibraryLogicTest {
         )
 
         assertTrue(needsArtworkChoice(withoutThumbnail))
-        assertEquals(ImportMetadataAction.PromptForCorrection, importMetadataAction(withoutThumbnail))
+        assertEquals(ImportMetadataAction.Ready, importMetadataAction(withoutThumbnail))
         assertFalse(needsArtworkChoice(withoutThumbnail.copy(posterUrl = "https://image.tmdb.org/dune.jpg")))
     }
 

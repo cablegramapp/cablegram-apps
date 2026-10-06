@@ -86,6 +86,18 @@ class CablegramApiTest {
     }
 
     @Test
+    fun `completing a command over HTTP sends a JSON body, not an empty one`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+        api.completeCommand("cmd-1", "tv-token")
+        val request = server.takeRequest(3, TimeUnit.SECONDS)!!
+        assertEquals("POST", request.method)
+        assertEquals("/api/control/commands/cmd-1/complete", request.path)
+        assertTrue(request.getHeader("Content-Type")!!.startsWith("application/json"))
+        // The control plane's JSON parser rejects an empty body sent as application/json with a 400.
+        assertEquals("{}", request.body.readUtf8())
+    }
+
+    @Test
     fun `HTTP result failure is surfaced for durable retry and reliable polling is requested`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(503))
         assertTrue(runCatching { api.completeCommand("id", "token") }.exceptionOrNull() is ApiException)
@@ -127,6 +139,20 @@ class CablegramApiTest {
         assertEquals("Christopher Nolan", library.videos.single().director)
         assertEquals("item-1", library.videos.single().id)
         assertEquals("Bearer jwt", server.takeRequest().getHeader("Authorization"))
+    }
+
+    @Test
+    fun `shared manual metadata and cleared fields appear on the next catalog refresh`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"My film","year":2013,"overview":"My summary","media_type":"movie","metadata_revision":1,"user_metadata_fields":["title","year","overview"],"sources":[]}]}"""))
+        val first = api.getVideos("jwt").videos.single()
+        assertEquals("My film", first.title)
+        assertEquals(2013, first.releaseYear)
+        assertEquals("My summary", first.overview)
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Corrected film","year":null,"overview":null,"media_type":"movie","metadata_revision":2,"user_metadata_fields":["title","year","overview"],"sources":[]}]}"""))
+        val next = api.getVideos("jwt").videos.single()
+        assertEquals("Corrected film", next.title)
+        assertEquals(null, next.releaseYear)
+        assertEquals(null, next.overview)
     }
 
     @Test
@@ -428,5 +454,36 @@ class CablegramApiTest {
 
         val credential = AccountCredential(sessionId = "session-uuid-5678", token = token)
         assertEquals("user-uuid-1234", credential.effectiveUserId)
+    }
+
+    private val libraryBody = """{"items":[{"id":"v1","title":"First","sources":[]}]}"""
+
+    @Test
+    fun `a library answered 200 gives the list and its ETag`() = runBlocking {
+        server.enqueue(MockResponse().setHeader("ETag", "\"abc\"").setBody(libraryBody))
+        val fetch = api.getVideosIfChanged("tv-token", null, "p1", null)
+        val changed = fetch as CablegramApi.LibraryFetch.Changed
+        assertEquals("\"abc\"", changed.etag)
+        assertEquals(listOf("v1"), changed.library.videos.map { it.id })
+        val request = server.takeRequest(3, TimeUnit.SECONDS)!!
+        assertEquals(null, request.getHeader("If-None-Match"))
+        assertEquals("/api/catalog/items?profile_id=p1", request.path)
+    }
+
+    @Test
+    fun `a 304 keeps the list the TV already has`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(304).setHeader("ETag", "\"abc\""))
+        val fetch = api.getVideosIfChanged("tv-token", null, "p1", "\"abc\"")
+        assertEquals(CablegramApi.LibraryFetch.NotModified, fetch)
+        assertEquals("\"abc\"", server.takeRequest(3, TimeUnit.SECONDS)!!.getHeader("If-None-Match"))
+        // A 304 must not cost the device lookup either.
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `an error answer is still an error`() {
+        server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"unauthorized"}"""))
+        val error = runCatching { runBlocking { api.getVideosIfChanged("tv-token", null, null, "\"abc\"") } }.exceptionOrNull() as ApiException
+        assertEquals(401, error.statusCode)
     }
 }

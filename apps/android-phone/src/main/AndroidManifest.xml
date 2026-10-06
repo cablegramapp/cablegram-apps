@@ -62,6 +62,7 @@
             android:stateNotNeeded="true" />
         <receiver android:name=".RelayConsentReceiver" android:exported="false" />
         <receiver android:name=".TelegramTvApprovalReceiver" android:exported="false" />
+        <receiver android:name=".TelegramPasswordReceiver" android:exported="false" />
         <receiver android:name=".TvCheckoutReceiver" android:exported="false" />
         <receiver android:name=".PrivateApprovalReceiver" android:exported="false" />
         <receiver android:name=".CastRemoteReceiver" android:exported="false" />

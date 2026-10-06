@@ -29,8 +29,14 @@ class PhoneActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        PrivateApprovals.appVisible = true
         viewModel.refreshStorage()
         viewModel.refreshPendingApprovals()
+    }
+
+    override fun onPause() {
+        PrivateApprovals.appVisible = false
+        super.onPause()
     }
 
     override fun onNewIntent(intent: android.content.Intent) {

@@ -17,11 +17,30 @@ val telegramEnv = Properties().apply {
 fun telegramSetting(name: String): String =
     (project.findProperty(name) as String?) ?: telegramEnv.getProperty(name) ?: ""
 
+// A build without these ships with Telegram switched off: it installs fine and then quietly can't use Telegram.
+// Packaging and installing therefore fail unless that is asked for with -PALLOW_NO_TELEGRAM=true. Tests and
+// compiling are not affected.
+val requireTelegramCredentials by tasks.registering {
+    doLast {
+        val missing = telegramSetting("TELEGRAM_API_ID").let { it.isBlank() || it == "0" } || telegramSetting("TELEGRAM_API_HASH").isBlank()
+        if (missing && project.findProperty("ALLOW_NO_TELEGRAM") != "true") {
+            throw GradleException(
+                "TELEGRAM_API_ID / TELEGRAM_API_HASH are not set, so this build would have Telegram switched off. " +
+                    "Set them in local.properties or with -PTELEGRAM_API_ID / -PTELEGRAM_API_HASH, " +
+                    "or build without Telegram on purpose with -PALLOW_NO_TELEGRAM=true.",
+            )
+        }
+    }
+}
+tasks.matching { it.name.matches(Regex("(assemble|bundle|install)(Debug|Release)?")) }
+    .configureEach { dependsOn(requireTelegramCredentials) }
+
 android {
     namespace = "app.cablegram.phone"
     compileSdk = 36
     defaultConfig {
         applicationId = "app.cablegram.phone"
+        (project.findProperty("CABLEGRAM_APP_ID_SUFFIX") as String?)?.let { applicationIdSuffix = it }
         minSdk = 26
         targetSdk = 36
         versionCode = 3
@@ -43,6 +62,28 @@ android {
         }
         buildConfigField("int", "TELEGRAM_API_ID", telegramSetting("TELEGRAM_API_ID").ifBlank { "0" })
         buildConfigField("String", "TELEGRAM_API_HASH", "\"${telegramSetting("TELEGRAM_API_HASH")}\"")
+    }
+    // Sideload releases get one APK per ABI instead of a universal one (LibVLC and TDLib ship native
+    // code for four ABIs). -PCABLEGRAM_ABIS is an ndk filter and cannot be combined with splits, so a
+    // build that sets it still gets a single APK of those ABIs. Debug builds keep every ABI, x86_64
+    // included, for emulators. AGP cannot build a bundle with splits on, so run `assembleRelease` and
+    // `bundleRelease` as separate Gradle invocations (both in one gives a universal APK and the bundle).
+    splits {
+        abi {
+            val tasks = gradle.startParameter.taskNames
+            isEnable = project.findProperty("CABLEGRAM_ABIS") == null &&
+                tasks.any { it.contains("release", ignoreCase = true) } && tasks.none { it.contains("bundle", ignoreCase = true) }
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = false
+        }
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
     }
     buildFeatures {
         compose = true

@@ -121,7 +121,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 // A single measured stack reserves space instead of covering content.
                 if (viewModel.prepareStep != null) PrepareCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 TransferCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                if (viewModel.nowPlaying != null && viewModel.cloudSheet == CloudSheet.None) {
+                if ((viewModel.nowPlaying != null || viewModel.startingTitle != null) && viewModel.cloudSheet == CloudSheet.None) {
                     RemoteBar(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
                 LibraryNav(viewModel)
@@ -130,6 +130,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize().background(VlcBlack)) {
             Column(Modifier.fillMaxSize()) {
+                AddedVideosCard(viewModel)
                 if (viewModel.pendingApprovals.isNotEmpty()) ApprovalCard(viewModel, Modifier.padding(16.dp))
                 Box(Modifier.weight(1f)) {
                     when (viewModel.tab) {
@@ -543,7 +544,7 @@ private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expande
                 viewModel.toggleCollection(item, collection.id)
             }
         }
-        CompactMenuItem("Rename") { viewModel.actionMenuId = null; viewModel.openItem(item); viewModel.editingMetadata = true }
+        CompactMenuItem("Edit details") { viewModel.actionMenuId = null; viewModel.openItem(item); viewModel.editingMetadata = true }
         CompactMenuItem("Delete") { viewModel.actionMenuId = null; viewModel.askDelete(item) }
     }
 }
@@ -1043,9 +1044,11 @@ private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> U
 @Composable
 private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
     val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent && !item.ownCloudCopy
+    val draftBase = remember(item.id, viewModel.editingMetadata) { item }
     var title by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.title) }
     var year by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.year?.toString().orEmpty()) }
     var mediaType by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.mediaType) }
+    var overview by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.overview.orEmpty()) }
     BackHandler { if (viewModel.editingMetadata) viewModel.editingMetadata = false else viewModel.closeItem() }
     Column(Modifier.fillMaxSize().background(VlcBlack).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1055,8 +1058,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             }
             Spacer(Modifier.weight(1f))
             if (!viewModel.editingMetadata) {
-                TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }) { Text("Find details & artwork") }
-                TextButton(onClick = { viewModel.editingMetadata = true }) { Text("Edit") }
+                TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }, modifier = Modifier.maestro("detail_edit_artwork")) { Text("Edit details & cover") }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1071,15 +1073,19 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 }
             }
         }
+        if (item.metadataConflict) Text("Details changed on another device. Your edits are kept on this phone. Review them and save again to use your version.", color = VlcOrange)
+        else if (item.pendingMetadataFields.isNotEmpty()) Text("Details saved on this phone · Waiting to sync", color = VlcMuted)
         if (viewModel.editingMetadata) {
-            SectionCard("Edit title") {
-                OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Title") })
+            SectionCard("Edit details") {
+                Text("${if (item.sourceKind == "web") "Original link" else "Original file"}: ${item.filename}", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(title, { title = it.take(500) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Title") })
                 OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Year") })
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = mediaType != "tv", onClick = { mediaType = "movie" }, label = { Text("Movie") })
                     FilterChip(selected = mediaType == "tv", onClick = { mediaType = "tv" }, label = { Text("TV show") })
                 }
-                Button(onClick = { viewModel.saveMetadata(title.trim(), year.toIntOrNull(), mediaType) }, enabled = title.isNotBlank() && !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Save changes") }
+                OutlinedTextField(overview, { overview = it.take(10000) }, Modifier.fillMaxWidth(), minLines = 3, maxLines = 8, label = { Text("Summary") })
+                Button(onClick = { viewModel.saveMetadata(draftBase, title.trim(), year.toIntOrNull(), mediaType, overview) }, enabled = title.isNotBlank() && (year.isBlank() || year.toIntOrNull() in 1..9999) && !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Save changes") }
             }
         } else {
             if (item.positionSeconds > 0) {
@@ -1191,7 +1197,7 @@ private fun StackedDialogButtons(content: @Composable androidx.compose.foundatio
 
 @Composable
 private fun RemoteBar(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
-    val item = viewModel.nowPlaying ?: return
+    val lines = miniPlayerLines(viewModel.nowPlaying?.title, viewModel.startingTitle, viewModel.tvName, viewModel.remoteStatus) ?: return
     Row(
         modifier
             .fillMaxWidth()
@@ -1203,10 +1209,12 @@ private fun RemoteBar(viewModel: PhoneViewModel, modifier: Modifier = Modifier) 
     ) {
         Icon(Icons.Default.Tv, contentDescription = null, tint = VlcOrange)
         Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-            Text(item.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(viewModel.tvName, color = VlcMuted, fontSize = 12.sp)
+            Text(lines.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // The command's progress and result show here, so a TV that does not confirm is visible
+            // without opening the Remote tab.
+            Text(lines.caption, color = VlcMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
-        IconButton(onClick = viewModel::togglePlayPause) {
+        if (lines.canToggle) IconButton(onClick = viewModel::togglePlayPause) {
             Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = if (viewModel.paused) "Resume playback" else "Pause playback", tint = Color.White)
         }
     }
@@ -1218,11 +1226,11 @@ private fun RemoteControls(viewModel: PhoneViewModel) {
     Text("${viewModel.tvName} · ${item.title}", color = VlcMuted)
     LinearProgressIndicator(progress = { watchFraction(item) }, modifier = Modifier.fillMaxWidth(), color = VlcOrange, trackColor = Color(0xFF333333))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = { viewModel.skipSeconds(-15) }) { Text("-15") }
+        TextButton(onClick = { viewModel.skipSeconds(-CastRemoteReceiver.SEEK_SECONDS) }) { Text("-${CastRemoteReceiver.SEEK_SECONDS}") }
         IconButton(onClick = viewModel::togglePlayPause) {
             Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, null, tint = Color.White)
         }
-        TextButton(onClick = { viewModel.skipSeconds(15) }) { Text("+15") }
+        TextButton(onClick = { viewModel.skipSeconds(CastRemoteReceiver.SEEK_SECONDS) }) { Text("+${CastRemoteReceiver.SEEK_SECONDS}") }
     }
     TextButton(onClick = viewModel::stopCast) { Text("Stop casting") }
 }

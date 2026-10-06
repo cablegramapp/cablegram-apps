@@ -1,0 +1,43 @@
+# Web remote: command outcomes come from the TV, not from the server accepting the command.
+# Start the mock first: node test/e2e/mock-control-plane.mjs   Run: maestro test --platform web test/e2e/command-outcomes.yaml
+url: http://localhost:8099
+---
+- openLink: http://localhost:8099
+- tapOn: Email
+- inputText: a@b.co
+- tapOn: Password
+- inputText: password1
+- tapOn: Sign in
+- tapOn: Remote
+
+# Delayed completion: Sent first, confirmed only when the TV completes it.
+- tapOn:
+    id: Pause
+- assertVisible: "Sent to Living room TV, waiting for it to confirm…"
+- assertNotVisible: "Living room TV: Paused"
+- extendedWaitUntil:
+    visible: "Living room TV: Paused"
+    timeout: 8000
+
+# Rejection: names the TV, offers Retry, never shows Stopped.
+- tapOn:
+    id: Stop
+- extendedWaitUntil:
+    visible: "Living room TV rejected the stop command."
+    timeout: 8000
+- assertNotVisible: "Living room TV: Stopped"
+- assertVisible:
+    id: Retry stop on Living room TV
+
+# Never answered: Couldn't confirm after the command expires, never shows Playing.
+- tapOn:
+    id: Play
+- extendedWaitUntil:
+    visible: "Couldn't confirm that Living room TV did it. It may be off or offline."
+    timeout: 12000
+- assertNotVisible: "Living room TV: Playing"
+
+# Retry is explicit and starts a new command.
+- tapOn:
+    id: Retry play on Living room TV
+- assertVisible: "Sent to Living room TV, waiting for it to confirm…"

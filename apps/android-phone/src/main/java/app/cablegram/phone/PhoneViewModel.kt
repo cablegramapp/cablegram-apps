@@ -35,6 +35,15 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     private val commands = CommandQueue(application)
     private val webTransferPolls = mutableSetOf<String>()
 
+    val artworkEditor = ArtworkEditorController(store, { catalog() }, { pairing.accountToken }, viewModelScope) { saved ->
+        refresh()
+        status = "Changes saved"
+        viewModelScope.launch { syncLibrary() }
+    }
+    var recentlyAddedIds by mutableStateOf<List<String>>(emptyList())
+        private set
+    fun dismissAddedVideos() { recentlyAddedIds = emptyList() }
+
     var items by mutableStateOf<List<LibraryItem>>(emptyList())
         private set
     var collections by mutableStateOf<List<UserCollection>>(emptyList())
@@ -87,7 +96,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var selectedBrowseIds by mutableStateOf<Set<String>>(emptySet())
         private set
-    private val pendingTitles = ArrayDeque<LibraryItem>()
     private val pendingPrivacyItems = ArrayDeque<LibraryItem>()
     var prepareStep by mutableStateOf<String?>(null)
         private set
@@ -115,6 +123,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     var remoteStatus by mutableStateOf<String?>(null)
         private set
+    /** The title a TV was asked to start and has not answered for yet; null otherwise. */
+    var startingTitle by mutableStateOf<String?>(null)
+        private set
+    private var titleStartToken = 0L
     private var pausedState by mutableStateOf(false)
     var paused: Boolean
         get() = pausedState
@@ -124,38 +136,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     var shuffle by mutableStateOf(false)
     var repeat by mutableStateOf(false)
-    var pendingTitleItem by mutableStateOf<LibraryItem?>(null)
-        private set
     var pendingPrivacyItem by mutableStateOf<LibraryItem?>(null)
-        private set
-    var titleDraft by mutableStateOf("")
-    var titleSuggestions by mutableStateOf<List<TitleSuggestion>>(emptyList())
-        private set
-    var previewFrames by mutableStateOf<List<String>>(emptyList())
-        private set
-    var selectedPreviewFrame by mutableStateOf<String?>(null)
-    var identifyingStills by mutableStateOf(false)
-        private set
-    var pendingAiMatch by mutableStateOf<CatalogMetadata?>(null)
-        private set
-    var askingSeriesDetails by mutableStateOf(false)
-        private set
-    var seasonDraft by mutableStateOf("")
-    var episodeDraft by mutableStateOf("")
-    /** Suggestion explicitly picked for episode continuation (Flow 3). */
-    var pendingSuggestion by mutableStateOf<TitleSuggestion?>(null)
-        private set
-    /** Explicit notes requiring acknowledgment: duplicates, specials. */
-    var seriesNotes by mutableStateOf<List<String>>(emptyList())
-        private set
-    /** T-UX04: explains a pre-filled S/E suggestion ("based on the highest episode…"). */
-    var seasonEpisodeSuggestLabel by mutableStateOf<String?>(null)
-        private set
-    /** Flow 3 confirm guards: duplicates need an explicit dialog; specials need season-0 ack. */
-    private var duplicateEpisodeConfirmed = false
-    private var allowSpecialsConfirmed = false
-    /** T-UX04: pending duplicate the user must explicitly accept or cancel in a dialog. */
-    var duplicatePrompt by mutableStateOf<Pair<String, Pair<Int, Int>>?>(null)
         private set
     var storage by mutableStateOf<StorageStatusResponse?>(null)
         private set
@@ -184,7 +165,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var actionMenuId by mutableStateOf<String?>(null)
     var transferCardDismissed by mutableStateOf(false)
     var cablegramCloudReady by mutableStateOf(pairing.cablegramCloudReady)
-    private var suggestJob: Job? = null
     private val librarySyncMutex = kotlinx.coroutines.sync.Mutex()
 
     val selected: LibraryItem? get() = selectedId?.let { id -> items.firstOrNull { it.id == id } }
@@ -262,9 +242,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         refresh()
         restoreHouseholdName()
         refreshPendingApprovals()
+        // One poller serves the notification and this list: ApprovalWatcher, in LanLibraryService.
+        viewModelScope.launch { PrivateApprovals.pending.collect { pendingApprovals = it } }
         refreshPhoneIps()
         viewModelScope.launch { ads = catalog().ads() }
         refreshStorage()
+        recoverSharedImports()
         resumePendingWebImports()
         resumeWebTransfers()
         if (paired) {
@@ -304,7 +287,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                         status = "Your session expired. Sign in again to keep this TV connected."
                     }
                 }
-                if (paired) refreshPendingApprovals()
                 if (System.currentTimeMillis() - householdTvsCheckedAt > HOUSEHOLD_TVS_REFRESH_MS &&
                     !pairing.accountToken.isNullOrBlank()) {
                     householdTvsCheckedAt = System.currentTimeMillis()
@@ -343,6 +325,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         // the TV giver timeout is ~2 minutes).
         private const val PENDING_APPROVAL_POLL_MS = 5_000L
         private const val HOUSEHOLD_TVS_REFRESH_MS = 60_000L
+        /** How long a finished command's result stays in [remoteStatus] before it clears. */
+        private const val REMOTE_STATUS_LINGER_MS = 6_000L
     }
 
     fun refresh() {
@@ -357,11 +341,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** T075: refresh pending private-playback approvals for the in-app card. */
     fun refreshPendingApprovals() {
         val token = pairing.accountToken ?: run {
-            pendingApprovals = emptyList()
+            PrivateApprovals.pending.value = emptyList()
             return
         }
         viewModelScope.launch {
-            pendingApprovals = runCatching { catalog().fetchPendingPrivateApprovals(token) }.getOrDefault(emptyList())
+            PrivateApprovals.pending.value = runCatching { catalog().fetchPendingPrivateApprovals(token) }.getOrDefault(emptyList())
         }
     }
 
@@ -370,7 +354,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val token = pairing.accountToken ?: return
         val app = getApplication<Application>()
         PrivateApprovals.cancelNotification(app, approval.attemptId)
-        pendingApprovals = pendingApprovals.filterNot { it.attemptId == approval.attemptId }
+        PrivateApprovals.pending.value = PrivateApprovals.pending.value.filterNot { it.attemptId == approval.attemptId }
         viewModelScope.launch {
             runCatching {
                 val accepted = if (approve) catalog().approvePrivatePlayback(token, approval.attemptId) != null
@@ -728,6 +712,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private var householdTvsCheckedAt = 0L
+    /** The household's TVs as of the last refresh; routing uses it instead of a request per press. */
+    private var householdTvsCache: List<MeDevice>? = null
 
     /**
      * The control plane is the source of truth for the household's TVs: TVs paired by another phone
@@ -737,6 +723,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val token = pairing.accountToken ?: return
         val server = catalog().householdTvs(token) ?: return
         householdTvsCheckedAt = System.currentTimeMillis()
+        householdTvsCache = server
         val activeIds = server.map { it.id }.toSet()
         val local = pairing.tvs
         val kept = local.filter { it.deviceId == null || it.deviceId in activeIds }
@@ -867,7 +854,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         clearSignedInState()
         items = store.list()
         collections = store.collections()
-        pendingApprovals = emptyList()
+        PrivateApprovals.pending.value = emptyList()
         relayUsage = null
         emailVerified = null
         verifyingEmail = false
@@ -1324,16 +1311,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         PairLog.i("Phone unpaired one TV remaining=${pairing.tvs.size}")
     }
 
-    private suspend fun enrichImported(item: LibraryItem, query: String) {
-        val metadata = pairing.accountToken?.let { catalog().enrich(query, it, item.id) }
-            ?: catalog().match(query)
-            ?: return
-        val poster = metadata.posterUrl?.let { url ->
-            catalog().downloadBytes(url)?.let { store.writeCatalogPoster(item.id, it) }
-        }
-        store.applyCatalog(item.id, metadata, poster)
-    }
-
     fun syncNow() {
         viewModelScope.launch {
             syncHouseholdTvs()
@@ -1368,7 +1345,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 fingerprinted.forEach { item ->
                     val prior = before.firstOrNull { b -> b.id == item.id }
                     if (item.fingerprint != null && prior?.fingerprint != item.fingerprint) {
-                        store.update(item)
+                        store.updateItem(item.id) { it.copy(fingerprint = item.fingerprint) }
                     }
                 }
                 val phoneItems = fingerprinted.filter { it.sourceKind == "phone_local" }
@@ -1378,7 +1355,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 // changes availability; it must never delete the user's catalog.
                 phoneItems.forEach { item ->
                     val available = item.id in presentIds
-                    if (item.sourceAvailable != available) store.update(item.copy(sourceAvailable = available))
+                    if (item.sourceAvailable != available) store.updateItem(item.id) { it.copy(sourceAvailable = available) }
                 }
                 check(client.reconcileSources(token, present, pairing.phoneDeviceId) { it.fingerprint }) {
                     "Could not sync source availability"
@@ -1390,7 +1367,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     prepareProgress = (index + 1f) / items.size
                     prepareStep = "Syncing ${item.title}"
                     val ok = runCatching {
-                        client.pushLibraryItem(token, item, pairing.phoneDeviceId) { _ ->
+                        client.pushLibraryItem(token, item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) { _ ->
                             store.posterFile(item)?.readBytes()
                         }
                     }.getOrDefault(false)
@@ -1400,6 +1377,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 prepareStep = null
                 prepareProgress = 0f
+                var metadataFailed = false
+                // Edits are persisted independently of source availability and survive process death.
+                for (item in store.list().filter { it.pendingMetadataFields.isNotEmpty() }) {
+                    if (item.metadataConflict) { metadataFailed = true; continue }
+                    val result = client.patchMetadata(token, item)
+                    store.acceptMetadata(item, result)
+                    if (result !is MetadataSyncResult.Saved) metadataFailed = true
+                }
                 val remotes = client.fetchCatalog(token, failOnError = true)
                 // Restore household titles this phone doesn't list (reinstall, new phone): re-link the
                 // ones whose file is still here by fingerprint, keep the rest as "not on this phone".
@@ -1455,14 +1440,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                     if (local != null) {
-                        store.update((store.get(local.id) ?: local).copy(
-                            title = if ("title" in local.userMetadataFields) local.title else remote.title?.takeIf { it.isNotBlank() } ?: local.title,
+                        store.updateItem(local.id) { current -> mergeManualMetadata(current.copy(
                             durationSeconds = remote.durationSeconds ?: local.durationSeconds,
                             // What groups a series' episodes under one poster comes from the household catalog.
-                            tmdbId = remote.tmdbId ?: local.tmdbId,
-                            seasonNumber = remote.seasonNumber ?: local.seasonNumber,
-                            episodeNumber = remote.episodeNumber ?: local.episodeNumber,
-                            mediaType = if ("mediaType" in local.userMetadataFields) local.mediaType else remote.mediaType ?: local.mediaType,
+                            tmdbId = if (current.catalogIdentityUserSelected) current.tmdbId else remote.tmdbId ?: remote.seriesIdentity?.removePrefix("tmdb:")?.toIntOrNull() ?: current.tmdbId,
+                            seasonNumber = if (current.catalogIdentityUserSelected) current.seasonNumber else remote.seasonNumber ?: current.seasonNumber,
+                            episodeNumber = if (current.catalogIdentityUserSelected) current.episodeNumber else remote.episodeNumber ?: current.episodeNumber,
                             posterUrl = if (catalogMayReplaceArtwork(local)) remote.posterUrl ?: local.posterUrl else local.posterUrl,
                             cloudObjectPresent = hasCloudObject || local.cloudObjectPresent,
                             // Saved to Telegram (here or on another phone): the server knows the verified copy.
@@ -1471,7 +1454,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             ownCloudSourceId = if (hasOwnCloudCopy && local.sourceKind == "phone_local") ownCloudSourceIdOf(remote.sources) else null,
                             storageState = if (hasCloudObject) STORAGE_CLOUD else local.storageState,
                             transferStatus = if (hasCloudObject) TRANSFER_IDLE else local.transferStatus,
-                        ))
+                        ), remote) }
                     } else {
                         val web = remote.sources.firstOrNull { it.kind == "web" && !it.canonicalUrl.isNullOrBlank() }
                         if (web != null) {
@@ -1482,7 +1465,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             durationSeconds = remote.durationSeconds,
                             canonicalUrl = web.canonicalUrl!!,
                             ))
-                            if (hasCloudObject) store.update(added.copy(cloudObjectPresent = true, storageState = STORAGE_CLOUD))
+                            store.mergeRemoteMetadata(added.id, remote)
+                            if (hasCloudObject) store.updateItem(added.id) { it.copy(cloudObjectPresent = true, storageState = STORAGE_CLOUD) }
                         } else {
                             val phoneSource = remote.sources.firstOrNull { it.kind == "phone_local" && it.archiveState != "archived" }
                             if (phoneSource != null && remote.id !in dismissed) {
@@ -1500,7 +1484,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 // The Telegram titles were registered above; queue the ones to ask about.
                 telegramAskIds.mapNotNull(store::get).filter { it.sourceKind == "telegram" }.forEach { item ->
                     store.markTelegramPrompted(item.id)
-                    pendingTitles.add(item)
+                    // Matching is available from item details; sync never interrupts browsing.
                 }
                 // Restored titles carry only the catalog poster URL; the library draws local files.
                 store.list().filter { it.posterPath == null && it.posterUrl?.startsWith("https://") == true }.forEach { item ->
@@ -1512,15 +1496,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 // Re-linked files become this phone's sources right away, so the TV can play them.
                 relinked.forEach { item ->
-                    store.update(item)
+                    store.updateItem(item.id) { it.copy(fingerprint = item.fingerprint) }
                     runCatching {
-                        client.pushLibraryItem(token, item, pairing.phoneDeviceId) { _ -> store.posterFile(item)?.readBytes() }
+                        client.pushLibraryItem(token, store.get(item.id) ?: item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) { _ -> store.posterFile(item)?.readBytes() }
                     }
                 }
+                check(!metadataFailed) { "Your detail edits are saved on this phone. Review any conflicting edits, or retry sync when connected." }
             }
             refresh()
-            // Never interrupt a dialog that is already open; the queued titles follow it.
-            if (pendingTitleItem == null && pendingPrivacyItem == null && pendingTitles.isNotEmpty()) promptNextTitle()
             librarySyncState = LibrarySyncState.Completed
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
             librarySyncState = LibrarySyncState.Idle
@@ -1575,13 +1558,33 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 if (importDestination == STORAGE_BOTH && (cablegramCloudReady || cloudConnected)) {
                     beginSaveToCloud(item)
                 }
-                // A parseable filename is only a draft. Every new video gets
-                // explicit title and artwork confirmation.
-                showTitlePrompt(store.get(item.id) ?: item)
+                recentlyAddedIds = listOf(item.id)
+                tab = PhoneTab.Library
+                status = "Video added"
+                syncLibrary()
+                if (playNow) playOnTv(store.get(item.id) ?: item)
             } catch (error: Exception) {
                 status = error.message ?: "Could not import that file"
             } finally {
                 busy = false
+            }
+        }
+    }
+
+    /** Cleans up after a process death mid-import, then finishes any shared import it left unfinished. */
+    private fun recoverSharedImports() {
+        viewModelScope.launch {
+            val results = withContext(Dispatchers.IO) {
+                store.sweepVideos()
+                store.resumeSharedImports()
+            }
+            if (results.isEmpty()) return@launch
+            refresh()
+            val dropped = results.filterIsInstance<LibraryStore.SharedImportResult.Dropped>()
+            status = if (dropped.isNotEmpty()) {
+                "Could not finish importing ${dropped.joinToString { it.displayName }}: the file is no longer available."
+            } else {
+                "Finished importing ${results.filterIsInstance<LibraryStore.SharedImportResult.Imported>().joinToString { it.item.title }}."
             }
         }
     }
@@ -1593,7 +1596,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun resumePendingWebImports() {
         if (pairing.accountToken.isNullOrBlank()) return
-        store.snapshot().pendingWebImports.forEach { submitPendingWebImport(it, announce = false) }
+        // A link the server rejected for good (kept by older versions) is dropped, not sent again.
+        val (rejected, retryable) = store.snapshot().pendingWebImports.partition { isPermanentWebImportError(it.lastError) }
+        rejected.forEach { store.completeWebImport(it.id) }
+        retryable.forEach { submitPendingWebImport(it, announce = false) }
     }
 
     private fun submitPendingWebImport(pending: PendingWebImport, announce: Boolean) {
@@ -1616,7 +1622,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 status = "Added ${item.title} to your library"
             } catch (error: Exception) {
                 PairLog.e("Web import failed", error)
-                withContext(Dispatchers.IO) { store.failWebImport(pending.id, error.message ?: "web_import_failed") }
+                withContext(Dispatchers.IO) {
+                    // Only a transient failure stays queued for the next launch.
+                    if (isPermanentWebImportError(error.message)) store.completeWebImport(pending.id)
+                    else store.failWebImport(pending.id, error.message ?: "web_import_failed")
+                }
                 status = when (error.message) {
                     "unsupported_site" -> "Cablegram cannot extract video from this site yet."
                     "no_video" -> "No playable video was found at that link."
@@ -1789,36 +1799,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         prepareStep = null
         prepareProgress = 0f
         status = if (added == 0) "Those files are already in your library" else "Added $added files"
+        recentlyAddedIds = imported.map { it.id }
+        tab = PhoneTab.Library
         pendingPrivacyItems.addAll(imported)
         showNextPrivacyPrompt()
-    }
-
-    private fun promptNextTitle() {
-        val next = pendingTitles.removeFirstOrNull() ?: return
-        showTitlePrompt(next)
-    }
-
-    private fun showTitlePrompt(item: LibraryItem) {
-        pendingTitleItem = item
-        titleDraft = item.title
-        titleSuggestions = localTitleSuggestions("")
-        previewFrames = emptyList()
-        selectedPreviewFrame = null
-        identifyingStills = false
-        pendingAiMatch = null
-        askingSeriesDetails = false
-        seasonDraft = ""
-        episodeDraft = ""
-        status = "Name this video"
-        viewModelScope.launch {
-            val frames = withContext(Dispatchers.IO) { store.extractPreviewFrames(item, count = 4) }
-            if (pendingTitleItem?.id != item.id) return@launch
-            previewFrames = frames
-            // A still is only a draft choice. Do not mutate artwork merely by
-            // opening the editor: Cancel must leave the existing poster intact.
-            val pick = frames.getOrNull(1) ?: frames.firstOrNull() ?: return@launch
-            selectedPreviewFrame = pick
-        }
+        viewModelScope.launch { syncLibrary() }
     }
 
     private fun showNextPrivacyPrompt() {
@@ -1835,230 +1820,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         if (importDestination == STORAGE_BOTH && (cablegramCloudReady || cloudConnected)) {
             beginSaveToCloud(updated)
         }
-        // Long release/episode filenames may be parseable but are rarely good
-        // display titles, so filename quality never bypasses this dialog.
         viewModelScope.launch { syncLibrary() }
-        showTitlePrompt(updated)
-    }
-
-    fun choosePreviewFrame(path: String) {
-        selectedPreviewFrame = path
-    }
-
-    fun resolveTitleFromText() {
-        val query = titleDraft.trim()
-        if (query.isEmpty() || identifyingStills) return
-        identifyingStills = true
-        status = "Looking up “$query”…"
-        viewModelScope.launch {
-            try {
-                val api = pairing.apiBaseUrl.trim().trimEnd('/')
-                val unreachable = catalog().pingHealth()
-                if (unreachable != null) {
-                    status = "Can't reach $api ($unreachable). Set API server in Settings."
-                    return@launch
-                }
-                val result = catalog().resolveTitle(query, pairing.accountToken)
-                val match = result.metadata
-                if (!result.found || match == null || match.title.isBlank() || match.title.equals("Unknown", ignoreCase = true)) {
-                    status = "Couldn't find a confident match. Continue with your title and the selected still."
-                    pendingAiMatch = null
-                    return@launch
-                }
-                pendingAiMatch = match
-                askingSeriesDetails = false
-                status = null
-            } catch (error: Exception) {
-                PairLog.e("Title resolve failed", error)
-                status = "Couldn't look that up (${error.message ?: "error"})"
-                pendingAiMatch = null
-            } finally {
-                identifyingStills = false
-            }
-        }
-    }
-
-    fun dismissAiMatch() {
-        pendingAiMatch = null
-        askingSeriesDetails = false
-        seasonDraft = ""
-        episodeDraft = ""
-        seasonEpisodeSuggestLabel = null
-        status = "Continue with your title, or try another search."
-    }
-
-    fun acceptAiMatch() {
-        val match = pendingAiMatch ?: return
-        if (match.mediaType.equals("tv", ignoreCase = true)) {
-            // Flow 3: a picked local suggestion knows the highest numbered
-            // episode — propose its successor instead of the TMDB parse.
-            val picked = pendingSuggestion?.takeIf { it.title.equals(match.title, ignoreCase = true) }
-            // The lookup reports 0/0 when the file name carries no S/E; treat that as unknown rather
-            // than pre-filling "Season 0" (specials). A parsed S01E01 must pre-fill both fields.
-            val parsedEpisode = match.episodeNumber?.takeIf { it > 0 }
-            val parsedSeason = match.seasonNumber?.takeIf { parsedEpisode != null && it >= 0 }
-            allowSpecialsConfirmed = false
-            seasonDraft = (picked?.maxSeason ?: parsedSeason)?.toString().orEmpty()
-            episodeDraft = (picked?.maxEpisode?.plus(1) ?: parsedEpisode)?.toString().orEmpty()
-            seasonEpisodeSuggestLabel = picked?.maxSeason?.let { maxSeason ->
-                val maxEpisode = picked.maxEpisode ?: -1
-                "Suggested: S%02dE%02d — based on the highest episode in this series.".format(maxSeason, maxEpisode + 1)
-            } ?: seasonEpisodeSuggestLabel
-            askingSeriesDetails = true
-            return
-        }
-        applyAiMatch(match, season = null, episode = null)
-    }
-
-    fun confirmSeriesDetails() {
-        val match = pendingAiMatch ?: return
-        val season = seasonDraft.trim().toIntOrNull() ?: run {
-            status = "Enter season and episode numbers."
-            return
-        }
-        val episode = episodeDraft.trim().toIntOrNull() ?: run {
-            status = "Enter season and episode numbers."
-            return
-        }
-        // Flow 3: specials are allowed with an explicit season 0; regular
-        // episodes must be >= 1. Duplicates require explicit override.
-        if (season < 0 || episode < 1) {
-            status = "Enter valid season/episode numbers (season 0 = specials)."
-            return
-        }
-        if (season == 0 && !allowSpecialsConfirmed) {
-            allowSpecialsConfirmed = true
-            status = "Season 0 adds this as a special. Tap Fetch artwork again to confirm."
-            return
-        }
-        // The user confirmed match.title; variants are only alternative spellings and can differ
-        // per lookup ("Breaking-Bad"), which split episodes into separate series.
-        val seriesTitle = match.title
-        val existing = store.list().filter { it.title.equals(seriesTitle, ignoreCase = true) }
-            .mapNotNull { extractSeasonEpisode(it.title) }
-        val candidate = season to episode
-        if (candidate in existing && !duplicateEpisodeConfirmed) {
-            duplicateEpisodeConfirmed = true
-            duplicatePrompt = seriesTitle to candidate
-            status = null
-            return
-        }
-        duplicateEpisodeConfirmed = false
-        applyAiMatch(match, season = season, episode = episode)
-    }
-
-    /** T-UX04: user explicitly chose to add a duplicate copy of an existing episode. */
-    fun confirmDuplicateEpisode() {
-        val (seriesTitle, candidate) = duplicatePrompt ?: return
-        duplicatePrompt = null
-        val match = pendingAiMatch ?: return
-        duplicateEpisodeConfirmed = true
-        status = null
-        applyAiMatch(match, season = candidate.first, episode = candidate.second)
-    }
-
-    fun cancelDuplicateEpisode() {
-        duplicatePrompt = null
-        duplicateEpisodeConfirmed = false
-        status = "Pick a different season or episode."
-    }
-
-    private fun applyAiMatch(match: CatalogMetadata, season: Int?, episode: Int?) {
-        val item = pendingTitleItem ?: return
-        val selectedFrame = selectedPreviewFrame
-        // Search what the user confirmed. Searching a variant ("TheMatrix") matched a junk TMDB
-        // upload instead of The Matrix (1999).
-        val search = match.title
-        // Flow 3: TMDB fetch happens only after the user has confirmed season
-        // and episode (TV) or accepted the movie identity — so the poster is
-        // fetched for the exact episode, using the exact IMDb identity.
-        val query = buildString {
-            append(search)
-            if (match.year != null) append(" ${match.year}")
-            if (season != null && episode != null && season > 0) {
-                append(" S${season.toString().padStart(2, '0')}E${episode.toString().padStart(2, '0')}")
-            }
-        }
-        clearTitlePromptUi()
-        viewModelScope.launch {
-            busy = true
-            status = "Fetching artwork for ${match.title}…"
-            try {
-            val metadata = pairing.accountToken?.let {
-                catalog().enrich(
-                    query = query,
-                    token = it,
-                    itemId = item.id,
-                    mediaType = match.mediaType,
-                    seasonNumber = season,
-                    episodeNumber = episode,
-                    year = match.year,
-                    imdbId = match.imdbId,
-                )
-            }
-            if (metadata != null && metadata.matchStatus == "matched") {
-                // Flow 2: TMDb artwork has highest poster priority. Download and
-                // overwrite the extracted still; posterVersion bump makes the UI reload.
-                val poster = metadata.posterUrl?.let { url ->
-                    catalog().downloadBytes(url)?.let { store.writeCatalogPoster(item.id, it) }
-                }
-                store.applyCatalog(item.id, metadata, poster)
-                // A metadata match is not necessarily an artwork match. If TMDB
-                // supplied no usable image, keep the user's selected video frame.
-                if (poster == null) {
-                    selectedFrame?.let { store.setPosterFromFrame(item.id, File(it)) }
-                }
-            } else {
-                    editMetadataAndSync(item.id, match.title, match.year, match.mediaType)
-                    // Keep the selected still only when catalog artwork was not
-                    // confirmed. The selection is committed here, not on tap.
-                    selectedFrame?.let { store.setPosterFromFrame(item.id, File(it)) }
-                }
-                refresh()
-                syncLibrary()
-                status = "Added ${store.get(item.id)?.title ?: match.title}"
-                showNextPrivacyPrompt()
-                promptNextTitle()
-            } catch (error: Exception) {
-                PairLog.e("Apply AI match failed", error)
-                editMetadataAndSync(item.id, match.title, match.year, match.mediaType)
-                // Network/provider failure must not discard the local fallback
-                // that was already selected in the artwork dialog.
-                selectedFrame?.let { withContext(Dispatchers.IO) { store.setPosterFromFrame(item.id, File(it)) } }
-                refresh()
-                syncLibrary()
-                status = "Saved ${match.title} without catalog artwork"
-                showNextPrivacyPrompt()
-                promptNextTitle()
-            } finally {
-                busy = false
-            }
-        }
-    }
-
-    /** Saves a title edit on the phone; for a Telegram title (no phone file to push) the new title goes to the household too. */
-    private fun editMetadataAndSync(id: String, title: String, year: Int?, mediaType: String) {
-        store.editMetadata(id, title, year, mediaType)
-        val item = store.get(id) ?: return
-        val token = pairing.accountToken ?: return
-        if (item.sourceKind == "telegram") viewModelScope.launch { catalog().patchTitle(token, id, item.title) }
-    }
-
-    private fun clearTitlePromptUi() {
-        pendingTitleItem = null
-        titleSuggestions = emptyList()
-        previewFrames = emptyList()
-        selectedPreviewFrame = null
-        identifyingStills = false
-        pendingAiMatch = null
-        askingSeriesDetails = false
-        seasonDraft = ""
-        episodeDraft = ""
-        pendingSuggestion = null
-        seriesNotes = emptyList()
-        seasonEpisodeSuggestLabel = null
-        duplicatePrompt = null
-        duplicateEpisodeConfirmed = false
+        showNextPrivacyPrompt()
+        if (pendingPrivacyItem == null) status = "Videos added"
     }
 
     fun browseUp() {
@@ -2157,59 +1921,17 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         deleteTarget = null
     }
 
-    fun updateTitleDraft(value: String) {
-        titleDraft = value.take(120)
-        suggestJob?.cancel()
-        suggestJob = viewModelScope.launch {
-            val local = localTitleSuggestions(titleDraft)
-            titleSuggestions = local
-            delay(250)
-            if (titleDraft.trim().length < 2) return@launch
-            val remote = catalog().suggestTitles(titleDraft, pairing.accountToken)
-            val seen = local.map { it.title.lowercase() }.toMutableSet()
-            titleSuggestions = local + remote.filter { seen.add(it.title.lowercase()) }
-        }
-    }
-
-    fun confirmPendingTitle(playNow: Boolean = false) {
-        val item = pendingTitleItem ?: return
-        val query = titleDraft.trim()
-        if (query.isEmpty()) return
-        val selectedFrame = selectedPreviewFrame
-        // Keep user text + selected still; do not force TMDb unless AI match was confirmed.
-        clearTitlePromptUi()
-        viewModelScope.launch {
-            editMetadataAndSync(item.id, query, item.year, item.mediaType)
-            selectedFrame?.let { withContext(Dispatchers.IO) { store.setPosterFromFrame(item.id, File(it)) } }
-            refresh()
-            syncLibrary()
-            if (playNow) {
-                playOnTv(store.get(item.id) ?: item)
-            } else {
-                status = "Added $query"
-            }
-            showNextPrivacyPrompt()
-            promptNextTitle()
-        }
-    }
-
-    fun skipPendingTitle() {
-        clearTitlePromptUi()
-        showNextPrivacyPrompt()
-        promptNextTitle()
-    }
-
-    fun saveMetadata(title: String, year: Int?, mediaType: String) {
-        val id = selectedId ?: return
-        editMetadataAndSync(id, title, year, mediaType)
+    fun saveMetadata(base: LibraryItem, title: String, year: Int?, mediaType: String, overview: String?) {
+        if (selectedId != base.id) return
+        store.editMetadataDraft(base, title, year, mediaType, overview)
         editingMetadata = false
         refresh()
         viewModelScope.launch { syncLibrary() }
     }
 
-    /** Opens the same title/artwork editor for every library item. */
+    /** Optional editing never blocks import or playback. */
     fun findDetailsAndArtwork(item: LibraryItem) {
-        showTitlePrompt(item)
+        artworkEditor.open(item)
     }
 
     fun createCollection() {
@@ -2229,125 +1951,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteCollection(id: String) {
         store.deleteCollection(id)
         refresh()
-    }
-
-    private fun localTitleSuggestions(query: String): List<TitleSuggestion> {
-        val needle = query.trim().lowercase()
-        // Flow 3: local-library-first autocomplete enriched with the highest
-        // known numbered episode per series, so the UI can propose the next S/E.
-        val candidates = store.list().filter { !isWeakCatalogLabel(it.title) }
-        val enriched = candidates.groupBy { it.title.lowercase() }.map { (_, group) ->
-            val best = group.first()
-            val numbered = group.mapNotNull { extractSeasonEpisode(it.title) }
-            val maxSeason = numbered.maxOfOrNull { it.first }
-            val maxEpisode = numbered.filter { it.first == maxSeason }.maxOfOrNull { it.second }
-            TitleSuggestion(
-                best.title,
-                best.year,
-                best.mediaType,
-                "library",
-                maxSeason,
-                maxEpisode,
-            )
-        }
-        return enriched
-            .filter { needle.isEmpty() || it.title.lowercase().contains(needle) }
-            .sortedBy { it.title.lowercase() }
-            .take(8)
-    }
-
-    /**
-     * Flow 3: user picked a series from local-library-first suggestions.
-     * Proposes the next season/episode from the highest known numbered
-     * episode; flags duplicates within the same series and S00 specials for
-     * explicit confirmation (never silently overwrites).
-     */
-    fun pickTitleSuggestion(suggestion: TitleSuggestion) {
-        titleDraft = suggestion.title
-        pendingSuggestion = suggestion
-        val seriesItems = store.list().filter {
-            it.title.equals(suggestion.title, ignoreCase = true)
-        }
-        val existing = seriesItems.mapNotNull { extractSeasonEpisode(it.title) }.toSet()
-        val next = when {
-            suggestion.maxSeason == null -> null
-            else -> {
-                // Continue within the same season until its cap is unknown; propose
-                // maxSeason/maxEpisode + 1 as the primary suggestion.
-                suggestion.maxSeason!! to ((suggestion.maxEpisode ?: 0) + 1)
-            }
-        }
-        seasonDraft = next?.first?.toString() ?: ""
-        episodeDraft = next?.second?.toString() ?: ""
-        // T-UX04: tell the user where the pre-filled numbers come from.
-        seasonEpisodeSuggestLabel = next?.let {
-            "Suggested: S%02dE%02d — based on the highest episode in this series.".format(it.first, it.second)
-        }
-        if (suggestion.mediaType == "tv") {
-            askingSeriesDetails = true
-            val notes = buildList {
-                if (next != null && next in existing) {
-                    add("S%02dE%02d already exists — pick a different episode, or confirm to add a duplicate copy (the existing episode is kept).".format(next.first, next.second))
-                }
-                if (existing.any { it.first == 0 }) {
-                    add("This series has specials. Enter 0 as the season to add another special.")
-                }
-            }
-            seriesNotes = notes
-        } else {
-            seriesNotes = emptyList()
-        }
-        status = notesOrNull(seriesNotes)
-    }
-
-    private fun notesOrNull(notes: List<String>): String? = notes.firstOrNull()
-
-    fun dismissSeriesNotes() {
-        seriesNotes = emptyList()
-    }
-
-    private fun extractSeasonEpisode(title: String): Pair<Int, Int>? {
-        val m = Regex("""[Ss](\d{1,2})[Ee](\d{1,3})|\b(\d{1,2})x(\d{1,3})\b""").find(title) ?: return null
-        val s = (m.groupValues[1].ifBlank { m.groupValues[3] }).toIntOrNull() ?: return null
-        val e = (m.groupValues[2].ifBlank { m.groupValues[4] }).toIntOrNull() ?: return null
-        return s to e
-    }
-
-    private suspend fun finishImported(item: LibraryItem, query: String, playNow: Boolean) {
-        busy = true
-        prepareProgress = 0.15f
-        prepareStep = "Preparing ${item.title}"
-        status = prepareStep
-        try {
-            prepareProgress = 0.4f
-            prepareStep = "Looking up artwork"
-            enrichImported(item, query)
-            prepareProgress = 0.75f
-            prepareStep = "Saving library details"
-            refresh()
-            syncLibrary()
-            val ready = store.get(item.id) ?: item
-            if (needsArtworkChoice(ready)) {
-                // A good filename can bypass title correction, but it must not
-                // bypass artwork recovery. Try several positions and let the
-                // user choose; the UI's movie tile remains the final fallback.
-                showTitlePrompt(ready)
-                return
-            }
-            prepareProgress = 1f
-            prepareStep = "Ready"
-            status = if (playNow) {
-                playOnTv(ready)
-                "Playing ${ready.title} on $tvName"
-            } else {
-                "Added ${ready.title}"
-            }
-            delay(500)
-        } finally {
-            busy = false
-            prepareStep = null
-            prepareProgress = 0f
-        }
     }
 
     fun enhance(item: LibraryItem) {
@@ -2508,16 +2111,29 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             val ready = ensurePlayable(item) ?: return@launch
-            // Only show "now playing" once the control service accepted it.
-            val target = sendCommand("play", ready.id) ?: run {
+            // Only show "now playing" once the TV confirmed that playback started.
+            val token = ++titleStartToken
+            val sent = try {
+                sendCommand("play", ready.id, wait = ConfirmationWait.TitleStart, onAccepted = { tv ->
+                    startingTitle = ready.title
+                    status = "Starting ${ready.title} on $tv…"
+                })
+            } finally {
+                // A newer title start owns the field; this one only clears its own.
+                if (titleStartToken == token) startingTitle = null
+            } ?: run {
                 status = remoteStatus
                 return@launch
             }
+            // A later command owns the status line; this one only applies what the TV confirmed.
+            if (sent.latest) status = remoteStatus
+            if (!sent.outcome.applies()) return@launch
             nowPlaying = ready
             paused = false
             store.setWatchProgress(ready.id, ready.positionSeconds.coerceAtLeast(1))
             refresh()
-            status = "Playing ${ready.title} on $target"
+            if (sent.latest) status = if (sent.outcome == Outcome.Confirmed) "Playing ${ready.title} on ${sent.tvName}"
+                else "Sent ${ready.title} to ${sent.tvName} (not confirmed by TV)"
         }
     }
 
@@ -2532,16 +2148,31 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         enqueue("seek", arguments = buildJsonObject { put("seconds", delta) })
     }
 
+    /** True while a play/pause waits for the TV, so a second tap cannot resend the same command. */
+    private var toggleInFlight = false
+
     fun togglePlayPause() {
-        paused = !paused
+        if (toggleInFlight) return
+        toggleInFlight = true
         // A play command without a video ID resumes the current player.
-        enqueue(if (paused) "pause" else "play")
+        val command = if (paused) "play" else "pause"
+        viewModelScope.launch {
+            try {
+                val outcome = sendCommand(command)?.outcome ?: return@launch
+                if (outcome.applies()) paused = command == "pause"
+            } finally {
+                toggleInFlight = false
+            }
+        }
     }
 
     fun stopCast() {
-        enqueue("stop")
-        nowPlaying = null
-        paused = false
+        viewModelScope.launch {
+            val outcome = sendCommand("stop")?.outcome ?: return@launch
+            if (!outcome.applies()) return@launch
+            nowPlaying = null
+            paused = false
+        }
     }
 
     fun selectTv(tv: PairedTv) {
@@ -2934,13 +2565,54 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { sendCommand(command, videoId, arguments) }
     }
 
-    /** Returns the TV name, or null on failure. */
-    private suspend fun sendCommand(command: String, videoId: String? = null, arguments: JsonObject = buildJsonObject {}): String? {
-        remoteStatus = "Sending…"
-        return when (val result = CastSession.send(pairing, catalog(), command, videoId, arguments)) {
-            is CastSession.Result.Sent -> result.tvName.also { remoteStatus = "Sent to $it" }
-            is CastSession.Result.Failed -> null.also { remoteStatus = result.message }
+    /** Whether the TV's result (or the lack of a way to read it) lets the phone update its state. */
+    private fun Outcome.applies() = this == Outcome.Confirmed || this == Outcome.Unconfirmable
+
+    /** A command the control service accepted. [latest] is false once a newer command was sent. */
+    private data class SentCommand(val tvName: String, val outcome: Outcome, val latest: Boolean)
+
+    /** Counts sends, so only the newest command narrates [remoteStatus]. */
+    private var commandGeneration = 0L
+
+    /**
+     * Sends a command and waits for the TV's outcome, narrating it in [remoteStatus] while it is the
+     * newest command. Returns null when the control service did not accept the command. [onAccepted]
+     * runs once the service accepted it, before the wait, and only while it is still the newest.
+     */
+    private suspend fun sendCommand(
+        command: String,
+        videoId: String? = null,
+        arguments: JsonObject = buildJsonObject {},
+        wait: ConfirmationWait = ConfirmationWait.Control(),
+        onAccepted: ((tvName: String) -> Unit)? = null,
+    ): SentCommand? {
+        val generation = ++commandGeneration
+        fun report(text: String) { if (generation == commandGeneration) remoteStatus = text }
+        // A finished command's result stays long enough to read, then clears if nothing newer replaced it.
+        fun reportFinal(text: String) {
+            report(text)
+            viewModelScope.launch {
+                delay(REMOTE_STATUS_LINGER_MS)
+                if (generation == commandGeneration && remoteStatus == text) remoteStatus = null
+            }
         }
+        report("Sending…")
+        val client = catalog()
+        val sent = when (val result = CastSession.send(pairing, client, command, videoId, arguments, householdTvsCache)) {
+            is CastSession.Result.Sent -> result
+            is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
+        }
+        report(if (command == "play" && videoId != null) "Starting on ${sent.tvName}…" else "Sent to ${sent.tvName}…")
+        // Only the newest command may touch what the screens show.
+        if (generation == commandGeneration) onAccepted?.invoke(sent.tvName)
+        val outcome = CastSession.confirm(client, sent, wait)
+        reportFinal(when (outcome) {
+            Outcome.Confirmed -> "Done on ${sent.tvName}"
+            is Outcome.Rejected -> rejectionMessage(outcome.reason, sent.tvName)
+            Outcome.TimedOut -> "${sent.tvName} didn't confirm. Check the TV."
+            Outcome.Unconfirmable -> "Sent (not confirmed by TV)"
+        })
+        return SentCommand(sent.tvName, outcome, latest = generation == commandGeneration)
     }
 
     private fun publishCast() {

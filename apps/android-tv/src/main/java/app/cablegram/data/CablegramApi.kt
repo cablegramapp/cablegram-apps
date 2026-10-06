@@ -32,6 +32,10 @@ class CablegramApi(
         .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .callTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
         .pingInterval(20, java.util.concurrent.TimeUnit.SECONDS)
+        // Learn how far this TV's clock is from the server's, so progress queued offline is stamped in server time.
+        .addInterceptor { chain ->
+            chain.proceed(chain.request()).also { ServerClock.shared.observe(it.headers.getDate("Date")) }
+        }
         .build(),
 ) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -85,7 +89,36 @@ class CablegramApi(
         // Progress (resume position, Continue Watching) is per profile; without
         // profile_id the catalog carries no progress at all.
         val request = authenticatedRequest(catalogPath(profileId), token).get().build()
-        val catalog = execute<CatalogResponse>(request)
+        return buildLibrary(execute<CatalogResponse>(request), token, lanCapability)
+    }
+
+    /** What a conditional library fetch found. */
+    sealed interface LibraryFetch {
+        data class Changed(val library: VideoLibrary, val etag: String?) : LibraryFetch
+        /** The control plane answered 304: the list the caller already has is current. */
+        data object NotModified : LibraryFetch
+    }
+
+    /**
+     * [getVideos] with If-None-Match, for the TV's periodic sync: an unchanged library costs one small
+     * 304 instead of the full list and a device lookup.
+     */
+    suspend fun getVideosIfChanged(token: String, lanCapability: String?, profileId: String?, etag: String?): LibraryFetch {
+        val builder = authenticatedRequest(catalogPath(profileId), token)
+        if (!etag.isNullOrBlank()) builder.header("If-None-Match", etag)
+        val request = builder.get().build()
+        val fetched = withContext(Dispatchers.IO) {
+            client.newCall(request).execute().use { response ->
+                if (response.code == 304) return@use null
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw decodeApiError(response.code, body, json)
+                json.decodeFromString<CatalogResponse>(body) to response.header("ETag")
+            }
+        } ?: return LibraryFetch.NotModified
+        return LibraryFetch.Changed(buildLibrary(fetched.first, token, lanCapability), fetched.second)
+    }
+
+    private suspend fun buildLibrary(catalog: CatalogResponse, token: String, lanCapability: String?): VideoLibrary {
         val devices = if (lanCapability.isNullOrBlank()) emptyList() else runCatching {
             execute<MeDto>(authenticatedRequest("api/me", token).get().build()).devices
         }.getOrDefault(emptyList())
@@ -192,6 +225,24 @@ class CablegramApi(
     suspend fun telegramTvLoginState(token: String, requestId: String): TelegramTvLoginStateDto =
         execute(authenticatedRequest("api/telegram/tv-logins/$requestId", token).get().build())
 
+    /** Asks the household phone to type the Telegram password; it is sealed to [publicKey], so only this TV can read it. */
+    suspend fun postTelegramPasswordRequest(token: String, publicKey: String, hint: String): String {
+        val body = json.encodeToString(buildJsonObject {
+            put("public_key", publicKey)
+            if (hint.isNotBlank()) put("hint", hint.take(200))
+        })
+        val response: TelegramTvLoginDto = execute(authenticatedRequest("api/telegram/tv-password-requests", token).post(body.toRequestBody(jsonMediaType)).build())
+        return response.requestId
+    }
+
+    /** Withdraws a password request this TV no longer needs, so the phone's notification goes away. */
+    suspend fun cancelTelegramPasswordRequest(token: String, requestId: String) =
+        executeNoContent(authenticatedRequest("api/telegram/tv-password-requests/$requestId", token).delete().build())
+
+    /** The sealed password arrives here exactly once, in the answer where [TelegramPasswordRequestDto.state] is "delivered". */
+    suspend fun telegramPasswordRequest(token: String, requestId: String): TelegramPasswordRequestDto =
+        execute(authenticatedRequest("api/telegram/tv-password-requests/$requestId", token).get().build())
+
     /** Phones waiting for this Home TV to approve their Telegram QR login (spec 004 FR-023). */
     suspend fun pendingPhoneLogins(token: String): List<PendingPhoneLoginDto> =
         execute<PendingPhoneLoginsDto>(authenticatedRequest("api/telegram/phone-logins/pending", token).get().build()).requests
@@ -240,7 +291,7 @@ class CablegramApi(
         execute(authenticatedRequest("api/control/commands?delivery=ack", token).get().build())
 
     suspend fun completeCommand(commandId: String, token: String) {
-        executeNoContent(authenticatedRequest("api/control/commands/$commandId/complete", token).post("".toRequestBody(jsonMediaType)).build())
+        executeNoContent(authenticatedRequest("api/control/commands/$commandId/complete", token).post("{}".toRequestBody(jsonMediaType)).build())
     }
 
     suspend fun rejectCommand(commandId: String, reason: String, token: String) {
@@ -915,6 +966,9 @@ data class PendingPhoneLoginDto(
 
 @Serializable
 data class TelegramTvLoginDto(@kotlinx.serialization.SerialName("request_id") val requestId: String)
+
+@Serializable
+data class TelegramPasswordRequestDto(val state: String, val sealed: String? = null)
 
 @Serializable
 data class TelegramTvLoginStateDto(val state: String, val error: String? = null)
