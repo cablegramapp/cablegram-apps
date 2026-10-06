@@ -1155,8 +1155,11 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         if (isDemoMode || commandJob?.isActive == true) return
         commandJob = viewModelScope.launch {
             while (true) {
-                val accounts = if (screen is ScreenState.ProfilePicker) authStore.getAccounts()
-                    else listOfNotNull(token?.let { t -> sessionId?.let { s -> AccountCredential(s, t) } })
+                val storedAccounts = authStore.getAccounts()
+                val accounts = if (screen is ScreenState.ProfilePicker) storedAccounts else storedAccounts.filter {
+                    it.token == token || commandJournal.pending(it.sessionId).isNotEmpty() ||
+                        castHold.command != null && deviceIdOf(it.token) == castHold.launch?.targetDeviceId
+                }
                 commandDelivery.setAccounts(accounts)
                 commandJournal.executing().forEach { record ->
                     val id = record.command.id
@@ -1169,6 +1172,8 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                             remoteTitleCommand = null
                             cancelResolving()
                         }
+                    } else if (screen is ScreenState.Loading && castHold.command?.id == id) {
+                        // Profile selection may need a slow library fetch; the original TTL still applies.
                     } else if (screen is ScreenState.Error || !screen.acceptsCommandPolling()) {
                         finishCommand(id, "screen_unavailable")
                     }
