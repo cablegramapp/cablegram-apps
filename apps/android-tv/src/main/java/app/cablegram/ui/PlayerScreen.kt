@@ -1586,6 +1586,8 @@ internal fun transportNoticeFor(url: String): String = when {
 internal fun relayMessage(code: Int?, error: String?): String = when {
     // A 5xx without the relay's own error code comes from the proxy: the relay service is down.
     error == null && code != null && code >= 500 -> "Cablegram's relay isn't reachable right now. Put the phone and TV on the same Wi‑Fi, or try again in a few minutes."
+    // Connected to the relay, but no answer in time: the relay was waiting on the phone, so the TV's internet is fine.
+    code == null && error == NO_RESPONSE -> "Your phone didn't respond. Check that Cablegram is open on the phone."
     code == null -> "Can't reach Cablegram from this TV. Check the TV's internet connection."
     error == "phone_offline" -> "Your phone isn't reachable. Open Cablegram on the phone and check that it has internet."
     error == "mobile_data_not_allowed" -> "Your phone is on mobile data, and streaming over mobile data is turned off in Cablegram's settings on the phone."
@@ -1598,12 +1600,18 @@ internal fun relayMessage(code: Int?, error: String?): String = when {
 }
 
 /** Status and relay error code of a small Range request; status null when unreachable. */
-private suspend fun probeSource(client: OkHttpClient, url: String, headers: Map<String, String>, timeoutMs: Long): Pair<Int?, String?> =
+internal suspend fun probeSource(client: OkHttpClient, url: String, headers: Map<String, String>, timeoutMs: Long): Pair<Int?, String?> =
     withContext(Dispatchers.IO) {
+        // Whether the request reached the server: a timeout after that is the far side (the phone) not answering,
+        // not this TV being offline.
+        var connected = false
         try {
             val quick = client.newBuilder()
                 .connectTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
                 .callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .eventListener(object : okhttp3.EventListener() {
+                    override fun connectionAcquired(call: okhttp3.Call, connection: okhttp3.Connection) { connected = true }
+                })
                 .build()
             val request = Request.Builder().url(url).header("Range", "bytes=0-1")
             headers.forEach { (name, value) ->
@@ -1615,14 +1623,17 @@ private suspend fun probeSource(client: OkHttpClient, url: String, headers: Map<
                     kotlinx.serialization.json.Json.parseToJsonElement(response.body?.string().orEmpty())
                         .let { (it as? kotlinx.serialization.json.JsonObject)?.get("error")?.jsonPrimitive?.content }
                 }.getOrNull()
-                Log.w(PLAYBACK_LOG_TAG, "Source probe HTTP ${response.code} ${code ?: ""} ${playbackUrlForLog(url)}")
+                runCatching { Log.w(PLAYBACK_LOG_TAG, "Source probe HTTP ${response.code} ${code ?: ""} ${playbackUrlForLog(url)}") }
                 response.code to code
             }
         } catch (error: Exception) {
-            Log.w(PLAYBACK_LOG_TAG, "Source probe failed ${playbackUrlForLog(url)}: ${error.javaClass.simpleName}")
-            null to null
+            runCatching { Log.w(PLAYBACK_LOG_TAG, "Source probe failed ${playbackUrlForLog(url)}: ${error.javaClass.simpleName}${if (connected) " after connecting" else ""}") }
+            null to if (connected && error is java.io.InterruptedIOException) NO_RESPONSE else null
         }
     }
+
+/** [probeSource]'s error when the server took the request but sent nothing back in time. */
+internal const val NO_RESPONSE = "no_response"
 
 /**
  * Null when [url] can be played now, else the message to show. LAN gets a single short probe when
