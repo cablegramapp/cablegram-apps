@@ -463,13 +463,25 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** The Google sign-in ended and the browser sent the owner back with `cablegram://storage?provider=…&result=…`. */
     fun applyStorageReturn(uri: String) {
         val ret = parseStorageReturn(uri) ?: return
-        val message = storageReturnMessage(ret, storage)
-        status = message
-        // A missed permission box is shown on the sheet itself, beside the button to try again.
-        googleConnectError = if (signInNeedsAnotherTry(ret)) message else null
         tab = PhoneTab.Storage
         cloudSheet = CloudSheet.Manage
-        refreshStorage()
+        // Any app or page can open this link, so "connected" is said only once the server confirms it.
+        if (ret.result != "connected") {
+            val message = storageReturnMessage(ret, storage)
+            status = message
+            // A missed permission box is shown on the sheet itself, beside the button to try again.
+            googleConnectError = if (signInNeedsAnotherTry(ret)) message else null
+            refreshStorage()
+            return
+        }
+        googleConnectError = null
+        val token = pairing.accountToken ?: return
+        viewModelScope.launch {
+            val confirmed = catalog().storageStatus(token)
+            storage = confirmed
+            val connection = confirmed?.connection
+            if (connection?.provider == ret.provider && connection.status == "active") status = storageReturnMessage(ret, confirmed)
+        }
     }
 
     fun disconnectStorage() {

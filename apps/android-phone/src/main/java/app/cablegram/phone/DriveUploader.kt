@@ -185,7 +185,11 @@ class OwnCloudUploader(
         when (start.protocol) {
             "s3_multipart" -> s3.run(start, restart, channel, size, onProgress)
             "gdrive_resumable" -> drive.run(start, restart, channel, size, onProgress)
-            else -> throw R2ApiException(0, "unsupported_protocol")
+            else -> {
+                // The server has already opened the upload; don't leave it waiting for bytes that never come.
+                runCatching { api.abort(start.uploadId) }
+                throw R2ApiException(0, "unsupported_protocol")
+            }
         }
     }
 }

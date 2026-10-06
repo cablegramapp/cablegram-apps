@@ -27,7 +27,9 @@ class CloudTransferService : Service() {
     private val queue = ConcurrentLinkedQueue<String>()
     /** Titles whose save goes to the household's own R2 bucket instead of Cablegram Cloud. */
     private val ownR2 = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-    /** Where saves are going, for the notification: "Google Drive", or "Cloud" for Cablegram Cloud. */
+    /** Where each queued title goes, for the notification: "Google Drive", or "Cloud" for Cablegram Cloud. */
+    private val destinations = java.util.concurrent.ConcurrentHashMap<String, String>()
+    /** Where the title being saved now goes. A queue can mix destinations, so it is set per title in [saveOne]. */
     @Volatile private var destination = "Cloud"
     private val running = AtomicBoolean(false)
     private val store by lazy { LibraryStore(this) }
@@ -41,7 +43,9 @@ class CloudTransferService : Service() {
             return START_NOT_STICKY
         }
         if (intent.getBooleanExtra(EXTRA_OWN_R2, false)) ownR2.add(id)
-        intent.getStringExtra(EXTRA_DESTINATION)?.takeIf { it.isNotBlank() }?.let { destination = it }
+        val target = intent.getStringExtra(EXTRA_DESTINATION)?.takeIf { it.isNotBlank() } ?: "Cloud"
+        destinations[id] = target
+        if (!running.get()) destination = target
         queue.add(id)
         val item = store.get(id)
         startAsForeground(item?.title ?: "Video", 0, item?.fileSizeBytes ?: 0)
@@ -74,6 +78,7 @@ class CloudTransferService : Service() {
     }
 
     private suspend fun saveOne(id: String) {
+        destination = destinations.remove(id) ?: "Cloud"
         val item = store.get(id) ?: return
         store.update(
             item.copy(

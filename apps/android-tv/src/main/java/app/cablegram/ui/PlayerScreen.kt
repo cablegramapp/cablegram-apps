@@ -423,14 +423,18 @@ fun PlayerScreen(
                 val fallback = activePlayback.fallbackUrl ?: activePlayback.fallbackResolver?.invoke()
                 if (fallback != null) transition = transitionTo(fallback, atStart = true)
                 val fallbackError = fallback?.let {
-                    reachableSource(playbackHttp, it, activePlayback.headers, quick = false) { notice -> transportNotice = notice }
+                    reachableSource(playbackHttp, it, activePlayback.fallbackHeaders, quick = false) { notice -> transportNotice = notice }
                 }
                 if (fallback == null || fallbackError != null) {
                     transition = null
                     error = fallbackError ?: primaryError
                     return@LaunchedEffect
                 }
-                activePlayback = activePlayback.copy(url = fallback, fallbackUrl = primary)
+                // Swap headers with the URLs, as switchSource does: a cloud token never goes to the other path.
+                activePlayback = activePlayback.copy(
+                    url = fallback, headers = activePlayback.fallbackHeaders, fallbackUrl = primary, fallbackHeaders = activePlayback.headers,
+                    fallbackResolver = null,
+                )
                 transportNotice = transportNoticeFor(fallback)
             }
         }
@@ -1405,6 +1409,13 @@ internal fun isRelayUrl(url: String): Boolean = url.contains("/relay/v1/")
 /** This TV's own Telegram session, served on 127.0.0.1 (spec 004 T009). */
 internal fun isTelegramLocalUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && url.contains("/tg/")
 
+/** The household's own cloud storage (Drive), served on 127.0.0.1 by CloudStreamServer, which adds the token (spec 006). */
+internal fun isCloudLocalUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && url.contains("/cloud/")
+
+/** A request for the household's own cloud storage: it carries the bearer token, or the local stream adds it. */
+private fun isCloudSource(url: String, headers: Map<String, String>): Boolean =
+    isCloudLocalUrl(url) || headers.keys.any { it.equals("Authorization", ignoreCase = true) }
+
 /** A Telegram title streamed by the phone's session, over the LAN or the relay (spec 004 US8). */
 internal fun isPhoneTelegramUrl(url: String): Boolean = url.contains("/telegram/")
 
@@ -1480,9 +1491,10 @@ internal suspend fun reachableSource(
     // player itself reports a failure, which switches to the next source.
     if (isTelegramLocalUrl(url)) return null
     if (!isRelayUrl(url)) {
-        if (!quick) return preflightPlaybackUrl(client, url, headers)
+        // Drive's first byte can take longer than the LAN probe allows; a slow answer is not an unreachable phone.
+        if (!quick || isCloudLocalUrl(url)) return preflightPlaybackUrl(client, url, headers)
         val (code, _) = probeSource(client, url, headers, 3_000)
-        val cloud = headers.keys.any { it.equals("Authorization", ignoreCase = true) }
+        val cloud = isCloudSource(url, headers)
         return if (code != null && code in 200..299) null
         else if (cloud) preflightMessage(code ?: 0, cloud = true).takeIf { code != null } ?: "Can't reach your cloud storage right now."
         else "Can't reach your phone on this Wi‑Fi."
@@ -1534,7 +1546,7 @@ private suspend fun preflightPlaybackUrl(client: OkHttpClient, url: String, head
                         null
                     } else {
                         Log.e(PLAYBACK_LOG_TAG, "Playback preflight HTTP ${response.code} $safeUrl")
-                        preflightMessage(response.code, cloud = headers.keys.any { it.equals("Authorization", ignoreCase = true) })
+                        preflightMessage(response.code, cloud = isCloudSource(url, headers))
                     }
                 }
             } catch (error: Exception) {
@@ -1542,7 +1554,8 @@ private suspend fun preflightPlaybackUrl(client: OkHttpClient, url: String, head
                     PLAYBACK_LOG_TAG,
                     "Playback preflight failed ${playbackUrlForLog(url)}: ${error.message ?: error.javaClass.simpleName}",
                 )
-                "Can't reach your phone. Make sure it's on the same Wi-Fi with Cablegram open, then try again."
+                if (isCloudSource(url, headers)) "Can't reach your cloud storage right now."
+                else "Can't reach your phone. Make sure it's on the same Wi-Fi with Cablegram open, then try again."
             }
         }
         if (lastError == null) return null

@@ -38,7 +38,7 @@ keys, then stores them encrypted.
 ### `POST /api/storage/disconnect` (phone only)
 
 `{}` → `200 { "status": "disconnected" }`, `404 storage_not_connected`. Deletes the stored credential,
-aborts open uploads, marks the household's `cloud_r2` sources `unavailable`. Objects stay in the bucket.
+aborts open uploads, marks the household's `own_cloud` sources `unavailable`. Objects stay in the bucket.
 
 ## Upload (phone only)
 
@@ -63,7 +63,7 @@ aborts open uploads, marks the household's `cloud_r2` sources `unavailable`. Obj
 ### `POST /api/storage/uploads/:id/complete`
 
 `{ "parts": [ {"part": 1, "etag": "…"} ] }`. Completes the multipart upload, `HEAD`s the object and
-checks `size_bytes`. On success it adds the `cloud_r2` source (idempotent by object key) and returns
+checks `size_bytes`. On success it adds the `own_cloud` source (idempotent by object key) and returns
 `200 { "source_id": "uuid", "media_item_id": "uuid", "bytes": 1073741824 }`. On a size mismatch it deletes
 the object and returns `422 size_mismatch`.
 
@@ -79,7 +79,7 @@ Deletes the object from the bucket and the source row. `204`. `404` for any othe
 
 ## Playback
 
-`POST /api/playback/resolve` (TV), for a title whose available source is `cloud_r2`:
+`POST /api/playback/resolve` (TV), for a title whose available source is `own_cloud`:
 
 ```json
 200 { "status": "ready", "url": "https://<acct>.r2.cloudflarestorage.com/…?X-Amz-…",

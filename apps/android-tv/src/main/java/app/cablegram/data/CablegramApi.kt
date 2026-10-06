@@ -447,8 +447,9 @@ class CablegramApi(
                     title = item.title,
                     posterUrl = item.posterUrl,
                     fallbackUrl = if (lan != null) telegram ?: (if (hasR2) null else relay) else telegram,
-                    // Looked up only if the LAN stalls: the cloud copy first, the relay when it cannot be reached. A copy that
-                    // needs a header (Drive) is skipped here: a fallback is a bare URL and must not carry a cloud token.
+                    // Looked up only if the LAN stalls: the cloud copy first, the relay when it cannot be reached. A fallback is a
+                    // bare URL and must not carry a cloud token: Drive is used through the local CloudStreamServer URL, which holds
+                    // the token itself, and a copy that would still need a header is skipped.
                     fallbackResolver = if (lan != null && telegram == null && hasR2) ({ ownCloud()?.takeIf { it.headers.isEmpty() }?.url ?: relay }) else null,
                 )
             }
