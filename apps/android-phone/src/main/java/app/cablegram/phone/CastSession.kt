@@ -27,7 +27,11 @@ object CastSession {
     }
 
     sealed interface Result {
-        data class Sent(val tvName: String, val commandId: String, val token: String) : Result
+        /** [offline] and [switchedFrom] as in [TargetResult.Target]. */
+        data class Sent(
+            val tvName: String, val commandId: String, val token: String,
+            val offline: Boolean = false, val switchedFrom: String? = null,
+        ) : Result
         data class Failed(val message: String) : Result
     }
 
@@ -49,14 +53,21 @@ object CastSession {
         val selected = pairing.tvs.lastOrNull()
         var list = household
         // A failed refresh means offline (null), not the stale cache: offline sends to the stored
-        // device ID, and the server refuses a revoked TV.
-        if (list == null || selected != null && list.none { it.id == selected.deviceId }) list = client.householdTvs(token)
+        // device ID, and the server refuses a revoked TV. A title start always asks afresh which TVs are on.
+        if (list == null || command == "play" && videoId != null || selected != null && list.none { it.id == selected.deviceId }) {
+            list = client.householdTvs(token)
+        }
         val target = when (val resolved = resolveTarget(selected, list)) {
             is TargetResult.Failed -> return Result.Failed(resolved.message)
             is TargetResult.Target -> resolved
         }
         return when (val sent = client.postCommand(token, command, videoId, target.deviceId, arguments)) {
-            is CommandSend.Accepted -> Result.Sent(target.name, sent.id, token)
+            is CommandSend.Accepted -> {
+                // The TV that is on becomes the current one, so the remote and the next title go there too.
+                target.switchedFrom?.let { pairing.tvs.firstOrNull { tv -> tv.deviceId == target.deviceId } }
+                    ?.let { tv -> pairing.tvs = pairing.tvs.filterNot { it.pin == tv.pin } + tv }
+                Result.Sent(target.name, sent.id, token, target.offline, target.switchedFrom)
+            }
             CommandSend.TargetGone -> Result.Failed("${target.name} is no longer connected. Choose a TV in Settings.")
             CommandSend.Failed -> Result.Failed("Could not reach the control service. Check your connection and try again.")
         }
