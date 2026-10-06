@@ -30,7 +30,7 @@ internal fun remoteCommandBody(
 
 sealed interface TargetResult {
     /**
-     * [offline]: the control plane says this TV isn't on, so a command waits for it. [switchedFrom]: the selected TV
+     * [offline]: the control plane says this TV doesn't have Cablegram open. [switchedFrom]: the selected TV
      * wasn't on and this, the only TV that is, was chosen instead.
      */
     data class Target(val deviceId: String, val name: String, val offline: Boolean = false, val switchedFrom: String? = null) : TargetResult
