@@ -130,6 +130,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize().background(VlcBlack)) {
             Column(Modifier.fillMaxSize()) {
+                AddedVideosCard(viewModel)
                 if (viewModel.pendingApprovals.isNotEmpty()) ApprovalCard(viewModel, Modifier.padding(16.dp))
                 Box(Modifier.weight(1f)) {
                     when (viewModel.tab) {
@@ -144,6 +145,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
             viewModel.shownSeries?.let { SeriesOverlay(viewModel, it) }
             viewModel.selected?.let { if (viewModel.subtitleFlowOpen) SubtitleFlow(viewModel, it) { viewModel.subtitleFlowOpen = false } else DetailOverlay(viewModel, it) }
             viewModel.deleteTarget?.let { DeleteDialog(viewModel, it) }
+            viewModel.removeCloudCopyTarget?.let { RemoveCloudCopyDialog(viewModel, it) }
             CloudFlow(viewModel)
             if (viewModel.telegramSheetOpen) TelegramConnectSheet(viewModel)
         }
@@ -162,7 +164,8 @@ private fun LibraryNav(viewModel: PhoneViewModel) {
         items.forEach { (tab, icon, label) ->
             NavigationBarItem(
                 selected = viewModel.tab == tab || (tab == PhoneTab.Settings && viewModel.tab == PhoneTab.Storage),
-                onClick = { viewModel.tab = tab; viewModel.closeItem() },
+                // A cloud sheet, a title page and a series page are full-screen overlays: leaving for another tab must not leave them covering it.
+                onClick = { viewModel.dismissCloudSheet(); viewModel.tab = tab; viewModel.closeItem(); viewModel.closeSeries() },
                 icon = { Icon(icon, contentDescription = label) },
                 label = { Text(label, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 modifier = Modifier.maestro(
@@ -437,7 +440,7 @@ private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series
                     }
                     TextButton(
                         onClick = { viewModel.playOnTv(episode) },
-                        enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.sourceKind == "telegram",
+                        enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.ownCloudCopy || episode.sourceKind == "telegram",
                     ) { Text("Play") }
                     ItemActionMenu(viewModel, episode, viewModel.actionMenuId == rowKey)
                 }
@@ -516,7 +519,7 @@ private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: Phon
 @Composable
 private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expanded: Boolean) {
     DropdownMenu(expanded = expanded, onDismissRequest = { viewModel.actionMenuId = null }) {
-        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.sourceKind == "telegram") {
+        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy || item.sourceKind == "telegram") {
             viewModel.actionMenuId = null
             viewModel.playOnTv(item)
         }
@@ -526,11 +529,14 @@ private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expande
         if (canSaveToTelegram(item) && viewModel.telegramLink?.linked == true && PhoneTelegram.configured) {
             CompactMenuItem("Save to Telegram") { viewModel.actionMenuId = null; viewModel.saveToTelegram(item) }
         }
-        if (item.cloudObjectPresent && !item.copied) {
+        if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) {
             CompactMenuItem("Download from Cloud") { viewModel.actionMenuId = null; viewModel.downloadFromCloud(item) }
         }
         if (canRemoveLocalCopy(item)) {
             CompactMenuItem("Free up phone space") { viewModel.actionMenuId = null; viewModel.askFreeUp(item) }
+        }
+        if (canRemoveOwnCloudCopy(item)) {
+            CompactMenuItem("Remove cloud copy") { viewModel.actionMenuId = null; viewModel.askRemoveCloudCopy(item) }
         }
         viewModel.collections.forEach { collection ->
             CompactMenuItem("Move to ${collection.name}") {
@@ -538,7 +544,7 @@ private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expande
                 viewModel.toggleCollection(item, collection.id)
             }
         }
-        CompactMenuItem("Rename") { viewModel.actionMenuId = null; viewModel.openItem(item); viewModel.editingMetadata = true }
+        CompactMenuItem("Edit details") { viewModel.actionMenuId = null; viewModel.openItem(item); viewModel.editingMetadata = true }
         CompactMenuItem("Delete") { viewModel.actionMenuId = null; viewModel.askDelete(item) }
     }
 }
@@ -805,7 +811,8 @@ private fun StorageScreen(viewModel: PhoneViewModel) {
         }
         SectionCard("Cloud storage") {
             StorageMetric("Media saved", formatBytes(cloudMediaBytes(viewModel.items)))
-            StorageMetric("Available", if (viewModel.cloudUnlimited) "Your storage" else formatBytes(viewModel.cloudAvailable))
+            StorageMetric("Available", if (viewModel.cloudUnlimited) destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable) else formatBytes(viewModel.cloudAvailable))
+            if (viewModel.cloudConnected) Text("Connected: ${viewModel.storage?.connection?.displayLabel ?: "your own storage"}", color = Color(0xFF79D6B0))
             OutlinedButton(onClick = { viewModel.cloudSheet = CloudSheet.Manage }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.STORAGE_MANAGE)) { Text("Manage cloud storage") }
         }
         SectionCard("Saved in the cloud") {
@@ -1036,10 +1043,12 @@ private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> U
 
 @Composable
 private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
-    val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent
+    val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent && !item.ownCloudCopy
+    val draftBase = remember(item.id, viewModel.editingMetadata) { item }
     var title by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.title) }
     var year by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.year?.toString().orEmpty()) }
     var mediaType by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.mediaType) }
+    var overview by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.overview.orEmpty()) }
     BackHandler { if (viewModel.editingMetadata) viewModel.editingMetadata = false else viewModel.closeItem() }
     Column(Modifier.fillMaxSize().background(VlcBlack).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1049,8 +1058,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             }
             Spacer(Modifier.weight(1f))
             if (!viewModel.editingMetadata) {
-                TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }) { Text("Find details & artwork") }
-                TextButton(onClick = { viewModel.editingMetadata = true }) { Text("Edit") }
+                TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }, modifier = Modifier.maestro("detail_edit_artwork")) { Text("Edit details & cover") }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1065,15 +1073,19 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 }
             }
         }
+        if (item.metadataConflict) Text("Details changed on another device. Your edits are kept on this phone. Review them and save again to use your version.", color = VlcOrange)
+        else if (item.pendingMetadataFields.isNotEmpty()) Text("Details saved on this phone · Waiting to sync", color = VlcMuted)
         if (viewModel.editingMetadata) {
-            SectionCard("Edit title") {
-                OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Title") })
+            SectionCard("Edit details") {
+                Text("${if (item.sourceKind == "web") "Original link" else "Original file"}: ${item.filename}", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(title, { title = it.take(500) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Title") })
                 OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Year") })
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = mediaType != "tv", onClick = { mediaType = "movie" }, label = { Text("Movie") })
                     FilterChip(selected = mediaType == "tv", onClick = { mediaType = "tv" }, label = { Text("TV show") })
                 }
-                Button(onClick = { viewModel.saveMetadata(title.trim(), year.toIntOrNull(), mediaType) }, enabled = title.isNotBlank() && !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Save changes") }
+                OutlinedTextField(overview, { overview = it.take(10000) }, Modifier.fillMaxWidth(), minLines = 3, maxLines = 8, label = { Text("Summary") })
+                Button(onClick = { viewModel.saveMetadata(draftBase, title.trim(), year.toIntOrNull(), mediaType, overview) }, enabled = title.isNotBlank() && (year.isBlank() || year.toIntOrNull() in 1..9999) && !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Save changes") }
             }
         } else {
             if (item.positionSeconds > 0) {
@@ -1109,8 +1121,9 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 if (viewModel.telegramLink?.linked == true && PhoneTelegram.configured && canSaveToTelegram(item) && item.webTransferError != TELEGRAM_SAVE_FAILED) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Save to Telegram") }
                 }
-                if (item.cloudObjectPresent && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
+                if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
                 if (canRemoveLocalCopy(item)) TextButton(onClick = { viewModel.askFreeUp(item) }) { Text("Free up phone space") }
+                if (canRemoveOwnCloudCopy(item)) TextButton(onClick = { viewModel.askRemoveCloudCopy(item) }) { Text("Remove cloud copy") }
             }
             if (viewModel.collections.isNotEmpty()) SectionCard("Collections") {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1122,6 +1135,20 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             TextButton(onClick = { viewModel.askDelete(item) }) { Text("Remove title…", color = MaterialTheme.colorScheme.error) }
         }
     }
+}
+
+@Composable
+private fun RemoveCloudCopyDialog(viewModel: PhoneViewModel, item: LibraryItem) {
+    AlertDialog(
+        modifier = Modifier.maestroRoot(),
+        onDismissRequest = { viewModel.removeCloudCopyTarget = null },
+        title = { Text("Remove the cloud copy?") },
+        text = { Text(removeCopyQuestion(item.title, viewModel.saveDestinationName)) },
+        confirmButton = {
+            TextButton(onClick = { viewModel.removeCloudCopy(item) }) { Text("Remove copy", color = Color(0xFFFF8A80)) }
+        },
+        dismissButton = { TextButton(onClick = { viewModel.removeCloudCopyTarget = null }) { Text("Keep it") } },
+    )
 }
 
 @Composable

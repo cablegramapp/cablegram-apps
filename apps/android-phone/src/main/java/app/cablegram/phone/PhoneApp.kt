@@ -74,13 +74,10 @@ fun PhoneApp(viewModel: PhoneViewModel) {
         else -> LibraryShell(viewModel)
     }
     if (viewModel.pendingPair != null) PairTrustDialog(viewModel)
-    if (viewModel.duplicatePrompt != null) {
-        DuplicateEpisodeDialog(viewModel)
-    } else if (viewModel.pendingPrivacyItem != null) {
+    if (viewModel.pendingPrivacyItem != null) {
         PrivacyPrompt(viewModel)
-    } else if (viewModel.pendingTitleItem != null || viewModel.pendingAiMatch != null) {
-        TitlePrompt(viewModel)
     }
+    if (viewModel.artworkEditor.draft != null) ArtworkEditorScreen(viewModel.artworkEditor)
 }
 
 @Composable

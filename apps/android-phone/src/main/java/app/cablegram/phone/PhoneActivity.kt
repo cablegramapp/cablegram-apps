@@ -50,8 +50,8 @@ class PhoneActivity : ComponentActivity() {
             return
         }
         val uri = intent?.data?.toString() ?: return
-        if (uri.startsWith("cablegram://storage")) {
-            viewModel.markStorageReturned()
+        if (parseStorageReturn(uri) != null) {
+            viewModel.applyStorageReturn(uri)
             return
         }
         viewModel.applyPairUri(uri)

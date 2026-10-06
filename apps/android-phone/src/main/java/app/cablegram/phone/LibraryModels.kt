@@ -51,8 +51,17 @@ data class LibraryItem(
     val telegramCopy: Boolean = false,
     /** `tgfile:<unique id>` of a Telegram channel title, so its bytes can be read for subtitle matching. */
     val telegramFileKey: String? = null,
+    /**
+     * A verified copy of this title's video is in the household's own Cloudflare R2 bucket (spec 005). Set from the
+     * catalog on every sync, so it clears when the bucket is disconnected (the copy is then unreachable).
+     */
+    val ownCloudCopy: Boolean = false,
+    /** The catalog's id for that copy, used to remove just that copy (spec 006); null when there is none. */
+    val ownCloudSourceId: String? = null,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
+    /** Exact identity explicitly reviewed in the editor; background lookup must not replace it. */
+    val catalogIdentityUserSelected: Boolean = false,
     val seasonNumber: Int? = null,
     val episodeNumber: Int? = null,
     @SerialName("private") val isPrivate: Boolean = false,
@@ -63,6 +72,13 @@ data class LibraryItem(
     val householdOnly: Boolean = false,
     /** Fields explicitly saved by the user. Catalog refreshes must not replace them. */
     val userMetadataFields: Set<String> = emptySet(),
+    /** Server id differs from the local id for files imported on this phone. */
+    val catalogItemId: String? = null,
+    val metadataRevision: Int = 0,
+    /** Durable edits are retried on the next sync, including web and offline-only titles. */
+    val pendingMetadataFields: Set<String> = emptySet(),
+    val metadataEditId: String? = null,
+    val metadataConflict: Boolean = false,
     /** The user-selected artwork source. `legacy` preserves pre-migration posters. */
     val artworkOrigin: String = ARTWORK_LEGACY,
     /** True only after an explicit artwork choice; automatic thumbnails stay replaceable. */
@@ -200,8 +216,11 @@ data class RemoteCatalogItem(
     @SerialName("media_type") val mediaType: String? = null,
     val year: Int? = null,
     val overview: String? = null,
+    @SerialName("user_metadata_fields") val userMetadataFields: Set<String> = emptySet(),
+    @SerialName("metadata_revision") val metadataRevision: Int = 0,
     val genres: List<String> = emptyList(),
     @SerialName("tmdb_id") val tmdbId: Int? = null,
+    @SerialName("series_identity") val seriesIdentity: String? = null,
     @SerialName("season_number") val seasonNumber: Int? = null,
     @SerialName("episode_number") val episodeNumber: Int? = null,
     @SerialName("match_status") val matchStatus: String? = null,
@@ -211,6 +230,7 @@ data class RemoteCatalogItem(
 
 @Serializable
 data class RemoteCatalogSource(
+    val id: String? = null,
     val kind: String = "phone_local",
     @SerialName("origin_identity") val originIdentity: String? = null,
     @SerialName("origin_filename") val originFilename: String? = null,
@@ -296,19 +316,33 @@ data class StorageConnection(
     val status: String? = null,
     val bucketName: String? = null,
     val displayLabel: String? = null,
+    /** The signed-in account (Google email); null for providers that connect by keys. */
+    val accountLabel: String? = null,
+    /** Where files go: the Drive folder name. */
+    val locationLabel: String? = null,
+    /** A stable code such as `reauthorization_required`, never provider text. */
+    val lastError: String? = null,
+    val quota: StorageQuota? = null,
+)
+
+@Serializable
+data class StorageQuota(val usedBytes: Long = 0, val limitBytes: Long? = null)
+
+/** A storage provider the server offers (spec 006). `configured` is false when the server lacks what it needs. */
+@Serializable
+data class StorageProviderInfo(
+    val id: String,
+    val name: String = id,
+    val connectMethod: String = "keys",
+    val configured: Boolean = false,
 )
 
 @Serializable
 data class StorageStatusResponse(
     val configured: Boolean = false,
+    val providers: List<StorageProviderInfo> = emptyList(),
     val connection: StorageConnection? = null,
     val connections: List<StorageConnection> = emptyList(),
-)
-
-@Serializable
-data class StorageConnectResponse(
-    val provider: String? = null,
-    val authUrl: String,
 )
 
 @Serializable

@@ -82,10 +82,6 @@ class LanLibraryService : Service() {
                 advertise(legacyToken)
                 startRevocationWatch()
                 startRelay(store)
-                // T075 / R-5: private-playback approvals, surfaced only when the TV asks.
-                approvals = ApprovalWatcher(this, serviceScope).also { it.start() }
-                // Spec 004 US2: sign paired TVs in to the household's Telegram.
-                telegramApprovals = TelegramTvApprovalWatcher(this, serviceScope).also { it.start() }
                 PrivateApprovals.deleteLegacyChannel(this)
                 // While something plays on the TV, the ongoing notification becomes its remote.
                 serviceScope.launch { CastSession.state.drop(1).collect { postNotification() } }
@@ -95,6 +91,12 @@ class LanLibraryService : Service() {
             // with the capabilities just persisted by PairingStore.
             server?.replaceCapabilities(capabilities)
         }
+        // These talk to the control plane only, so they run even when the LAN server could not bind its port (another
+        // app holds it): otherwise a TV waits for a Telegram approval or password that the phone is never asked for.
+        // T075 / R-5: private-playback approvals, surfaced only when the TV asks.
+        if (approvals == null) approvals = ApprovalWatcher(this, serviceScope).also { it.start() }
+        // Spec 004 US2: sign paired TVs in to the household's Telegram.
+        if (telegramApprovals == null) telegramApprovals = TelegramTvApprovalWatcher(this, serviceScope).also { it.start() }
         return START_STICKY
     }
 

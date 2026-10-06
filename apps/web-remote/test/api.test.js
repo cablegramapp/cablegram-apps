@@ -94,3 +94,13 @@ test("remote commands have the shape the control plane and the TV accept", () =>
   assert.throws(() => REMOTE.move(tv, "diagonal"));
   assert.throws(() => REMOTE.pause(null));
 });
+
+test("commandStatus reads one command by id", async () => {
+  const fetch = fakeFetch([200, { access_token: "a1", refresh_token: "r1" }], [200, { id: "c1", status: "delivered", target_device_id: "tv-1", expires_in_ms: 20000 }]);
+  const api = createApi({ base: BASE, storage: memoryStorage(), fetch });
+  await api.login("a@b.co", "password1");
+  const status = await api.commandStatus("c1");
+  assert.equal(status.status, "delivered");
+  assert.equal(fetch.calls[1].url, `${BASE}/api/control/commands/c1`);
+  assert.equal(fetch.calls[1].method, "GET");
+});

@@ -20,6 +20,8 @@ import app.cablegram.data.PlaybackResponse
 import app.cablegram.data.Profile
 import app.cablegram.data.Video
 import app.cablegram.data.ProgressQueue
+import app.cablegram.data.ServerClock
+import app.cablegram.data.flushProgress
 import app.cablegram.data.localIpv4
 import app.cablegram.data.localIpv4Addresses
 import android.view.KeyEvent
@@ -68,6 +70,8 @@ sealed interface ScreenState {
         val awaitingApproval: Boolean = false,
     ) : ScreenState
     data class Player(val video: Video, val playback: PlaybackResponse) : ScreenState
+    /** A Telegram title was opened while this TV still waits for the Telegram two-step password. */
+    data class TelegramPassword(val video: Video) : ScreenState
     data class Error(
         val title: String,
         val message: String,
@@ -159,9 +163,25 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         private set
     var tvLanIp by mutableStateOf<String?>(null)
         private set
-    private var lanToken: String?
-        get() = lanPrefs.getString("token", null)
-        set(value) { lanPrefs.edit().putString("token", value).apply() }
+    /** Paired accounts as last read from [authStore]; [lanToken] follows whichever one is active. */
+    @Volatile private var accountCredentials: List<AccountCredential> = emptyList()
+
+    /**
+     * The LAN credential of the active account. One TV can hold several accounts, and the phone
+     * serving a library only accepts the credential minted by that account's pairing. Accounts paired
+     * before credentials were stored per account fall back to the single value the TV kept then.
+     */
+    private val lanToken: String?
+        get() = accountCredentials.firstOrNull { it.sessionId == sessionId }?.lanCapability
+            ?: lanPrefs.getString("token", null)
+
+    /**
+     * With no account yet, the PIN a phone can scan offline is the only credential there is.
+     * Reads the store rather than [accountCredentials], which still lists the accounts after a sign-out.
+     */
+    private suspend fun rememberOfflineLanToken(pin: String) {
+        if (authStore.getAccounts().isEmpty()) lanPrefs.edit().putString("token", pin).apply()
+    }
     private var phoneJob: Job? = null
 
     fun selectLibrarySection(section: String) {
@@ -230,6 +250,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             libraryAds = api.getLibraryAds()
             val accounts = authStore.getAccounts()
+            accountCredentials = accounts
             if (accounts.isEmpty()) {
                 createPairingSession()
             } else {
@@ -395,8 +416,18 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         )
     }
 
+    /** The viewer chose to play this Telegram title through the phone instead of signing in to Telegram on this TV. */
+    private var phoneRelayChoice: String? = null
+
+    fun playThroughPhone(video: Video, always: Boolean = false) {
+        phoneRelayChoice = video.id
+        if (always) telegram.setViaPhone(true)
+        play(video)
+    }
+
     fun play(video: Video) {
-        finishRemoteTitle("superseded")
+        // The same title continuing (after the Telegram password prompt, say) keeps the phone's command open.
+        if (remoteTitleCommand?.second != video.id) finishRemoteTitle("superseded")
         if (isLiveChannelId(video.id)) return
         // T077 / R-7: the server catalog is the single source of truth.
         // Playback resolution always goes through the control plane (`getPlayback`),
@@ -410,6 +441,13 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         val currentToken = token ?: return
+        // A Telegram title while this TV is still signing in to Telegram (starting, waiting for the phone's approval, or for
+        // the password): say that signing in here saves the phone's battery and data, and play once it is done, instead of
+        // quietly streaming through the phone. The viewer can still choose the phone, once or always.
+        if (video.source == "telegram" && telegram.status.value.isSigningIn() && phoneRelayChoice != video.id && !telegram.viaPhone.value) {
+            screen = ScreenState.TelegramPassword(video)
+            return
+        }
         librarySyncJob?.cancel()
         failedPlaybackVideo = null
         val loadingUrl = getRandomLoadingVideoUrl()
@@ -459,6 +497,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                     currentVideo.id, currentToken, lanToken,
                     telegramUrl = telegram::streamUrl,
                     telegramPhoneId = telegram::phoneDeviceId,
+                    cloudStream = ::cloudStreamUrl,
                     onStatus = { label ->
                         // Live status from the API while it works (e.g. approval wait).
                         screen = ScreenState.Resolving(
@@ -563,6 +602,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun closePlayer() {
+        phoneRelayChoice = null
         telegram.releasePlayback()
         finishRemoteTitle("cancelled")
         // Do not leave player actions queued for the next title.
@@ -585,6 +625,9 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                 positionSeconds >= durationSeconds * 95 / 100 -> "completed"
             else -> "paused"
         }
+        // The time playback changed, taken before the upload: an upload that fails after a timeout must not date the
+        // update later than a newer one (ProgressQueue orders by this time).
+        val observedAt = ServerClock.shared.now()
         viewModelScope.launch {
             runCatching {
                 api.updateProgress(
@@ -599,7 +642,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                     (error as? ApiException)?.statusCode == 403 -> onProfileGone()
                     (error as? ApiException)?.statusCode == 410 -> onMediaDeleted(videoId)
                     error.isPermanentRejection() -> Unit
-                    else -> progressQueue.enqueue(videoId, activeProfileId, positionSeconds, state, durationSeconds)
+                    else -> progressQueue.enqueue(videoId, activeProfileId, positionSeconds, state, durationSeconds, observedAt)
                 }
             }
         }
@@ -622,31 +665,27 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
 
     suspend fun flushProgressQueue() {
         val currentToken = token ?: return
-        val pending = progressQueue.pending()
-        if (pending.isEmpty()) return
-        for (entry in pending) {
-            val entryRef = entry
-            val lastFailure = runCatching {
+        flushProgress(
+            progressQueue,
+            upload = { entry ->
                 api.updateProgress(
-                    entryRef.videoId,
-                    entryRef.positionSeconds,
+                    entry.videoId,
+                    entry.positionSeconds,
                     currentToken,
-                    entryRef.profileId,
-                    state = entryRef.state,
-                    durationSeconds = entryRef.durationSeconds,
-                    clientUpdatedAt = entryRef.clientUpdatedAt,
+                    entry.profileId,
+                    state = entry.state,
+                    durationSeconds = entry.durationSeconds,
+                    clientUpdatedAt = entry.clientUpdatedAt,
                 )
-            }.exceptionOrNull()
-            // A rejected entry (deleted profile or title) would otherwise block the queue forever.
-            if (lastFailure != null && !lastFailure.isPermanentRejection()) return // still offline; keep the rest queued
-            progressQueue.remove(entryRef.videoId, entryRef.profileId)
-        }
+            },
+            isPermanentRejection = { it.isPermanentRejection() },
+        )
     }
 
     suspend fun renewPlayback(videoId: String): PlaybackResponse? {
         if (isLiveChannelId(videoId) || isDemoMode) return null
         val currentToken = token ?: return null
-        return runCatching { api.getPlayback(videoId, currentToken, lanToken, telegramUrl = telegram::streamUrl, telegramPhoneId = telegram::phoneDeviceId) }.getOrNull()
+        return runCatching { api.getPlayback(videoId, currentToken, lanToken, telegramUrl = telegram::streamUrl, telegramPhoneId = telegram::phoneDeviceId, cloudStream = ::cloudStreamUrl) }.getOrNull()
     }
 
     fun signOut() {
@@ -807,7 +846,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             // A New PIN press can still be in flight when the reviewer gesture
             // opens demo mode; a late session must not replace it.
             if (isDemoMode) return
-            lanToken = session.pin
+            rememberOfflineLanToken(session.pin)
             PairLog.i("TV session ok ${PairLog.pinTail(session.pin)} session=${session.sessionId} tvIp=$tvLanIp")
             screen = ScreenState.Pairing(session)
             pairingJob = viewModelScope.launch { pollPairing(session) }
@@ -816,7 +855,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         } catch (error: Exception) {
             if (isDemoMode) return
             val pin = (0..999_999).random().toString().padStart(6, '0')
-            lanToken = pin
+            rememberOfflineLanToken(pin)
             val qr = "cablegram://pair?token=$pin&name=${java.net.URLEncoder.encode(deviceName, "UTF-8")}"
             screen = ScreenState.Pairing(
                 DeviceSession(
@@ -845,25 +884,21 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                 if (result.status == "paired" && result.token != null) {
                     val pairedSessionId = result.sessionId ?: session.sessionId
                     val pairedToken = result.token
+                    // The device capability authenticates LAN media (FR-016 / R-1). It is kept with
+                    // this account: pairing another account on the same TV must not replace it.
+                    // An older phone build sends none; it accepts the pairing PIN instead.
+                    val lanCapability = result.lanCapability?.takeIf { it.isNotBlank() } ?: session.pin
                     val account = AccountCredential(
                         sessionId = pairedSessionId,
                         token = pairedToken,
                         userId = extractUserIdFromToken(pairedToken),
+                        lanCapability = lanCapability,
                     )
                     authStore.saveAccount(account)
+                    accountCredentials = authStore.getAccounts()
                     token = pairedToken
                     sessionId = pairedSessionId
-                    // Store the device capability for LAN media auth. The pairing
-                    // PIN is no longer the LAN secret (FR-016 / R-1).
-                    if (!result.lanCapability.isNullOrBlank()) {
-                        lanToken = result.lanCapability
-                        PairLog.i("LAN capability stored ${PairLog.pinTail(result.lanCapability)}")
-                    } else if (lanPrefs.getString("token", null) == null) {
-                        // Transition: older phone build that has not stored a
-                        // capability yet. Fall back to the PIN, matching the
-                        // phone's legacy behavior, until both apps are updated.
-                        lanToken = session.pin
-                    }
+                    PairLog.i("LAN capability stored ${PairLog.pinTail(lanCapability)}")
                     // A fresh pairing always goes through "Who's watching?": opening
                     // the library here skipped profile selection (no progress, no
                     // resume) and bypassed profile PINs.
@@ -898,6 +933,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
 
     private suspend fun loadProfiles() {
         val accounts = authStore.getAccounts()
+        accountCredentials = accounts
         if (accounts.isEmpty()) {
             token = null
             sessionId = null
@@ -1048,7 +1084,18 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         navCommands.clear()
     }
 
+    private var cloudStreamServer: CloudStreamServer? = null
+
+    /** A local URL for a cloud copy that needs a header LibVLC cannot send (Google Drive); see [CloudStreamServer]. */
+    private fun cloudStreamUrl(url: String, headers: Map<String, String>): String? {
+        val server = synchronized(this) {
+            cloudStreamServer ?: CloudStreamServer(log = { app.cablegram.data.PairLog.i(it) }).also { it.start(5 * 60 * 1000, true); cloudStreamServer = it }
+        }
+        return server.register(url, headers)
+    }
+
     override fun onCleared() {
+        cloudStreamServer?.stop()
         commandDelivery.stop()
         super.onCleared()
     }
@@ -1110,6 +1157,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             finishCommand(command.id, "title_unavailable")
             return
         }
+        finishRemoteTitle("superseded")
         play(video)
         remoteTitleCommand = command.id to video.id
     }
@@ -1156,9 +1204,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                             // Cheap staleness check first: a full structural equals of the
                             // library every cycle costs O(n) object-graph compares on the
                             // main thread and thrashes low-memory TVs (ANR 4b063625).
-                            val signature = latest.joinToString("|") { v ->
-                                "${v.id}:${v.ingestProgress}:${v.ingestStage}:${v.tier}:${v.inMyList}:${v.resumePositionSeconds}:${v.title}:${v.posterUrl}"
-                            }
+                            val signature = librarySyncSignature(latest)
                             if (signature != lastSignature) {
                                 lastSignature = signature
                                 cachedVideos = latest

@@ -42,6 +42,36 @@ class RemoteCommandsTest {
     private fun device(id: String, name: String? = null) = MeDevice(id = id, kind = "tv", displayName = name)
     private val living = PairedTv(pin = "1", name = "Living room", deviceId = "tv-1")
 
+    private fun tv(id: String, name: String, online: Boolean?) = MeDevice(id = id, kind = "tv", displayName = name, online = online)
+
+    @Test
+    fun `the selected TV is used while it is on, or when the server doesn't say`() {
+        assertEquals(TargetResult.Target("tv-1", "Living room"), resolveTarget(living, listOf(tv("tv-1", "Living", true), tv("tv-2", "Bedroom", true))))
+        assertEquals(TargetResult.Target("tv-1", "Living room"), resolveTarget(living, listOf(tv("tv-1", "Living", null), tv("tv-2", "Bedroom", null))))
+    }
+
+    @Test
+    fun `a selected TV that is off gives way to the only TV that is on, and says so`() {
+        assertEquals(
+            TargetResult.Target("tv-2", "Bedroom", switchedFrom = "Living room"),
+            resolveTarget(living, listOf(tv("tv-1", "Living", false), tv("tv-2", "Bedroom", true))),
+        )
+    }
+
+    @Test
+    fun `with no TV on, or several, the selected TV keeps the command and is marked off`() {
+        assertEquals(TargetResult.Target("tv-1", "Living room", offline = true), resolveTarget(living, listOf(tv("tv-1", "Living", false), tv("tv-2", "Bedroom", false))))
+        assertEquals(
+            TargetResult.Target("tv-1", "Living room", offline = true),
+            resolveTarget(living, listOf(tv("tv-1", "Living", false), tv("tv-2", "Bedroom", true), tv("tv-3", "Kitchen", true))),
+        )
+    }
+
+    @Test
+    fun `with nothing selected, the only TV that is on is the default`() {
+        assertEquals(TargetResult.Target("tv-3", "Kitchen"), resolveTarget(null, listOf(tv("tv-2", "Bedroom", false), tv("tv-3", "Kitchen", true))))
+    }
+
     @Test
     fun `a selected TV present in the household is the target`() {
         val target = resolveTarget(living, listOf(device("tv-2", "Bedroom"), device("tv-1")))

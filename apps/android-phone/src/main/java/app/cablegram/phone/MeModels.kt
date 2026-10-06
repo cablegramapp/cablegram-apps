@@ -34,6 +34,8 @@ data class MeDevice(
     @kotlinx.serialization.SerialName("trust_level") val trustLevel: String = "home",
     @kotlinx.serialization.SerialName("trust_expires_at") val trustExpiresAt: String? = null,
     @kotlinx.serialization.SerialName("telegram_direct_allowed") val telegramDirectAllowed: Boolean = false,
+    /** A TV with Cablegram open that takes remote commands now; null from a control plane that doesn't say. */
+    val online: Boolean? = null,
 )
 
 fun MeDevice.toTrust() = TvTrust(
@@ -119,6 +121,20 @@ data class TelegramDeletionOrder(
 
 @Serializable
 data class TelegramRemovalResult(@kotlinx.serialization.SerialName("telegram_deletions") val telegramDeletions: List<TelegramDeletionOrder> = emptyList())
+
+/** GET /api/telegram/tv-password-requests/pending: TVs waiting for the Telegram two-step password. */
+@Serializable
+data class PendingTvPasswordRequests(val requests: List<PendingTvPasswordRequest> = emptyList())
+
+@Serializable
+data class PendingTvPasswordRequest(
+    @kotlinx.serialization.SerialName("request_id") val requestId: String,
+    @kotlinx.serialization.SerialName("tv_name") val tvName: String = "TV",
+    /** The TV's one-time public key; the password is sealed to it. */
+    @kotlinx.serialization.SerialName("tv_public_key") val tvPublicKey: String,
+    /** Telegram's own password hint. */
+    val hint: String = "",
+)
 
 /** GET /api/telegram/tv-logins/pending (spec 004 US2). */
 @Serializable

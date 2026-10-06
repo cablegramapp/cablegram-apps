@@ -17,11 +17,32 @@ val telegramEnv = Properties().apply {
 fun telegramSetting(name: String): String =
     (project.findProperty(name) as String?) ?: telegramEnv.getProperty(name) ?: ""
 
+// A build without these ships with Telegram switched off: it installs fine and then quietly can't use Telegram.
+// Packaging and installing therefore fail unless that is asked for with -PALLOW_NO_TELEGRAM=true. Tests and
+// compiling are not affected.
+val requireTelegramCredentials by tasks.registering {
+    doLast {
+        val missing = telegramSetting("TELEGRAM_API_ID").let { it.isBlank() || it == "0" } || telegramSetting("TELEGRAM_API_HASH").isBlank()
+        if (missing && project.findProperty("ALLOW_NO_TELEGRAM") != "true") {
+            throw GradleException(
+                "TELEGRAM_API_ID / TELEGRAM_API_HASH are not set, so this build would have Telegram switched off. " +
+                    "Set them in local.properties or with -PTELEGRAM_API_ID / -PTELEGRAM_API_HASH, " +
+                    "or build without Telegram on purpose with -PALLOW_NO_TELEGRAM=true.",
+            )
+        }
+    }
+}
+tasks.matching { it.name.matches(Regex("(assemble|bundle|install)(Debug|Release)?")) }
+    .configureEach { dependsOn(requireTelegramCredentials) }
+
 android {
     namespace = "app.cablegram"
     compileSdk = 36
     defaultConfig {
         applicationId = "app.cablegram"
+        // Optional, e.g. -PCABLEGRAM_APP_ID_SUFFIX=.test: installs next to the real app, so a test build never replaces
+        // its pairing or data.
+        (project.findProperty("CABLEGRAM_APP_ID_SUFFIX") as String?)?.let { applicationIdSuffix = it }
         minSdk = 26
         targetSdk = 36
         versionCode = 3
@@ -107,6 +128,7 @@ dependencies {
     androidTestImplementation("androidx.test:core-ktx:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
 

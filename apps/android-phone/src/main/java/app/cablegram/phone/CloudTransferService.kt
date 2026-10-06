@@ -18,10 +18,19 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Copies a title into Cablegram Cloud while the app is backgrounded, with a progress notification. */
+/**
+ * Saves a title to the cloud while the app is backgrounded, with a progress notification: into Cablegram Cloud, or,
+ * when the household connected its own Cloudflare R2 storage, straight into that bucket (spec 005).
+ */
 class CloudTransferService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val queue = ConcurrentLinkedQueue<String>()
+    /** Titles whose save goes to the household's own R2 bucket instead of Cablegram Cloud. */
+    private val ownR2 = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    /** Where each queued title goes, for the notification: "Google Drive", or "Cloud" for Cablegram Cloud. */
+    private val destinations = java.util.concurrent.ConcurrentHashMap<String, String>()
+    /** Where the title being saved now goes. A queue can mix destinations, so it is set per title in [saveOne]. */
+    @Volatile private var destination = "Cloud"
     private val running = AtomicBoolean(false)
     private val store by lazy { LibraryStore(this) }
 
@@ -33,6 +42,10 @@ class CloudTransferService : Service() {
             if (queue.isEmpty() && !running.get()) stopSelf(startId)
             return START_NOT_STICKY
         }
+        if (intent.getBooleanExtra(EXTRA_OWN_R2, false)) ownR2.add(id)
+        val target = intent.getStringExtra(EXTRA_DESTINATION)?.takeIf { it.isNotBlank() } ?: "Cloud"
+        destinations[id] = target
+        if (!running.get()) destination = target
         queue.add(id)
         val item = store.get(id)
         startAsForeground(item?.title ?: "Video", 0, item?.fileSizeBytes ?: 0)
@@ -47,7 +60,7 @@ class CloudTransferService : Service() {
         super.onDestroy()
     }
 
-    private fun drainQueue() {
+    private suspend fun drainQueue() {
         try {
             while (true) {
                 val id = queue.poll() ?: break
@@ -64,7 +77,8 @@ class CloudTransferService : Service() {
         }
     }
 
-    private fun saveOne(id: String) {
+    private suspend fun saveOne(id: String) {
+        destination = destinations.remove(id) ?: "Cloud"
         val item = store.get(id) ?: return
         store.update(
             item.copy(
@@ -75,7 +89,24 @@ class CloudTransferService : Service() {
         )
         val started = System.nanoTime()
         var lastNotify = 0L
+        val progress = { copied: Long, total: Long ->
+            val now = System.currentTimeMillis()
+            val elapsed = ((System.nanoTime() - started) / 1_000_000_000L).coerceAtLeast(1)
+            // Keep the saved state in step, but not on every 256 KiB: the library file is rewritten each time.
+            if (now - lastNotify >= 400) {
+                lastNotify = now
+                store.get(id)?.let { current ->
+                    store.update(current.copy(transferStatus = TRANSFER_SAVING, uploadBytes = copied, uploadTotal = total, transferBytesPerSec = copied / elapsed))
+                }
+                notifyProgress(item.title, copied, total, copied / elapsed)
+            }
+        }
         try {
+            if (ownR2.remove(id)) {
+                saveToOwnR2(item, progress)
+                notifyDone(item.title, ok = true, detail = "Saved to $destination")
+                return
+            }
             store.saveToCloud(item) { copied, total ->
                 val now = System.currentTimeMillis()
                 val elapsed = ((System.nanoTime() - started) / 1_000_000_000L).coerceAtLeast(1)
@@ -98,7 +129,40 @@ class CloudTransferService : Service() {
         } catch (error: Throwable) {
             PairLog.e("Save to cloud failed", error)
             store.get(id)?.let { store.update(it.copy(transferStatus = TRANSFER_FAILED)) }
-            notifyDone(item.title, ok = false, detail = error.message)
+            // Stopped (service destroyed): shown as "Save failed"; saving again resumes an R2 upload where it stopped.
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            notifyDone(item.title, ok = false, detail = (error as? R2ApiException)?.friendly(destination) ?: error.message)
+        }
+    }
+
+    /**
+     * Streams the video to the household's own storage (R2 parts or Drive chunks, as the server says). The control plane verifies the stored size before it
+     * records the copy, so [LibraryItem.ownCloudCopy] is only set for a copy that Free up space may rely on.
+     */
+    private suspend fun saveToOwnR2(item: LibraryItem, onProgress: (Long, Long) -> Unit) {
+        val pairing = PairingStore(this)
+        val token = pairing.accountToken ?: error("Sign in again to save to Cloudflare.")
+        val pfd = store.openPfd(item) ?: error("Could not read that video")
+        pfd.use {
+            java.io.FileInputStream(it.fileDescriptor).use { stream ->
+                val extension = item.filename.substringAfterLast('.', "").lowercase()
+                val contentType = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                    ?.takeIf { type -> type.startsWith("video/") } ?: "video/mp4"
+                val done = OwnCloudUploader(CatalogClient(pairing.apiBaseUrl, pairing).ownCloudApi(token), log = { PairLog.i(it) })
+                    .upload(item.id, item.filename, contentType, stream.channel, onProgress)
+                store.updateItem(item.id) { current ->
+                    current.copy(
+                        ownCloudCopy = true,
+                        // The catalog's id for the copy, so it can be removed at once without waiting for the next sync.
+                        ownCloudSourceId = done.sourceId,
+                        transferStatus = TRANSFER_IDLE,
+                        webTransferError = null,
+                        uploadBytes = done.bytes,
+                        uploadTotal = done.bytes,
+                        fileSizeBytes = current.fileSizeBytes ?: done.bytes,
+                    )
+                }
+            }
         }
     }
 
@@ -117,7 +181,7 @@ class CloudTransferService : Service() {
 
     private fun notifyDone(title: String, ok: Boolean, detail: String? = null) {
         val text = when {
-            ok -> "Saved to Cloud"
+            ok -> detail ?: "Saved to Cloud"
             !detail.isNullOrBlank() -> detail
             else -> "Could not save to Cloud"
         }
@@ -144,7 +208,7 @@ class CloudTransferService : Service() {
             etaLabel(remaining, bytesPerSec),
         ).filter { it.isNotBlank() }
         return builder()
-            .setContentTitle("Saving to Cloud")
+            .setContentTitle("Saving to $destination")
             .setContentText(title)
             .setStyle(Notification.BigTextStyle().bigText("$title\n${bits.joinToString(" · ")}"))
             .setSmallIcon(R.drawable.ic_stat_cablegram)
@@ -189,13 +253,17 @@ class CloudTransferService : Service() {
 
     companion object {
         const val EXTRA_ITEM_ID = "item_id"
+        const val EXTRA_OWN_R2 = "own_r2"
+        const val EXTRA_DESTINATION = "destination"
         private const val CHANNEL_ID = "cloud_saves"
         private const val NOTIFY_ID = 42
         private const val NOTIFY_DONE_ID = 43
 
-        fun start(context: Context, itemId: String) {
+        fun start(context: Context, itemId: String, ownR2: Boolean = false, destination: String = "Cloud") {
             val intent = Intent(context, CloudTransferService::class.java)
                 .putExtra(EXTRA_ITEM_ID, itemId)
+                .putExtra(EXTRA_OWN_R2, ownR2)
+                .putExtra(EXTRA_DESTINATION, destination)
             context.startForegroundService(intent)
         }
     }

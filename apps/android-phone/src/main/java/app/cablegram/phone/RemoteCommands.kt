@@ -29,7 +29,11 @@ internal fun remoteCommandBody(
 }
 
 sealed interface TargetResult {
-    data class Target(val deviceId: String, val name: String) : TargetResult
+    /**
+     * [offline]: the control plane says this TV isn't on, so a command waits for it. [switchedFrom]: the selected TV
+     * wasn't on and this, the only TV that is, was chosen instead.
+     */
+    data class Target(val deviceId: String, val name: String, val offline: Boolean = false, val switchedFrom: String? = null) : TargetResult
     data class Failed(val message: String) : TargetResult
 }
 
@@ -40,6 +44,10 @@ sealed interface TargetResult {
  *
  * A TV paired before device IDs were stored has none to match. It can only mean the household's
  * TV when there is exactly one; with several, the user must choose rather than risk another room.
+ *
+ * The one exception to "never a different TV": the selected TV isn't on (it could not take the command anyway) and
+ * exactly one TV of the household is. That TV is the one in use, so the command goes there and says so. With none or
+ * several on, nothing is guessed.
  */
 fun resolveTarget(selected: PairedTv?, household: List<MeDevice>?): TargetResult {
     val none = TargetResult.Failed("No TV is paired with this household. Pair a TV to use the remote.")
@@ -49,9 +57,13 @@ fun resolveTarget(selected: PairedTv?, household: List<MeDevice>?): TargetResult
             ?: if (selected != null) TargetResult.Failed("Can't reach the control service to find ${selected.name}. Check your connection.") else none
         selected != null && selected.deviceId == null -> household.singleOrNull()?.let { TargetResult.Target(it.id, selected.name) }
             ?: if (household.isEmpty()) none else TargetResult.Failed("Choose which TV to control in Settings.")
-        selected != null -> household.firstOrNull { it.id == selected.deviceId }?.let { TargetResult.Target(it.id, selected.name) }
-            ?: TargetResult.Failed("${selected.name} is no longer connected. Choose a TV in Settings.")
-        else -> household.firstOrNull()?.let { TargetResult.Target(it.id, it.label()) } ?: none
+        selected != null -> household.firstOrNull { it.id == selected.deviceId }?.let { chosen ->
+            val on = household.filter { it.online == true }
+            if (chosen.online == false && on.size == 1) TargetResult.Target(on[0].id, on[0].label(), switchedFrom = selected.name)
+            else TargetResult.Target(chosen.id, selected.name, offline = chosen.online == false)
+        } ?: TargetResult.Failed("${selected.name} is no longer connected. Choose a TV in Settings.")
+        else -> (household.singleOrNull { it.online == true } ?: household.firstOrNull())
+            ?.let { TargetResult.Target(it.id, it.label(), offline = it.online == false) } ?: none
     }
 }
 

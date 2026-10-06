@@ -6,11 +6,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryLogicTest {
-    @Test fun `every imported filename requires explicit title confirmation`() {
-        assertEquals(ImportMetadataAction.PromptForCorrection, importMetadataAction(item(title = "38", filename = "38.mp4")))
-        assertEquals(ImportMetadataAction.PromptForCorrection, importMetadataAction(item(title = "a1b2c3d4e5f6", filename = "a1b2c3d4e5f6.mp4")))
+    @Test fun `imported videos are ready without mandatory artwork editing`() {
+        assertEquals(ImportMetadataAction.Ready, importMetadataAction(item(title = "38", filename = "38.mp4")))
+        assertEquals(ImportMetadataAction.Ready, importMetadataAction(item(title = "a1b2c3d4e5f6", filename = "a1b2c3d4e5f6.mp4")))
         assertEquals(
-            ImportMetadataAction.PromptForCorrection,
+            ImportMetadataAction.Ready,
             importMetadataAction(
                 item(title = "Dune", filename = "Dune.2021.mkv").copy(
                     posterPath = "/posters/dune.jpg",
@@ -20,7 +20,7 @@ class LibraryLogicTest {
         )
     }
 
-    @Test fun `readable titles still open frame chooser when thumbnail extraction failed`() {
+    @Test fun `missing artwork stays playable without mandatory editing`() {
         val withoutThumbnail = item(title = "Dune", filename = "Dune.2021.mkv").copy(
             posterPath = null,
             posterUrl = null,
@@ -28,7 +28,7 @@ class LibraryLogicTest {
         )
 
         assertTrue(needsArtworkChoice(withoutThumbnail))
-        assertEquals(ImportMetadataAction.PromptForCorrection, importMetadataAction(withoutThumbnail))
+        assertEquals(ImportMetadataAction.Ready, importMetadataAction(withoutThumbnail))
         assertFalse(needsArtworkChoice(withoutThumbnail.copy(posterUrl = "https://image.tmdb.org/dune.jpg")))
     }
 
@@ -85,6 +85,22 @@ class LibraryLogicTest {
         assertFalse(canRemoveLocalCopy(item().copy(copied = true)))
         assertEquals(StorageBadge.Both, storageBadge(saved))
         assertEquals(StorageBadge.Telegram, storageBadge(saved.copy(copied = false, sourceAvailable = false)))
+    }
+
+    @Test
+    fun `free up space needs a verified R2 copy, the badge follows it, and it stops counting after a disconnect`() {
+        val saved = item().copy(ownCloudCopy = true, copied = true)
+        assertTrue(canRemoveLocalCopy(saved))
+        assertEquals(StorageBadge.Both, storageBadge(saved))
+        assertEquals(StorageBadge.Cloud, storageBadge(saved.copy(copied = false, sourceAvailable = false)))
+        assertFalse("already saved there", canSaveToCloud(saved))
+        assertTrue(saved in cloudFiles(listOf(saved)))
+        // The catalog clears the flag when the bucket is disconnected: the phone file is then the only copy.
+        val disconnected = saved.copy(ownCloudCopy = false)
+        assertFalse(canRemoveLocalCopy(disconnected))
+        assertTrue(canSaveToCloud(disconnected))
+        // R2 bytes are the user's own storage and never count against Cablegram Cloud's 5 GB.
+        assertEquals(0L, cloudMediaBytes(listOf(saved)))
     }
 
     @Test
