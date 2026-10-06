@@ -495,6 +495,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                     currentVideo.id, currentToken, lanToken,
                     telegramUrl = telegram::streamUrl,
                     telegramPhoneId = telegram::phoneDeviceId,
+                    cloudStream = ::cloudStreamUrl,
                     onStatus = { label ->
                         // Live status from the API while it works (e.g. approval wait).
                         screen = ScreenState.Resolving(
@@ -682,7 +683,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     suspend fun renewPlayback(videoId: String): PlaybackResponse? {
         if (isLiveChannelId(videoId) || isDemoMode) return null
         val currentToken = token ?: return null
-        return runCatching { api.getPlayback(videoId, currentToken, lanToken, telegramUrl = telegram::streamUrl, telegramPhoneId = telegram::phoneDeviceId) }.getOrNull()
+        return runCatching { api.getPlayback(videoId, currentToken, lanToken, telegramUrl = telegram::streamUrl, telegramPhoneId = telegram::phoneDeviceId, cloudStream = ::cloudStreamUrl) }.getOrNull()
     }
 
     fun signOut() {
@@ -1081,7 +1082,18 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         navCommands.clear()
     }
 
+    private var cloudStreamServer: CloudStreamServer? = null
+
+    /** A local URL for a cloud copy that needs a header LibVLC cannot send (Google Drive); see [CloudStreamServer]. */
+    private fun cloudStreamUrl(url: String, headers: Map<String, String>): String? {
+        val server = synchronized(this) {
+            cloudStreamServer ?: CloudStreamServer(log = { app.cablegram.data.PairLog.i(it) }).also { it.start(5 * 60 * 1000, true); cloudStreamServer = it }
+        }
+        return server.register(url, headers)
+    }
+
     override fun onCleared() {
+        cloudStreamServer?.stop()
         commandDelivery.stop()
         super.onCleared()
     }

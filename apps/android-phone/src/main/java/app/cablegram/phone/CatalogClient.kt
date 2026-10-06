@@ -1212,18 +1212,141 @@ class CatalogClient(
         }.getOrNull()
     }
 
-    suspend fun connectCloudflare(token: String): StorageConnectResponse? = withContext(Dispatchers.IO) {
+    /**
+     * Connects the household's own R2 bucket (spec 005). The control plane checks the keys with a real write before it
+     * keeps them. [secret] is sent once, over TLS, and is not kept by this class.
+     */
+    suspend fun connectR2(token: String, accountId: String, bucket: String, accessKeyId: String, secret: String): R2ConnectResult = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject {
+            put("account_id", accountId)
+            put("bucket", bucket)
+            put("access_key_id", accessKeyId)
+            put("secret_access_key", secret)
+        })
         val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/storage/connect/cloudflare?returnTo=phone")
+            .url("${baseUrl.trimEnd('/')}/api/storage/connect/r2")
             .header("Authorization", "Bearer $token")
-            .get()
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) return@use R2ConnectResult(null)
+                val text = response.body?.string().orEmpty()
+                // Only a stable error string is kept; a 400 means a field the server did not accept.
+                val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
+                R2ConnectResult(code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: if (response.code == 400) "invalid_request" else "http_${response.code}")
+            }
+        } catch (_: java.io.IOException) {
+            R2ConnectResult("offline")
+        }
+    }
+
+    /**
+     * Starts the Google Drive sign-in (spec 006): the server makes the state and PKCE and answers with the Google URL to
+     * open in a Custom Tab. [GoogleConnectStart.error] is the server's stable error string when it could not.
+     */
+    suspend fun connectGoogle(token: String): GoogleConnectStart = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/connect/google")
+            .header("Authorization", "Bearer $token")
+            .post("{}".toRequestBody("application/json".toMediaType()))
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (response.isSuccessful) {
+                    val url = runCatching { json.parseToJsonElement(text).jsonObject["authorize_url"]?.jsonPrimitive?.contentOrNull }.getOrNull()
+                    return@use if (url != null && url.startsWith("https://")) GoogleConnectStart(url, null) else GoogleConnectStart(null, "invalid_response")
+                }
+                val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
+                GoogleConnectStart(null, code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: "http_${response.code}")
+            }
+        } catch (_: java.io.IOException) {
+            GoogleConnectStart(null, "offline")
+        }
+    }
+
+    /** Save to Cloud against the household's own storage (specs 005, 006); [token] is the phone's account token. */
+    fun ownCloudApi(token: String): OwnCloudApi = object : OwnCloudApi {
+        private suspend fun call(path: String, method: String, body: String? = null): String = withContext(Dispatchers.IO) {
+            val builder = Request.Builder().url("${baseUrl.trimEnd('/')}$path").header("Authorization", "Bearer $token")
+            when (method) {
+                "GET" -> builder.get()
+                "DELETE" -> builder.delete()
+                else -> builder.method(method, (body ?: "{}").toRequestBody("application/json".toMediaType()))
+            }
+            client.newCall(builder.build()).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    // Only the stable error string is kept; nothing the server echoed is shown or logged.
+                    val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()?.takeIf { it.matches(Regex("[a-z_]{1,40}")) }
+                    throw R2ApiException(response.code, code ?: "http_${response.code}")
+                }
+                text
+            }
+        }
+
+        override suspend fun start(originIdentity: String, sizeBytes: Long, contentType: String, fileName: String): R2UploadStart =
+            json.decodeFromString(call("/api/storage/uploads", "POST", json.encodeToString(buildJsonObject {
+                put("attach_to_origin_identity", originIdentity)
+                put("size_bytes", sizeBytes)
+                put("content_type", contentType)
+                put("file_name", fileName)
+            })))
+
+        override suspend fun parts(uploadId: String, from: Int, count: Int): R2Parts =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/parts?from=$from&count=$count", "GET"))
+
+        override suspend fun complete(uploadId: String, parts: List<R2PartRef>): R2Done =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/complete", "POST", json.encodeToString(buildJsonObject {
+                put("parts", buildJsonArray { parts.forEach { add(buildJsonObject { put("part", it.part); put("etag", it.etag) }) } })
+            })))
+
+        override suspend fun session(uploadId: String): DriveSession =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/session", "GET"))
+
+        override suspend fun complete(uploadId: String): R2Done =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/complete", "POST", "{}"))
+
+        override suspend fun abort(uploadId: String) {
+            call("/api/storage/uploads/$uploadId", "DELETE")
+        }
+    }
+
+    /**
+     * Where to read this phone title's copy in the household's own storage back from, with the headers that request needs
+     * (a presigned R2 URL needs none; Google Drive needs a short-lived bearer token). Null if it has no copy.
+     */
+    suspend fun ownCloudReadUrl(token: String, originIdentity: String): ReadUrl? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/read-url")
+            .header("Authorization", "Bearer $token")
+            .post(json.encodeToString(buildJsonObject { put("origin_identity", originIdentity) }).toRequestBody("application/json".toMediaType()))
             .build()
         runCatching {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@use null
-                json.decodeFromString<StorageConnectResponse>(response.body?.string().orEmpty())
+                parseReadUrl(response.body?.string().orEmpty())
             }
         }.getOrNull()
+    }
+
+    /** Deletes one copy in the household's own storage: the control plane removes the file, and the title keeps its other sources. */
+    suspend fun removeOwnCloudSource(token: String, sourceId: String): RemoveCopyResult = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/sources/$sourceId")
+            .header("Authorization", "Bearer $token")
+            .delete()
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) return@use RemoveCopyResult(null)
+                val code = runCatching { json.decodeFromString<ApiError>(response.body?.string().orEmpty()).error }.getOrNull()
+                RemoveCopyResult(code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: "http_${response.code}")
+            }
+        } catch (_: java.io.IOException) {
+            RemoveCopyResult("offline")
+        }
     }
 
     suspend fun disconnectStorage(token: String): Boolean = withContext(Dispatchers.IO) {

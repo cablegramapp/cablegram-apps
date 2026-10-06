@@ -40,6 +40,8 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "app.cablegram"
+        // Optional, e.g. -PCABLEGRAM_APP_ID_SUFFIX=.test: installs next to the real app, so a test build never replaces
+        // its pairing or data.
         (project.findProperty("CABLEGRAM_APP_ID_SUFFIX") as String?)?.let { applicationIdSuffix = it }
         minSdk = 26
         targetSdk = 36
