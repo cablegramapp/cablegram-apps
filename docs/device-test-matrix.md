@@ -44,6 +44,11 @@ Results use: **pass**, **fail**, **not run** (nothing was tried), **needs physic
 The spike uses synthetic IDs and never plays or resolves media. Its passes establish launch and
 payload delivery only. Production acceptance requires separate runs on the real phone and TV.
 
+Production debug build checks passed: 195 TV tests and 254 phone tests, zero failures/errors/skips,
+and both `assembleDebug` tasks. IP1 installed both verified debug APKs; the phone required sign-in
+and the TV's black screenshot/null UI hierarchy left setup readiness inconclusive. Installation
+does not establish any of the production playback passes below.
+
 | Case | Physical device result | Evidence / limits |
 |---|---|---|
 | Release-key sideload, closed TV app, session only | pass | A-REL A1: Connect launches the app via LAUNCH before any LOAD, about 0.8 seconds. |
