@@ -175,9 +175,12 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         get() = accountCredentials.firstOrNull { it.sessionId == sessionId }?.lanCapability
             ?: lanPrefs.getString("token", null)
 
-    /** With no account yet, the PIN a phone can scan offline is the only credential there is. */
-    private fun rememberOfflineLanToken(pin: String) {
-        if (accountCredentials.isEmpty()) lanPrefs.edit().putString("token", pin).apply()
+    /**
+     * With no account yet, the PIN a phone can scan offline is the only credential there is.
+     * Reads the store rather than [accountCredentials], which still lists the accounts after a sign-out.
+     */
+    private suspend fun rememberOfflineLanToken(pin: String) {
+        if (authStore.getAccounts().isEmpty()) lanPrefs.edit().putString("token", pin).apply()
     }
     private var phoneJob: Job? = null
 
