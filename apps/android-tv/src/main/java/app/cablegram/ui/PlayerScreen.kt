@@ -572,6 +572,23 @@ fun PlayerScreen(
             }
         }
     }
+    // Back to the phone over Wi-Fi: on the relay, check now and then whether the phone answers on this Wi-Fi again and
+    // return to it at the current position. Otherwise a title that fell back to the relay (the phone left the Wi-Fi) stays
+    // there to the end, using the relay allowance and possibly the phone's mobile data although the phone is home again.
+    LaunchedEffect(player, start) {
+        if (start == null || isLive) return@LaunchedEffect
+        while (true) {
+            delay(LAN_RETURN_CHECK_MS)
+            val lan = lanReturnCandidate(activePlayback.url, activePlayback.fallbackUrl) ?: continue
+            if (error != null || switchingSource || !hasStarted || settling || !isPlaying) continue
+            val (code, _) = probeSource(playbackHttp, lan, activePlayback.fallbackHeaders, LAN_RETURN_PROBE_MS)
+            if (code == null || code !in 200..299) continue
+            // switchSource resumes two seconds early (made for a stalled stream); a healthy stream continues where it is.
+            if (lanReturnCandidate(activePlayback.url, activePlayback.fallbackUrl) == lan && !switchingSource) {
+                switchSource(resumeAtMs = player.positionMs + 2_000)
+            }
+        }
+    }
     // CAB-15: nothing played within the startup deadline. Try the other path once, then stop and let the viewer decide.
     LaunchedEffect(player, start) {
         if (start == null || isLive) return@LaunchedEffect
@@ -782,8 +799,10 @@ fun PlayerScreen(
                         alpha = 0.88f,
                     )
                     // Only once something plays: before that the URL is just the path being tried.
-                    if (hasStarted) TransportBadge(transport = classifyTransport(activePlayback.url, isLive))
-                    if (error == null && hasStarted) StreamHealthBadge(streamHealth)
+                    // While a switch is under way the badges would describe the path being left (it said "Local LAN" while
+                    // the TV waited for mobile-data consent on the relay); the switch overlay explains instead.
+                    if (hasStarted && !switchingSource) TransportBadge(transport = classifyTransport(activePlayback.url, isLive))
+                    if (error == null && hasStarted && !switchingSource) StreamHealthBadge(streamHealth)
                 }
             }
             AnimatedVisibility(
@@ -1492,6 +1511,20 @@ internal fun playbackUrlForLog(url: String): String {
 private const val STALL_SWITCH_SECONDS = 10
 private const val TELEGRAM_STALL_SWITCH_SECONDS = 25
 private const val PREMATURE_END_MARGIN_MS = 5_000L
+/** How often a title playing through the relay checks whether the phone answers on this Wi-Fi again. */
+internal const val LAN_RETURN_CHECK_MS = 60_000L
+private const val LAN_RETURN_PROBE_MS = 3_000L
+
+/**
+ * The LAN path to return to: only while playing through the relay with the phone's address on this Wi-Fi as the other path
+ * (its own file, or a Telegram title the phone streams). Never a cloud URL, the TV's own Telegram, or another relay URL.
+ */
+internal fun lanReturnCandidate(current: String?, fallback: String?): String? =
+    fallback?.takeIf {
+        current != null && isRelayUrl(current) && !isRelayUrl(it) &&
+            classifyTransport(it, isLive = false).let { t -> t == Transport.LAN || t == Transport.TELEGRAM_VIA_PHONE }
+    }
+
 internal const val WAITING_FOR_PHONE_NOTICE = "Waiting for your phone to allow streaming over mobile data…"
 
 /** A rotating arc: the wait after a seek, while the decoder catches up. */
