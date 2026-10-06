@@ -152,10 +152,16 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     fun accountTokenOrNull(): String? = pairing.accountToken?.takeIf { it.isNotBlank() }
     suspend fun subtitleRequest(path: String, token: String, method: String = "GET", body: String? = null): String = catalog().subtitleRequest(path, token, method, body)
+    // Analysis reads short sections far apart: a small download window keeps what Telegram fetches close to what the
+    // analysis budget counts (the default 48 MB window would pull far more than the cap at every section).
     private val telegramMedia by lazy {
-        PhoneTelegramMedia(getApplication(), isRemoved = RemovedTelegramSources(catalog(), pairing)::contains) {
-            pairing.accountToken?.let { catalog().telegramLink(it)?.chatId }
-        }
+        PhoneTelegramMedia(
+            getApplication(),
+            isRemoved = RemovedTelegramSources(catalog(), pairing)::contains,
+            chatId = { pairing.accountToken?.let { catalog().telegramLink(it)?.chatId } },
+            window = 4L * app.cablegram.telegram.TelegramFileReader.MB,
+            refillAt = 1L * app.cablegram.telegram.TelegramFileReader.MB,
+        )
     }
     /** The title's bytes for analysis and preview: the local file, or the Telegram channel copy. Blocking; call off the main thread. */
     fun openVideo(item: LibraryItem): SubtitleMediaInput {
@@ -172,11 +178,13 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshSubtitleStatus(item: LibraryItem) {
         val token = accountTokenOrNull() ?: return
         viewModelScope.launch {
-            savedSubtitle = runCatching {
+            val label = runCatching {
                 val tracks = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
                     .decodeFromString<SavedSubtitleList>(catalog().subtitleRequest("playback/item/${item.id}", token)).subtitles
                 tracks.firstOrNull()?.let { languageName(it.language) }
             }.getOrNull()
+            // A late answer for a title that was closed meanwhile must not label the next one.
+            if (selectedId == item.id) savedSubtitle = label
         }
     }
     var deleteTarget by mutableStateOf<LibraryItem?>(null)
@@ -2183,7 +2191,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Shifts the subtitle on the TV that is playing this title, relative to the timing it loaded (positive shows it later). */
     fun nudgeSubtitleOnTv(delayMs: Long) {
-        enqueue("subtitle_delay", arguments = buildJsonObject { put("delay_ms", delayMs) })
+        // The TV takes at most ten minutes either way; a larger difference would be refused without a word.
+        enqueue("subtitle_delay", arguments = buildJsonObject { put("delay_ms", delayMs.coerceIn(-600_000L, 600_000L)) })
     }
 
     fun skipSeconds(delta: Int) {

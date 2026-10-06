@@ -138,7 +138,12 @@ class TelegramMediaInput(private val media: TelegramMedia, private val file: Tel
     override fun attach(extractor: MediaExtractor) = extractor.setDataSource(source)
     override fun attach(player: MediaPlayer) = player.setDataSource(source)
     override fun readAt(position: Long, length: Int): ByteArray? = read(position, length)
-    override fun close() { closed = true; readers.shutdownNow() }
+    override fun close() {
+        closed = true
+        readers.shutdownNow()
+        // Stop Telegram's download of this file now rather than after the reader's idle minute.
+        media.release(file.fileId)
+    }
 
     private companion object { const val READ_TIMEOUT_MS = 30_000L; const val CHUNK = 1024L * 1024 }
 }

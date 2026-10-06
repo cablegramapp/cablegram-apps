@@ -232,13 +232,18 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     }
     override fun events(): Flow<PlayerEvent> = eventFlow
     override fun release() {
+        released = true
         handler.removeCallbacks(settleTick)
+        // Posted 1.2 s after Playing: it must not reach LibVLC once the player is released.
+        handler.removeCallbacks(addSmartSubtitles)
         settling = false
         playWhenAttached = false
         viewsAttached = false
         mediaPlayer.stop()
         mediaPlayer.detachViews()
         mediaPlayer.release()
+        // The synchronized subtitles were written for this player only.
+        runCatching { appContext.cacheDir.listFiles { f -> f.name.startsWith("cablegram-subtitle-") }?.forEach { it.delete() } }
     }
 
     private fun ensureViewsAttached() {
@@ -358,8 +363,10 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     }
 
     /** Saved subtitles are plain files, so they work the same over LAN, relay, Telegram or cloud storage. */
+    @Volatile private var released = false
+
     private fun attachSmartSubtitles() {
-        if (smartAdded || currentSubtitles.isEmpty()) return
+        if (released || smartAdded || currentSubtitles.isEmpty()) return
         smartAdded = true
         spuIdsBeforeSmart = mediaPlayer.spuTracks?.map { it.id }?.toSet() ?: emptySet()
         currentSubtitles.forEachIndexed { index, subtitle ->

@@ -176,6 +176,8 @@ fun PlayerScreen(
         mutableStateOf<Long?>(if (resume <= 0) 0L else if (remoteTitleCommandId != null) resume else null)
     }
     val focus = remember { FocusRequester() }
+    /** The live shift the phone sends while lining subtitles up (`subtitle_delay`), added to the viewer's own delay. */
+    var phoneSubtitleShiftMs by remember { mutableStateOf(0L) }
 
     /** Re-open the title on the other path (LAN ↔ relay) at the current position. */
     suspend fun switchSource(resumeAtMs: Long? = null): Boolean {
@@ -321,7 +323,7 @@ fun PlayerScreen(
                 }
                 is HudEffect.SetSubtitleDelay -> {
                     playerSettings = playerSettings.copy(subtitleDelayMs = effect.delayMs).also {
-                        player.setSubtitleDelayMs(it.subtitleDelayMs)
+                        player.setSubtitleDelayMs(it.subtitleDelayMs + phoneSubtitleShiftMs)
                         playbackPrefs.savePlayerSettings(it)
                     }
                 }
@@ -484,7 +486,7 @@ fun PlayerScreen(
         player.setPlaybackSpeed(playerSettings.playbackSpeed)
         player.setAspectRatio(playerSettings.aspectRatio)
         player.setAudioDelayMs(playerSettings.audioDelayMs)
-        player.setSubtitleDelayMs(playerSettings.subtitleDelayMs)
+        player.setSubtitleDelayMs(playerSettings.subtitleDelayMs + phoneSubtitleShiftMs)
         player.events().collect { event ->
             when (event) {
                 is PlayerEvent.IsPlayingChanged -> {
@@ -694,8 +696,10 @@ fun PlayerScreen(
                     volumeFeedbackVersion++
                 }
                 "subtitle_delay" -> c.payload["delay_ms"]?.jsonPrimitive?.longOrNull?.let { ms ->
-                    // Applied to what is playing now only; the saved timing is changed from the phone.
-                    player.setSubtitleDelayMs(ms)
+                    // Applied to what is playing now only, on top of the viewer's own subtitle delay; the saved timing
+                    // is changed from the phone.
+                    phoneSubtitleShiftMs = ms
+                    player.setSubtitleDelayMs(playerSettings.subtitleDelayMs + ms)
                     transportNotice = "Subtitles ${if (ms < 0) "−" else "+"}${"%.2f".format(kotlin.math.abs(ms) / 1000.0)} s"
                 }
                 "mute" -> c.payload["muted"]?.jsonPrimitive?.booleanOrNull?.let {

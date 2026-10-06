@@ -60,6 +60,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -245,6 +246,8 @@ private fun ResultsContent(
     var settings by remember { mutableStateOf(false) }
 
     fun choose(match: SubtitleMatch) {
+        // One subtitle at a time: a second tap while one is saving would race it to the Adjust step.
+        if (busyId != null) return
         val t = token ?: return onError(errorMessage(null)); busyId = match.id
         scope.launch {
             try {
@@ -268,12 +271,12 @@ private fun ResultsContent(
     if (language == null) discovery.selected?.let { StatusNote("${languageName(it.language)} subtitles were selected automatically.") }
     val (best, others) = splitOptions(usable, more)
     if (best != null) {
-        OptionCard(best, primary = true, busy = busyId == best.id, details = details, canCheck = analysisNote == null, onUse = { choose(best) })
+        OptionCard(best, primary = true, busy = busyId == best.id, enabled = busyId == null, details = details, canCheck = analysisNote == null, onUse = { choose(best) })
         TextButton(onClick = { details = !details }) { Text(if (details) "Hide details" else "Details") }
     }
     if (others.isNotEmpty()) {
         TextButton(onClick = { showOthers = !showOthers }, modifier = Modifier.maestro(MaestroIds.SUBTITLES_OTHERS)) { Text("Other matches (${others.size})") }
-        if (showOthers) others.forEach { OptionCard(it, primary = false, busy = busyId == it.id, details = details, canCheck = analysisNote == null, onUse = { choose(it) }) }
+        if (showOthers) others.forEach { OptionCard(it, primary = false, busy = busyId == it.id, enabled = busyId == null, details = details, canCheck = analysisNote == null, onUse = { choose(it) }) }
     }
     SectionCard("Another language") {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -288,7 +291,7 @@ private fun ResultsContent(
 @Serializable private data class PreviewResponse(val candidate: SubtitleMatch, val cues: List<SubtitleCue>)
 
 @Composable
-private fun OptionCard(match: SubtitleMatch, primary: Boolean, busy: Boolean, details: Boolean, canCheck: Boolean, onUse: () -> Unit) {
+private fun OptionCard(match: SubtitleMatch, primary: Boolean, busy: Boolean, enabled: Boolean = true, details: Boolean, canCheck: Boolean, onUse: () -> Unit) {
     val h = headline(match, canCheck)
     Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, if (h.verified) VlcOrange else PhoneOutline.copy(alpha = 0.55f))) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -300,8 +303,8 @@ private fun OptionCard(match: SubtitleMatch, primary: Boolean, busy: Boolean, de
                 if (match.explanations.isNotEmpty()) Text(match.explanations.joinToString(" · "), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
             }
             val modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            if (primary) Button(onClick = onUse, enabled = !busy, modifier = modifier.maestro(MaestroIds.SUBTITLES_USE)) { Text(if (busy) "Saving…" else "Use Subtitle") }
-            else OutlinedButton(onClick = onUse, enabled = !busy, modifier = modifier) { Text(if (busy) "Saving…" else "Use Subtitle") }
+            if (primary) Button(onClick = onUse, enabled = enabled, modifier = modifier.maestro(MaestroIds.SUBTITLES_USE)) { Text(if (busy) "Saving…" else "Use Subtitle") }
+            else OutlinedButton(onClick = onUse, enabled = enabled, modifier = modifier) { Text(if (busy) "Saving…" else "Use Subtitle") }
         }
     }
 }
@@ -353,13 +356,21 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
     var seeking by remember { mutableStateOf(false) }
     var fetchedBytes by remember { mutableStateOf(0L) }
     LaunchedEffect(item.id) {
-        withContext(kotlinx.coroutines.Dispatchers.IO) { runCatching { viewModel.openVideo(item) } }.fold({ input = it }, { openError = (it as? VideoUnavailable)?.message })
+        // Not cancellable: an input opened after the screen closed must still be closed, not dropped.
+        val opened = withContext(kotlinx.coroutines.NonCancellable + kotlinx.coroutines.Dispatchers.IO) { runCatching { viewModel.openVideo(item) } }
+        if (!isActive) { opened.getOrNull()?.close(); return@LaunchedEffect }
+        opened.fold({ input = it }, { openError = (it as? VideoUnavailable)?.message })
         opening = false
     }
     // MediaPlayer calls can wait on the data source (a slow Telegram read), so none of them may run on the UI thread.
     val control = remember { java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "subtitle-preview").apply { isDaemon = true } } }
-    fun withPlayer(block: (MediaPlayer) -> Unit) { player?.let { p -> control.execute { runCatching { block(p) } } } }
-    DisposableEffect(item.id) { onDispose { val p = player; val i = input; player = null; control.execute { runCatching { p?.release() }; runCatching { i?.close() }; control.shutdown() } } }
+    // Once the screen is gone the executor is shut down; a late surface callback still has to release its player.
+    fun offMain(task: () -> Unit) { runCatching { control.execute(task) }.onFailure { Thread(task, "subtitle-preview-release").start() } }
+    fun withPlayer(block: (MediaPlayer) -> Unit) { player?.let { p -> offMain { runCatching { block(p) } } } }
+    // The player of the current surface from creation on, prepared or not, so every path can release it.
+    val created = remember { java.util.concurrent.atomic.AtomicReference<MediaPlayer?>(null) }
+    fun releasePlayer() { val p = created.getAndSet(null); player = null; if (p != null) offMain { runCatching { p.release() } } }
+    DisposableEffect(item.id) { onDispose { releasePlayer(); val i = input; offMain { runCatching { i?.close() }; control.shutdown() } } }
     var audioNote by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(input) { input?.let { i -> audioNote = withContext(kotlinx.coroutines.Dispatchers.IO) { LocalSubtitleAnalysis.unsupportedAudio(i) }?.let(::unsupportedAudioNote) } }
     LaunchedEffect(player) { while (true) { val p = player; if (p != null) withContext(kotlinx.coroutines.Dispatchers.Default) { runCatching { p.currentPosition to p.isPlaying } }.getOrNull()?.let { position = it.first / 1000.0; playing = it.second }; delay(150) } }
@@ -390,13 +401,14 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
                 holder.addCallback(object : SurfaceHolder.Callback {
                     override fun surfaceCreated(h: SurfaceHolder) {
                         val mp = MediaPlayer()
+                        created.getAndSet(mp)?.let { old -> offMain { runCatching { old.release() } } }
                         runCatching {
                             source.attach(mp); mp.setDisplay(h)
                             mp.setOnPreparedListener {
                                 durationMs = it.duration; it.seekTo(1L, MediaPlayer.SEEK_CLOSEST)
                                 player = it
                                 // Reads the file header, so never on the UI thread.
-                                control.execute { LocalSubtitleAnalysis.selectPlayableAudio(it, source) }
+                                offMain { runCatching { LocalSubtitleAnalysis.selectPlayableAudio(it, source) } }
                             }
                             mp.setOnSeekCompleteListener { seeking = false }
                             mp.setOnInfoListener { _, what, _ ->
@@ -404,12 +416,12 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
                                 else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END || what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) buffering = false
                                 false
                             }
-                            mp.setOnErrorListener { _, _, _ -> player = null; message = "This video can't be previewed right now, but you can still adjust the timing."; true }
+                            mp.setOnErrorListener { _, _, _ -> releasePlayer(); message = "This video can't be previewed right now, but you can still adjust the timing."; true }
                             mp.prepareAsync()
-                        }.onFailure { message = "This video can't be previewed right now, but you can still adjust the timing." }
+                        }.onFailure { releasePlayer(); message = "This video can't be previewed right now, but you can still adjust the timing." }
                     }
                     override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hh: Int) {}
-                    override fun surfaceDestroyed(h: SurfaceHolder) { val p = player; player = null; control.execute { runCatching { p?.release() } } }
+                    override fun surfaceDestroyed(h: SurfaceHolder) = releasePlayer()
                 })
             }
         }, modifier = Modifier.fillMaxSize())
