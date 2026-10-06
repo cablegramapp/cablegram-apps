@@ -441,8 +441,10 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         val currentToken = token ?: return
-        // A Telegram-only title can't start until the owner types the Telegram password on this TV: ask now, then play.
-        if (video.source == "telegram" && telegram.status.value is TvTelegramStatus.NeedsPassword && phoneRelayChoice != video.id && !telegram.viaPhone.value) {
+        // A Telegram title while this TV is still signing in to Telegram (starting, waiting for the phone's approval, or for
+        // the password): say that signing in here saves the phone's battery and data, and play once it is done, instead of
+        // quietly streaming through the phone. The viewer can still choose the phone, once or always.
+        if (video.source == "telegram" && telegram.status.value.isSigningIn() && phoneRelayChoice != video.id && !telegram.viaPhone.value) {
             screen = ScreenState.TelegramPassword(video)
             return
         }
