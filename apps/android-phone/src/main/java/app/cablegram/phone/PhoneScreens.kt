@@ -1098,6 +1098,8 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
                 Text(if (sourceUnavailable) "Source unavailable" else if (viewModel.paired) "Play on TV" else "Connect a TV to play")
             }
+            // What the TV did with the tap ("Starting on…", "Done on…", or why not), right where it was made.
+            viewModel.remoteStatus?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodySmall) }
             if (sourceUnavailable) {
                 Text(
                     if (item.householdOnly) "This title is in your household library, but its file isn't on this phone. Import the same file here to play it from this phone."

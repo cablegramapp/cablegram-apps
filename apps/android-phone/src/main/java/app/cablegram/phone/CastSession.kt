@@ -27,11 +27,8 @@ object CastSession {
     }
 
     sealed interface Result {
-        /** [offline] and [switchedFrom] as in [TargetResult.Target]. */
-        data class Sent(
-            val tvName: String, val commandId: String, val token: String,
-            val offline: Boolean = false, val switchedFrom: String? = null,
-        ) : Result
+        /** [switchedFrom] as in [TargetResult.Target]. */
+        data class Sent(val tvName: String, val commandId: String, val token: String, val switchedFrom: String? = null) : Result
         data class Failed(val message: String) : Result
     }
 
@@ -54,19 +51,25 @@ object CastSession {
         var list = household
         // A failed refresh means offline (null), not the stale cache: offline sends to the stored
         // device ID, and the server refuses a revoked TV. A title start always asks afresh which TVs are on.
-        if (list == null || command == "play" && videoId != null || selected != null && list.none { it.id == selected.deviceId }) {
+        val titleStart = command == "play" && videoId != null
+        if (list == null || titleStart || selected != null && list.none { it.id == selected.deviceId }) {
             list = client.householdTvs(token)
         }
         val target = when (val resolved = resolveTarget(selected, list)) {
             is TargetResult.Failed -> return Result.Failed(resolved.message)
             is TargetResult.Target -> resolved
         }
+        // A TV without Cablegram open can't take a title: when it opens it shows "Who's watching?", and a title is never
+        // kept for a profile chosen later. Say so now instead of waiting on it. Only from a fresh list, never the cache.
+        if (titleStart && target.offline) {
+            return Result.Failed("${target.name} isn't on. Open Cablegram on it, choose who's watching, then try again.")
+        }
         return when (val sent = client.postCommand(token, command, videoId, target.deviceId, arguments)) {
             is CommandSend.Accepted -> {
                 // The TV that is on becomes the current one, so the remote and the next title go there too.
                 target.switchedFrom?.let { pairing.tvs.firstOrNull { tv -> tv.deviceId == target.deviceId } }
                     ?.let { tv -> pairing.tvs = pairing.tvs.filterNot { it.pin == tv.pin } + tv }
-                Result.Sent(target.name, sent.id, token, target.offline, target.switchedFrom)
+                Result.Sent(target.name, sent.id, token, target.switchedFrom)
             }
             CommandSend.TargetGone -> Result.Failed("${target.name} is no longer connected. Choose a TV in Settings.")
             CommandSend.Failed -> Result.Failed("Could not reach the control service. Check your connection and try again.")
