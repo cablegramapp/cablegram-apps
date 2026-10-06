@@ -15,11 +15,18 @@ import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okhttp3.Response
+
+/** Whether [url] is the control plane at [baseUrl] (same host and port), the only source of server time. */
+internal fun isControlPlane(url: okhttp3.HttpUrl, baseUrl: String): Boolean {
+    val base = baseUrl.toHttpUrlOrNull() ?: return false
+    return url.host == base.host && url.port == base.port
+}
 
 class CablegramApi(
     private val baseUrl: String = BuildConfig.API_BASE_URL,
@@ -33,8 +40,12 @@ class CablegramApi(
         .callTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
         .pingInterval(20, java.util.concurrent.TimeUnit.SECONDS)
         // Learn how far this TV's clock is from the server's, so progress queued offline is stamped in server time.
+        // Only the control plane's answers count: the same client also asks a phone on the LAN whether it answers,
+        // and a phone's clock must not become the TV's idea of server time.
         .addInterceptor { chain ->
-            chain.proceed(chain.request()).also { ServerClock.shared.observe(it.headers.getDate("Date")) }
+            chain.proceed(chain.request()).also { response ->
+                if (isControlPlane(response.request.url, baseUrl)) ServerClock.shared.observe(response.headers.getDate("Date"))
+            }
         }
         .build(),
 ) {
