@@ -19,6 +19,8 @@ import com.google.android.gms.common.images.WebImage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
@@ -32,6 +34,7 @@ class CastConnectSender(context: Context) {
         runCatching { CastContext.getSharedInstance(context) }.getOrNull() else null
     private val router = MediaRouter.getInstance(context)
     private val routeState = MutableStateFlow<List<CastRoute>>(emptyList())
+    private val deviceStatus = MutableStateFlow<CastDeviceStatus?>(null)
     val routes = routeState.asStateFlow()
     val available get() = cast != null
     val playbackTerminated: Boolean get() {
@@ -62,7 +65,11 @@ class CastConnectSender(context: Context) {
             val id = cast?.sessionManager?.currentCastSession?.castDevice?.deviceId ?: return
             status.customData?.let { data ->
                 val own = data.opt("deviceId") as? String
-                if (!own.isNullOrBlank()) onDevice?.invoke(CastDeviceStatus(own, data.optString("reason") == "wrong_tv"), id)
+                if (!own.isNullOrBlank()) {
+                    val value = CastDeviceStatus(own, data.optString("reason") == "wrong_tv")
+                    deviceStatus.value = value
+                    onDevice?.invoke(value, id)
+                }
             }
             when {
                 terminalCastIdle(status.playerState, status.idleReason) -> onPlayback?.invoke(null, true)
@@ -133,6 +140,7 @@ class CastConnectSender(context: Context) {
             putString(MediaMetadata.KEY_TITLE, title)
             publicPosterUrl(poster)?.let { addImage(WebImage(Uri.parse(it))) }
         }
+        deviceStatus.value = null
         val request = MediaLoadRequestData.Builder().setMediaInfo(MediaInfo.Builder(videoId)
             .setContentType("video/mp4").setStreamType(MediaInfo.STREAM_TYPE_BUFFERED).setMetadata(metadata).build())
             .setCustomData(JSONObject().put("commandId", commandId).put("targetDeviceId", targetDeviceId)).build()
@@ -148,9 +156,11 @@ class CastConnectSender(context: Context) {
                 continuation.invokeOnCancellation { pending.cancel() }
             }
         }
-        val data = remote.mediaStatus?.customData ?: return null
-        val own = data.opt("deviceId") as? String ?: return null
-        return CastDeviceStatus(own, data.optString("reason") == "wrong_tv")
+        // The TV reads its own stored credentials asynchronously after LOAD. Wait for its
+        // identity instead of deciding retry from a stale or absent immediate load response.
+        val value = withTimeoutOrNull(5_000) { deviceStatus.first { it != null } }
+            ?: error("TV did not identify itself. Try again.")
+        return value.copy(wrongTv = value.wrongTv || value.deviceId != targetDeviceId)
     }
 
     fun release() {
