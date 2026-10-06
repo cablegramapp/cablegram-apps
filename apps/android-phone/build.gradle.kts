@@ -119,6 +119,7 @@ dependencies {
     implementation("dev.g000sha256:tdl-coroutines-android:15.0.0")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+    implementation("androidx.browser:browser:1.9.0")
     implementation("androidx.core:core-ktx:1.15.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")

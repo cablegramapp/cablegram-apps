@@ -74,6 +74,7 @@ import androidx.tv.material3.Text
 import app.cablegram.MainActivity
 import app.cablegram.R
 import app.cablegram.data.PlaybackResponse
+import app.cablegram.data.playbackNeedsReload
 import app.cablegram.data.TvCommand
 import app.cablegram.data.validationError
 import app.cablegram.player.CableGramPlayer
@@ -184,14 +185,17 @@ fun PlayerScreen(
         transition = transitionTo(next)
         try {
             val current = activePlayback.url
-            val failure = reachableSource(playbackHttp, next, activePlayback.headers, quick = !isRelayUrl(next)) { transportNotice = it }
+            val failure = reachableSource(playbackHttp, next, activePlayback.fallbackHeaders, quick = !isRelayUrl(next)) { transportNotice = it }
             if (failure != null) {
                 lastSourceError = failure
                 transition = null
                 return false
             }
             val resumeAt = ((resumeAtMs ?: player.positionMs) - 2_000).coerceAtLeast(0)
-            activePlayback = activePlayback.copy(url = next, fallbackUrl = current)
+            // The two paths swap places, each with its own headers: a cloud token never goes to the other path.
+            activePlayback = activePlayback.copy(
+                url = next, headers = activePlayback.fallbackHeaders, fallbackUrl = current, fallbackHeaders = activePlayback.headers,
+            )
             player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers))
             transportNotice = transportNoticeFor(next)
             Log.i(PLAYBACK_LOG_TAG, "Switched source to ${if (isRelayUrl(next)) "relay" else "LAN"} at ${resumeAt / 1000}s")
@@ -446,14 +450,18 @@ fun PlayerScreen(
                 val fallback = activePlayback.fallbackUrl ?: activePlayback.fallbackResolver?.invoke()
                 if (fallback != null) transition = transitionTo(fallback, atStart = true)
                 val fallbackError = fallback?.let {
-                    reachableSource(playbackHttp, it, activePlayback.headers, quick = false) { notice -> transportNotice = notice }
+                    reachableSource(playbackHttp, it, activePlayback.fallbackHeaders, quick = false) { notice -> transportNotice = notice }
                 }
                 if (fallback == null || fallbackError != null) {
                     transition = null
                     error = fallbackError ?: primaryError
                     return@LaunchedEffect
                 }
-                activePlayback = activePlayback.copy(url = fallback, fallbackUrl = primary)
+                // Swap headers with the URLs, as switchSource does: a cloud token never goes to the other path.
+                activePlayback = activePlayback.copy(
+                    url = fallback, headers = activePlayback.fallbackHeaders, fallbackUrl = primary, fallbackHeaders = activePlayback.headers,
+                    fallbackResolver = null,
+                )
                 transportNotice = transportNoticeFor(fallback)
             }
         }
@@ -590,12 +598,17 @@ fun PlayerScreen(
             val expiresAt = activePlayback.expiresAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() } ?: continue
             if (expiresAt - System.currentTimeMillis() < 120_000) {
                 val renewed = onRenewPlayback() ?: continue
-                if (renewed.url != null && renewed.url != activePlayback.url) {
+                if (renewed.url != null && !playbackNeedsReload(activePlayback, renewed)) {
+                    // The same link and header, only a later expiry: no reload, just stop asking again every minute.
+                    Log.i(PLAYBACK_LOG_TAG, "Playback renewed without a reload, expires ${renewed.expiresAt}")
+                    activePlayback = activePlayback.copy(expiresAt = renewed.expiresAt)
+                } else if (renewed.url != null) {
                     val renewalError = preflightPlaybackUrl(playbackHttp, renewed.url, renewed.headers)
                     if (renewalError != null) {
                         error = renewalError
                         continue
                     }
+                    Log.i(PLAYBACK_LOG_TAG, "Playback renewed, reloading the player at ${player.positionMs / 1000}s")
                     val playing = player.isPlaying
                     activePlayback = renewed
                     player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers))
@@ -1483,6 +1496,13 @@ internal fun isRelayUrl(url: String): Boolean = url.contains("/relay/v1/")
 /** This TV's own Telegram session, served on 127.0.0.1 (spec 004 T009). */
 internal fun isTelegramLocalUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && url.contains("/tg/")
 
+/** The household's own cloud storage (Drive), served on 127.0.0.1 by CloudStreamServer, which adds the token (spec 006). */
+internal fun isCloudLocalUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && url.contains("/cloud/")
+
+/** A request for the household's own cloud storage: it carries the bearer token, or the local stream adds it. */
+private fun isCloudSource(url: String, headers: Map<String, String>): Boolean =
+    isCloudLocalUrl(url) || headers.keys.any { it.equals("Authorization", ignoreCase = true) }
+
 /** A Telegram title streamed by the phone's session, over the LAN or the relay (spec 004 US8). */
 internal fun isPhoneTelegramUrl(url: String): Boolean {
     // The phone serves `/telegram/<unique file id>`, the relay forwards it as `/relay/v1/p/<phone>/telegram/<id>`.
@@ -1564,9 +1584,13 @@ internal suspend fun reachableSource(
     // player itself reports a failure, which switches to the next source.
     if (isTelegramLocalUrl(url)) return null
     if (!isRelayUrl(url)) {
-        if (!quick) return preflightPlaybackUrl(client, url, headers)
+        // Drive's first byte can take longer than the LAN probe allows; a slow answer is not an unreachable phone.
+        if (!quick || isCloudLocalUrl(url)) return preflightPlaybackUrl(client, url, headers)
         val (code, _) = probeSource(client, url, headers, 3_000)
-        return if (code != null && code in 200..299) null else "Can't reach your phone on this Wi‑Fi."
+        val cloud = isCloudSource(url, headers)
+        return if (code != null && code in 200..299) null
+        else if (cloud) preflightMessage(code ?: 0, cloud = true).takeIf { code != null } ?: "Can't reach your cloud storage right now."
+        else "Can't reach your phone on this Wi‑Fi."
     }
     repeat(40) {
         val (code, error) = probeSource(client, url, headers, 12_000)
@@ -1586,9 +1610,14 @@ internal suspend fun reachableSource(
 }
 
 /** What the viewer can do about a failed stream, instead of a bare "HTTP 404". */
-internal fun preflightMessage(code: Int): String = when (code) {
-    404 -> "This video isn't on your phone anymore. Import it again on the phone, or remove it from the library."
-    401, 403 -> "Your phone didn't allow this playback. Open Cablegram on the phone and try again."
+internal fun preflightMessage(code: Int, cloud: Boolean = false): String = when {
+    // A request that carries a bearer token is for the household's own cloud storage (Google Drive), not the phone.
+    cloud && code == 404 -> "This video is no longer in your cloud storage. Remove it from the library or save it again."
+    cloud && code == 401 -> "Your cloud storage needs you to sign in again. Open Storage on the phone."
+    cloud && (code == 403 || code == 429) -> "Your cloud storage is limiting downloads of this video. Try again in a little while."
+    cloud -> "Your cloud storage couldn't send this video (error $code). Try again in a moment."
+    code == 404 -> "This video isn't on your phone anymore. Import it again on the phone, or remove it from the library."
+    code == 401 || code == 403 -> "Your phone didn't allow this playback. Open Cablegram on the phone and try again."
     else -> "Your phone couldn't send this video (error $code). Try again in a moment."
 }
 
@@ -1610,7 +1639,7 @@ private suspend fun preflightPlaybackUrl(client: OkHttpClient, url: String, head
                         null
                     } else {
                         Log.e(PLAYBACK_LOG_TAG, "Playback preflight HTTP ${response.code} $safeUrl")
-                        preflightMessage(response.code)
+                        preflightMessage(response.code, cloud = isCloudSource(url, headers))
                     }
                 }
             } catch (error: Exception) {
@@ -1618,7 +1647,8 @@ private suspend fun preflightPlaybackUrl(client: OkHttpClient, url: String, head
                     PLAYBACK_LOG_TAG,
                     "Playback preflight failed ${playbackUrlForLog(url)}: ${error.message ?: error.javaClass.simpleName}",
                 )
-                "Can't reach your phone. Make sure it's on the same Wi-Fi with Cablegram open, then try again."
+                if (isCloudSource(url, headers)) "Can't reach your cloud storage right now."
+                else "Can't reach your phone. Make sure it's on the same Wi-Fi with Cablegram open, then try again."
             }
         }
         if (lastError == null) return null

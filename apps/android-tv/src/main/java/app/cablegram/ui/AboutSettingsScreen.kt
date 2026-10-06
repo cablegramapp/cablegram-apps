@@ -260,10 +260,17 @@ internal fun TelegramPasswordScreen(
             fontSize = 14.sp,
             lineHeight = 20.sp,
         )
-        if (status is app.cablegram.TvTelegramStatus.NeedsPassword) {
-            TelegramPasswordStep(status, onPassword, onAskPhone)
-        } else {
-            Text("Signing in…", color = Muted, fontSize = 16.sp)
+        when (status) {
+            is app.cablegram.TvTelegramStatus.NeedsPassword -> TelegramPasswordStep(status, onPassword, onAskPhone)
+            is app.cablegram.TvTelegramStatus.WaitingForPhone ->
+                Text(
+                    if (status.standalone) "Finish signing in from Settings → Telegram on this TV."
+                    else "Approve this TV in the Cablegram notification on your phone. The video starts as soon as you do.",
+                    color = Muted,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                )
+            else -> Text("Signing in…", color = Muted, fontSize = 16.sp)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = { onPlayThroughPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Play through my phone this time") }
