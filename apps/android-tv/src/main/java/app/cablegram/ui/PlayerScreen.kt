@@ -121,6 +121,7 @@ fun PlayerScreen(
     remoteTitleCommandId: String?,
     onRemoteCommandConsumed: (String, String?) -> Unit,
     onRemotePlaybackResult: (String?) -> Unit,
+    onPlayerEvent: (PlayerEvent, Long, Long?) -> Unit,
     onRenewPlayback: suspend () -> PlaybackResponse?,
     onBack: () -> Unit,
 ) {
@@ -488,6 +489,9 @@ fun PlayerScreen(
         player.setAudioDelayMs(playerSettings.audioDelayMs)
         player.setSubtitleDelayMs(playerSettings.subtitleDelayMs + phoneSubtitleShiftMs)
         player.events().collect { event ->
+            // End/fatal can mean a recoverable source switch; publish them only when terminal below.
+            if (event !is PlayerEvent.Fatal && event != PlayerEvent.Ended)
+                onPlayerEvent(event, player.positionMs, player.durationMs)
             when (event) {
                 is PlayerEvent.IsPlayingChanged -> {
                     isPlaying = event.isPlaying
@@ -510,7 +514,10 @@ fun PlayerScreen(
                     selectedSubtitleId = player.activeSubtitleTrackId
                     trackGeneration++
                 }
-                is PlayerEvent.Fatal -> if (!switchSource()) error = lastSourceError ?: event.message
+                is PlayerEvent.Fatal -> if (!switchSource()) {
+                    error = lastSourceError ?: event.message
+                    onPlayerEvent(event, player.positionMs, player.durationMs)
+                }
                 PlayerEvent.Ended -> {
                     // A dropped connection also ends in EOF once VLC's read-ahead buffer drains (it
                     // does not stall). An "end" well before the duration is a lost stream: continue
@@ -530,6 +537,7 @@ fun PlayerScreen(
                     if (!isLive && totalD != null) {
                         onState(totalD, totalD, false, (player.volume * 100).toInt(), player.volume == 0f, "libvlc")
                     }
+                    onPlayerEvent(PlayerEvent.Ended, player.positionMs, player.durationMs)
                     onBack()
                 }
                 else -> Unit
@@ -698,7 +706,8 @@ fun PlayerScreen(
                 "stop" -> exit()
                 "seek" -> {
                     val deltaMs = (c.payload["seconds"]?.jsonPrimitive?.intOrNull ?: c.payload["value"]?.jsonPrimitive?.intOrNull ?: 0) * 1000L
-                    player.seekTo(PlaybackHud.seekTargetMs(player.positionMs, deltaMs))
+                    player.seekTo(c.localSeekToMs?.coerceIn(0, player.durationMs ?: Long.MAX_VALUE)
+                        ?: PlaybackHud.seekTargetMs(player.positionMs, deltaMs))
                     // Same feedback as a D-pad seek.
                     if (deltaMs != 0L) {
                         hud = hud.copy(seekFlashDeltaMs = deltaMs, controlsVisible = false)

@@ -35,6 +35,24 @@ class CommandDeliveryTest {
     private val account = AccountCredential("session", "token")
     private fun command(id: String = "x") = TvCommand(id, "seek", expiresAtMs = 30_000)
 
+    @Test fun `Cast signal polls immediately while socket is ready without duplicate execution`() = runBlocking {
+        val transport = FakeTransport()
+        val executed = mutableListOf<String>()
+        val delivery = CommandDelivery(this, transport, CommandJournal(null, {}, { 1000 }),
+            { command, _ -> executed.add(command.id) }, { 1000 }, 1)
+        try {
+            delivery.setAccounts(listOf(account))
+            until { transport.polls == 1 }
+            transport.sockets.single().ready()
+            transport.pollCommands.add(command("cast"))
+            delivery.pollNow()
+            until { executed.size == 1 }
+            delivery.pollNow()
+            until { transport.polls >= 3 }
+            assertEquals(listOf("cast"), executed)
+        } finally { delivery.stop() }
+    }
+
     @Test fun `a TV clock running fast does not expire a command that still has time left`() = runBlocking {
         val tvClock = 10 * 60_000L // ten minutes ahead of the server's 30 s deadline
         val transport = FakeTransport().apply {

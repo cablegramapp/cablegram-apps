@@ -53,6 +53,10 @@ android {
             ?: "https://api.cablegram.app/"
         buildConfigField("String", "API_BASE", "\"$apiBase\"")
         buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
+        // Optional Cast console receiver ID; an empty value keeps Cast disabled.
+        val castAppId = telegramSetting("CABLEGRAM_CAST_APP_ID").trim()
+            .replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "CABLEGRAM_CAST_APP_ID", "\"$castAppId\"")
         buildConfigField("int", "TELEGRAM_API_ID", telegramSetting("TELEGRAM_API_ID").ifBlank { "0" })
         buildConfigField("String", "TELEGRAM_API_HASH", "\"${telegramSetting("TELEGRAM_API_HASH")}\"")
         // Optional, e.g. -PCABLEGRAM_ABIS=armeabi-v7a: the universal APK is ~210 MB because of
@@ -102,6 +106,10 @@ kotlin {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-cast-tv:21.1.1")
+    implementation("com.google.android.gms:play-services-cast:22.3.1")
+    implementation("androidx.media:media:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation(platform("androidx.compose:compose-bom:2025.03.00"))
     implementation("androidx.activity:activity-compose:1.10.1")
