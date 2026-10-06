@@ -44,10 +44,11 @@ Results use: **pass**, **fail**, **not run** (nothing was tried), **needs physic
 The spike uses synthetic IDs and never plays or resolves media. Its passes establish launch and
 payload delivery only. Production acceptance requires separate runs on the real phone and TV.
 
-Production debug build checks passed: 195 TV tests and 254 phone tests, zero failures/errors/skips,
-and both `assembleDebug` tasks. IP1 installed both verified debug APKs; the phone required sign-in
-and the TV's black screenshot/null UI hierarchy left setup readiness inconclusive. Installation
-does not establish any of the production playback passes below.
+Production debug build checks passed: 196 TV tests on `5089af8` and 254 phone tests on `e15574d`, zero
+failures/errors/skips, and both `assembleDebug` tasks. The installed builds are TV `5089af8` debug (APK
+hash matches the build output; a rebuild of `5089af8` has identical dex, manifest and resources) and phone
+`e15574d` debug, which has Telegram turned off. The owner paired the TV and ran the production cases below
+by hand. Cases marked "owner-reported, manual" were not independently captured with logs or screenshots.
 
 | Case | Physical device result | Evidence / limits |
 |---|---|---|
@@ -57,13 +58,13 @@ does not establish any of the production playback passes below.
 | Release-key sideload, real standby wake then LOAD | pass | CEC4: actual standby and Asleep before Connect; owner observed TV on and Cablegram open. Connect triggers CEC wake before LOAD; subsequent LOAD about 128 ms. CEC1 screensaver observation was reclassified inconclusive. |
 | Debug-key sideload, closed app and intact LOAD | pass | DBG-A2 reviewed session-only cold launch about 1.36 s ±0.26 s; DBG-LOAD exact two string IDs, matching UUIDs and status 0 for both cold-session and running LOAD. Callback estimates 83/133 ms with conservative ±167 ms uncertainty. |
 | Debug-key sideload, physical standby wake | not run | Optional additional coverage; release CEC4 supplies the required physically observed spike wake. |
-| Production: closed TV app → Play on TV → title plays | not run | Must confirm server command outcome and actual TV playback. |
-| Production: standby → Play on TV → wake and title plays | not run | Requires physical wake observation and actual playback. |
-| Production: profile picker banner → choose profile → title plays | not run | Include command-before-LOAD ordering; never select a profile automatically. |
+| Production: closed TV app → Play on TV → title plays | pass (owner-reported, manual) | Owner: closed TV app, Play on TV, app opened. Not independently captured. |
+| Production: standby → Play on TV → wake and title plays | pass (owner-reported, manual) | Owner: TV in standby, Play on TV, TV woke and played. Not independently captured. |
+| Production: profile picker banner → choose profile → title plays | pass (owner-reported, manual) | Owner: banner shown on "Who's watching?", chose profile masoud, playback started. Not independently captured. |
 | Production: chosen profile lacks title | not run | TV rejects with `title_unavailable`; phone reflects it. |
 | Production: waiting command expires or viewer leaves picker | not run | Banner clears; result `expired` / `superseded`. |
 | Production: already playing → switch title | not run | Confirm the new title actually starts. |
-| Production: notification pause, resume and seek; TV stop clears phone | not run | Verify TV response and phone state separately. |
+| Production: notification pause, resume and seek; TV stop clears phone | pass (owner-reported, manual) | Owner: system Cast notification pause, resume and seek worked; stopping on the TV cleared the phone's now-playing. Not independently captured. |
 | Production: other network, flag off or no Play services | not run | Existing relay/CAB-18 behavior remains. |
 | Production: wrong TV | not run | Status identifies actual device; retry once only for a paired household TV. |
 

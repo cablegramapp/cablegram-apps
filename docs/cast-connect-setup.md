@@ -69,7 +69,7 @@ and parsed customData, installed package/version, APK hash, and signing certific
 | Sideloaded debug-key APK | Cold launch and intact customData with verified debug signing | PASS: DBG-A2 reviewed cold launch; DBG-LOAD exact two-field LOAD/status 0, cold-session and running |
 
 Stop if launch/wake, intact customData, or either sideloaded signing variant fails. Missing evidence
-is inconclusive. Post reviewed spike results to CAB-20 before opening PR A; do not infer device passes
+is inconclusive. The reviewed spike results were posted to CAB-20 on 2026-10-06, before PR A; do not infer device passes
 from builds or phone UI. Main TV, phone, and contract changes follow only after the gate passes.
 
 Replacing an installed APK with another signing key can require uninstalling and losing its local
@@ -138,4 +138,7 @@ to foreground discovery afterward. The selected paired TV stays the target even 
 `quality/maestro/phone/cast-remote-flags.yaml` expects authenticated main UI with Cast off and Remote
 on. It hides and restores the Remote tab through tagged switches, leaving both original values.
 `nav_remote` exists only with Remote enabled; `detail_play_on_tv` retains its original identity.
+On the Pixel 8 Pro, Maestro runs of this flow timed out before reaching the switches; those attempts
+remain recorded as inconclusive (FLAGS1). A direct, guarded ADB run of the same steps passed: the
+Remote tab hid with Remote off and returned when restored, and Cast stayed at its original value (off).
 Production playback cases and their actual device results belong in `docs/device-test-matrix.md`.
