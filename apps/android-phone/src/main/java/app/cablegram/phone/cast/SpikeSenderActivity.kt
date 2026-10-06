@@ -9,7 +9,6 @@ import android.widget.TextView
 import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import app.cablegram.phone.BuildConfig
-import com.google.android.gms.cast.CastMediaControlIntent
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata
@@ -23,8 +22,7 @@ class SpikeSenderActivity : Activity() {
     private lateinit var routes: LinearLayout
     private lateinit var status: TextView
     private lateinit var context: CastContext
-    private val selector by lazy { MediaRouteSelector.Builder().addControlCategory(
-        CastMediaControlIntent.categoryForCast(BuildConfig.CABLEGRAM_CAST_APP_ID)).build() }
+    private val selector: MediaRouteSelector get() = requireNotNull(context.mergedSelector)
     private val callback = object : MediaRouter.Callback() {
         override fun onRouteAdded(router: MediaRouter, route: MediaRouter.RouteInfo) { renderRoutes() }
         override fun onRouteChanged(router: MediaRouter, route: MediaRouter.RouteInfo) { renderRoutes() }
@@ -75,7 +73,8 @@ class SpikeSenderActivity : Activity() {
     }
     override fun onStart() {
         super.onStart()
-        router.addCallback(selector, callback, MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY)
+        // This activity is the chooser: request the bounded active scan recommended by MediaRouter.
+        router.addCallback(selector, callback, MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN)
         renderRoutes()
     }
     override fun onStop() { router.removeCallback(callback); super.onStop() }
