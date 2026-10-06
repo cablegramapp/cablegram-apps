@@ -51,8 +51,10 @@ class LanLibraryService : Service() {
             return START_NOT_STICKY
         }
         runCatching {
+            // Serving the library to paired TVs is a connection to another device, not a data sync: dataSync is also
+            // capped at about 6 hours a day from Android 15, after which the system stops the service.
             if (Build.VERSION.SDK_INT >= 29) {
-                startForeground(NOTIFICATION_ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                startForeground(NOTIFICATION_ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
             } else {
                 startForeground(NOTIFICATION_ID, notification())
             }
