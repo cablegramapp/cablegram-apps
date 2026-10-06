@@ -2776,6 +2776,13 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 val status = castSender?.load(castRoute.deviceId, sent.commandId, castTarget,
                     castTitle.id, castTitle.title, castTitle.posterUrl) ?: lastCastDeviceStatus
                 val household = client.householdTvs(sent.token)
+                if (household != null) householdTvsCache = household
+                // A normal first LOAD must also persist its route mapping when discovery began
+                // before the household cache was populated. Fresh membership still bounds the hint.
+                if (status != null && household?.any { it.id == status.deviceId } == true) {
+                    pairing.attachCastDeviceId(status.deviceId, castRoute.deviceId)
+                    tvs = pairing.tvs
+                }
                 val retry = wrongTvRetry(status, pairing.tvs, household.orEmpty().map { it.id }.toSet(), false)
                 if (status?.wrongTv == true) {
                     if (retry == null) return null.also { reportFinal("That Cast device isn't your selected TV. Choose a paired TV.") }
