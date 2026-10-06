@@ -390,7 +390,13 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
             .onSuccess { offset = it.offset; scale = it.scale; message = "Saved. It will be used on your TV." }
             .onFailure { message = errorMessage(it.message) }.isSuccess
     }
-    fun save(body: String) { scope.launch { persist(body) } }
+    // The save takes a round trip: say so, and don't let a second tap send it again.
+    var saving by remember { mutableStateOf(false) }
+    fun save(body: String) {
+        if (saving) return
+        saving = true; message = null
+        scope.launch { try { persist(body) } finally { saving = false } }
+    }
 
     val source = input
     audioNote?.let { StatusNote(it) }
@@ -459,7 +465,7 @@ private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryIt
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(-1.0 to "−1 sec", -0.25 to "−250 ms", 0.25 to "+250 ms", 1.0 to "+1 sec").forEach { (d, label) -> OutlinedButton(onClick = { adjust(d) }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(label) } }
     }
-    Button(onClick = { save(subtitleJson.encodeToString(SyncRequest(offset = offset, scale = scale))) }, modifier = Modifier.fillMaxWidth()) { Text("Save timing") }
+    Button(onClick = { save(subtitleJson.encodeToString(SyncRequest(offset = offset, scale = scale))) }, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text(if (saving) "Saving…" else "Save timing") }
     message?.let { StatusNote(it) }
 
     if (viewModel.paired) SectionCard("Line it up on your TV") {
