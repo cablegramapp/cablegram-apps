@@ -37,6 +37,7 @@ class CastConnectSender(context: Context) {
     private val deviceStatus = MutableStateFlow<CastDeviceStatus?>(null)
     val routes = routeState.asStateFlow()
     val available get() = cast != null
+    val playbackPaused get() = client?.mediaStatus?.playerState == MediaStatus.PLAYER_STATE_PAUSED
     val playbackTerminated: Boolean get() {
         if (cast?.sessionManager?.currentCastSession?.isConnected != true) return true
         val status = client?.mediaStatus ?: return false

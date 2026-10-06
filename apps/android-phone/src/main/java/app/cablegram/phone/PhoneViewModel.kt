@@ -2269,7 +2269,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             if (effectiveRoute != null && castSender?.playbackTerminated != false) return@launch
             castPlaybackOwned = effectiveRoute != null
             nowPlaying = ready
-            paused = false
+            paused = effectiveRoute != null && castSender?.playbackPaused == true
             store.setWatchProgress(ready.id, ready.positionSeconds.coerceAtLeast(1))
             refresh()
             if (sent.latest) status = if (sent.outcome == Outcome.Confirmed) "Playing ${ready.title} on ${sent.tvName}"
