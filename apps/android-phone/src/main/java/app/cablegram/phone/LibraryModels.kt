@@ -49,6 +49,8 @@ data class LibraryItem(
      * after "Save to Telegram" (spec 004 T011). Free up space may then remove the phone copy.
      */
     val telegramCopy: Boolean = false,
+    /** `tgfile:<unique id>` of a Telegram channel title, so its bytes can be read for subtitle matching. */
+    val telegramFileKey: String? = null,
     /**
      * A verified copy of this title's video is in the household's own Cloudflare R2 bucket (spec 005). Set from the
      * catalog on every sync, so it clears when the bucket is disconnected (the copy is then unreachable).

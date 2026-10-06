@@ -246,6 +246,7 @@ class LibraryStore private constructor(private val context: Context) {
             tmdbId = remote.tmdbId, seasonNumber = remote.seasonNumber, episodeNumber = remote.episodeNumber,
             posterUrl = remote.posterUrl ?: existing?.posterUrl,
             sourceAvailable = source.availability != "unavailable",
+            telegramFileKey = source.stableSourceKey?.takeIf { it.startsWith("tgfile:") } ?: existing?.telegramFileKey,
         )
         val merged = mergeManualMetadata(item, remote)
         if (existing == null) save(snapshot().copy(items = list() + merged)) else update(merged)

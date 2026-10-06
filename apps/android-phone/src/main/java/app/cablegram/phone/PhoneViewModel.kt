@@ -146,6 +146,47 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var searchQuery by mutableStateOf("")
     var editingMetadata by mutableStateOf(false)
+    // Smart subtitles: the saved subtitle (if any) for the open title, and whether the Find Subtitles flow is showing.
+    var subtitleFlowOpen by mutableStateOf(false)
+    var savedSubtitle by mutableStateOf<String?>(null)
+        private set
+    fun accountTokenOrNull(): String? = pairing.accountToken?.takeIf { it.isNotBlank() }
+    suspend fun subtitleRequest(path: String, token: String, method: String = "GET", body: String? = null): String = catalog().subtitleRequest(path, token, method, body)
+    // Analysis reads short sections far apart: a small download window keeps what Telegram fetches close to what the
+    // analysis budget counts (the default 48 MB window would pull far more than the cap at every section).
+    private val telegramMedia by lazy {
+        PhoneTelegramMedia(
+            getApplication(),
+            isRemoved = RemovedTelegramSources(catalog(), pairing)::contains,
+            chatId = { pairing.accountToken?.let { catalog().telegramLink(it)?.chatId } },
+            window = 4L * app.cablegram.telegram.TelegramFileReader.MB,
+            refillAt = 1L * app.cablegram.telegram.TelegramFileReader.MB,
+        )
+    }
+    /** The title's bytes for analysis and preview: the local file, or the Telegram channel copy. Blocking; call off the main thread. */
+    fun openVideo(item: LibraryItem): SubtitleMediaInput {
+        store.openPfd(item)?.let { return FileMediaInput(it) }
+        if (item.sourceKind != "telegram") throw VideoUnavailable("This video isn't stored on this phone, so it can't be checked or previewed here.")
+        val key = item.telegramFileKey?.removePrefix("tgfile:")
+            ?: throw VideoUnavailable("Pull to refresh your library once so this Telegram video can be linked, then try again.")
+        if (!PhoneTelegram.configured) throw VideoUnavailable("Telegram isn't set up in this version of the app.")
+        val file = runCatching { telegramMedia.resolve(key) }.getOrNull()
+            ?: throw VideoUnavailable("Telegram didn't provide this video. Check that Telegram is connected in Settings, then try again.")
+        return TelegramMediaInput(telegramMedia, file)
+    }
+    /** Reads what the TV will use for this title, so the detail screen can say which subtitle is saved. */
+    fun refreshSubtitleStatus(item: LibraryItem) {
+        val token = accountTokenOrNull() ?: return
+        viewModelScope.launch {
+            val label = runCatching {
+                val tracks = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    .decodeFromString<SavedSubtitleList>(catalog().subtitleRequest("playback/item/${item.id}", token)).subtitles
+                tracks.firstOrNull()?.let { languageName(it.language) }
+            }.getOrNull()
+            // A late answer for a title that was closed meanwhile must not label the next one.
+            if (selectedId == item.id) savedSubtitle = label
+        }
+    }
     var deleteTarget by mutableStateOf<LibraryItem?>(null)
     /** The title whose copy in the household's own storage the owner is being asked to remove (spec 006). */
     var removeCloudCopyTarget by mutableStateOf<LibraryItem?>(null)
@@ -1917,6 +1958,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeItem() {
         selectedId = null
+        subtitleFlowOpen = false
+        savedSubtitle = null
         editingMetadata = false
         deleteTarget = null
     }
@@ -2144,6 +2187,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             ensurePlayable(item)
             status = "Ready on this phone. Use Play on TV when a TV is nearby."
         }
+    }
+
+    /** Shifts the subtitle on the TV that is playing this title, relative to the timing it loaded (positive shows it later). */
+    fun nudgeSubtitleOnTv(delayMs: Long) {
+        // The TV takes at most ten minutes either way; a larger difference would be refused without a word.
+        enqueue("subtitle_delay", arguments = buildJsonObject { put("delay_ms", delayMs.coerceIn(-600_000L, 600_000L)) })
     }
 
     fun skipSeconds(delta: Int) {
