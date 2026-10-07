@@ -55,6 +55,24 @@ class CloudTransferService : Service() {
         return START_NOT_STICKY
     }
 
+    /**
+     * Android 15+ stops a dataSync service after about 6 hours a day. The service must stop within seconds or the
+     * app crashes, so the title being saved is cancelled (it resumes where it stopped when saved again) and the
+     * titles still waiting are marked failed rather than left showing as queued.
+     */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        PairLog.i("Cloud transfer stopped by the system time limit")
+        while (true) {
+            val id = queue.poll() ?: break
+            destinations.remove(id)
+            ownR2.remove(id)
+            store.get(id)?.let { store.update(it.copy(transferStatus = TRANSFER_FAILED)) }
+        }
+        notifyDone("Saving paused", ok = false, detail = "Android paused saving after a long run. Open Cablegram and save again to continue.")
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
