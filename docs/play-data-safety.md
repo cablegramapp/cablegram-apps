@@ -11,7 +11,7 @@ release that changes what an app sends.
 ## What changed since the last version of this file
 
 - **Web videos are no longer stored by Cablegram** (CAB-27). The Videos row is now the relay, processed
-  ephemerally. Files saved before CAB-27 must be wiped before launch (Before you submit, item 2).
+  ephemerally. Sources saved before CAB-27 were deleted in CAB-47 (Before you submit, item 2).
 - **The relay ships.** Away from home, video bytes pass through Cablegram's server in memory.
 - **Covers made from the user's videos stay on the phone** unless the user saves one to the household (CAB-29).
 - **Gemini no longer sees Telegram text automatically** (CAB-35). It sees what the user types in the cover editor's
@@ -124,15 +124,15 @@ apps, Other app performance data, Crash logs.
 1. **Account deletion end to end.** `GET https://api.cablegram.app/delete-account` answered 200 on 2026-10-07. Still
    do one end-to-end check on the release build: create a test account, connect a TV, import a title, save a cover,
    delete the account in the app, then confirm sign-in fails, the TV is signed out and the catalog rows are gone.
-2. **Wipe the Cablegram-stored web videos** saved before CAB-27 (files under `WEB_STORAGE_DIR` and their
-   `cloud_object` sources). They are still served. The VPS is a test server, so a wipe before launch is enough.
+2. **Cablegram-stored web videos: done (CAB-47).** The route that served them is gone and migration 035 deletes
+   the `cloud_object` sources. The VPS had no stored files.
 3. **The privacy policy** (`https://cablegram.app/privacy.html`) must be the version from CAB-30 or later. It names
    every provider above, the relay, LAN streaming without encryption, the Cast SDK, subtitle search, log contents and
    retention, and the hashed device id kept after deletion.
 4. **Wording elsewhere must match.** The README, the app strings and the Play descriptions must not say end-to-end
    encrypted, or that Cablegram never handles your videos (the relay does), or that Cablegram stores web videos.
-5. **Log retention.** The policy says server logs are kept for up to about a month. Set the journal and syslog limits
-   (inventory, Open items 6) or confirm that number on the VPS.
+5. **Log retention: done (CAB-41).** The policy says logs are kept for up to 15 days. The deploy script sets the
+   journal to 14 days and syslog to daily with 14 kept; nginx was already daily with 14 kept.
 
 ## Kept after account deletion (say so in the policy)
 
