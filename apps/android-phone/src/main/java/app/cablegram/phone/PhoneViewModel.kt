@@ -1484,9 +1484,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     prepareProgress = (index + 1f) / items.size
                     prepareStep = "Syncing ${item.title}"
                     val ok = runCatching {
-                        client.pushLibraryItem(token, item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) { _ ->
-                            store.posterFile(item)?.readBytes()
-                        }
+                        client.pushLibraryItem(token, item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) &&
+                            syncHouseholdArtwork(client, token, item.id)
                     }.getOrDefault(false)
                     if (!ok) {
                         error("Could not sync ${item.title}. Try again when connected")
@@ -1563,7 +1562,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             tmdbId = if (current.catalogIdentityUserSelected) current.tmdbId else remote.tmdbId ?: remote.seriesIdentity?.removePrefix("tmdb:")?.toIntOrNull() ?: current.tmdbId,
                             seasonNumber = if (current.catalogIdentityUserSelected) current.seasonNumber else remote.seasonNumber ?: current.seasonNumber,
                             episodeNumber = if (current.catalogIdentityUserSelected) current.episodeNumber else remote.episodeNumber ?: current.episodeNumber,
-                            posterUrl = if (catalogMayReplaceArtwork(local)) remote.posterUrl ?: local.posterUrl else local.posterUrl,
+                            // A household-saved cover comes back as the server's copy; this phone keeps its own file.
+                            posterUrl = if (catalogMayReplaceArtwork(local)) remote.posterUrl?.takeUnless(::isHouseholdPosterUrl) ?: local.posterUrl else local.posterUrl,
                             cloudObjectPresent = hasCloudObject || local.cloudObjectPresent,
                             // Saved to Telegram (here or on another phone): the server knows the verified copy.
                             telegramCopy = hasTelegramCopy && local.sourceKind == "phone_local",
@@ -1615,7 +1615,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 relinked.forEach { item ->
                     store.updateItem(item.id) { it.copy(fingerprint = item.fingerprint) }
                     runCatching {
-                        client.pushLibraryItem(token, store.get(item.id) ?: item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) { _ -> store.posterFile(item)?.readBytes() }
+                        client.pushLibraryItem(token, store.get(item.id) ?: item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) })
+                        syncHouseholdArtwork(client, token, item.id)
                     }
                 }
                 check(!metadataFailed) { "Your detail edits are saved on this phone. Review any conflicting edits, or retry sync when connected." }
@@ -2051,6 +2052,52 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Optional editing never blocks import or playback. */
     fun findDetailsAndArtwork(item: LibraryItem) {
         artworkEditor.open(item)
+    }
+
+    /**
+     * CAB-29: brings the household's copy of a cover in line with the user's choice. Frames stay on this
+     * phone unless the user saved that exact cover; a changed or withdrawn cover is removed from the server.
+     */
+    private suspend fun syncHouseholdArtwork(client: CatalogClient, token: String, id: String): Boolean {
+        val item = store.get(id) ?: return true
+        val catalogId = item.catalogItemId ?: return true
+        return when (householdArtworkStep(item)) {
+            HouseholdArtworkStep.None -> true
+            HouseholdArtworkStep.Upload -> {
+                val bytes = withContext(Dispatchers.IO) { store.posterFile(item)?.readBytes() } ?: return true
+                client.uploadPoster(token, catalogId, bytes).also { uploaded ->
+                    if (uploaded) store.updateItem(id) { it.copy(householdArtworkUploadedVersion = item.posterVersion) }
+                }
+            }
+            HouseholdArtworkStep.Remove -> client.removePoster(token, catalogId).also { removed ->
+                if (removed) store.updateItem(id) { it.copy(householdArtworkUploadedVersion = null) }
+            }
+        }
+    }
+
+    /** "Save artwork to household", after the user confirmed the explanation. */
+    fun saveArtworkToHousehold(item: LibraryItem) {
+        val current = store.get(item.id) ?: return
+        if (!canSaveArtworkToHousehold(current)) return
+        store.updateItem(item.id) { it.copy(householdArtworkVersion = it.posterVersion) }
+        refresh()
+        applyHouseholdArtwork(item.id, done = "Cover saved to your household", pending = "The cover will be saved to your household on the next sync")
+    }
+
+    fun keepArtworkOnPhone(item: LibraryItem) {
+        store.updateItem(item.id) { it.copy(householdArtworkVersion = null) }
+        refresh()
+        applyHouseholdArtwork(item.id, done = "Cover removed from your household", pending = "The cover will be removed from your household on the next sync")
+    }
+
+    private fun applyHouseholdArtwork(id: String, done: String, pending: String) {
+        val token = pairing.accountToken
+        viewModelScope.launch {
+            val ok = token != null && store.get(id)?.catalogItemId != null &&
+                runCatching { syncHouseholdArtwork(catalog(), token, id) }.getOrDefault(false)
+            status = if (ok) done else pending
+            refresh()
+        }
     }
 
     fun createCollection() {

@@ -1057,6 +1057,36 @@ private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> U
     }
 }
 
+/** CAB-29: a cover made on this phone stays here unless the user saves it to the household. */
+@Composable
+private fun HouseholdArtworkRow(viewModel: PhoneViewModel, item: LibraryItem) {
+    if (!canSaveArtworkToHousehold(item)) return
+    val saved = artworkSavedToHousehold(item)
+    var confirm by remember(item.id) { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            if (saved) "Cover saved to your household" else "Cover kept on this phone. TVs show it while this phone is on the same Wi-Fi.",
+            color = VlcMuted, style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f).maestro("detail_artwork_household_status"),
+        )
+        if (saved) TextButton(onClick = { viewModel.keepArtworkOnPhone(item) }, modifier = Modifier.maestro("detail_artwork_remove_household")) { Text("Remove") }
+        else TextButton(onClick = { confirm = true }, modifier = Modifier.maestro("detail_artwork_save_household")) { Text("Save artwork to household") }
+    }
+    if (confirm) AlertDialog(
+        modifier = Modifier.maestroRoot(),
+        onDismissRequest = { confirm = false },
+        title = { Text("Save artwork to household?") },
+        text = {
+            Text("This cover was made on this phone from your video or your own image. Saving uploads it to Cablegram's server " +
+                "with your household library. Everyone in your household can then see it on their TVs, phones and the web remote, " +
+                "even when this phone is away, and anyone given its link can open it.\n\n" +
+                "It stays on the server until you tap Remove here, change the cover, or make the video private.")
+        },
+        confirmButton = { TextButton(onClick = { confirm = false; viewModel.saveArtworkToHousehold(item) }, modifier = Modifier.maestro("artwork_household_confirm")) { Text("Save to household") } },
+        dismissButton = { TextButton(onClick = { confirm = false }) { Text("Keep on phone") } },
+    )
+}
+
 @Composable
 private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
     val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent && !item.ownCloudCopy
@@ -1089,6 +1119,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 }
             }
         }
+        if (!viewModel.editingMetadata) HouseholdArtworkRow(viewModel, item)
         if (item.metadataConflict) Text("Details changed on another device. Your edits are kept on this phone. Review them and save again to use your version.", color = VlcOrange)
         else if (item.pendingMetadataFields.isNotEmpty()) Text("Details saved on this phone · Waiting to sync", color = VlcMuted)
         if (viewModel.editingMetadata) {

@@ -162,43 +162,6 @@ class CatalogClient(
             .getOrElse { it.message ?: "unreachable" }
     }
 
-    suspend fun identifyStills(images: List<Pair<String, String>>, token: String?): IdentifyStillsResult = withContext(Dispatchers.IO) {
-        if (images.isEmpty()) return@withContext IdentifyStillsResult(error = "no stills")
-        val body = json.encodeToString(buildJsonObject {
-            put("images", buildJsonArray {
-                images.forEach { (mime, data) ->
-                    add(buildJsonObject {
-                        put("mimeType", mime)
-                        put("data", data)
-                    })
-                }
-            })
-        })
-        val url = "${baseUrl.trimEnd('/')}/api/library/identify-stills"
-        PairLog.i("POST identify-stills $url frames=${images.size} payloadKb=${body.length / 1024}")
-        val builder = Request.Builder()
-            .url(url)
-            .post(body.toRequestBody("application/json".toMediaType()))
-        if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer $token")
-        val longClient = client.newBuilder()
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(90, TimeUnit.SECONDS)
-            .callTimeout(95, TimeUnit.SECONDS)
-            .build()
-        runCatching {
-            longClient.newCall(builder.build()).execute().use { response ->
-                val text = response.body?.string().orEmpty()
-                PairLog.i("POST identify-stills HTTP ${response.code} body=${text.take(180)}")
-                if (!response.isSuccessful) {
-                    return@use IdentifyStillsResult(error = "HTTP ${response.code}")
-                }
-                IdentifyStillsResult(metadata = json.decodeFromString<MatchResponse>(text).metadata)
-            }
-        }.onFailure { PairLog.e("identify-stills request failed api=$baseUrl", it) }
-            .getOrElse { IdentifyStillsResult(error = it.message ?: "network error") }
-    }
-
     suspend fun downloadBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
         if (!url.startsWith("https://")) return@withContext null
         runCatching {
@@ -1047,11 +1010,10 @@ class CatalogClient(
         token: String,
         items: List<LibraryItem>,
         deviceId: String? = null,
-        posterProvider: suspend (LibraryItem) -> ByteArray? = { null },
     ): Boolean {
         var all = true
         for (item in items) {
-            if (!pushLibraryItem(token, item, deviceId, posterProvider = posterProvider)) all = false
+            if (!pushLibraryItem(token, item, deviceId)) all = false
         }
         return all
     }
@@ -1062,13 +1024,13 @@ class CatalogClient(
         item: LibraryItem,
         deviceId: String? = null,
         onImported: (String) -> Unit = {},
-        posterProvider: suspend (LibraryItem) -> ByteArray? = { null },
     ): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("origin_filename", item.filename.ifBlank { item.title })
             put("origin_identity", item.id)
             if ("title" !in item.pendingMetadataFields && !isWeakLocalTitle(item)) put("title", item.title)
-            item.posterUrl?.let { put("poster_url", it) }
+            // Echoing the server's own upload URL back would clear the uploaded image.
+            item.posterUrl?.takeUnless(::isHouseholdPosterUrl)?.let { put("poster_url", it) }
             if (item.mediaType == "tv" && item.catalogIdentityUserSelected) {
                 item.tmdbId?.let { put("series_identity", "tmdb:$it") }
                 // Existing API accepts positive seasons; special season 0 remains a local choice.
@@ -1098,14 +1060,11 @@ class CatalogClient(
             }
         }.getOrNull() ?: return@withContext false
         onImported(imported.id)
-        if (item.posterUrl.isNullOrBlank() && !item.isPrivate) {
-            val poster = posterProvider(item)
-            if (poster != null && !uploadPoster(token, imported.id, poster)) return@withContext false
-        }
         true
     }
 
-    private suspend fun uploadPoster(token: String, itemId: String, bytes: ByteArray): Boolean = withContext(Dispatchers.IO) {
+    /** CAB-29: called only for a cover the user chose to save to the household. */
+    suspend fun uploadPoster(token: String, itemId: String, bytes: ByteArray): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("poster_data", Base64.encodeToString(bytes, Base64.NO_WRAP))
         })
@@ -1113,6 +1072,15 @@ class CatalogClient(
             .url("${baseUrl.trimEnd('/')}/api/catalog/items/$itemId/poster")
             .header("Authorization", "Bearer $token")
             .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
+    suspend fun removePoster(token: String, itemId: String): Boolean = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/catalog/items/$itemId/poster")
+            .header("Authorization", "Bearer $token")
+            .delete()
             .build()
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
     }

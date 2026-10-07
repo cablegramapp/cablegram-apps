@@ -83,6 +83,10 @@ data class LibraryItem(
     val artworkOrigin: String = ARTWORK_LEGACY,
     /** True only after an explicit artwork choice; automatic thumbnails stay replaceable. */
     val artworkUserSelected: Boolean = false,
+    /** CAB-29: the [posterVersion] the user chose to save to the household. Null keeps the cover on this phone. */
+    val householdArtworkVersion: Int? = null,
+    /** The [posterVersion] of the image this phone last uploaded, so a changed or withdrawn cover is removed. */
+    val householdArtworkUploadedVersion: Int? = null,
 )
 
 @Serializable
@@ -236,11 +240,6 @@ data class MatchResponse(val metadata: CatalogMetadata)
 data class TitleResolveResponse(
     val found: Boolean = false,
     val metadata: CatalogMetadata? = null,
-)
-
-data class IdentifyStillsResult(
-    val metadata: CatalogMetadata? = null,
-    val error: String? = null,
 )
 
 @Serializable
