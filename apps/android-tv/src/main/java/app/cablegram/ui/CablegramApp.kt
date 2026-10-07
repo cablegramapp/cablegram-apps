@@ -162,6 +162,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                         if (viewModel.returnToLibraryFromPicker()) return@BackHandler
                         val now = System.currentTimeMillis()
                         if (now - exitArmedAt < 2_500L) {
+                            viewModel.leaveCastPicker()
                             (pickerContext as? android.app.Activity)?.finish()
                         } else {
                             exitArmedAt = now
@@ -178,6 +179,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     )
                     ProfilePickerScreen(
                         state = screen,
+                        castBanner = viewModel.castPickerBanner,
                         onSelect = viewModel::chooseProfile,
                         onStartPairing = viewModel::startProfilePairing,
                         onSignOut = viewModel::signOut,
@@ -238,6 +240,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     remoteTitleCommandId = viewModel.pendingRemoteTitleId,
                     onRemoteCommandConsumed = viewModel::consumePlayerCommand,
                     onRemotePlaybackResult = { reason -> viewModel.remotePlaybackResult(screen.video.id, reason) },
+                    onPlayerEvent = viewModel::castPlayerEvent,
                     onRenewPlayback = { viewModel.renewPlayback(screen.video.id) },
                     onBack = viewModel::closePlayer,
                 )
@@ -267,6 +270,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
 @Composable
 private fun ProfilePickerScreen(
     state: ScreenState.ProfilePicker,
+    castBanner: String?,
     onSelect: (Profile) -> Unit,
     onStartPairing: () -> Unit,
     onSignOut: () -> Unit,
@@ -362,6 +366,11 @@ private fun ProfilePickerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text("Who's watching?", color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
+            castBanner?.let {
+                Spacer(Modifier.height(12.dp))
+                Text(it, color = Color.White, fontSize = 18.sp, maxLines = 2,
+                    modifier = Modifier.background(PanelSoft, RoundedCornerShape(10.dp)).padding(12.dp))
+            }
             Spacer(Modifier.height(10.dp))
             Text(
                 state.message ?: "Choose your profile",
@@ -857,4 +866,3 @@ private fun TelegramPhoneLoginPrompt(viewModel: CablegramViewModel) {
         }
     }
 }
-

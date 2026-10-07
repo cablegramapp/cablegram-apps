@@ -1,6 +1,7 @@
 package app.cablegram
 
 import android.os.Bundle
+import android.content.Intent
 import android.annotation.SuppressLint
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -29,12 +30,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        cablegramViewModel.attachCastReceiver()
+        (application as? app.cablegram.cast.CablegramApplication)?.handleIntent(intent)
         enableEdgeToEdge()
         setContent {
             CablegramTheme {
                 CablegramApp(viewModel = cablegramViewModel)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        (application as? app.cablegram.cast.CablegramApplication)?.handleIntent(intent)
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 
     override fun onResume() {
