@@ -9,10 +9,9 @@ import org.json.JSONObject
  * One paired TV from the phone's point of view.
  *
  * [capability] is the per-device LAN secret minted by the control plane at
- * claim time (R-1). [pin] is the 6-digit pairing code the phone typed/claimed;
- * it is retained ONLY so older TV builds that still authenticate with the PIN
- * keep working during the transition (double-accept rollout). It is never sent
- * as the star LAN credential once the TV supplies a capability.
+ * claim time (R-1) and the only credential the LAN server accepts. [pin] is the
+ * 6-digit pairing code the phone typed/claimed; it identifies the TV locally
+ * and is never a LAN credential.
  */
 data class PairedTv(
     val pin: String,
@@ -40,21 +39,6 @@ class PairingStore(context: Context) : AccountTokens {
         }
         prefs.edit().remove("phone_device_id").apply()
     }
-
-    /**
-     * Legacy accessor kept for transition compatibility: the most recently paired
-     * TV's capability, or its PIN when no capability was issued (very old server).
-     */
-    var lanToken: String?
-        get() = tvs.lastOrNull()?.capability ?: tvs.lastOrNull()?.pin
-        set(value) {
-            if (value.isNullOrBlank()) return
-            // Legacy writers used this setter to register a TV by token. Capability
-            // values are usually longer than PINs; try the most recent TV first.
-            val current = tvs.lastOrNull()
-            if (current != null && (current.capability == value || current.pin == value)) return
-            addTv(value, tvName, capability = if (value.length != 6) value else null)
-        }
 
     var tvName: String
         get() = tvs.lastOrNull()?.name ?: prefs.getString("tv_name", "TV") ?: "TV"

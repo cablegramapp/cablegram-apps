@@ -8,11 +8,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * LAN media server. Authenticates callers with the paired TV's device
- * capability (R-1). During the transition rollout it also accepts the legacy
- * pairing PIN so older TV builds keep streaming until both apps are updated.
- * The PIN is never the long-term credential: new pairings always mint a
- * capability, and capability-only enforcement resumes once T071 completes.
+ * LAN media server. Authenticates callers only with a paired TV's device
+ * capability (R-1); the pairing PIN is never a LAN credential.
  *
  * R-2 / CAB-37: [credentials] is kept in step with the paired TVs by the service, so a removed or revoked TV is
  * refused at once, without restarting the server.
@@ -126,7 +123,7 @@ class LanLibraryServer(
             head
         }
 
-    /** Double-accept: device capabilities first; legacy PIN during rollout. */
+    /** Device capabilities only; the pairing PIN is never a LAN credential (CAB-43). */
     private fun authorized(session: IHTTPSession): Boolean = credentials.authorized(suppliedCredentials(session))
 
     private fun suppliedCredentials(session: IHTTPSession): List<String> = listOfNotNull(

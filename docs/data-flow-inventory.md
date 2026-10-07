@@ -121,7 +121,7 @@ Logged: counts and reasons per search, no titles or cues. Providers see the serv
 
 | Mode | Path | Through Cablegram? | Encrypted in transit | Kept |
 |---|---|---|---|---|
-| Phone file, same Wi‑Fi | TV → phone's LAN server (`_cablegram._tcp.`, port 8765), plain HTTP | No | **No**: plain HTTP on the local network. Every request needs the TV's LAN capability; the legacy pairing PIN is still accepted from TVs paired before capabilities (see Open items) | Not kept |
+| Phone file, same Wi‑Fi | TV → phone's LAN server (`_cablegram._tcp.`, port 8765), plain HTTP | No | **No**: plain HTTP on the local network. Every request needs the TV's LAN capability; the pairing PIN is never accepted (CAB-43) | Not kept |
 | Phone file, away from home (relay) | TV → `api.cablegram.app/relay/v1/p/<phone>/…` (HTTPS) → relay → phone's WebSocket (WSS) → phone's LAN server | **Yes** | TLS on both legs, terminated at nginx on the VPS. **Not end-to-end**: the relay process handles the bytes in clear | Only in socket buffers, bounded by per-stream credit (1 MiB, then 256 KiB grants). Nothing on disk; `/relay/` has access logging off. Bytes per household and per hashed device are counted per month |
 | Telegram title, TV with its own session | TV ↔ Telegram (TDLib) | No | Telegram's MTProto | TDLib cache on the TV, removed when playback stops |
 | Telegram title, TV without a session | TV → phone (LAN or relay) → Telegram | Through the relay if away from home | As the rows above | As above |
@@ -192,9 +192,9 @@ These stop the policy from being simpler, or are gaps found while writing this. 
    035 deletes the `cloud_object` sources. The VPS had no files under `WEB_STORAGE_DIR` (checked 2026-10-07).
 2. **The cover editor sends Telegram-derived titles to Gemini** when the user searches without editing the
    pre-filled title. Related to CAB-35 and CAB-39: skip the AI step for Telegram items, or start the box empty.
-3. **The legacy pairing PIN still opens the phone's LAN server** for TVs paired before capabilities
-   (`LanCredentials.kt`). The old policy said it never does. The new policy does not repeat that claim. End it when
-   T071 completes.
+3. **Done in CAB-43: the pairing PIN no longer opens the phone's LAN server.** `LanCredentials.kt` accepts only
+   device capabilities, and the TV no longer falls back to sending the PIN. The policy may say again that the PIN
+   is never a LAN credential.
 4. **LAN streams are plain HTTP.** Anyone on the same network can read the bytes and the LAN credential. The
    policy now says so.
 5. **Expired short-lived rows are never purged:** pairing sessions, remote commands, profile switch requests,
