@@ -92,9 +92,10 @@ while the title is private. The policy says "anyone you give its link to".
   items.
 - **Automatic matching of Telegram titles.** TMDB only. No AI model sees Telegram text unless `TELEGRAM_TITLE_AI`
   is set, and it is not set in production (CAB-35).
-- **Logged** in the systemd journal: the raw query (up to 500 characters, before cleaning), the full prompt sent to
-  Gemini and its reply (up to 3000 characters each), and the TMDB query text. The journal has no time limit; it
-  held about three weeks at 560 MB on 2026-09-30.
+- **Logged** in the systemd journal (CAB-46): the query length, provider status and timing, the reply length, the
+  confidence and the TMDB id of a match. Not the query, the prompt, Gemini's reply or the matched title. A failed
+  parse logs the error class only. `CATALOG_LOG_TEXT=true` brings the text back for local debugging; the deploy
+  never sets it.
 - Gemini and TMDB never get the video, its contents, or the file path. The server's IP address is what they see.
 
 ## Subtitles (OpenSubtitles, SubDL)
@@ -175,7 +176,7 @@ tokens and the chosen TV in the browser's `localStorage`. It sends the same remo
 ## Diagnostics and logs
 
 - **Apps:** no crash reporting and no log upload. LibVLC no longer writes stream URLs to logcat (CAB-37).
-- **Server, systemd journal** (14 days; daily files, so at most 15): title-lookup queries, prompts and replies (above),
+- **Server, systemd journal** (14 days; daily files, so at most 15): title-lookup lengths, timings and TMDB ids (above),
   TMDB queries, poster stored/removed events (item id and size), subtitle search counts, Google OAuth callback
   results, mail send failures. If `MAILER_URL` were unset, the recipient and subject of each mail would be logged
   instead of sent. It is set in production.
@@ -203,8 +204,8 @@ These stop the policy from being simpler, or are gaps found while writing this. 
 6. **Done in CAB-41: journal and syslog are limited to 15 days.** `deploy/deploy-vps.sh` installs a journald
    drop-in (`MaxRetentionSec=14day`, `MaxFileSec=1day`) and rotates syslog daily with 14 kept. The policy now says
    all logs are kept for up to 15 days.
-7. **The raw title query is logged before cleaning**, and the prompt and Gemini reply are logged in full. Log the
-   cleaned query only, or nothing, then shorten the policy line.
+7. **Done in CAB-46: title lookups log no text.** Only lengths, statuses, timings and ids. The policy line now
+   says so.
 8. **Done in CAB-47: no tokens in the nginx log.** The `/api/storage/objects/:id?token=` route is removed, and
    nginx logs `$uri` instead of `$request`, so no query string is logged on any route.
 9. **The relay is not end-to-end encrypted,** and the in-app relay text says "through the Cablegram relay" without

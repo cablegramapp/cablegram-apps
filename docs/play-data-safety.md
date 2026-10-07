@@ -62,7 +62,7 @@ the app.
 | Photos and videos | Videos | Optional | **Yes** | App functionality | Relay playback away from home: bytes pass through the server in memory, never stored |
 | Files and docs | Files and docs | Required | No | App functionality | File names, sizes and source keys in the catalog; Telegram file and message ids; imported page URLs; for subtitle search, file hash, technical details and a speech-timing fingerprint |
 | App activity | App interactions | Required | No | App functionality, Analytics | Watch progress, My List, remote commands (App functionality); Cast SDK usage events (Analytics) |
-| App activity | In-app search history | Optional | No | App functionality | Title searches in the cover editor (sent to Gemini and TMDB, and logged) |
+| App activity | In-app search history | Optional | No | App functionality | Title searches in the cover editor (sent to Gemini and TMDB; not logged since CAB-46) |
 | App activity | Other user-generated content | Optional | No | App functionality | Edited titles and details, collections, subtitle choices and timing corrections |
 | App info and performance | Diagnostics | Required | No | Analytics | Cast SDK session and performance data (anonymised, kept briefly by Google) |
 | Device or other IDs | Device or other IDs | Required | No | App functionality, Fraud prevention, security and compliance | Registered device id; `ANDROID_ID`, stored only as a keyed hash; IP address in server logs; the phone's LAN address |
@@ -104,10 +104,11 @@ apps, Other app performance data, Crash logs.
    declare App interactions and Diagnostics for Analytics, not shared because it is anonymised. Recheck the page
    before submitting.
 2. **Videos as ephemeral.** The relay holds bytes only in socket buffers, never on disk, and logs no relay paths.
-   That fits "processed ephemerally". The old stored web videos do not, which is why they must be wiped (Before you
+   That fits "processed ephemerally". The old stored web videos did not; they were removed in CAB-47 (Before you
    submit, item 2).
-3. **Search history.** Cover-editor searches are in-app searches, and the server logs them. That is why the answer
-   changed from No to Yes.
+3. **Search history.** Cover-editor searches are in-app searches, and they leave the device for the server, Gemini
+   and TMDB. That is why the answer changed from No to Yes. Since CAB-46 the server logs only their length, which
+   does not change the answer.
 
 ## Section 3: Permissions to be ready to justify
 
