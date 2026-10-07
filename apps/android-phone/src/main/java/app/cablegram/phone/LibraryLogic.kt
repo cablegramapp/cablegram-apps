@@ -183,8 +183,12 @@ fun telegramUploadRefusal(sizeBytes: Long, limitBytes: Long): String? = when {
 
 private fun formatGigabytes(bytes: Long): String = String.format(java.util.Locale.US, "%.1f", bytes / (1024.0 * 1024 * 1024))
 
+/**
+ * Web titles are not saved: Cablegram no longer keeps copies of web videos on its server (CAB-27), and saving them to the
+ * household's own storage is not built yet. They still play from the original link.
+ */
 fun canSaveToCloud(item: LibraryItem): Boolean =
-    item.sourceKind != "telegram" && item.sourceAvailable != false && !item.cloudObjectPresent && !item.ownCloudCopy && item.transferStatus != TRANSFER_SAVING
+    item.sourceKind != "telegram" && item.sourceKind != "web" && item.sourceAvailable != false && !item.cloudObjectPresent && !item.ownCloudCopy && item.transferStatus != TRANSFER_SAVING
 
 fun freeUpCandidates(items: List<LibraryItem>): List<LibraryItem> =
     items.filter(::canRemoveLocalCopy).sortedByDescending { it.fileSizeBytes ?: 0L }

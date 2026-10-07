@@ -15,12 +15,9 @@ Deletion rows below are true only once both halves are deployed and released:
 
 - **Videos on the phone or in the user's Telegram channel** are never stored by Cablegram. The phone serves them
   over the local network, or through a relay that forwards bytes without keeping them.
-- **Videos imported from a web address** are stored on Cablegram's server when the user chooses "store with
-  Cablegram" (`cablegram_managed`; a web import alone stores nothing). One file is capped at 5 GiB; there is no
-  total cap per household. Files never expire. Only account deletion removes them
-  (`src/account-deletion.ts`), and only when the user is the last member of their household: if other members
-  remain, the household and its files stay. No per-title deletion and no cleanup of orphaned files exists
-  (`src/catalog/removal.ts` handles Telegram sources only), so do not promise either.
+- **Videos imported from a web address** are not stored by Cablegram. The server reads the page to find the
+  video, its title and artwork, and the TV plays it from the original site. Saving web videos to Cablegram's server
+  was removed on 2026-10-07 (CAB-27); saving them to the household's own storage is not built yet.
 - **Telegram phone number, login code, password and session** go from the device to Telegram (TDLib) and never
   to Cablegram (`contracts/telegram-link.md`).
 - **Third-party processing** (service providers acting for Cablegram, not "sharing" for Play): Google Gemini gets a

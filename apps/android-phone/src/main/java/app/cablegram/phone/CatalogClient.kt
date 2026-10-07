@@ -74,34 +74,6 @@ class CatalogClient(
         }
     }
 
-    suspend fun saveWebToStorage(itemId: String, token: String): WebStorageResponse = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/library/items/$itemId/storage-transfers")
-            .header("Authorization", "Bearer $token")
-            .post("{\"destination\":\"cablegram_managed\"}".toRequestBody("application/json".toMediaType()))
-            .build()
-        client.newCall(request).execute().use { response ->
-            val text = response.body?.string().orEmpty()
-            check(response.isSuccessful) {
-                runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
-                    ?: "Could not save that video (${response.code})"
-            }
-            json.decodeFromString<WebStorageResponse>(text)
-        }
-    }
-
-    suspend fun libraryJob(jobId: String, token: String): LibraryJobResponse = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/library/jobs/$jobId")
-            .header("Authorization", "Bearer $token")
-            .get().build()
-        client.newCall(request).execute().use { response ->
-            val text = response.body?.string().orEmpty()
-            check(response.isSuccessful) { runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull() ?: "Could not check transfer (${response.code})" }
-            json.decodeFromString<LibraryJobResponse>(text)
-        }
-    }
-
     suspend fun suggestTitles(query: String, token: String?): List<TitleSuggestion> = withContext(Dispatchers.IO) {
         if (token.isNullOrBlank() || query.trim().length < 2) return@withContext emptyList()
         val request = Request.Builder()
