@@ -6,6 +6,11 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import app.cablegram.BuildConfig
+import app.cablegram.data.LanPosterAuth
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.google.android.gms.cast.MediaInfo
 import org.json.JSONObject
 import com.google.android.gms.cast.MediaLoadRequestData
@@ -14,7 +19,7 @@ import com.google.android.gms.cast.tv.media.MediaLoadCommandCallback
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
 
-class CablegramApplication : Application(), DefaultLifecycleObserver {
+class CablegramApplication : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factory {
     var mediaSession: TvMediaSession? = null
         private set
     private var receiver: CastReceiverContext? = null
@@ -51,6 +56,11 @@ class CablegramApplication : Application(), DefaultLifecycleObserver {
             ProcessLifecycleOwner.get().lifecycle.addObserver(this)
         }.onFailure { receiver = null; mediaSession = null }
     }
+
+    /** Posters from the phone need the TV's capability as a header, which [LanPosterAuth] adds (CAB-44). */
+    override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
+        .components { add(OkHttpNetworkFetcherFactory(callFactory = { okhttp3.OkHttpClient.Builder().addInterceptor(LanPosterAuth.interceptor).build() })) }
+        .build()
 
     fun bindLaunchHandler(handler: (CastLaunch) -> Unit) {
         onLaunch = handler

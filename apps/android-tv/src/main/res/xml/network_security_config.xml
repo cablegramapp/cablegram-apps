@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!--
+        Plain HTTP stays allowed everywhere because the phone's LAN server (port 8765) is reached at whatever address the
+        phone has on the current Wi-Fi, and a domain-config can only list host names known in advance (CAB-44). Every
+        connection to Cablegram's own servers uses HTTPS. CAB-48 (TLS on the LAN server) removes this.
+    -->
     <base-config cleartextTrafficPermitted="true" />
 </network-security-config>

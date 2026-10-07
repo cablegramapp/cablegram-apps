@@ -74,6 +74,7 @@ import androidx.tv.material3.Text
 import app.cablegram.MainActivity
 import app.cablegram.R
 import app.cablegram.data.PlaybackResponse
+import app.cablegram.data.STREAM_LINK_PARAM
 import app.cablegram.data.playbackNeedsReload
 import app.cablegram.data.TvCommand
 import app.cablegram.data.validationError
@@ -106,6 +107,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -653,6 +655,21 @@ fun PlayerScreen(
                     activePlayback = renewed
                     player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers, renewed.smartSubtitles()))
                     if (!playing) player.pause()
+                }
+            }
+        }
+    }
+    LaunchedEffect(player, start, activePlayback.url, activePlayback.fallbackUrl) {
+        // CAB-44: a phone's LAN link lapses 15 minutes after its last request, and one long read is a single request. A HEAD
+        // now and then keeps it (and the LAN fallback, while on the relay) usable for a seek after a long, uneventful stretch.
+        if (start == null) return@LaunchedEffect
+        val links = listOfNotNull(activePlayback.url, activePlayback.fallbackUrl).filter(::isLanStreamLink)
+        if (links.isEmpty()) return@LaunchedEffect
+        while (true) {
+            delay(LAN_LINK_KEEPALIVE_MS)
+            links.forEach { url ->
+                withContext(Dispatchers.IO) {
+                    runCatching { playbackHttp.newCall(Request.Builder().url(url).head().build()).execute().close() }
                 }
             }
         }
@@ -1498,7 +1515,7 @@ internal fun playbackUrlForLog(url: String): String {
         ?.filter { it.isNotEmpty() }
         ?.joinToString("&") { part ->
             val name = part.substringBefore("=")
-            if (name in setOf("sig", "u", "token", "pass", "rt")) "$name=redacted" else part
+            if (name in setOf("sig", "u", "token", "pass", "rt", STREAM_LINK_PARAM)) "$name=redacted" else part
         }
         .orEmpty()
     return buildString {
@@ -1556,6 +1573,13 @@ private fun PictureSpinner() {
 }
 
 internal fun isRelayUrl(url: String): Boolean = url.contains("/relay/v1/")
+
+/** A phone's short-lived LAN stream link (CAB-44). */
+internal fun isLanStreamLink(url: String): Boolean =
+    !isRelayUrl(url) && url.toHttpUrlOrNull()?.queryParameter(STREAM_LINK_PARAM) != null
+
+/** Well inside the 15 minutes a phone keeps an unused link. */
+private const val LAN_LINK_KEEPALIVE_MS = 5 * 60_000L
 
 /** This TV's own Telegram session, served on 127.0.0.1 (spec 004 T009). */
 internal fun isTelegramLocalUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && url.contains("/tg/")

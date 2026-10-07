@@ -121,7 +121,7 @@ Logged: counts and reasons per search, no titles or cues. Providers see the serv
 
 | Mode | Path | Through Cablegram? | Encrypted in transit | Kept |
 |---|---|---|---|---|
-| Phone file, same Wi‑Fi | TV → phone's LAN server (`_cablegram._tcp.`, port 8765), plain HTTP | No | **No**: plain HTTP on the local network. Every request needs the TV's LAN capability; the pairing PIN is never accepted (CAB-43) | Not kept |
+| Phone file, same Wi‑Fi | TV → phone's LAN server (`_cablegram._tcp.`, port 8765), plain HTTP | No | **No**: plain HTTP on the local network. The TV sends its LAN capability only in a request header, never a URL; the player streams a link for one title and that TV, which lapses 15 minutes after its last use (CAB-44). The pairing PIN is never accepted (CAB-43) | Not kept |
 | Phone file, away from home (relay) | TV → `api.cablegram.app/relay/v1/p/<phone>/…` (HTTPS) → relay → phone's WebSocket (WSS) → phone's LAN server | **Yes** | TLS on both legs, terminated at nginx on the VPS. **Not end-to-end**: the relay process handles the bytes in clear | Only in socket buffers, bounded by per-stream credit (1 MiB, then 256 KiB grants). Nothing on disk; `/relay/` has access logging off. Bytes per household and per hashed device are counted per month |
 | Telegram title, TV with its own session | TV ↔ Telegram (TDLib) | No | Telegram's MTProto | TDLib cache on the TV, removed when playback stops |
 | Telegram title, TV without a session | TV → phone (LAN or relay) → Telegram | Through the relay if away from home | As the rows above | As above |
@@ -195,8 +195,10 @@ These stop the policy from being simpler, or are gaps found while writing this. 
 3. **Done in CAB-43: the pairing PIN no longer opens the phone's LAN server.** `LanCredentials.kt` accepts only
    device capabilities, and the TV no longer falls back to sending the PIN. The policy may say again that the PIN
    is never a LAN credential.
-4. **LAN streams are plain HTTP.** Anyone on the same network can read the bytes and the LAN credential. The
-   policy now says so.
+4. **LAN streams are plain HTTP.** Anyone on the same network can read the bytes, and the LAN capability in the
+   header of the TV's requests. CAB-44 took the capability out of every LAN URL (it no longer reaches player logs or
+   error reports, and a captured stream link plays one title, briefly), but only TLS between phone and TV closes the
+   network exposure: that is CAB-44's step 2, tracked as CAB-48. The policy says the stream is unencrypted.
 5. **Expired short-lived rows are never purged:** pairing sessions, remote commands, profile switch requests,
    private approvals, email codes, Telegram login and password requests, library jobs. Their secrets are hashed or
    cleared, but the rows stay until account deletion. A daily purge (for example 30 days after expiry) would let

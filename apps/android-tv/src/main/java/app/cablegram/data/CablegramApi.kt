@@ -140,7 +140,7 @@ class CablegramApi(
                     ?: item.sources.firstOrNull()
                 val phone = servingPhone(devices, source)
                 val localPosterUrl = if (phone != null && !source?.originIdentity.isNullOrBlank()) {
-                    lanUrl(phone, "poster/${source?.originIdentity}", lanCapability)
+                    lanPosterUrl(phone, "poster/${source?.originIdentity}", lanCapability)
                 } else null
                 Video(
                     id = item.id,
@@ -515,7 +515,7 @@ class CablegramApi(
         val host = phone?.lastLanHost
         if (phone != null && !identity.isNullOrBlank()) {
             // LAN first; the relay carries the same request when the phone isn't reachable here.
-            val lan = if (!host.isNullOrBlank()) lanUrl(phone, "media/$identity", lanPin) else null
+            val lan = if (!host.isNullOrBlank()) lanStreamUrl(phone, "media/$identity", lanPin) else null
             val relay = relayUrl(phone, "media/$identity", lanPin, null, token)
             // Spec 005: LAN, then the user's R2 bucket, then the relay. R2 beats the relay because it
             // costs the phone's mobile data and Cablegram's relay quota nothing.
@@ -660,7 +660,7 @@ class CablegramApi(
                         title = title,
                         posterUrl = posterUrl,
                     )
-                    val lan = phone.lastLanHost?.takeIf { it.isNotBlank() }?.let { lanUrl(phone, "media/$identity", lanPin, pass.lanPass) }
+                    val lan = phone.lastLanHost?.takeIf { it.isNotBlank() }?.let { lanStreamUrl(phone, "media/$identity", lanPin, pass.lanPass) }
                     val relay = relayUrl(phone, "media/$identity", lanPin, pass.lanPass, token)
                     return PlaybackResponse(
                         status = "ready",
@@ -797,7 +797,7 @@ class CablegramApi(
         val uniqueId = source.stableSourceKey?.removePrefix("tgfile:")?.takeIf { it.isNotBlank() } ?: return null
         val me = execute<MeDto>(authenticatedRequest("api/me", token).get().build())
         val phone = me.devices.firstOrNull { it.kind == "phone" && it.revokedAt.isNullOrBlank() && (phoneId == null || it.id == phoneId) } ?: return null
-        val lan = if (!phone.lastLanHost.isNullOrBlank()) lanUrl(phone, "telegram/$uniqueId", lanPin) else null
+        val lan = if (!phone.lastLanHost.isNullOrBlank()) lanStreamUrl(phone, "telegram/$uniqueId", lanPin) else null
         val relay = relayUrl(phone, "telegram/$uniqueId", lanPin, null, token)
         val primary = lan ?: relay ?: return null
         return PlaybackResponse(
@@ -839,15 +839,52 @@ class CablegramApi(
         runCatching { quick.newCall(Request.Builder().url(url).head().build()).execute().use { true } }.getOrDefault(false)
     }
 
-    private fun lanUrl(phone: DeviceHintDto, path: String, capability: String?, privatePass: String? = null): String {
-        val base = okhttp3.HttpUrl.Builder()
-            .scheme("http")
-            .host(requireNotNull(phone.lastLanHost))
-            .port(phone.lastLanPort ?: 8765)
-            .addPathSegments(path)
-        if (!capability.isNullOrBlank()) base.addQueryParameter("token", capability)
-        if (!privatePass.isNullOrBlank()) base.addQueryParameter("pass", privatePass)
-        return base.build().toString()
+    private fun lanUrl(phone: DeviceHintDto, path: String) = okhttp3.HttpUrl.Builder()
+        .scheme("http")
+        .host(requireNotNull(phone.lastLanHost))
+        .port(phone.lastLanPort ?: 8765)
+        .addPathSegments(path)
+
+    /** A poster on the phone; the image loader adds [capability] as a header ([LanPosterAuth]), never the URL (CAB-44). */
+    private fun lanPosterUrl(phone: DeviceHintDto, path: String, capability: String?): String {
+        val url = lanUrl(phone, path).build()
+        if (!capability.isNullOrBlank()) LanPosterAuth.remember(url.host, url.port, capability)
+        return url.toString()
+    }
+
+    /**
+     * CAB-44: the player cannot send a header, so it gets a short-lived link the phone issues for this one title and this
+     * TV; the capability goes only in this request's header. Null when the phone doesn't answer on this Wi-Fi (quickly,
+     * so the relay or the cloud copy takes over) or refuses this TV.
+     */
+    private suspend fun lanStreamUrl(phone: DeviceHintDto, path: String, capability: String?, privatePass: String? = null): String? {
+        val media = lanUrl(phone, path)
+        if (!privatePass.isNullOrBlank()) media.addQueryParameter("pass", privatePass)
+        // Without a capability the phone refuses the stream anyway; the player reports that as it always has.
+        if (capability.isNullOrBlank()) return media.build().toString()
+        val request = Request.Builder()
+            .url(lanUrl(phone, "links/$path").build())
+            .header("Authorization", "Bearer $capability")
+            .get()
+            .build()
+        val link = withContext(Dispatchers.IO) {
+            runCatching {
+                lanClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) null
+                    else json.decodeFromString<StreamLinkDto>(response.body?.string().orEmpty()).link.takeIf { it.isNotBlank() }
+                }
+            }.getOrNull()
+        } ?: return null
+        return media.addQueryParameter(STREAM_LINK_PARAM, link).build().toString()
+    }
+
+    /** A phone that isn't on this Wi-Fi must not hold up playback for long. */
+    private val lanClient by lazy {
+        client.newBuilder()
+            .connectTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .readTimeout(3_000, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .callTimeout(5_000, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .build()
     }
 
     private suspend inline fun <reified T> execute(request: Request): T = withContext(Dispatchers.IO) {
@@ -867,6 +904,12 @@ class CablegramApi(
         }
     }
 }
+
+@Serializable
+private data class StreamLinkDto(val link: String)
+
+/** The query parameter a phone's stream link travels in (CAB-44). */
+internal const val STREAM_LINK_PARAM = "link"
 
 @Serializable
 private data class DeviceSessionDto(

@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!--
+        The phone serves its library over plain HTTP on the LAN (port 8765); this setting doesn't cover a server, only the
+        app's own requests. Those are HTTPS to Cablegram's servers, plus plain HTTP to 127.0.0.1 from the relay tunnel and
+        to a development server. Narrowing it is part of CAB-48 (TLS on the LAN server).
+    -->
     <base-config cleartextTrafficPermitted="true" />
 </network-security-config>
