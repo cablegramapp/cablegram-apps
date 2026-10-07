@@ -1,128 +1,147 @@
 # Google Play Data safety: answers
 
-Answers for the Data safety form of both Play listings, in the order the Console asks. Derived from the
-manifests, the dependency lists, `contracts/`, and the control plane (`CableGram/apps/control-plane`). Check the
-"Before you submit" list at the end: a wrong Data safety form is a policy violation.
+Answers for the Data safety form of both Play listings, in the order the Console asks. Every row comes from
+[data-flow-inventory.md](data-flow-inventory.md), which lists each flow with its destination, purpose, retention and
+deletion; check a row there before changing it here. The privacy policy (`https://cablegram.app/privacy.html`) says
+the same things in plain words. Reviewers compare the three, and a wrong Data safety form is a policy violation.
 
-Deletion rows below are true only once both halves are deployed and released:
+Last checked against code on 2026-10-07 (this repo `8d33090`, server `CableGram` `42b2cae`). Recheck before each
+release that changes what an app sends.
 
-- server: branch `account-deletion` of the closed-source `CableGram` repo (`POST /api/account/delete`, `POST
-  /api/account/delete-by-email`, public page `GET /delete-account`), deployed to `api.cablegram.app`. On
-  2026-09-30 `https://api.cablegram.app/delete-account` still answered 404;
-- phone app: branch `account-deletion-in-app` of this repo (Settings, Delete account), in a release on Play.
+## What changed since the last version of this file
 
-## What the code does with data
-
-- **Videos on the phone or in the user's Telegram channel** are never stored by Cablegram. The phone serves them
-  over the local network, or through a relay that forwards bytes without keeping them.
-- **Videos imported from a web address** are not stored by Cablegram. The server reads the page to find the
-  video, its title and artwork, and the TV plays it from the original site. Saving web videos to Cablegram's server
-  was removed on 2026-10-07 (CAB-27); saving them to the household's own storage is not built yet.
-- **Telegram phone number, login code, password and session** go from the device to Telegram (TDLib) and never
-  to Cablegram (`contracts/telegram-link.md`).
-- **Third-party processing** (service providers acting for Cablegram, not "sharing" for Play): Google Gemini gets a
-  cleaned file name or caption (links, emails, handles and hashtags removed, 800 characters max) to find the
-  title; TMDB gets the title and year; Cloudflare's mailer sends verification and reset emails.
-- **Posters (CAB-29).** Covers made on the phone (a still frame of the user's video, or the user's own image) stay on
-  the phone; paired TVs load them from the phone over the local network. They are uploaded only when the user taps
-  "Save artwork to household" and confirms a dialog naming the recipients (the household's TVs, phones and web
-  remote, and anyone given the link), the storage (Cablegram's server, JPEG as base64, at most 1.5 MB, in the
-  database) and how it is removed (Remove, changing the cover, or making the video private). That is a photo derived
-  from the user's video, user-initiated and optional, so it is declared as Photos.
-- **Kept after account deletion** (`src/account-deletion.ts`): relay bytes per hashed hardware id and month, and
-  the hashed hardware id with a household id that no longer exists anywhere, both unlinked from any account, to
-  stop a new account on the same phone getting a fresh free relay allowance. Say so in the policy.
-- **Stored per phone:** its last local network address and port (`last_lan_host`, `last_lan_port`), so TVs can find it
-  at home. Covered by the IP address entry under Device or other IDs.
-- **No analytics, crash-reporting or ad SDK** in either app, and no advertising ID. The server's request logger is
-  off (`Fastify({ logger: false })`); it does log title-lookup queries (the cleaned text, at most 500 characters).
-  On the production VPS (Contabo GmbH,
-  Ubuntu 24.04; checked 2026-09-30) nginx writes the default access log for `/` (IP addresses included) and
-  `/relay/` has access logging off. nginx logs rotate daily and 14 rotations are kept, so entries live at most 15
-  days. The journal (control plane and relay output, including title-lookup queries) has no time limit set: it is
-  size-capped by journald's default and held about three weeks of data at 560 MB. `/var/log/syslog` keeps about
-  four weeks. See Open items
+- **Web videos are no longer stored by Cablegram** (CAB-27). The Videos row is now the relay, processed
+  ephemerally. Files saved before CAB-27 must be wiped before launch (Before you submit, item 2).
+- **The relay ships.** Away from home, video bytes pass through Cablegram's server in memory.
+- **Covers made from the user's videos stay on the phone** unless the user saves one to the household (CAB-29).
+- **Gemini no longer sees Telegram text automatically** (CAB-35). It sees what the user types in the cover editor's
+  search box.
+- **Subtitle search** sends file details and a speech-timing fingerprint to the server, and ids or titles to
+  OpenSubtitles and SubDL.
+- **The household's own storage** (Google Drive, Cloudflare R2): the server keeps an encrypted credential; videos go
+  straight between the devices and the user's storage.
+- **The Google Cast SDK** is in both apps and collects its own anonymised usage data.
+- **No preset live channels** (CAB-26): the TV no longer contacts any channel streams.
+- **New answers:** In-app search history, Diagnostics, Videos (ephemeral). Dropped: Videos (stored).
 
 ## Section 1: Data collection and security (both apps)
 
 | Question | Phone `app.cablegram.phone` | TV `app.cablegram` |
 |---|---|---|
 | Does your app collect or share any of the required user data types? | Yes | Yes |
-| Is all of the user data collected by your app encrypted in transit? | Yes (HTTPS to `api.cablegram.app`) | Yes |
+| Is all of the user data collected by your app encrypted in transit? | Yes | Yes |
 | Which account creation methods does your app support? | Username (email address) and password | None: the TV pairs with a household made on a phone |
 | Do you provide a way for users to request that their data is deleted? | Yes | Yes |
 | Where can users request deletion? | In the app (Settings, Delete account) and `https://api.cablegram.app/delete-account` | `https://api.cablegram.app/delete-account` |
-| Can users request that some data is deleted without deleting their account? | Yes for profiles (Delete profile removes its progress); leave "No" for the rest | Same |
+| Can users request that some data is deleted without deleting their account? | Yes: profiles (with their progress), titles, saved covers, devices, Telegram link, connected storage | Same |
 | Committed to the Play Families Policy? | No | No |
 | Independent security review? | No | No |
 
-## Section 2: Data types (declare each as Collected, not Shared)
+"Encrypted in transit" is about data the apps send to Cablegram and to SDKs. All of it goes over HTTPS or WSS, and
+the Cast SDK encrypts its own. The phone-to-TV stream on the home network is plain HTTP. That stream is between the
+user's own devices, so it is not collection, but the policy says it is unencrypted.
 
-For every row: **Shared = No**. **Processed ephemerally = No** unless stated. "Required" means the app cannot work
-without it.
+## Section 2: Data types
+
+For every row: **Shared = No.** The providers that receive data process it for Cablegram as service providers:
+Contabo (hosting), Cloudflare (mail, hosting), Google Gemini, TMDB, OpenSubtitles, SubDL. They get a title, ids
+or a file hash from the server, never an account identifier. Transfers to the user's own Telegram, Google Drive or R2
+are user-initiated, to the user's own accounts. Both are exceptions to "sharing" in Play's definitions.
+
+**Processed ephemerally = No** unless the row says Yes. "Required" means the user cannot turn it off and still use
+the app.
 
 ### Phone
 
-| Category | Data type | Required or optional | Purposes |
-|---|---|---|---|
-| Personal info | Email address | Required | App functionality, Account management |
-| Personal info | Name (profile names, Telegram display name) | Required | App functionality |
-| Personal info | User IDs (account, household, Telegram user id) | Required | App functionality, Account management |
-| Photos and videos | Videos (files imported from a web address and stored) | Optional | App functionality |
-| Photos and videos | Photos (covers from the user's videos, uploaded only when the user saves them to the household) | Optional | App functionality |
-| Files and docs | Files and docs (video file names and metadata in the catalog) | Required | App functionality |
-| App activity | App interactions (playback progress, My List) | Required | App functionality |
-| App activity | Other user-generated content (corrected titles, collections, posters) | Optional | App functionality |
-| Device or other IDs | Device or other IDs (registered device id, hashed hardware id, IP address in logs) | Required | App functionality, Fraud prevention, security and compliance |
+| Category | Data type | Required or optional | Ephemeral | Purposes | What it is |
+|---|---|---|---|---|---|
+| Personal info | Email address | Required | No | App functionality, Account management | Sign-in, verification and reset mail |
+| Personal info | Name | Required | No | App functionality | Profile names, optional display name, Telegram display name |
+| Personal info | User IDs | Required | No | App functionality, Account management | Account and household ids; Telegram user id; Google account email and id when Drive is connected |
+| Photos and videos | Photos | Optional | No | App functionality | A cover the user saves to the household ("Save artwork to household") |
+| Photos and videos | Videos | Optional | **Yes** | App functionality | Relay playback away from home: bytes pass through the server in memory, never stored |
+| Files and docs | Files and docs | Required | No | App functionality | File names, sizes and source keys in the catalog; Telegram file and message ids; imported page URLs; for subtitle search, file hash, technical details and a speech-timing fingerprint |
+| App activity | App interactions | Required | No | App functionality, Analytics | Watch progress, My List, remote commands (App functionality); Cast SDK usage events (Analytics) |
+| App activity | In-app search history | Optional | No | App functionality | Title searches in the cover editor (sent to Gemini and TMDB, and logged) |
+| App activity | Other user-generated content | Optional | No | App functionality | Edited titles and details, collections, subtitle choices and timing corrections |
+| App info and performance | Diagnostics | Required | No | Analytics | Cast SDK session and performance data (anonymised, kept briefly by Google) |
+| Device or other IDs | Device or other IDs | Required | No | App functionality, Fraud prevention, security and compliance | Registered device id; `ANDROID_ID`, stored only as a keyed hash; IP address in server logs; the phone's LAN address |
 
 ### TV
 
-Same as the phone table, except: no Email address; no Telegram display name, profile names only; no Videos or
-Photos row (the TV never uploads them); Files and docs, App interactions and Device or other IDs are the same.
+| Category | Data type | Required or optional | Ephemeral | Purposes | What it is |
+|---|---|---|---|---|---|
+| Personal info | Name | Required | No | App functionality | Profile names, Telegram display name |
+| Personal info | User IDs | Required | No | App functionality, Account management | Household id; Telegram user id |
+| Files and docs | Files and docs | Required | No | App functionality | Telegram file names, sizes and ids when the TV scans the channel |
+| App activity | App interactions | Required | No | App functionality, Analytics | Watch progress, My List, profile switch and private-title requests; Cast SDK usage (Analytics) |
+| App info and performance | Diagnostics | Required | No | Analytics | Cast TV SDK session and playback data |
+| Device or other IDs | Device or other IDs | Required | No | App functionality, Fraud prevention, security and compliance | Registered device id; `ANDROID_ID`, stored only as a keyed hash; IP address in server logs |
+
+No Email address, Photos, Videos or search history: the TV never sends them. The TV receives relay video; the phone
+sends it.
 
 ### Not collected: answer No for all of these
 
-Location, Financial info, Health and fitness, Messages, Audio, Contacts, Calendar, Web browsing history,
-Search history, Installed apps. The camera (QR scan for pairing) and the video permission (`READ_MEDIA_VIDEO`)
-are used on the device only. The Telegram phone number and code go to Telegram, not to Cablegram. (Photos is collected on the phone: see the
-Posters note above.)
+Location, Financial info, Health and fitness, Messages, Audio, Contacts, Calendar, Web browsing history, Installed
+apps, Other app performance data, Crash logs.
+
+- **Messages:** the server keeps Telegram message ids and a title derived from a caption, not message content, and
+  never contacts Telegram. The phone number, login code and password go from the device to Telegram. The TV's
+  two-step password is sealed on the phone for that TV and passes through the server only as ciphertext, for at
+  most 5 minutes.
+- **Audio:** the speech-timing fingerprint is up to six windows of "speech or not" bits, made on the phone; raw audio
+  never leaves the phone. It is declared under Files and docs.
+- **Web browsing history:** an imported page URL is something the user pasted to add a video, not a history of sites
+  visited. It is declared under Files and docs.
+- The camera (QR scan for pairing) and `READ_MEDIA_VIDEO` are used on the device only.
+
+### Judgement calls to confirm
+
+1. **Cast SDK.** Google publishes no type-by-type table. Its
+   [disclosure](https://developers.google.com/cast/docs/android_sender/data_disclosure) describes anonymised
+   discovery and session events, device information and app information, encrypted in transit and kept briefly. We
+   declare App interactions and Diagnostics for Analytics, not shared because it is anonymised. Recheck the page
+   before submitting.
+2. **Videos as ephemeral.** The relay holds bytes only in socket buffers, never on disk, and logs no relay paths.
+   That fits "processed ephemerally". The old stored web videos do not, which is why they must be wiped (Before you
+   submit, item 2).
+3. **Search history.** Cover-editor searches are in-app searches, and the server logs them. That is why the answer
+   changed from No to Yes.
 
 ## Section 3: Permissions to be ready to justify
 
-- Phone: `CAMERA` (scan the TV's QR code), `READ_MEDIA_VIDEO` (choose and serve videos),
-  `FOREGROUND_SERVICE_DATA_SYNC` (uploads and serving), `POST_NOTIFICATIONS`, `CHANGE_WIFI_MULTICAST_STATE` (find
-  the TV on the local network), `WAKE_LOCK`.
+- Phone: `CAMERA` (scan the TV's QR code), `READ_MEDIA_VIDEO` and `READ_EXTERNAL_STORAGE` up to API 32 (choose and
+  serve videos), `FOREGROUND_SERVICE_CONNECTED_DEVICE` (the LAN library service, CAB-25),
+  `FOREGROUND_SERVICE_DATA_SYNC` (uploads to the household's own storage), `POST_NOTIFICATIONS`,
+  `CHANGE_WIFI_MULTICAST_STATE` (find the TV on the local network), `WAKE_LOCK`.
+- TV: `INTERNET`, `ACCESS_NETWORK_STATE`, `CHANGE_WIFI_MULTICAST_STATE`. Nothing sensitive.
 - `READ_MEDIA_VIDEO` is sensitive. Play may ask for a broad-access declaration. If the app can use the system
   photo/video picker, remove the permission instead.
 
 ## Before you submit
 
-1. **Release gate for account deletion.** All of these must hold before any public release that shows Delete
-   account, and before answering "Yes" to the Data Safety deletion questions:
-   1. The server deletion endpoints are merged to `main` and deployed.
-   2. `GET https://api.cablegram.app/delete-account` returns 200. (It returned 404 on 2026-10-02.)
-   3. An end-to-end check passes: create a test account, connect a TV, import a title, delete the account in
-      the app, then confirm sign-in fails, the TV is signed out, and the catalog rows are gone.
+1. **Account deletion end to end.** `GET https://api.cablegram.app/delete-account` answered 200 on 2026-10-07. Still
+   do one end-to-end check on the release build: create a test account, connect a TV, import a title, save a cover,
+   delete the account in the app, then confirm sign-in fails, the TV is signed out and the catalog rows are gone.
+2. **Wipe the Cablegram-stored web videos** saved before CAB-27 (files under `WEB_STORAGE_DIR` and their
+   `cloud_object` sources). They are still served. The VPS is a test server, so a wipe before launch is enough.
+3. **The privacy policy** (`https://cablegram.app/privacy.html`) must be the version from CAB-30 or later. It names
+   every provider above, the relay, LAN streaming without encryption, the Cast SDK, subtitle search, log contents and
+   retention, and the hashed device id kept after deletion.
+4. **Wording elsewhere must match.** The README, the app strings and the Play descriptions must not say end-to-end
+   encrypted, or that Cablegram never handles your videos (the relay does), or that Cablegram stores web videos.
+5. **Log retention.** The policy says server logs are kept for up to about a month. Set the journal and syslog limits
+   (inventory, Open items 6) or confirm that number on the VPS.
 
-   Until then: no public release that shows Delete account, and no "Yes" to the deletion questions.
-2. The privacy policy (`https://cablegram.app/privacy.html`) must list every data type above, Gemini, TMDB, the
-   mail provider, IP addresses in server logs, web-imported video storage with its retention, and how to delete
-   an account. Reviewers compare it with this form.
-3. Wording elsewhere must match: the README, the app strings and the Play descriptions must not say Cablegram
-   "never stores your videos".
-4. Confirm the retention of each data type with whoever runs the servers, and state it in the policy.
-5. Until per-title deletion and cleanup exist, the promise is "until you delete your account". Do not say users can
-   delete individual stored videos.
+## Kept after account deletion (say so in the policy)
+
+`relay_device_usage` (relay bytes per hashed hardware id and month) and `device_households` (hashed hardware id and a
+household id that no longer exists anywhere). Unlinked from any account. They stop a new account on the same phone
+getting a fresh free relay allowance. Logs and backups age out on their normal schedule.
 
 ## Open items
 
-- Per-title deletion of stored web videos, and cleanup of orphaned stored files (a failed delete after account
-  deletion leaves a file with no row). Neither exists; not built in this task.
-- No expiry and no per-household total cap on stored web videos (only 5 GiB per file). Decide and state the
-  retention in the policy ("until you delete your account").
-- A household with several members: deleting one account keeps the household and its stored videos. Say so.
-- Set a time limit for the journal and syslog (for example `MaxRetentionSec=14day` in a journald drop-in, and
-  `rotate 2` for syslog) in `deploy/deploy-vps.sh`, then state that number for application logs in the policy. Today only
-  the nginx logs (15 days) have a real limit.
-- Whether the policy text in `CableGram-homePage` (branch `fix-video-storage-wording`) is published.
-- The Play store listing drafts still say "never stores your videos on its servers": edit them in Play Console.
+See [data-flow-inventory.md, Open items](data-flow-inventory.md#open-items). The ones that change this form if fixed:
+a purge of expired rows (no form change, but the policy could say "deleted"), and the cover-editor search (if it
+stops calling Gemini, In-app search history stays, but Gemini's line in the policy shrinks).
