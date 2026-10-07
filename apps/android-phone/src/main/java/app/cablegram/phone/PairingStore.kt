@@ -20,6 +20,7 @@ data class PairedTv(
     val capability: String? = null,
     val deviceId: String? = null,
     val trust: TvTrust = TvTrust.Home,
+    val castDeviceId: String? = null,
 )
 
 class PairingStore(context: Context) : AccountTokens {
@@ -91,6 +92,7 @@ class PairingStore(context: Context) : AccountTokens {
                         name = obj.optString("name", "TV"),
                         capability = obj.optString("capability", "").takeIf { it.isNotBlank() },
                         deviceId = obj.optString("device_id", "").takeIf { it.isNotBlank() },
+                        castDeviceId = obj.optString("cast_device_id", "").takeIf { it.isNotBlank() },
                         trust = TvTrust(
                             temporary = obj.optBoolean("temporary", false),
                             expiresAt = obj.optString("expires_at", "").takeIf { it.isNotBlank() }?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() },
@@ -109,6 +111,7 @@ class PairingStore(context: Context) : AccountTokens {
                         .put("name", tv.name)
                         .put("capability", tv.capability.orEmpty())
                         .put("device_id", tv.deviceId.orEmpty())
+                        .put("cast_device_id", tv.castDeviceId.orEmpty())
                         .put("temporary", tv.trust.temporary)
                         .put("expires_at", tv.trust.expiresAt?.toString().orEmpty())
                         .put("telegram_direct", tv.trust.telegramDirect),
@@ -134,6 +137,24 @@ class PairingStore(context: Context) : AccountTokens {
     fun attachDeviceId(pin: String, deviceId: String) {
         tvs = tvs.map { if (it.pin == pin) it.copy(deviceId = deviceId) else it }
     }
+
+    /** A Cast status may associate a route with an existing pairing, never create one. */
+    fun attachCastDeviceId(deviceId: String, castDeviceId: String) {
+        if (tvs.none { it.deviceId == deviceId }) return
+        tvs = tvs.map { when {
+            it.deviceId == deviceId -> it.copy(castDeviceId = castDeviceId)
+            it.castDeviceId == castDeviceId -> it.copy(castDeviceId = null)
+            else -> it
+        } }
+    }
+
+    var castConnect: Boolean
+        get() = prefs.getBoolean("cast_connect", false)
+        set(value) { prefs.edit().putBoolean("cast_connect", value).apply() }
+
+    var legacyRemote: Boolean
+        get() = prefs.getBoolean("legacy_remote", true)
+        set(value) { prefs.edit().putBoolean("legacy_remote", value).apply() }
 
     fun removeTv(pin: String) {
         tvs = tvs.filterNot { it.pin == pin }

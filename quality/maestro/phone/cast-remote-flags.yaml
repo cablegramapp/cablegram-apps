@@ -1,0 +1,23 @@
+# Preconditions: authenticated main UI; castConnect OFF, legacyRemote ON.
+# Leaves both preferences at those original values. No title or Cast request.
+appId: app.cablegram.phone
+---
+- assertVisible:
+    id: nav_remote
+- tapOn:
+    id: nav_settings
+- scrollUntilVisible:
+    element:
+      id: settings_legacy_remote
+    direction: DOWN
+    timeout: 20000
+- assertVisible:
+    id: settings_cast_connect
+- tapOn:
+    id: settings_legacy_remote
+- assertNotVisible:
+    id: nav_remote
+- tapOn:
+    id: settings_legacy_remote
+- assertVisible:
+    id: nav_remote
