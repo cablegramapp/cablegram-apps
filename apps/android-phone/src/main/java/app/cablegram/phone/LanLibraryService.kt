@@ -27,6 +27,8 @@ import kotlinx.coroutines.launch
 
 class LanLibraryService : Service() {
     private var server: LanLibraryServer? = null
+    /** Plain HTTP on 127.0.0.1 only, for the relay tunnel; the LAN listener ([server]) is TLS (CAB-48). */
+    private var loopbackServer: LanLibraryServer? = null
     private var credentials: LanCredentials? = null
     private var nsdManager: NsdManager? = null
     private var registration: NsdManager.RegistrationListener? = null
@@ -66,22 +68,31 @@ class LanLibraryService : Service() {
                 val accepted = LanCredentials(LanCapabilityVerifier(verify = { capability ->
                     store.accountToken?.let { token -> kotlinx.coroutines.runBlocking { client.verifyLanCapability(token, capability) } }
                 })).apply { sync(store.tvs) }
-                val http = LanLibraryServer(
-                    LibraryStore(this), CommandQueue(this), accepted,
-                    privatePasses = passes,
-                    telegram = if (PhoneTelegram.configured) {
-                        val removed = RemovedTelegramSources(client, store)
-                        PhoneTelegramMedia(this, isRemoved = removed::contains) {
-                            store.accountToken?.let { client.telegramLink(it)?.chatId }
-                        }
-                    } else null,
+                val library = LibraryStore(this)
+                val commands = CommandQueue(this)
+                val telegram = if (PhoneTelegram.configured) {
+                    val removed = RemovedTelegramSources(client, store)
+                    PhoneTelegramMedia(this, isRemoved = removed::contains) {
+                        store.accountToken?.let { client.telegramLink(it)?.chatId }
+                    }
+                } else null
+                val links = LanStreamLinks()
+                fun listener(hostname: String?, port: Int) = LanLibraryServer(
+                    library, commands, accepted, privatePasses = passes, telegram = telegram, links = links,
+                    hostname = hostname, port = port,
                 )
+                // CAB-48: TVs reach the LAN listener over TLS only, and pin this phone's certificate.
+                val http = listener(null, LanLibraryServer.PORT)
+                http.makeSecure(LanTlsIdentity.load().serverSocketFactory(), null)
+                val local = listener("127.0.0.1", 0)
+                local.start()
+                loopbackServer = local
                 http.start()
                 server = http
                 credentials = accepted
                 advertise()
                 startRevocationWatch()
-                startRelay(store)
+                startRelay(store, local.listeningPort)
                 PrivateApprovals.deleteLegacyChannel(this)
                 // While something plays on the TV, the ongoing notification becomes its remote.
                 serviceScope.launch { CastSession.state.drop(1).collect { postNotification() } }
@@ -126,7 +137,7 @@ class LanLibraryService : Service() {
     }
 
     /** Spec 003: keep this phone reachable through the relay when the TV can't reach it directly. */
-    private fun startRelay(store: PairingStore) {
+    private fun startRelay(store: PairingStore, localPort: Int) {
         val tunnel = RelayTunnel(
             relayUrl = { RelayTunnel.phoneUrl(store.apiBaseUrl) },
             accountToken = { store.accountToken },
@@ -134,6 +145,7 @@ class LanLibraryService : Service() {
             networkType = { RelayConsent.networkType(this) },
             admit = { network -> RelayConsent.admit(this, store, network) },
             onActivity = { active, bytes, network -> updateRelayNotification(active, bytes, network) },
+            localPort = localPort,
         )
         relay = tunnel
         tunnel.start()
@@ -186,6 +198,8 @@ class LanLibraryService : Service() {
         registration?.let { runCatching { nsdManager?.unregisterService(it) } }
         runCatching { server?.stop() }
         server = null
+        runCatching { loopbackServer?.stop() }
+        loopbackServer = null
         credentials = null
         multicastLock?.let { lock -> runCatching { if (lock.isHeld) lock.release() } }
         multicastLock = null

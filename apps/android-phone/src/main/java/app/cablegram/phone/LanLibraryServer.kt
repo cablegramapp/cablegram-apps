@@ -17,6 +17,9 @@ import kotlinx.serialization.json.Json
  * CAB-44: a TV on the LAN sends its capability only in the `Authorization` header. The player cannot send one, so it
  * plays a short-lived link from `/links/...` instead ([LanStreamLinks]). `?token=` is accepted only from 127.0.0.1,
  * where the relay tunnel replays a TV's request.
+ *
+ * CAB-48: the LAN listener speaks TLS with this phone's [LanTlsIdentity], which TVs pin; the service also runs a plain
+ * listener bound to 127.0.0.1 for the relay tunnel. Both share the same credentials and links.
  */
 class LanLibraryServer(
     private val store: LibraryStore,
@@ -27,8 +30,10 @@ class LanLibraryServer(
     /** Streams Telegram titles from this phone's session for TVs that hold none (spec 004 US8). */
     private val telegram: TelegramMedia? = null,
     private val links: LanStreamLinks = LanStreamLinks(),
+    /** Null listens on every interface (the LAN, over TLS); "127.0.0.1" is the relay tunnel's plain listener. */
+    hostname: String? = null,
     port: Int = PORT,
-) : NanoHTTPD(port) {
+) : NanoHTTPD(hostname, port) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     override fun serve(session: IHTTPSession): Response {

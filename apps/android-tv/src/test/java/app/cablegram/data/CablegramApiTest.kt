@@ -158,27 +158,56 @@ class CablegramApiTest {
     @Test
     fun `decodes signed playback and subtitle tracks`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Inception","sources":[{"origin_identity":"video-1"}]}]}"""))
-        server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765,"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
 
         val playback = api.getPlayback("item-1", "jwt")
 
         assertEquals("ready", playback.status)
-        assertEquals("http://192.168.1.20:8765/media/video-1", playback.url)
+        assertEquals("https://192.168.1.20:8765/media/video-1", playback.url)
         assertEquals("/api/catalog/items", server.takeRequest().path)
         assertEquals("/api/me", server.takeRequest().path)
     }
 
     @Test
-    fun `LAN playback plays a short-lived link and sends the capability only in a header`() = runBlocking {
-        val phone = MockWebServer().apply { start() }
+    fun `a phone that published no certificate is never played over plain HTTP`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"origin_identity":"video-1"}]}]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
+
+        val playback = api.getPlayback("item-1", "jwt", "capability")
+
+        assertEquals("preparing", playback.status)
+        assertEquals(null, playback.url)
+    }
+
+    @Test
+    fun `a LAN server whose certificate is not the published one is not played`() = runBlocking {
+        val phone = TestLanCert.phone()
         try {
             server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"origin_identity":"phone-video"}]}]}"""))
-            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port}}]}"""))
+            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port},"lan_cert_sha256":"${"0".repeat(64)}"}]}"""))
+            phone.enqueue(MockResponse().setBody("""{"link":"one-title-link","expires_in_seconds":900}"""))
+
+            val playback = api.getPlayback("item-1", "jwt", "capability")
+
+            assertEquals(null, playback.url)
+            // The handshake failed before any request: the capability never reached the impostor.
+            assertEquals(0, phone.requestCount)
+        } finally {
+            phone.shutdown()
+        }
+    }
+
+    @Test
+    fun `LAN playback plays a short-lived link and sends the capability only in a header`() = runBlocking {
+        val phone = TestLanCert.phone()
+        try {
+            server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"origin_identity":"phone-video"}]}]}"""))
+            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port},"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
             phone.enqueue(MockResponse().setBody("""{"link":"one-title-link","expires_in_seconds":900}"""))
 
             val playback = api.getPlayback("item-1", "jwt", "capability+/=")
 
-            assertEquals("http://127.0.0.1:${phone.port}/media/phone-video?link=one-title-link", playback.url)
+            assertEquals("https://127.0.0.1:${phone.port}/media/phone-video?link=one-title-link", playback.url)
             assertFalse(playback.url!!.contains("capability"))
             val asked = phone.takeRequest(3, TimeUnit.SECONDS)!!
             assertEquals("/links/media/phone-video", asked.path)
@@ -190,10 +219,10 @@ class CablegramApiTest {
 
     @Test
     fun `a phone that refuses the link is not played over the LAN`() = runBlocking {
-        val phone = MockWebServer().apply { start() }
+        val phone = TestLanCert.phone()
         try {
             server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"origin_identity":"phone-video"}]}]}"""))
-            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port}}]}"""))
+            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port},"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
             phone.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"invalid_lan_token"}"""))
 
             val playback = api.getPlayback("item-1", "jwt", "capability+/=")
@@ -211,11 +240,11 @@ class CablegramApiTest {
         server.enqueue(MockResponse().setBody(
             """{"items":[{"id":"item-1","title":"Clip","poster_url":"https://api.test/private-poster","sources":[{"kind":"phone_local","origin_identity":"phone-video","private":true}]}]}""",
         ))
-        server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765,"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
 
         val video = api.getVideos("jwt", "capability+/=").videos.single()
 
-        assertEquals("http://192.168.1.20:8765/poster/phone-video", video.posterUrl)
+        assertEquals("https://192.168.1.20:8765/poster/phone-video", video.posterUrl)
     }
 
     @Test
@@ -277,14 +306,14 @@ class CablegramApiTest {
     @Test
     fun `LAN stays first and R2 is looked up only if the LAN stalls`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
-        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765,"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
         server.enqueue(MockResponse().setResponseCode(404)) // the relay ticket: not available in this test
         server.enqueue(MockResponse().setBody(noSubtitles)) // the saved-subtitle lookup once playback is ready
         server.enqueue(MockResponse().setBody(r2Resolve))
 
         val playback = api.getPlayback("item-1", "jwt")
 
-        assertTrue(playback.url!!.startsWith("http://192.168.1.20:8765/media/phone-video"))
+        assertTrue(playback.url!!.startsWith("https://192.168.1.20:8765/media/phone-video"))
         val before = server.requestCount
         val fallback = playback.fallbackResolver!!.invoke()
         assertTrue(fallback!!.startsWith("https://acct.r2.cloudflarestorage.com/"))
@@ -325,7 +354,7 @@ class CablegramApiTest {
 
         // LAN first: when it stalls, a copy that needs a header is not offered as a bare URL.
         server.enqueue(MockResponse().setBody("""{"items":[$r2Item]}"""))
-        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"p1","kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765,"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
         server.enqueue(MockResponse().setResponseCode(404)) // the relay ticket
         server.enqueue(MockResponse().setBody(noSubtitles)) // the saved-subtitle lookup once playback is ready
         server.enqueue(MockResponse().setBody(driveResolve))
@@ -384,20 +413,20 @@ class CablegramApiTest {
 
     @Test
     fun `an approved private title also in Drive plays from the phone when it answers on this Wi-Fi`() = runBlocking {
-        val phone = MockWebServer().apply { enqueue(MockResponse().setResponseCode(401)); start() }
+        val phone = TestLanCert.phone().apply { enqueue(MockResponse().setResponseCode(401)) }
         try {
             server.enqueue(MockResponse().setBody(privateOnPhoneAndDrive))          // catalog
             server.enqueue(MockResponse().setBody("""{"attempt_id":"att-1","expires_at":"2026-10-02T13:00:00Z"}"""))
             server.enqueue(MockResponse().setBody("""{"status":"approved"}"""))
             server.enqueue(MockResponse().setBody(privateOnPhoneAndDrive))          // catalog again after approval
-            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port}}]}"""))
+            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port},"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
             server.enqueue(MockResponse().setBody("""{"lan_pass":"pass-1"}"""))      // the approval is spent on the phone path
             var cloud = false
 
             val playback = api.getPlayback("item-1", "jwt", cloudStream = { _, _ -> cloud = true; "http://127.0.0.1:5555/cloud/abc" })
 
             assertEquals("ready", playback.status)
-            assertTrue(playback.url!!.startsWith("http://127.0.0.1:${phone.port}/media/phone-video"))
+            assertTrue(playback.url!!.startsWith("https://127.0.0.1:${phone.port}/media/phone-video"))
             assertTrue(playback.url!!.contains("pass=pass-1"))
             assertFalse("Drive is not asked while the phone answers", cloud)
         } finally {

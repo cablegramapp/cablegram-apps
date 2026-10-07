@@ -57,9 +57,16 @@ class CablegramApplication : Application(), DefaultLifecycleObserver, SingletonI
         }.onFailure { receiver = null; mediaSession = null }
     }
 
-    /** Posters from the phone need the TV's capability as a header, which [LanPosterAuth] adds (CAB-44). */
+    /**
+     * Posters from the phone need the TV's capability as a header, which [LanPosterAuth] adds (CAB-44), and come over TLS
+     * with the phone's pinned certificate (CAB-48).
+     */
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
-        .components { add(OkHttpNetworkFetcherFactory(callFactory = { okhttp3.OkHttpClient.Builder().addInterceptor(LanPosterAuth.interceptor).build() })) }
+        .components {
+            add(OkHttpNetworkFetcherFactory(callFactory = {
+                app.cablegram.data.LanTls.pinned(okhttp3.OkHttpClient.Builder().addInterceptor(LanPosterAuth.interceptor).build())
+            }))
+        }
         .build()
 
     fun bindLaunchHandler(handler: (CastLaunch) -> Unit) {

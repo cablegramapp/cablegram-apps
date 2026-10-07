@@ -24,7 +24,7 @@ object LanPosterAuth {
         val request = chain.request()
         val url = request.url
         val capability = capabilities["${url.host}:${url.port}"]
-            ?.takeIf { url.scheme == "http" && url.encodedPath.startsWith("/poster/") && request.header("Authorization") == null }
+            ?.takeIf { url.scheme == "https" && url.encodedPath.startsWith("/poster/") && request.header("Authorization") == null }
         chain.proceed(if (capability == null) request else request.newBuilder().header("Authorization", "Bearer $capability").build())
     }
 }

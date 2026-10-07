@@ -38,8 +38,8 @@ release that changes what an app sends.
 | Independent security review? | No | No |
 
 "Encrypted in transit" is about data the apps send to Cablegram and to SDKs. All of it goes over HTTPS or WSS, and
-the Cast SDK encrypts its own. The phone-to-TV stream on the home network is plain HTTP. That stream is between the
-user's own devices, so it is not collection, but the policy says it is unencrypted.
+the Cast SDK encrypts its own. The phone-to-TV stream on the home network is TLS too, with the phone's own pinned
+certificate (CAB-48). That stream is between the user's own devices, so it is not collection either way.
 
 ## Section 2: Data types
 
@@ -128,7 +128,7 @@ apps, Other app performance data, Crash logs.
 2. **Cablegram-stored web videos: done (CAB-47).** The route that served them is gone and migration 035 deletes
    the `cloud_object` sources. The VPS had no stored files.
 3. **The privacy policy** (`https://cablegram.app/privacy.html`) must be the version from CAB-30 or later. It names
-   every provider above, the relay, LAN streaming without encryption, the Cast SDK, subtitle search, log contents and
+   every provider above, the relay, LAN streaming (encrypted since CAB-48), the Cast SDK, subtitle search, log contents and
    retention, and the hashed device id kept after deletion.
 4. **Wording elsewhere must match.** The README, the app strings and the Play descriptions must not say end-to-end
    encrypted, or that Cablegram never handles your videos (the relay does), or that Cablegram stores web videos.

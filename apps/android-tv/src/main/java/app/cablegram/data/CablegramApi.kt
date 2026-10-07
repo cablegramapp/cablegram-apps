@@ -48,6 +48,11 @@ class CablegramApi(
             }
         }
         .build(),
+    /**
+     * CAB-48: a URL LibVLC can play for a phone's HTTPS stream. LibVLC cannot pin the phone's certificate, so the app
+     * hands it a 127.0.0.1 URL served by a proxy that does; null when there is none.
+     */
+    private val lanStream: (String) -> String? = { it },
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val jsonMediaType = "application/json".toMediaType()
@@ -832,22 +837,26 @@ class CablegramApi(
 
     /** Whether the phone's library server answers on this Wi-Fi at all; any HTTP reply counts, nothing is fetched. */
     private suspend fun answersOnLan(phone: DeviceHintDto): Boolean = withContext(Dispatchers.IO) {
-        val host = phone.lastLanHost?.takeIf { it.isNotBlank() } ?: return@withContext false
-        val url = okhttp3.HttpUrl.Builder().scheme("http").host(host).port(phone.lastLanPort ?: 8765).addPathSegment("library").build()
-        val quick = client.newBuilder().connectTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS)
-            .readTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        val url = lanUrl(phone, "library")?.build() ?: return@withContext false
+        val quick = lanClient.newBuilder().readTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS).build()
         runCatching { quick.newCall(Request.Builder().url(url).head().build()).execute().use { true } }.getOrDefault(false)
     }
 
-    private fun lanUrl(phone: DeviceHintDto, path: String) = okhttp3.HttpUrl.Builder()
-        .scheme("http")
-        .host(requireNotNull(phone.lastLanHost))
-        .port(phone.lastLanPort ?: 8765)
-        .addPathSegments(path)
+    /**
+     * The phone's LAN server, over TLS with its pinned certificate (CAB-48). Null when the phone announced no address, or
+     * no certificate: there is no plain-HTTP LAN path any more.
+     */
+    private fun lanUrl(phone: DeviceHintDto, path: String): okhttp3.HttpUrl.Builder? {
+        val host = phone.lastLanHost?.takeIf { it.isNotBlank() } ?: return null
+        val pin = phone.lanCertSha256?.takeIf { it.matches(CERT_SHA256) } ?: return null
+        val port = phone.lastLanPort ?: 8765
+        LanTls.remember(host, port, pin)
+        return okhttp3.HttpUrl.Builder().scheme("https").host(host).port(port).addPathSegments(path)
+    }
 
     /** A poster on the phone; the image loader adds [capability] as a header ([LanPosterAuth]), never the URL (CAB-44). */
-    private fun lanPosterUrl(phone: DeviceHintDto, path: String, capability: String?): String {
-        val url = lanUrl(phone, path).build()
+    private fun lanPosterUrl(phone: DeviceHintDto, path: String, capability: String?): String? {
+        val url = lanUrl(phone, path)?.build() ?: return null
         if (!capability.isNullOrBlank()) LanPosterAuth.remember(url.host, url.port, capability)
         return url.toString()
     }
@@ -858,12 +867,13 @@ class CablegramApi(
      * so the relay or the cloud copy takes over) or refuses this TV.
      */
     private suspend fun lanStreamUrl(phone: DeviceHintDto, path: String, capability: String?, privatePass: String? = null): String? {
-        val media = lanUrl(phone, path)
+        val media = lanUrl(phone, path) ?: return null
+        val linkUrl = lanUrl(phone, "links/$path") ?: return null
         if (!privatePass.isNullOrBlank()) media.addQueryParameter("pass", privatePass)
         // Without a capability the phone refuses the stream anyway; the player reports that as it always has.
-        if (capability.isNullOrBlank()) return media.build().toString()
+        if (capability.isNullOrBlank()) return lanStream(media.build().toString())
         val request = Request.Builder()
-            .url(lanUrl(phone, "links/$path").build())
+            .url(linkUrl.build())
             .header("Authorization", "Bearer $capability")
             .get()
             .build()
@@ -875,16 +885,18 @@ class CablegramApi(
                 }
             }.getOrNull()
         } ?: return null
-        return media.addQueryParameter(STREAM_LINK_PARAM, link).build().toString()
+        return lanStream(media.addQueryParameter(STREAM_LINK_PARAM, link).build().toString())
     }
 
-    /** A phone that isn't on this Wi-Fi must not hold up playback for long. */
+    /** A phone that isn't on this Wi-Fi must not hold up playback for long; its certificate is pinned (CAB-48). */
     private val lanClient by lazy {
-        client.newBuilder()
-            .connectTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS)
-            .readTimeout(3_000, java.util.concurrent.TimeUnit.MILLISECONDS)
-            .callTimeout(5_000, java.util.concurrent.TimeUnit.MILLISECONDS)
-            .build()
+        LanTls.pinned(
+            client.newBuilder()
+                .connectTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .readTimeout(3_000, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .callTimeout(5_000, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .build(),
+        )
     }
 
     private suspend inline fun <reified T> execute(request: Request): T = withContext(Dispatchers.IO) {
@@ -907,6 +919,8 @@ class CablegramApi(
 
 @Serializable
 private data class StreamLinkDto(val link: String)
+
+private val CERT_SHA256 = Regex("[0-9a-f]{64}")
 
 /** The query parameter a phone's stream link travels in (CAB-44). */
 internal const val STREAM_LINK_PARAM = "link"
@@ -987,6 +1001,8 @@ internal data class DeviceHintDto(
     @kotlinx.serialization.SerialName("revoked_at") val revokedAt: String? = null,
     @kotlinx.serialization.SerialName("last_lan_host") val lastLanHost: String? = null,
     @kotlinx.serialization.SerialName("last_lan_port") val lastLanPort: Int? = null,
+    /** CAB-48: the SHA-256 of the phone's LAN server certificate, which this TV pins. */
+    @kotlinx.serialization.SerialName("lan_cert_sha256") val lanCertSha256: String? = null,
 )
 
 /** Playback is waiting for the serving phone to come online on the LAN. */

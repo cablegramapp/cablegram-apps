@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-        Plain HTTP stays allowed everywhere because the phone's LAN server (port 8765) is reached at whatever address the
-        phone has on the current Wi-Fi, and a domain-config can only list host names known in advance (CAB-44). Every
-        connection to Cablegram's own servers uses HTTPS. CAB-48 (TLS on the LAN server) removes this.
+        HTTPS everywhere (CAB-48). The phone's LAN server is TLS with a certificate this TV pins (LanTls); plain HTTP is
+        left only for this TV's own loopback servers, which LibVLC plays from: Telegram, cloud storage and the LAN proxy.
+        Debug builds override this file (src/debug) for a plain-HTTP development server.
     -->
-    <base-config cleartextTrafficPermitted="true" />
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
 </network-security-config>

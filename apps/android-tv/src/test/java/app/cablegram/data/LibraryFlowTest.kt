@@ -20,8 +20,7 @@ class LibraryFlowTest {
     fun setUp() {
         server = MockWebServer()
         server.start()
-        phone = MockWebServer()
-        phone.start()
+        phone = TestLanCert.phone()
         api = CablegramApi(server.url("/").toString())
     }
 
@@ -56,7 +55,7 @@ class LibraryFlowTest {
         server.enqueue(MockResponse().setBody(
             """{"devices":[
               {"id":"phone-old","kind":"phone","last_lan_host":"10.0.0.5","last_lan_port":8765},
-              {"id":"phone-new","kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port}}
+              {"id":"phone-new","kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port},"lan_cert_sha256":"${TestLanCert.sha256}"}
             ]}""",
         ))
         phone.enqueue(MockResponse().setBody("""{"link":"lnk-1","expires_in_seconds":900}"""))
@@ -65,7 +64,7 @@ class LibraryFlowTest {
         val playback = api.getPlayback("v1", "tv-token", lanPin = "cap")
 
         assertEquals("ready", playback.status)
-        assertEquals("http://127.0.0.1:${phone.port}/media/file-1?link=lnk-1", playback.url)
+        assertEquals("https://127.0.0.1:${phone.port}/media/file-1?link=lnk-1", playback.url)
         assertEquals("/links/media/file-1", phone.takeRequest().path)
     }
 
@@ -76,14 +75,14 @@ class LibraryFlowTest {
         server.enqueue(MockResponse().setResponseCode(201).setBody("""{"attempt_id":"att-1","expires_at":"2026-09-25T18:00:00Z"}"""))
         server.enqueue(MockResponse().setBody("""{"status":"approved"}"""))
         server.enqueue(MockResponse().setBody(item))
-        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"phone-1","kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port}}]}"""))
+        server.enqueue(MockResponse().setBody("""{"devices":[{"id":"phone-1","kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port},"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
         server.enqueue(MockResponse().setBody("""{"lan_pass":"pass-123","expires_at":"2026-09-26T00:00:00Z"}"""))
         phone.enqueue(MockResponse().setBody("""{"link":"lnk-p","expires_in_seconds":900}"""))
         server.enqueue(MockResponse().setResponseCode(503)) // no relay ticket
 
         val playback = api.getPlayback("p1", "tv-token", lanPin = "cap")
 
-        assertEquals("http://127.0.0.1:${phone.port}/media/file-p?pass=pass-123&link=lnk-p", playback.url)
+        assertEquals("https://127.0.0.1:${phone.port}/media/file-p?pass=pass-123&link=lnk-p", playback.url)
         assertEquals("Bearer cap", phone.takeRequest().getHeader("Authorization"))
         repeat(5) { server.takeRequest() }
         assertEquals("/api/playback/private-approvals/att-1/start", server.takeRequest().path)

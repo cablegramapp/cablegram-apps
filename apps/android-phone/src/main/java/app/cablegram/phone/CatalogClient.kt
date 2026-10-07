@@ -193,11 +193,17 @@ class CatalogClient(
         }.getOrNull()
     }
 
-    suspend fun announce(pin: String, host: String, port: Int, publicBaseUrl: String? = null, deviceId: String? = null, token: String? = null, hardwareId: String? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun announce(
+        pin: String, host: String, port: Int, publicBaseUrl: String? = null, deviceId: String? = null, token: String? = null,
+        hardwareId: String? = null,
+        /** CAB-48: the SHA-256 of the LAN server's certificate, which TVs pin. */
+        certSha256: String? = null,
+    ): Boolean = withContext(Dispatchers.IO) {
         if (deviceId.isNullOrBlank() || token.isNullOrBlank()) return@withContext false
         val body = json.encodeToString(buildJsonObject {
             put("lan_host", host)
             put("lan_port", port)
+            certSha256?.let { put("lan_cert_sha256", it) }
             hardwareId?.let { put("hardware_id", it) }
         })
         val request = Request.Builder()

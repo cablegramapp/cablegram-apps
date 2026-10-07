@@ -19,6 +19,10 @@ import java.util.concurrent.TimeUnit
  *
  * A renewal calls [register] again with the same URL and a fresh header; the local URL stays the same, so the
  * player never has to reload.
+ *
+ * CAB-48: a second instance plays the phone's LAN stream, which is HTTPS with a certificate LibVLC cannot pin; its
+ * [http] client pins it ([app.cablegram.data.LanTls]). It serves `/lan/<id>/<upstream path>`, so the local URL still
+ * says whether it is a title or a Telegram file.
  */
 class CloudStreamServer(
     private val http: OkHttpClient = OkHttpClient.Builder()
@@ -30,6 +34,10 @@ class CloudStreamServer(
     private val allowed: (HttpUrl) -> Boolean = { it.isHttps },
     /** Notes for the log. They never contain a URL or a header. */
     private val log: (String) -> Unit = {},
+    /** The first path segment of the local URLs. */
+    private val prefix: String = "cloud",
+    /** Append the upstream path to the local URL, for code that reads the kind of stream from it. */
+    private val keepPath: Boolean = false,
 ) : NanoHTTPD("127.0.0.1", 0) {
     private class Upstream(val url: String, @Volatile var headers: Map<String, String>)
 
@@ -48,11 +56,11 @@ class CloudStreamServer(
             log(if (existing == null) "Cloud stream: registered a stream" else "Cloud stream: renewed the header of a stream")
             existing?.also { it.headers = clean } ?: Upstream(url, clean)
         }
-        return "http://127.0.0.1:$listeningPort/cloud/$id"
+        return "http://127.0.0.1:$listeningPort/$prefix/$id" + if (keepPath) parsed.encodedPath else ""
     }
 
     override fun serve(session: IHTTPSession): Response {
-        val id = session.uri.removePrefix("/cloud/").takeIf { session.uri.startsWith("/cloud/") }
+        val id = session.uri.takeIf { it.startsWith("/$prefix/") }?.removePrefix("/$prefix/")?.substringBefore('/')
         val upstream = id?.let { byId[it] } ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
         if (session.method != Method.GET && session.method != Method.HEAD) {
             return newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT, "")
