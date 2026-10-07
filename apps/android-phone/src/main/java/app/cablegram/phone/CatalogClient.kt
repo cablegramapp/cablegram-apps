@@ -127,8 +127,15 @@ class CatalogClient(
         }
     }
 
-    suspend fun resolveTitle(query: String, token: String?, strict: Boolean = false): TitleResolveResponse = withContext(Dispatchers.IO) {
-        val body = json.encodeToString(buildJsonObject { put("query", query) })
+    /**
+     * [itemId] is the household item the search is for: the server then keeps a title still taken from a Telegram
+     * caption or file name away from the AI (CAB-42).
+     */
+    suspend fun resolveTitle(query: String, token: String?, strict: Boolean = false, itemId: String? = null): TitleResolveResponse = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject {
+            put("query", query)
+            itemId?.let { put("item_id", it) }
+        })
         val builder = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/library/resolve-title")
             .post(body.toRequestBody("application/json".toMediaType()))

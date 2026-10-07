@@ -27,4 +27,17 @@ class CatalogLookupTest {
             } catch (error: CatalogLookupException) { assertEquals(503, error.status) }
         }
     }
+
+    @Test fun `editor search names its household item so a Telegram caption stays away from the AI`() {
+        MockWebServer().use { server ->
+            server.start()
+            val client = CatalogClient(server.url("/").toString())
+            server.enqueue(MockResponse().setBody("""{"found":false}"""))
+            server.enqueue(MockResponse().setBody("""{"found":false}"""))
+            runBlocking { client.resolveTitle("Gary", "token", strict = true, itemId = "item-1") }
+            runBlocking { client.resolveTitle("Gary", "token", strict = true) }
+            assertEquals("""{"query":"Gary","item_id":"item-1"}""", server.takeRequest().body.readUtf8())
+            assertEquals("""{"query":"Gary"}""", server.takeRequest().body.readUtf8())
+        }
+    }
 }
