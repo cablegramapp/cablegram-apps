@@ -79,7 +79,7 @@ class LanLibraryService : Service() {
                 val links = LanStreamLinks()
                 fun listener(hostname: String?, port: Int) = LanLibraryServer(
                     library, commands, accepted, privatePasses = passes, telegram = telegram, links = links,
-                    hostname = hostname, port = port,
+                    hostname = hostname, port = port, acceptQueryToken = hostname == "127.0.0.1",
                 )
                 // CAB-48: TVs reach the LAN listener over TLS only, and pin this phone's certificate.
                 val http = listener(null, LanLibraryServer.PORT)

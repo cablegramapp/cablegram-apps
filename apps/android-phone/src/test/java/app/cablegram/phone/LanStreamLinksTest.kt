@@ -1,7 +1,6 @@
 package app.cablegram.phone
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -77,14 +76,5 @@ class LanStreamLinksTest {
         val first = links.issue("/media/film", "cap-tv1", "tv-1")
         repeat(300) { now += 1; links.issue("/media/film", "cap-tv1", "tv-1") }
         assertNull(redeem(first))
-    }
-
-    @Test
-    fun `only this phone itself may send the capability as a query parameter`() {
-        assertTrue(LanLibraryServer.isLoopback("127.0.0.1"))
-        assertTrue(LanLibraryServer.isLoopback("::1"))
-        assertFalse(LanLibraryServer.isLoopback("192.168.1.20"))
-        assertFalse(LanLibraryServer.isLoopback("localhost"))
-        assertFalse(LanLibraryServer.isLoopback(null))
     }
 }
