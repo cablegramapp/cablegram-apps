@@ -92,9 +92,10 @@ while the title is private. The policy says "anyone you give its link to".
   items.
 - **Automatic matching of Telegram titles.** TMDB only. No AI model sees Telegram text unless `TELEGRAM_TITLE_AI`
   is set, and it is not set in production (CAB-35).
-- **Logged** in the systemd journal: the raw query (up to 500 characters, before cleaning), the full prompt sent to
-  Gemini and its reply (up to 3000 characters each), and the TMDB query text. The journal has no time limit; it
-  held about three weeks at 560 MB on 2026-09-30.
+- **Logged** in the systemd journal (CAB-46): the query length, provider status and timing, the reply length, the
+  confidence and the TMDB id of a match. Not the query, the prompt, Gemini's reply or the matched title. A failed
+  parse logs the error class only. `CATALOG_LOG_TEXT=true` brings the text back for local debugging; the deploy
+  never sets it.
 - Gemini and TMDB never get the video, its contents, or the file path. The server's IP address is what they see.
 
 ## Subtitles (OpenSubtitles, SubDL)
@@ -175,22 +176,20 @@ tokens and the chosen TV in the browser's `localStorage`. It sends the same remo
 ## Diagnostics and logs
 
 - **Apps:** no crash reporting and no log upload. LibVLC no longer writes stream URLs to logcat (CAB-37).
-- **Server, systemd journal** (no time limit; about three weeks): title-lookup queries, prompts and replies (above),
+- **Server, systemd journal** (14 days; daily files, so at most 15): title-lookup lengths, timings and TMDB ids (above),
   TMDB queries, poster stored/removed events (item id and size), subtitle search counts, Google OAuth callback
   results, mail send failures. If `MAILER_URL` were unset, the recipient and subject of each mail would be logged
   instead of sent. It is set in production.
 - **nginx access log** (15 days): IP address, path and user agent for all paths except `/relay/` and the Google
-  OAuth callback. Paths include item and source ids; `/api/storage/objects/:id` carries a signed access token in
-  its query string.
-- **syslog:** about four weeks.
+  OAuth callback. Paths include item and source ids. Query strings are not logged (CAB-47).
+- **syslog** (and `auth.log`, `kern.log`, `mail.log`): daily, 14 kept, so at most 15 days (CAB-41).
 
 ## Open items
 
 These stop the policy from being simpler, or are gaps found while writing this. Not fixed in CAB-30.
 
-1. **Wipe Cablegram-stored web videos before launch.** Files saved before CAB-27 are still on disk and still
-   served. The VPS is a test server, so deleting `WEB_STORAGE_DIR` contents (and the `cloud_object` sources) before
-   publication is enough. The policy no longer mentions Cablegram storage.
+1. **Done in CAB-47: Cablegram-stored web videos are gone.** The route that served them is removed, and migration
+   035 deletes the `cloud_object` sources. The VPS had no files under `WEB_STORAGE_DIR` (checked 2026-10-07).
 2. **The cover editor sends Telegram-derived titles to Gemini** when the user searches without editing the
    pre-filled title. Related to CAB-35 and CAB-39: skip the AI step for Telegram items, or start the box empty.
 3. **The legacy pairing PIN still opens the phone's LAN server** for TVs paired before capabilities
@@ -202,12 +201,13 @@ These stop the policy from being simpler, or are gaps found while writing this. 
    private approvals, email codes, Telegram login and password requests, library jobs. Their secrets are hashed or
    cleared, but the rows stay until account deletion. A daily purge (for example 30 days after expiry) would let
    the policy say "deleted" rather than "expire".
-6. **Journal and syslog have no time limit** (for example `MaxRetentionSec=14day` in a journald drop-in and
-   `rotate 2` for syslog in `deploy/deploy-vps.sh`). The policy says logs are kept "for up to about a month".
-7. **The raw title query is logged before cleaning**, and the prompt and Gemini reply are logged in full. Log the
-   cleaned query only, or nothing, then shorten the policy line.
-8. **Storage access tokens in the nginx log** (`/api/storage/objects/:id?token=`). Turn access logging off for
-   that path, as for `/relay/`. It only affects pre-CAB-27 stored files, so item 1 removes it too.
+6. **Done in CAB-41: journal and syslog are limited to 15 days.** `deploy/deploy-vps.sh` installs a journald
+   drop-in (`MaxRetentionSec=14day`, `MaxFileSec=1day`) and rotates syslog daily with 14 kept. The policy now says
+   all logs are kept for up to 15 days.
+7. **Done in CAB-46: title lookups log no text.** Only lengths, statuses, timings and ids. The policy line now
+   says so.
+8. **Done in CAB-47: no tokens in the nginx log.** The `/api/storage/objects/:id?token=` route is removed, and
+   nginx logs `$uri` instead of `$request`, so no query string is logged on any route.
 9. **The relay is not end-to-end encrypted,** and the in-app relay text says "through the Cablegram relay" without
    saying that. The policy says it plainly. Consider one line in the mobile-data prompt.
 10. **The Cast SDK's data** cannot be opted out of or deleted (Google's

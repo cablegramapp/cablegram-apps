@@ -11,7 +11,7 @@ release that changes what an app sends.
 ## What changed since the last version of this file
 
 - **Web videos are no longer stored by Cablegram** (CAB-27). The Videos row is now the relay, processed
-  ephemerally. Files saved before CAB-27 must be wiped before launch (Before you submit, item 2).
+  ephemerally. Sources saved before CAB-27 were deleted in CAB-47 (Before you submit, item 2).
 - **The relay ships.** Away from home, video bytes pass through Cablegram's server in memory.
 - **Covers made from the user's videos stay on the phone** unless the user saves one to the household (CAB-29).
 - **Gemini no longer sees Telegram text automatically** (CAB-35). It sees what the user types in the cover editor's
@@ -62,7 +62,7 @@ the app.
 | Photos and videos | Videos | Optional | **Yes** | App functionality | Relay playback away from home: bytes pass through the server in memory, never stored |
 | Files and docs | Files and docs | Required | No | App functionality | File names, sizes and source keys in the catalog; Telegram file and message ids; imported page URLs; for subtitle search, file hash, technical details and a speech-timing fingerprint |
 | App activity | App interactions | Required | No | App functionality, Analytics | Watch progress, My List, remote commands (App functionality); Cast SDK usage events (Analytics) |
-| App activity | In-app search history | Optional | No | App functionality | Title searches in the cover editor (sent to Gemini and TMDB, and logged) |
+| App activity | In-app search history | Optional | No | App functionality | Title searches in the cover editor (sent to Gemini and TMDB; not logged since CAB-46) |
 | App activity | Other user-generated content | Optional | No | App functionality | Edited titles and details, collections, subtitle choices and timing corrections |
 | App info and performance | Diagnostics | Required | No | Analytics | Cast SDK session and performance data (anonymised, kept briefly by Google) |
 | Device or other IDs | Device or other IDs | Required | No | App functionality, Fraud prevention, security and compliance | Registered device id; `ANDROID_ID`, stored only as a keyed hash; IP address in server logs; the phone's LAN address |
@@ -104,10 +104,11 @@ apps, Other app performance data, Crash logs.
    declare App interactions and Diagnostics for Analytics, not shared because it is anonymised. Recheck the page
    before submitting.
 2. **Videos as ephemeral.** The relay holds bytes only in socket buffers, never on disk, and logs no relay paths.
-   That fits "processed ephemerally". The old stored web videos do not, which is why they must be wiped (Before you
+   That fits "processed ephemerally". The old stored web videos did not; they were removed in CAB-47 (Before you
    submit, item 2).
-3. **Search history.** Cover-editor searches are in-app searches, and the server logs them. That is why the answer
-   changed from No to Yes.
+3. **Search history.** Cover-editor searches are in-app searches, and they leave the device for the server, Gemini
+   and TMDB. That is why the answer changed from No to Yes. Since CAB-46 the server logs only their length, which
+   does not change the answer.
 
 ## Section 3: Permissions to be ready to justify
 
@@ -124,15 +125,15 @@ apps, Other app performance data, Crash logs.
 1. **Account deletion end to end.** `GET https://api.cablegram.app/delete-account` answered 200 on 2026-10-07. Still
    do one end-to-end check on the release build: create a test account, connect a TV, import a title, save a cover,
    delete the account in the app, then confirm sign-in fails, the TV is signed out and the catalog rows are gone.
-2. **Wipe the Cablegram-stored web videos** saved before CAB-27 (files under `WEB_STORAGE_DIR` and their
-   `cloud_object` sources). They are still served. The VPS is a test server, so a wipe before launch is enough.
+2. **Cablegram-stored web videos: done (CAB-47).** The route that served them is gone and migration 035 deletes
+   the `cloud_object` sources. The VPS had no stored files.
 3. **The privacy policy** (`https://cablegram.app/privacy.html`) must be the version from CAB-30 or later. It names
    every provider above, the relay, LAN streaming without encryption, the Cast SDK, subtitle search, log contents and
    retention, and the hashed device id kept after deletion.
 4. **Wording elsewhere must match.** The README, the app strings and the Play descriptions must not say end-to-end
    encrypted, or that Cablegram never handles your videos (the relay does), or that Cablegram stores web videos.
-5. **Log retention.** The policy says server logs are kept for up to about a month. Set the journal and syslog limits
-   (inventory, Open items 6) or confirm that number on the VPS.
+5. **Log retention: done (CAB-41).** The policy says logs are kept for up to 15 days. The deploy script sets the
+   journal to 14 days and syslog to daily with 14 kept; nginx was already daily with 14 kept.
 
 ## Kept after account deletion (say so in the policy)
 
