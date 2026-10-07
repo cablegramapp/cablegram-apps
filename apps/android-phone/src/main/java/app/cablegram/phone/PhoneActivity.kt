@@ -30,12 +30,14 @@ class PhoneActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         PrivateApprovals.appVisible = true
+        viewModel.setCastVisible(true)
         viewModel.refreshStorage()
         viewModel.refreshPendingApprovals()
     }
 
     override fun onPause() {
         PrivateApprovals.appVisible = false
+        viewModel.setCastVisible(false)
         super.onPause()
     }
 
@@ -46,7 +48,7 @@ class PhoneActivity : ComponentActivity() {
 
     private fun handleIncoming(intent: android.content.Intent?) {
         intent?.getStringExtra(EXTRA_TAB)?.let { name ->
-            PhoneTab.entries.firstOrNull { it.name == name }?.let { viewModel.tab = it }
+            PhoneTab.entries.firstOrNull { it.name == name }?.let { viewModel.tab = if (it == PhoneTab.Remote && !viewModel.legacyRemote) PhoneTab.Library else it }
             return
         }
         val uri = intent?.data?.toString() ?: return

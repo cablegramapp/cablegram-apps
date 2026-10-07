@@ -51,6 +51,10 @@ android {
             ?: "https://api.cablegram.app/"
         buildConfigField("String", "API_BASE", "\"$apiBase\"")
         buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
+        // Optional Cast console receiver ID; an empty value keeps Cast disabled.
+        val castAppId = telegramSetting("CABLEGRAM_CAST_APP_ID").trim()
+            .replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "CABLEGRAM_CAST_APP_ID", "\"$castAppId\"")
         // Test-only: emulators sit behind separate NATs, so the E2E harness forwards the LAN
         // server through the host and announces 10.0.2.2 instead of the phone's own IPv4.
         val lanHostOverride = (project.findProperty("CABLEGRAM_LAN_HOST_OVERRIDE") as String?).orEmpty()
@@ -102,6 +106,8 @@ kotlin {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-cast-framework:22.3.1")
+    implementation("androidx.mediarouter:mediarouter:1.7.0")
     implementation(platform("androidx.compose:compose-bom:2025.03.00"))
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.activity:activity-compose:1.10.1")

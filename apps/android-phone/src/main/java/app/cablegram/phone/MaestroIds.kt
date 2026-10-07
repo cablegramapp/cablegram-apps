@@ -15,7 +15,10 @@ object MaestroIds {
     const val NAV_LIBRARY = "nav_library"
     const val NAV_BROWSE = "nav_browse"
     const val NAV_STORAGE = "nav_storage"
+    // Present only while the legacyRemote preference is enabled.
     const val NAV_REMOTE = "nav_remote"
+    const val SETTINGS_CAST_CONNECT = "settings_cast_connect"
+    const val SETTINGS_LEGACY_REMOTE = "settings_legacy_remote"
     const val NAV_SETTINGS = "nav_settings"
     const val LIBRARY_TITLE = "library_title"
     const val LIBRARY_SEARCH = "library_search"
