@@ -317,7 +317,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         pairing.tunnelUrl = value.trim()
         tunnelUrl = pairing.tunnelUrl
-        if (paired) viewModelScope.launch { pairing.lanToken?.let { publishLanAddress(it) } }
+        if (paired) viewModelScope.launch { pairing.tvs.lastOrNull()?.let { publishLanAddress(it.pin) } }
     }
 
     /** Spec 003: relay streams over mobile data (Ask / Always / Never). */
@@ -733,8 +733,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 // result.token is the token this call was sent with; the store may
                 // already hold a renewed one, so it is not written back here.
                 pairing.addTv(parsed.first, result.tvName.ifBlank { parsed.second }, trust = trust)
-                // Attach the per-device LAN capability (R-1). Older servers return
-                // none; the PIN stays as a transition fallback in that case.
+                // Attach the per-device LAN capability (R-1), the TV's only LAN credential.
                 result.lanCapability?.let { pairing.attachCapability(parsed.first, it) }
                 result.tvDeviceId?.let { pairing.attachDeviceId(parsed.first, it) }
                 tvs = pairing.tvs

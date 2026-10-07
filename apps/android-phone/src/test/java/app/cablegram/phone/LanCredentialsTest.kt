@@ -16,14 +16,14 @@ class LanCredentialsTest {
     private var verifyCalls = 0
     private val verifier = LanCapabilityVerifier(verify = { verifyCalls++; serverKnows[it] })
 
-    private fun serving(vararg tvs: PairedTv) = LanCredentials(verifier).apply { sync(tvs.toList(), tvs.last().capability ?: tvs.last().pin) }
+    private fun serving(vararg tvs: PairedTv) = LanCredentials(verifier).apply { sync(tvs.toList()) }
 
     @Test
     fun `removing one of two TVs refuses its capability at once and keeps the other`() {
         val credentials = serving(living, bedroom)
         assertTrue(credentials.authorized(listOf("cap-living")))
 
-        credentials.sync(listOf(bedroom), bedroom.capability)
+        credentials.sync(listOf(bedroom))
 
         assertFalse(credentials.authorized(listOf("cap-living")))
         assertNull(credentials.tvDeviceId("cap-living"))
@@ -31,25 +31,11 @@ class LanCredentialsTest {
     }
 
     @Test
-    fun `the most recently paired TV removed is no longer accepted as the legacy token`() {
-        val credentials = serving(living, bedroom) // bedroom's capability is the legacy token
-        credentials.sync(listOf(living), living.capability)
-        assertFalse(credentials.authorized(listOf("cap-bedroom")))
-    }
-
-    @Test
-    fun `a stale legacy token that names no paired TV is not accepted`() {
-        val credentials = LanCredentials(verifier).apply { sync(listOf(living), "cap-gone") }
-        assertFalse(credentials.authorized(listOf("cap-gone")))
-        assertTrue(credentials.authorized(listOf("cap-living")))
-    }
-
-    @Test
-    fun `an old TV's PIN stops working when that TV is removed`() {
-        val credentials = serving(living, oldTv) // the PIN is the legacy token
-        assertTrue(credentials.authorized(listOf("333333")))
-        credentials.sync(listOf(living), living.capability)
+    fun `a paired TV's PIN is never accepted, with or without a capability`() {
+        val credentials = serving(living, oldTv)
+        assertFalse(credentials.authorized(listOf("111111")))
         assertFalse(credentials.authorized(listOf("333333")))
+        assertTrue(credentials.authorized(listOf("cap-living")))
     }
 
     @Test
@@ -61,7 +47,7 @@ class LanCredentialsTest {
         assertEquals(1, verifyCalls)
 
         serverKnows.remove("cap-kitchen") // revoked on the server
-        credentials.sync(listOf(living), living.capability)
+        credentials.sync(listOf(living))
 
         assertFalse(credentials.authorized(listOf("cap-kitchen")))
         assertEquals(2, verifyCalls)
@@ -70,7 +56,7 @@ class LanCredentialsTest {
     @Test
     fun `a revoked TV is refused by device id even after it left the store`() {
         val credentials = serving(living, bedroom)
-        credentials.sync(listOf(bedroom), bedroom.capability)
+        credentials.sync(listOf(bedroom))
         credentials.revokeDevice("tv-living")
         assertFalse(credentials.authorized(listOf("cap-living")))
     }
@@ -80,7 +66,7 @@ class LanCredentialsTest {
         serverKnows["cap-living"] = "tv-living" // the server's revocation cache has not caught up yet
         val credentials = serving(living, bedroom)
         credentials.revokeDevice("tv-living")
-        credentials.sync(listOf(living, bedroom), bedroom.capability) // e.g. another TV paired meanwhile
+        credentials.sync(listOf(living, bedroom)) // e.g. another TV paired meanwhile
         assertFalse(credentials.authorized(listOf("cap-living")))
         assertNull(credentials.tvDeviceId("cap-living"))
     }
@@ -89,9 +75,9 @@ class LanCredentialsTest {
     fun `pairing a revoked TV again lets it back in`() {
         val credentials = serving(living, bedroom)
         credentials.revokeDevice("tv-living")
-        credentials.sync(listOf(bedroom), bedroom.capability)
+        credentials.sync(listOf(bedroom))
         val repaired = living.copy(pin = "444444", capability = "cap-living-2")
-        credentials.sync(listOf(bedroom, repaired), repaired.capability)
+        credentials.sync(listOf(bedroom, repaired))
         assertTrue(credentials.authorized(listOf("cap-living-2")))
     }
 

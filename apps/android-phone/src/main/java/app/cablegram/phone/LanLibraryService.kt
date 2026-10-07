@@ -44,9 +44,7 @@ class LanLibraryService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val store = PairingStore(this)
-        // Prefer device capabilities; fall back to the legacy PIN for old TVs.
-        val legacyToken = store.lanToken
-        if (legacyToken.isNullOrBlank()) {
+        if (store.tvs.isEmpty()) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -67,7 +65,7 @@ class LanLibraryService : Service() {
                 })
                 val accepted = LanCredentials(LanCapabilityVerifier(verify = { capability ->
                     store.accountToken?.let { token -> kotlinx.coroutines.runBlocking { client.verifyLanCapability(token, capability) } }
-                })).apply { sync(store.tvs, legacyToken) }
+                })).apply { sync(store.tvs) }
                 val http = LanLibraryServer(
                     LibraryStore(this), CommandQueue(this), accepted,
                     privatePasses = passes,
@@ -91,7 +89,7 @@ class LanLibraryService : Service() {
         } else {
             // start() is also called after pairing and after a TV is removed (CAB-37). Keep the live server in step
             // with PairingStore: a removed TV is refused from now on, with no restart.
-            credentials?.sync(store.tvs, legacyToken)
+            credentials?.sync(store.tvs)
         }
         // These talk to the control plane only, so they run even when the LAN server could not bind its port (another
         // app holds it): otherwise a TV waits for a Telegram approval or password that the phone is never asked for.

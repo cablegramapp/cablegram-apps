@@ -253,20 +253,10 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
 
     /**
      * The LAN credential of the active account. One TV can hold several accounts, and the phone
-     * serving a library only accepts the credential minted by that account's pairing. Accounts paired
-     * before credentials were stored per account fall back to the single value the TV kept then.
+     * serving a library only accepts the capability minted by that account's pairing, never the PIN.
      */
     private val lanToken: String?
         get() = accountCredentials.firstOrNull { it.sessionId == sessionId }?.lanCapability
-            ?: lanPrefs.getString("token", null)
-
-    /**
-     * With no account yet, the PIN a phone can scan offline is the only credential there is.
-     * Reads the store rather than [accountCredentials], which still lists the accounts after a sign-out.
-     */
-    private suspend fun rememberOfflineLanToken(pin: String) {
-        if (authStore.getAccounts().isEmpty()) lanPrefs.edit().putString("token", pin).apply()
-    }
     private var phoneJob: Job? = null
 
     fun selectLibrarySection(section: String) {
@@ -939,7 +929,6 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             // A New PIN press can still be in flight when the reviewer gesture
             // opens demo mode; a late session must not replace it.
             if (isDemoMode) return
-            rememberOfflineLanToken(session.pin)
             PairLog.i("TV session ok ${PairLog.pinTail(session.pin)} session=${session.sessionId} tvIp=$tvLanIp")
             screen = ScreenState.Pairing(session)
             // Another call may have started a poll while this one waited for the server: only one PIN is polled.
@@ -950,7 +939,6 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         } catch (error: Exception) {
             if (isDemoMode) return
             val pin = (0..999_999).random().toString().padStart(6, '0')
-            rememberOfflineLanToken(pin)
             val qr = "cablegram://pair?token=$pin&name=${java.net.URLEncoder.encode(deviceName, "UTF-8")}"
             screen = ScreenState.Pairing(
                 DeviceSession(
@@ -983,8 +971,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                     val pairedToken = result.token
                     // The device capability authenticates LAN media (FR-016 / R-1). It is kept with
                     // this account: pairing another account on the same TV must not replace it.
-                    // An older phone build sends none; it accepts the pairing PIN instead.
-                    val lanCapability = result.lanCapability?.takeIf { it.isNotBlank() } ?: session.pin
+                    val lanCapability = result.lanCapability?.takeIf { it.isNotBlank() }
                     val account = AccountCredential(
                         sessionId = pairedSessionId,
                         token = pairedToken,
@@ -1470,8 +1457,6 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         authStore.removeAccount(account.sessionId)
         progressQueue.forgetAccount(account.sessionId, profileIds)
         commandJournal.forgetAccount(account.sessionId)
-        // Written by the first pairing, before any account existed: it may be this account's.
-        lanPrefs.edit().remove("token").apply()
         telegram.signOutIfOwnedBy(account.sessionId)
         if (authStore.getAccounts().isEmpty()) {
             telegram.signOutAndWipe()
@@ -1483,7 +1468,6 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     private fun forgetAllAccountData() {
         progressQueue.clearAll()
         commandJournal.forgetAll()
-        lanPrefs.edit().remove("token").apply()
     }
 
     private fun playbackError(error: Exception): String = when {
