@@ -23,9 +23,12 @@ Deletion rows below are true only once both halves are deployed and released:
 - **Third-party processing** (service providers acting for Cablegram, not "sharing" for Play): Google Gemini gets a
   cleaned file name or caption (links, emails, handles and hashtags removed, 800 characters max) to find the
   title; TMDB gets the title and year; Cloudflare's mailer sends verification and reset emails.
-- **Posters.** When a title has no poster link and is not private, the phone uploads a still frame of the user's
-  video as its poster (JPEG/PNG as base64, at most 1.5 MB, kept in the database). That is a photo derived from the
-  user's video, so it is declared as Photos.
+- **Posters (CAB-29).** Covers made on the phone (a still frame of the user's video, or the user's own image) stay on
+  the phone; paired TVs load them from the phone over the local network. They are uploaded only when the user taps
+  "Save artwork to household" and confirms a dialog naming the recipients (the household's TVs, phones and web
+  remote, and anyone given the link), the storage (Cablegram's server, JPEG as base64, at most 1.5 MB, in the
+  database) and how it is removed (Remove, changing the cover, or making the video private). That is a photo derived
+  from the user's video, user-initiated and optional, so it is declared as Photos.
 - **Kept after account deletion** (`src/account-deletion.ts`): relay bytes per hashed hardware id and month, and
   the hashed hardware id with a household id that no longer exists anywhere, both unlinked from any account, to
   stop a new account on the same phone getting a fresh free relay allowance. Say so in the policy.
@@ -66,7 +69,7 @@ without it.
 | Personal info | Name (profile names, Telegram display name) | Required | App functionality |
 | Personal info | User IDs (account, household, Telegram user id) | Required | App functionality, Account management |
 | Photos and videos | Videos (files imported from a web address and stored) | Optional | App functionality |
-| Photos and videos | Photos (still frames of the user's videos, uploaded as posters) | Optional | App functionality |
+| Photos and videos | Photos (covers from the user's videos, uploaded only when the user saves them to the household) | Optional | App functionality |
 | Files and docs | Files and docs (video file names and metadata in the catalog) | Required | App functionality |
 | App activity | App interactions (playback progress, My List) | Required | App functionality |
 | App activity | Other user-generated content (corrected titles, collections, posters) | Optional | App functionality |

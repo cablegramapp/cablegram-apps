@@ -221,6 +221,32 @@ fun needsArtworkChoice(item: LibraryItem): Boolean =
 fun catalogMayReplaceArtwork(item: LibraryItem): Boolean =
     !item.artworkUserSelected
 
+private val householdPosterPath = Regex("/api/catalog/items/[^/]+/poster$")
+
+/** The server's copy of a cover a phone uploaded; the phone that shared it keeps drawing its own file. */
+fun isHouseholdPosterUrl(url: String?): Boolean = url != null && householdPosterPath.containsMatchIn(url)
+
+/**
+ * CAB-29: only a cover made on this phone (a video frame or the user's image) can be saved to the
+ * household. Catalog covers already reach TVs by URL, and private videos keep everything local.
+ */
+fun canSaveArtworkToHousehold(item: LibraryItem): Boolean =
+    !item.isPrivate && !item.posterPath.isNullOrBlank() &&
+        (item.posterUrl.isNullOrBlank() || isHouseholdPosterUrl(item.posterUrl))
+
+fun artworkSavedToHousehold(item: LibraryItem): Boolean =
+    item.householdArtworkVersion == item.posterVersion && canSaveArtworkToHousehold(item)
+
+enum class HouseholdArtworkStep { None, Upload, Remove }
+
+/** Frames stay on the phone unless the user saved exactly this cover; anything else uploaded is removed. */
+fun householdArtworkStep(item: LibraryItem): HouseholdArtworkStep = when {
+    artworkSavedToHousehold(item) ->
+        if (item.householdArtworkUploadedVersion == item.posterVersion) HouseholdArtworkStep.None else HouseholdArtworkStep.Upload
+    item.householdArtworkUploadedVersion != null -> HouseholdArtworkStep.Remove
+    else -> HouseholdArtworkStep.None
+}
+
 fun visibleBrowseEntries(entries: List<BrowseEntry>, videosOnly: Boolean): List<BrowseEntry> {
     // Flow 2 (legacy parity): browse lists video files only. The `videosOnly`
     // parameter is kept for call-site compatibility but never weakens the
