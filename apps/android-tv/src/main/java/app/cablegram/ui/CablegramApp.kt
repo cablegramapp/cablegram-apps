@@ -206,7 +206,6 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     onToggleMyList = viewModel::toggleMyList,
                     selectedType = viewModel.librarySection,
                     onTypeSelected = viewModel::selectLibrarySection,
-                    onPlayLive = viewModel::playLiveChannel,
                     profileName = viewModel.activeProfileName,
                     profileAvatarUrl = viewModel.activeProfileAvatarUrl,
                     onSwitchProfile = viewModel::showSessionActions,

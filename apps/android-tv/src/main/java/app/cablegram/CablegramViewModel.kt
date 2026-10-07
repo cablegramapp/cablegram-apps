@@ -17,7 +17,6 @@ import app.cablegram.data.AuthStore
 import app.cablegram.data.DeviceSession
 import app.cablegram.data.CablegramApi
 import app.cablegram.data.LibraryAds
-import app.cablegram.data.LiveTvChannel
 import app.cablegram.data.PairLog
 import app.cablegram.data.PlaybackResponse
 import app.cablegram.data.Profile
@@ -35,7 +34,6 @@ import app.cablegram.data.getRandomLoadingVideoUrl
 import app.cablegram.data.findRemoteTitle
 import app.cablegram.data.hasCompletedIngest
 import app.cablegram.data.isDemoVideoId
-import app.cablegram.data.isLiveChannelId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -496,15 +494,6 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun playLiveChannel(channel: LiveTvChannel) {
-        librarySyncJob?.cancel()
-        failedPlaybackVideo = null
-        screen = ScreenState.Player(
-            video = channel.toVideo(),
-            playback = PlaybackResponse(status = "ready", url = channel.streamUrl),
-        )
-    }
-
     /** The viewer chose to play this Telegram title through the phone instead of signing in to Telegram on this TV. */
     private var phoneRelayChoice: String? = null
 
@@ -517,7 +506,6 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     fun play(video: Video) {
         // The same title continuing (after the Telegram password prompt, say) keeps the phone's command open.
         if (remoteTitleCommand?.second != video.id) finishRemoteTitle("superseded")
-        if (isLiveChannelId(video.id)) return
         castApp?.mediaSession?.begin(video.id, video.title ?: "Cablegram", video.posterUrl, video.durationSeconds?.times(1000L))
         // T077 / R-7: the server catalog is the single source of truth.
         // Playback resolution always goes through the control plane (`getPlayback`),
@@ -714,7 +702,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     fun reportPlaybackState(videoId: String, positionSeconds: Int, durationSeconds: Int?, isPlaying: Boolean, volume: Int, muted: Boolean, engine: String? = null) {
         castApp?.mediaSession?.progress(positionSeconds * 1000L, isPlaying)
         if (isPlaying) remotePlaybackResult(videoId, null)
-        if (isLiveChannelId(videoId) || isDemoMode || isDemoVideoId(videoId)) return
+        if (isDemoMode || isDemoVideoId(videoId)) return
         val currentToken = token ?: return
         val state = when {
             isPlaying -> "playing"
@@ -787,7 +775,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     suspend fun renewPlayback(videoId: String): PlaybackResponse? {
-        if (isLiveChannelId(videoId) || isDemoMode) return null
+        if (isDemoMode) return null
         val currentToken = token ?: return null
         return runCatching { api.getPlayback(videoId, currentToken, lanToken, telegramUrl = telegram::streamUrl, telegramPhoneId = telegram::phoneDeviceId, cloudStream = ::cloudStreamUrl) }.getOrNull()
     }
@@ -1312,10 +1300,6 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun startRemoteTitle(command: TvCommand, video: Video) {
-        if (isLiveChannelId(video.id)) {
-            finishCommand(command.id, "title_unavailable")
-            return
-        }
         finishRemoteTitle("superseded")
         play(video)
         remoteTitleCommand = command.id to video.id

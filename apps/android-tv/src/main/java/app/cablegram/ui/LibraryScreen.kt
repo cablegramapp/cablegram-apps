@@ -11,7 +11,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -65,7 +64,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.activity.compose.LocalActivity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
@@ -75,14 +73,12 @@ import androidx.compose.ui.zIndex
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
-import app.cablegram.data.FREE_LIVE_TV_CHANNELS
-import app.cablegram.data.LiveTvChannel
 import app.cablegram.data.Video
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-private enum class RailDestination { Home, Player, Live, Library, Settings }
+private enum class RailDestination { Home, Player, Library, Settings }
 
 /** Second Back within this window closes the app (see LibraryScreen's BackHandler). */
 private const val EXIT_CONFIRM_MS = 2_500L
@@ -97,7 +93,6 @@ internal fun LibraryScreen(
     onToggleMyList: (videoIds: List<String>, inMyList: Boolean) -> Unit = { _, _ -> },
     selectedType: String,
     onTypeSelected: (String) -> Unit,
-    onPlayLive: (LiveTvChannel) -> Unit,
     profileName: String,
     profileAvatarUrl: String?,
     onSwitchProfile: () -> Unit,
@@ -119,13 +114,11 @@ internal fun LibraryScreen(
     var selectedGenre by remember { mutableStateOf<String?>(null) }
     var selectedShow by remember { mutableStateOf<TvShow?>(null) }
     var focusedEntry by remember { mutableStateOf<LibraryEntry?>(null) }
-    var focusedChannel by remember { mutableStateOf<LiveTvChannel?>(null) }
     var rail by remember(selectedType) {
         mutableStateOf(
             when (selectedType) {
                 "watchlist" -> RailDestination.Player
                 "mylist" -> RailDestination.Library
-                "live" -> RailDestination.Live
                 else -> RailDestination.Home
             },
         )
@@ -194,7 +187,7 @@ internal fun LibraryScreen(
     }
 
     val hero: LibraryEntry? = when {
-        rail == RailDestination.Settings || selectedType == "live" -> null
+        rail == RailDestination.Settings -> null
         // Resolve by id so the hero reflects refreshed data (My List, progress).
         activeShow != null -> focusedEntry?.id
             ?.let { id -> activeShow.episodes.firstOrNull { it.id == id } }?.let(::MovieEntry)
@@ -229,11 +222,6 @@ internal fun LibraryScreen(
                     selectedShow = null
                     onTypeSelected("watchlist")
                 },
-                onLive = {
-                    rail = RailDestination.Live
-                    selectedShow = null
-                    onTypeSelected("live")
-                },
                 onLibrary = {
                     rail = RailDestination.Library
                     selectedShow = null
@@ -260,7 +248,6 @@ internal fun LibraryScreen(
                     title = when (rail) {
                         RailDestination.Home -> "Home"
                         RailDestination.Player -> "Continue watching"
-                        RailDestination.Live -> "Live TV"
                         RailDestination.Library -> "My List"
                         RailDestination.Settings -> "Settings"
                     },
@@ -269,7 +256,7 @@ internal fun LibraryScreen(
                     showFilters = rail == RailDestination.Home && activeShow == null,
                     menuFocus = homeFocus,
                     onTypeSelected = { type ->
-                        rail = if (type == "live") RailDestination.Live else RailDestination.Home
+                        rail = RailDestination.Home
                         onTypeSelected(type)
                     },
                     onGenreCycle = {
@@ -305,26 +292,6 @@ internal fun LibraryScreen(
                 if (!adHeadline.isNullOrBlank()) {
                     Text(adHeadline, color = Aqua, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp))
                     if (!adBody.isNullOrBlank()) Text(adBody, color = Muted, fontSize = 12.sp)
-                }
-                if (selectedType == "live") {
-                    val channel = focusedChannel ?: FREE_LIVE_TV_CHANNELS.firstOrNull()
-                    HeroHeader(
-                        title = channel?.title ?: "Live TV",
-                        metadata = listOfNotNull("Live", channel?.category, "HD"),
-                        overview = "Free public channels, streamed straight to this TV.",
-                        hint = "OK to watch",
-                        live = true,
-                    )
-                    LiveTvRow(
-                        focusChannelId = restoredFocusId,
-                        menuFocus = homeFocus,
-                        onPlayLive = onPlayLive,
-                        onFocused = {
-                            focusedChannel = it
-                            onExplorerFocus(it.id, null)
-                        },
-                    )
-                    return@Column
                 }
                 if (activeShow != null) {
                     EpisodeRow(
@@ -545,7 +512,6 @@ private fun HeroHeader(
     hint: String? = null,
     progress: Float = 0f,
     remaining: String? = null,
-    live: Boolean = false,
 ) {
     // Fixed height: moving focus between titles must not shift the shelves.
     Column(
@@ -572,7 +538,7 @@ private fun HeroHeader(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 metadata.forEachIndexed { index, part ->
-                    MetaChip(part, accent = index == 0, live = live && index == 0)
+                    MetaChip(part, accent = index == 0)
                 }
             }
         }
@@ -612,27 +578,17 @@ private fun HeroHeader(
 }
 
 @Composable
-private fun MetaChip(label: String, accent: Boolean, live: Boolean = false) {
+private fun MetaChip(label: String, accent: Boolean) {
     val shape = RoundedCornerShape(6.dp)
     Text(
-        if (live) "● $label" else label,
-        color = when {
-            live -> Color.White
-            accent -> Ink
-            else -> Paper.copy(alpha = 0.86f)
-        },
+        label,
+        color = if (accent) Ink else Paper.copy(alpha = 0.86f),
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
         modifier = Modifier
             .clip(shape)
-            .background(
-                when {
-                    live -> Color(0xFFE11D48)
-                    accent -> Cyan
-                    else -> Color.White.copy(alpha = 0.1f)
-                },
-            )
+            .background(if (accent) Cyan else Color.White.copy(alpha = 0.1f))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     )
 }
@@ -645,7 +601,6 @@ private fun CollapsedSidebar(
     homeFocusRequester: FocusRequester,
     onHome: () -> Unit,
     onPlayer: () -> Unit,
-    onLive: () -> Unit,
     onLibrary: () -> Unit,
     onSettings: () -> Unit,
     onSwitchProfile: () -> Unit,
@@ -676,7 +631,6 @@ private fun CollapsedSidebar(
         Spacer(Modifier.height(28.dp))
         RailIconButton(RailIcon.Home, "Home", destination == RailDestination.Home, onHome, homeFocusRequester)
         RailIconButton(RailIcon.Player, "Continue", destination == RailDestination.Player, onPlayer)
-        RailIconButton(RailIcon.Live, "Live", destination == RailDestination.Live, onLive)
         RailIconButton(RailIcon.Library, "My List", destination == RailDestination.Library, onLibrary)
         Spacer(Modifier.weight(1f))
         RailIconButton(RailIcon.Settings, "Settings", selected = destination == RailDestination.Settings, onClick = onSettings)
@@ -742,7 +696,7 @@ private fun SidebarAvatar(
     }
 }
 
-private enum class RailIcon { Home, Player, Live, Library, Settings }
+private enum class RailIcon { Home, Player, Library, Settings }
 
 @Composable
 private fun RailIconButton(
@@ -816,17 +770,6 @@ private fun LineIcon(icon: RailIcon, tint: Color) {
                         drawLine(tint, Offset(cx, size.height * .32f), Offset(size.width * .72f, size.height * .5f), stroke.width, StrokeCap.Round)
                         drawLine(tint, Offset(size.width * .72f, size.height * .5f), Offset(cx, size.height * .68f), stroke.width, StrokeCap.Round)
                         drawLine(tint, Offset(cx, size.height * .68f), Offset(cx, size.height * .32f), stroke.width, StrokeCap.Round)
-                    }
-                    RailIcon.Live -> {
-                        val inset = 2.dp.toPx()
-                        drawRoundRect(
-                            tint,
-                            topLeft = Offset(inset, size.height * .18f),
-                            size = Size(size.width - inset * 2, size.height * .52f),
-                            cornerRadius = CornerRadius(4.dp.toPx()),
-                            style = stroke,
-                        )
-                        drawLine(tint, Offset(size.width * .32f, size.height * .86f), Offset(size.width * .68f, size.height * .86f), stroke.width, StrokeCap.Round)
                     }
                     RailIcon.Library -> {
                         val w = size.width
@@ -1023,52 +966,6 @@ private fun LabeledPosterRow(
 }
 
 @Composable
-private fun LiveTvRow(
-    focusChannelId: String?,
-    menuFocus: FocusRequester,
-    onPlayLive: (LiveTvChannel) -> Unit,
-    onFocused: (LiveTvChannel) -> Unit,
-) {
-    val listState = rememberLazyListState()
-    LaunchedEffect(focusChannelId) {
-        val index = FREE_LIVE_TV_CHANNELS.indexOfFirst { it.id == focusChannelId }
-        if (index >= 0) listState.scrollToItem(index)
-    }
-    Text(
-        "Channels",
-        color = Color.White,
-        fontSize = 19.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(start = 4.dp, top = 6.dp),
-    )
-    LazyRow(
-        state = listState,
-        modifier = Modifier.fillMaxWidth().focusRestorer(),
-        contentPadding = PaddingValues(start = 4.dp, end = 48.dp, top = 14.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        itemsIndexed(FREE_LIVE_TV_CHANNELS, key = { _, channel -> channel.id }) { index, channel ->
-            PosterCard(
-                title = channel.title,
-                caption = channel.category,
-                posterUrl = null,
-                posterRes = channel.posterRes,
-                progress = 0f,
-                preparing = false,
-                landscape = true,
-                showLiveBadge = true,
-                requestFocus = channel.id == focusChannelId,
-                menuFocus = menuFocus,
-                rowIndex = index,
-                onFocused = { onFocused(channel) },
-                onClick = { onPlayLive(channel) },
-            )
-        }
-    }
-}
-
-@Composable
 private fun EpisodeRow(
     show: TvShow,
     hero: LibraryEntry?,
@@ -1138,12 +1035,10 @@ private fun PosterCard(
     title: String,
     caption: String?,
     posterUrl: String?,
-    posterRes: Int? = null,
     progress: Float,
     preparing: Boolean,
     prepareProgress: Int? = null,
     landscape: Boolean = false,
-    showLiveBadge: Boolean = false,
     badge: String? = null,
     inMyList: Boolean = false,
     requestFocus: Boolean = false,
@@ -1210,12 +1105,6 @@ private fun PosterCard(
                 .border(if (focused) 3.dp else 1.dp, if (focused) Paper else Color.White.copy(alpha = 0.06f), shape),
         ) {
             when {
-                posterRes != null -> Image(
-                    painter = painterResource(posterRes),
-                    contentDescription = "$title poster",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
                 posterUrl != null && !imageFailed -> AsyncImage(
                     model = posterUrl,
                     contentDescription = "$title poster",
@@ -1225,33 +1114,8 @@ private fun PosterCard(
                 )
                 else -> PlaceholderArt(title, landscape)
             }
-            if (showLiveBadge) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                0.5f to Color.Transparent,
-                                1f to Color.Black.copy(alpha = 0.8f),
-                            ),
-                        ),
-                )
-                Text(
-                    title,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-                )
-            }
-            when {
-                showLiveBadge -> CardBadge("● LIVE", Color(0xFFE11D48), Color.White, Modifier.align(Alignment.TopStart))
-                badge != null -> CardBadge(badge, Ink.copy(alpha = 0.78f), Paper, Modifier.align(Alignment.TopStart))
+            if (badge != null) {
+                CardBadge(badge, Ink.copy(alpha = 0.78f), Paper, Modifier.align(Alignment.TopStart))
             }
             if (inMyList) {
                 CardBadge("✓", Acid, Ink, Modifier.align(Alignment.TopEnd))
