@@ -64,6 +64,8 @@ data class TvCommand(
     @SerialName("expires_at_ms") val expiresAtMs: Long? = null,
     /** Time left when the server sent it; lets a TV with a wrong clock compute a local deadline. */
     @SerialName("expires_in_ms") val expiresInMs: Long? = null,
+    /** Absolute seek from this process's media session; never read from a relay/Cast JSON payload. */
+    @kotlinx.serialization.Transient val localSeekToMs: Long? = null,
 )
 
 @Serializable
