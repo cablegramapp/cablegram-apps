@@ -36,7 +36,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     private fun catalog() = CatalogClient(pairing.apiBaseUrl, pairing)
     private val pairing = PairingStore(application)
     private val commands = CommandQueue(application)
-    private val webTransferPolls = mutableSetOf<String>()
 
     var castConnect by mutableStateOf(pairing.castConnect)
         private set
@@ -362,7 +361,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         refreshStorage()
         recoverSharedImports()
         resumePendingWebImports()
-        resumeWebTransfers()
+        clearRetiredWebSaves()
         if (paired) {
             // Also watches for TV private-playback approvals while paired (T075 / R-5).
             LanLibraryService.start(application)
@@ -652,7 +651,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 householdName = result.displayName.orEmpty()
                 pairing.displayName = householdName
                 resumePendingWebImports()
-                resumeWebTransfers()
+                clearRetiredWebSaves()
                 needsAccount = false
                 needsName = result.needsName
                 // Another account's library is set aside (and restored if it signs in again), never
@@ -2530,7 +2529,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         )
         refresh()
         if (item.sourceKind == "web") {
-            pollWebTransfer(item.id)
+            // Not offered (see canSaveToCloud); kept as a guard so a stale screen can't start one.
+            store.update(item.copy(transferStatus = TRANSFER_IDLE))
+            refresh()
             return
         }
         runCatching { CloudTransferService.start(getApplication(), item.id, ownR2 = cloudConnected, destination = saveDestinationName) }
@@ -2540,61 +2541,13 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             }
     }
 
-    private fun resumeWebTransfers() {
-        store.list().filter { it.sourceKind == "web" && it.transferStatus == TRANSFER_SAVING }
-            .forEach { pollWebTransfer(it.id) }
-    }
-
-    private fun pollWebTransfer(itemId: String) {
-        if (!webTransferPolls.add(itemId)) return
-        viewModelScope.launch {
-            try {
-                while (isActive) {
-                    val item = store.get(itemId) ?: return@launch
-                    if (item.transferStatus != TRANSFER_SAVING) return@launch
-                    val token = pairing.accountToken ?: return@launch
-                    try {
-                        var jobId = item.webTransferJobId
-                        if (jobId == null) {
-                            check(cablegramCloudReady) { "Cablegram managed storage is not configured." }
-                            jobId = catalog().saveWebToStorage(itemId, token).jobId
-                            store.updateItem(itemId) { it.copy(webTransferJobId = jobId, webTransferError = null) }
-                        }
-                        val job = catalog().libraryJob(jobId, token)
-                        if (job.status == "completed") {
-                            store.updateItem(itemId) { it.copy(
-                                transferStatus = TRANSFER_IDLE, webTransferError = null,
-                                cloudObjectPresent = true, storageState = STORAGE_CLOUD,
-                            ) }
-                            refresh()
-                            return@launch
-                        }
-                        if (job.status == "failed") {
-                            store.updateItem(itemId) { it.copy(transferStatus = TRANSFER_FAILED, webTransferError = job.errorCode) }
-                            status = job.errorCode ?: "Could not save that video"
-                            refresh()
-                            return@launch
-                        }
-                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                        throw cancelled
-                    } catch (_: java.io.IOException) {
-                        // The server keeps working; keep the job so polling resumes after reconnect or restart.
-                        delay(8_000)
-                    } catch (error: Exception) {
-                        if (store.get(itemId)?.webTransferJobId == null) {
-                            store.updateItem(itemId) { it.copy(transferStatus = TRANSFER_FAILED, webTransferError = error.message) }
-                            status = error.message
-                            refresh()
-                            return@launch
-                        }
-                        delay(8_000)
-                    }
-                    delay(2_000)
-                }
-            } finally {
-                webTransferPolls.remove(itemId)
-            }
-        }
+    /**
+     * Cablegram no longer saves web videos on its server (CAB-27): a web title left "saving" or "failed" by that retired
+     * path goes back to idle, so it shows no progress and offers no retry.
+     */
+    private fun clearRetiredWebSaves() {
+        store.list().filter { it.sourceKind == "web" && (it.transferStatus == TRANSFER_SAVING || it.transferStatus == TRANSFER_FAILED) }
+            .forEach { item -> store.updateItem(item.id) { it.copy(transferStatus = TRANSFER_IDLE, webTransferJobId = null, webTransferError = null) } }
     }
 
     fun runSaveInBackground() {

@@ -104,6 +104,12 @@ class LibraryLogicTest {
     }
 
     @Test
+    fun `web titles are not offered a cloud save`() {
+        val web = item().copy(sourceKind = "web", copied = false, sourceAvailable = true)
+        assertFalse(canSaveToCloud(web))
+    }
+
+    @Test
     fun `telegram titles show a cloud badge and cannot be saved to cloud again`() {
         val telegram = item().copy(sourceKind = "telegram", copied = false, sourceAvailable = true)
         assertEquals(StorageBadge.Telegram, storageBadge(telegram))

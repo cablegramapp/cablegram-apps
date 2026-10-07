@@ -193,21 +193,6 @@ data class WebImportResponse(
 data class ApiError(val error: String? = null)
 
 @Serializable
-data class WebStorageResponse(
-    @SerialName("job_id") val jobId: String,
-    val status: String = "queued",
-    val destination: String,
-)
-
-@Serializable
-data class LibraryJobResponse(
-    val id: String,
-    val status: String,
-    val progress: Int? = null,
-    @SerialName("error_code") val errorCode: String? = null,
-)
-
-@Serializable
 data class RemoteCatalogItem(
     val id: String,
     val title: String? = null,

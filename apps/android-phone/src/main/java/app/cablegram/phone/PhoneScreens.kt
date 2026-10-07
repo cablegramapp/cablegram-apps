@@ -1134,7 +1134,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 item.fileSizeBytes?.let { StorageMetric("File size", formatBytes(it)) }
                 if (item.transferStatus == TRANSFER_FAILED && item.webTransferError == TELEGRAM_SAVE_FAILED && !sourceUnavailable) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Retry saving to Telegram") }
-                } else if (item.transferStatus == TRANSFER_FAILED && !sourceUnavailable) OutlinedButton(onClick = { viewModel.retrySave(item) }, modifier = Modifier.fillMaxWidth()) { Text("Retry cloud save") }
+                } else if (item.transferStatus == TRANSFER_FAILED && !sourceUnavailable && item.sourceKind != "web") OutlinedButton(onClick = { viewModel.retrySave(item) }, modifier = Modifier.fillMaxWidth()) { Text("Retry cloud save") }
                 else if (canSaveToCloud(item)) OutlinedButton(onClick = { viewModel.beginSaveToCloud(item) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.DETAIL_SAVE_CLOUD)) { Text("Save a cloud copy") }
                 if (viewModel.telegramLink?.linked == true && PhoneTelegram.configured && canSaveToTelegram(item) && item.webTransferError != TELEGRAM_SAVE_FAILED) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Save to Telegram") }
