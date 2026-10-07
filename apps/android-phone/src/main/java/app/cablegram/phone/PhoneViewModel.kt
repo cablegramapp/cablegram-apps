@@ -868,6 +868,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         } else if (!paired && wasPaired) {
             LanLibraryService.stop(getApplication())
             nowPlaying = null
+        } else if (paired && kept.size < local.size) {
+            // A TV removed from another phone: the running LAN service refuses it now, not after a restart (CAB-37).
+            LanLibraryService.start(getApplication())
         }
     }
 
@@ -1418,6 +1421,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             LanLibraryService.stop(getApplication())
             status = "TV removed. Scan a PIN when you want one again."
         } else {
+            // The LAN service keeps serving the other TVs; this makes it refuse the removed one now (CAB-37).
+            LanLibraryService.start(getApplication())
             tvName = pairing.tvName
             status = "Removed this TV. ${pairing.tvs.size} still paired."
         }

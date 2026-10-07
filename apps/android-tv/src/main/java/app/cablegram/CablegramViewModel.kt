@@ -7,6 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import app.cablegram.data.AccountCredential
 import app.cablegram.data.ApiException
@@ -723,6 +726,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         // update later than a newer one (ProgressQueue orders by this time).
         val observedAt = ServerClock.shared.now()
         val clockKnown = ServerClock.shared.learnedThisBoot
+        val account = sessionId
         viewModelScope.launch {
             runCatching {
                 api.updateProgress(
@@ -741,7 +745,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                     (error as? ApiException)?.statusCode == 403 -> onProfileGone()
                     (error as? ApiException)?.statusCode == 410 -> onMediaDeleted(videoId)
                     error.isPermanentRejection() -> Unit
-                    else -> progressQueue.enqueue(videoId, activeProfileId, positionSeconds, state, durationSeconds, observedAt)
+                    else -> progressQueue.enqueue(videoId, activeProfileId, positionSeconds, state, durationSeconds, observedAt, account)
                 }
             }
         }
@@ -778,6 +782,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                 )
             },
             isPermanentRejection = { it.isPermanentRejection() },
+            include = { it.accountId == null || it.accountId == sessionId },
         )
     }
 
@@ -800,6 +805,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             }
             authStore.clear()
             telegram.signOutAndWipe()
+            forgetAllAccountData()
             token = null
             sessionId = null
             activeProfileId = null
@@ -1066,7 +1072,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             } catch (error: ApiException) {
                 if (error.statusCode == 401) {
                     hasAuthError = true
-                    authStore.removeAccount(account.sessionId)
+                    forgetAccount(account)
                 } else {
                     lastErrorMessage = error.userMessage()
                 }
@@ -1083,6 +1089,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                 authStore.clear()
                 // Revoked or unpaired: nothing of the household's Telegram may stay on this TV.
                 telegram.signOutAndWipe()
+                forgetAllAccountData()
                 token = null
                 sessionId = null
                 activeProfileId = null
@@ -1123,12 +1130,13 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             startLibrarySync()
             startCommandPolling()
             resumeCastTitle()
-            telegram.sync(currentToken)
+            telegram.sync(currentToken, sessionId)
         } catch (error: ApiException) {
             if (error.statusCode == 401) {
                 val currentSessionId = sessionId
                 if (currentSessionId != null) {
-                    authStore.removeAccount(currentSessionId)
+                    forgetAccount(accountCredentials.firstOrNull { it.sessionId == currentSessionId }
+                        ?: AccountCredential(currentSessionId, currentToken))
                 }
                 activeProfileId = null
                 loadProfiles()
@@ -1403,9 +1411,84 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         activeProfileId = null
         screen = ScreenState.Loading
         viewModelScope.launch {
-            rejectedSession?.let { authStore.removeAccount(it) }
+            rejectedSession?.let { id -> forgetAccount(accountCredentials.firstOrNull { it.sessionId == id } ?: AccountCredential(id, rejectedToken)) }
             loadProfiles()
         }
+    }
+
+    /**
+     * CAB-37: the TV signed out only when the library sync or playback progress got a 401, so a removed TV stayed
+     * signed in while paused, on a live channel, on the profile picker or in Settings. While the app is in the
+     * foreground every stored account is checked on return and then every [SESSION_CHECK_MS].
+     */
+    private fun startSessionWatch() {
+        viewModelScope.launch {
+            ProcessLifecycleOwner.get().lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    checkSessions()
+                    delay(SESSION_CHECK_MS)
+                }
+            }
+        }
+    }
+
+    private suspend fun checkSessions() {
+        if (isDemoMode) return
+        for (account in authStore.getAccounts()) {
+            val failure = runCatching { api.checkSession(account.token) }.exceptionOrNull()
+            if (failure is CancellationException) throw failure
+            // Offline, 5xx or 503 revocation_check_unavailable: not a verdict, so the TV stays as it is.
+            if (failure?.isUnauthorized() == true) onAccountRejected(account)
+        }
+    }
+
+    private suspend fun onAccountRejected(account: AccountCredential) {
+        if (account.token == token) {
+            onSessionUnauthorized(account.token)
+            return
+        }
+        // Another household on this TV: the one in use keeps going, the removed one disappears from the picker.
+        PairLog.w("A TV account was rejected (401); removing it")
+        val gone = profileAccounts.filterValues { it.sessionId == account.sessionId }.keys
+        forgetAccount(account)
+        if (authStore.getAccounts().isEmpty()) {
+            onSessionUnauthorized(token ?: return)
+            return
+        }
+        profiles = profiles.filterNot { it.id in gone }
+        gone.forEach(profileAccounts::remove)
+        accountCredentials = authStore.getAccounts()
+        when {
+            screen !is ScreenState.ProfilePicker && screen !is ScreenState.SessionActions -> Unit
+            profiles.isEmpty() -> loadProfiles()
+            screen is ScreenState.ProfilePicker -> screen = ScreenState.ProfilePicker(profiles)
+            else -> screen = ScreenState.SessionActions(profiles)
+        }
+    }
+
+    /**
+     * CAB-37: an account revoked or removed from this TV leaves nothing of its own here: its credential, unsent
+     * progress, remote-command journal, the offline pairing PIN, and the Telegram session when it was that household's.
+     */
+    private suspend fun forgetAccount(account: AccountCredential) {
+        val profileIds = profileAccounts.filterValues { it.sessionId == account.sessionId }.keys
+        authStore.removeAccount(account.sessionId)
+        progressQueue.forgetAccount(account.sessionId, profileIds)
+        commandJournal.forgetAccount(account.sessionId)
+        // Written by the first pairing, before any account existed: it may be this account's.
+        lanPrefs.edit().remove("token").apply()
+        telegram.signOutIfOwnedBy(account.sessionId)
+        if (authStore.getAccounts().isEmpty()) {
+            telegram.signOutAndWipe()
+            forgetAllAccountData()
+        }
+    }
+
+    /** No account is left on this TV: drop every account's local data (CAB-37). */
+    private fun forgetAllAccountData() {
+        progressQueue.clearAll()
+        commandJournal.forgetAll()
+        lanPrefs.edit().remove("token").apply()
     }
 
     private fun playbackError(error: Exception): String = when {
@@ -1416,10 +1499,17 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun Exception.userMessage(): String = message ?: "Check the backend address and network connection."
 
+    init {
+        // Last in the class: the watch can start checking at once, and everything it uses is set up by now.
+        startSessionWatch()
+    }
+
     private companion object {
         // New phone imports appear within a few seconds without re-fetching the
         // whole catalog and device list every two seconds.
         const val LIBRARY_SYNC_MS = 5_000L
+        /** How soon a removed TV signs out on any screen while Cablegram is open (CAB-37). */
+        const val SESSION_CHECK_MS = 30_000L
     }
 }
 

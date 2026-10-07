@@ -31,6 +31,8 @@ data class QueuedProgress(
     val state: String,
     val durationSeconds: Int? = null,
     val clientUpdatedAt: Long,
+    /** The TV account (pairing session) that made the update; null for entries queued before CAB-37. */
+    val accountId: String? = null,
 )
 
 class ProgressQueue internal constructor(
@@ -59,11 +61,12 @@ class ProgressQueue internal constructor(
         state: String,
         durationSeconds: Int? = null,
         observedAt: Long = clock(),
+        accountId: String? = null,
     ) {
         val previous = entries.firstOrNull { it.videoId == videoId && it.profileId == profileId }
         entries.removeAll { it.videoId == videoId && it.profileId == profileId }
         val version = if (previous != null && observedAt <= previous.clientUpdatedAt) previous.clientUpdatedAt + 1 else observedAt
-        entries.add(QueuedProgress(videoId, profileId, positionSeconds, state, durationSeconds, version))
+        entries.add(QueuedProgress(videoId, profileId, positionSeconds, state, durationSeconds, version, accountId))
         if (entries.size > MAX_ENTRIES) entries.subList(0, entries.size - MAX_ENTRIES).clear()
         persist()
     }
@@ -77,6 +80,16 @@ class ProgressQueue internal constructor(
         val removed = entries.removeAll { it == entry }
         if (removed) persist()
         return removed
+    }
+
+    /**
+     * An account was revoked or removed from this TV (CAB-37): its unsent progress goes too. Entries queued before
+     * they carried an account are matched by the account's profiles.
+     */
+    @Synchronized
+    fun forgetAccount(accountId: String, profileIds: Set<String>) {
+        val removed = entries.removeAll { it.accountId == accountId || (it.accountId == null && it.profileId in profileIds) }
+        if (removed) persist()
     }
 
     @Synchronized
@@ -105,8 +118,10 @@ suspend fun flushProgress(
     queue: ProgressQueue,
     upload: suspend (QueuedProgress) -> Unit,
     isPermanentRejection: (Throwable) -> Boolean,
+    /** Only the entries the uploading account may send: another account's progress waits for that account. */
+    include: (QueuedProgress) -> Boolean = { true },
 ) {
-    for (entry in queue.pending()) {
+    for (entry in queue.pending().filter(include)) {
         val failure = runCatching { upload(entry) }.exceptionOrNull()
         if (failure != null && !isPermanentRejection(failure)) return // still offline; keep the rest queued
         queue.acknowledge(entry)

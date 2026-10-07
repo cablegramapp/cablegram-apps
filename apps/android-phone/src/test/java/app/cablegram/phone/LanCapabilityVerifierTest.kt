@@ -31,4 +31,12 @@ class LanCapabilityVerifierTest {
         assertNull(verifier.tvDeviceId("forged"))
         assertEquals(2, calls)
     }
+
+    @Test
+    fun `forgetting a TV drops its cached answer so the server is asked again`() {
+        verifier.tvDeviceId("paired-by-other-phone")
+        verifier.forgetDevice("tv-2")
+        verifier.tvDeviceId("paired-by-other-phone")
+        assertEquals(2, calls)
+    }
 }

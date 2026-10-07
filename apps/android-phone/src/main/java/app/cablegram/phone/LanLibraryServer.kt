@@ -14,42 +14,20 @@ import kotlinx.serialization.json.Json
  * The PIN is never the long-term credential: new pairings always mint a
  * capability, and capability-only enforcement resumes once T071 completes.
  *
- * R-2: [revokeCapability] lets the host drop a capability mid-stream when the
- * control plane reports that TV as revoked; revocation survives app restart
- * through [persistRevocation].
+ * R-2 / CAB-37: [credentials] is kept in step with the paired TVs by the service, so a removed or revoked TV is
+ * refused at once, without restarting the server.
  */
 class LanLibraryServer(
     private val store: LibraryStore,
     private val commands: CommandQueue,
-    private val token: String,
-    private val capabilities: MutableSet<String> = mutableSetOf(),
+    private val credentials: LanCredentials,
     /** Required for private titles; without it private media is never served. */
     private val privatePasses: PrivatePassVerifier? = null,
-    private val deviceIdForCapability: (String) -> String? = { null },
-    /** Confirms capabilities of TVs paired by another household phone. */
-    private val capabilityVerifier: LanCapabilityVerifier? = null,
     /** Streams Telegram titles from this phone's session for TVs that hold none (spec 004 US8). */
     private val telegram: TelegramMedia? = null,
     port: Int = PORT,
 ) : NanoHTTPD(port) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-
-    /** Called when the control plane reports this capability's TV revoked. */
-    fun revokeCapability(capability: String) {
-        capabilities.remove(capability)
-        capabilityVerifier?.forget(capability)
-    }
-
-    /** Called when a previously revoked capability should be accepted again (un-revoke / repair). */
-    fun restoreCapability(capability: String) {
-        capabilities.add(capability)
-    }
-
-    /** Refresh credentials when another TV pairs while this service is alive. */
-    fun replaceCapabilities(current: Set<String>) {
-        capabilities.clear()
-        capabilities.addAll(current)
-    }
 
     override fun serve(session: IHTTPSession): Response {
         if (!authorized(session)) {
@@ -92,9 +70,7 @@ class LanLibraryServer(
                 val item = store.get(id) ?: return notFound()
                 if (item.isPrivate) {
                     val pass = session.parameters["pass"]?.firstOrNull()
-                    val tvDeviceId = suppliedCredentials(session).firstNotNullOfOrNull {
-                        deviceIdForCapability(it) ?: capabilityVerifier?.tvDeviceId(it)
-                    }
+                    val tvDeviceId = suppliedCredentials(session).firstNotNullOfOrNull(credentials::tvDeviceId)
                     if (privatePasses?.allows(pass, id, tvDeviceId) != true) {
                         return newFixedLengthResponse(Response.Status.FORBIDDEN, "application/json", """{"error":"approval_required"}""")
                     }
@@ -151,13 +127,7 @@ class LanLibraryServer(
         }
 
     /** Double-accept: device capabilities first; legacy PIN during rollout. */
-    private fun authorized(session: IHTTPSession): Boolean {
-        if (capabilities.isEmpty() && token.isBlank() && capabilityVerifier == null) return false
-        val supplied = suppliedCredentials(session)
-        if (supplied.isEmpty()) return false
-        if (supplied.any { it == token || capabilities.contains(it) }) return true
-        return supplied.any { capabilityVerifier?.tvDeviceId(it) != null }
-    }
+    private fun authorized(session: IHTTPSession): Boolean = credentials.authorized(suppliedCredentials(session))
 
     private fun suppliedCredentials(session: IHTTPSession): List<String> = listOfNotNull(
         session.headers["authorization"]?.removePrefix("Bearer ")?.trim(),
