@@ -57,6 +57,9 @@ android {
         val castAppId = telegramSetting("CABLEGRAM_CAST_APP_ID").trim()
             .replace("\\", "\\\\").replace("\"", "\\\"")
         buildConfigField("String", "CABLEGRAM_CAST_APP_ID", "\"$castAppId\"")
+        // LibVLC logs every stream URL, and a URL from the phone carries its LAN credential (`?token=`). Its own log
+        // stays off unless a developer asks for it with -PCABLEGRAM_VLC_VERBOSE=true; never in a build given to others.
+        buildConfigField("boolean", "VLC_VERBOSE", (project.findProperty("CABLEGRAM_VLC_VERBOSE") == "true").toString())
         buildConfigField("int", "TELEGRAM_API_ID", telegramSetting("TELEGRAM_API_ID").ifBlank { "0" })
         buildConfigField("String", "TELEGRAM_API_HASH", "\"${telegramSetting("TELEGRAM_API_HASH")}\"")
         // Optional, e.g. -PCABLEGRAM_ABIS=armeabi-v7a: the universal APK is ~210 MB because of
