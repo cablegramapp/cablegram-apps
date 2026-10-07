@@ -1,8 +1,10 @@
 # Plan: retire the phone remote, launch the TV app with Cast Connect, add a Sources tab
 
-Status: proposal, agreed in discussion on 2026-10-05. Nothing below is built yet. Claims about Google
-policy and Cast behaviour come from Google's public documentation and have not been tested against this app;
-the spike at the end confirms them.
+Status: proposal, agreed in discussion on 2026-10-05. CAB-20 supersedes section 2's original security
+model and implements only Cast launch plus optional hiding of the legacy remote. Sources and
+connectors remain separate work. The release-key spike verified session-triggered launch, intact
+synthetic LOAD data and physically observed standby/CEC wake; see `cast-connect-setup.md` for the
+current gate and evidence. Production playback is not established by the log-only spike.
 
 ## Why
 
@@ -39,7 +41,7 @@ Cast Connect lets a Cast sender (the phone) start an Android TV app directly. On
 request for the linked app ID:
 
 - launches the TV app even when it is closed, and can wake the TV over HDMI-CEC;
-- hands the request to the app as an intent carrying our data (title ID, start position);
+- hands LOAD to the app as an intent carrying command ID and target device ID;
 - gives the phone the system cast controls (notification, lock screen, volume keys) over the local network
   through the TV's `MediaSession`, not through our relay. These can replace the custom remote.
 
@@ -47,9 +49,9 @@ request for the linked app ID:
 
 - **Cast developer console:** register a receiver app ID (one-time fee, USD 5 at the time of writing) and
   link it to the Android TV package name.
-- **TV app:** add `com.google.android.gms:play-services-cast-tv`; handle the Cast load intent (look up the
-  title by ID, play with the existing player); expose a `MediaSession` so play, pause and seek from the phone
-  work.
+- **TV app:** add `com.google.android.gms:play-services-cast-tv`; handle the Cast load intent as a signal
+  to collect the authenticated server command using the TV's own token; expose a hand-built
+  `MediaSessionCompat` for the existing LibVLC player so play, pause and seek from the phone work.
 - **Phone app:** add the Cast SDK (`play-services-cast-framework`, `mediarouter`); use the cast button or
   device picker for "Play on TV".
 - **Media path is unchanged:** the video still streams as today (LAN, relay, or later a signed URL from a
@@ -57,9 +59,20 @@ request for the linked app ID:
 
 ### Security
 
-The cast request carries a title ID only, never a credential or a playable URL. The TV resolves the ID
-against its own signed-in household, so pairing still decides what may play. Anyone on the same Wi-Fi can
-see the TV as a cast target; that alone must not let them play household content.
+The phone first submits the authenticated play command, then sends Cast LOAD whose custom data is
+only `{commandId,targetDeviceId}`. The content ID and title/poster metadata do not authorize playback.
+Cast never carries a credential or playable media URL. The TV polls commands with its own token, so
+server household, revocation and expiry checks still decide what may play. Anyone on the same Wi-Fi
+can send Cast messages; that alone must not let them play household content.
+
+For a matching Cast command on "Who's watching?", keep the command open and show a banner asking the
+viewer to choose a profile. After selection, resolve the title in that profile's library; otherwise
+finish with `title_unavailable`. Expiry or leaving the picker clears the hold with `expired` or
+`superseded`. All other commands retain `profile_required`; do not choose a profile automatically.
+
+A wrong target publishes `wrong_tv` and the actual paired device ID in status custom data. The phone
+can map that Cast route and retry once only when the named TV belongs to the paired household.
+See `contracts/remote-and-lan.md` for the schema and confirmation rules.
 
 ### Limits
 
@@ -109,8 +122,9 @@ asleep. Telegram stays on its current path.
 
 ## Order
 
-1. Spike: on the Chromecast with Google TV, a Cast-launched intent that starts a known title by ID with the
-   TV app closed. Confirms section 2 before anything else changes.
+1. Spike: on the Chromecast with Google TV, verify closed-app launch, intact synthetic command-ID LOAD,
+   standby wake, and both release-key and debug-key sideloaded APKs. The handler logs only; it does not
+   play a title. Record whether session creation alone launches the app and measure timing.
 2. Put the remote controls behind a flag; ship "Play on TV" on Cast Connect with the relay fallback.
 3. Sources tab on the connector interface, migrating Telegram, phone files and web links into it.
 4. S3-compatible connector.
