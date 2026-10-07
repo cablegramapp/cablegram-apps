@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 
 class LanLibraryService : Service() {
     private var server: LanLibraryServer? = null
+    private var credentials: LanCredentials? = null
     private var nsdManager: NsdManager? = null
     private var registration: NsdManager.RegistrationListener? = null
     private var multicastLock: WifiManager.MulticastLock? = null
@@ -45,7 +46,6 @@ class LanLibraryService : Service() {
         val store = PairingStore(this)
         // Prefer device capabilities; fall back to the legacy PIN for old TVs.
         val legacyToken = store.lanToken
-        val capabilities = store.tvs.mapNotNull { it.capability }.toSet()
         if (legacyToken.isNullOrBlank()) {
             stopSelf()
             return START_NOT_STICKY
@@ -63,13 +63,12 @@ class LanLibraryService : Service() {
                 val passes = PrivatePassVerifier(verify = { pass ->
                     store.accountToken?.let { token -> kotlinx.coroutines.runBlocking { client.verifyLanPass(token, pass) } }
                 })
+                val accepted = LanCredentials(LanCapabilityVerifier(verify = { capability ->
+                    store.accountToken?.let { token -> kotlinx.coroutines.runBlocking { client.verifyLanCapability(token, capability) } }
+                })).apply { sync(store.tvs, legacyToken) }
                 val http = LanLibraryServer(
-                    LibraryStore(this), CommandQueue(this), legacyToken, capabilities.toMutableSet(),
+                    LibraryStore(this), CommandQueue(this), accepted,
                     privatePasses = passes,
-                    deviceIdForCapability = { capability -> store.tvs.firstOrNull { it.capability == capability }?.deviceId },
-                    capabilityVerifier = LanCapabilityVerifier(verify = { capability ->
-                        store.accountToken?.let { token -> kotlinx.coroutines.runBlocking { client.verifyLanCapability(token, capability) } }
-                    }),
                     telegram = if (PhoneTelegram.configured) {
                         val removed = RemovedTelegramSources(client, store)
                         PhoneTelegramMedia(this, isRemoved = removed::contains) {
@@ -79,7 +78,8 @@ class LanLibraryService : Service() {
                 )
                 http.start()
                 server = http
-                advertise(legacyToken)
+                credentials = accepted
+                advertise()
                 startRevocationWatch()
                 startRelay(store)
                 PrivateApprovals.deleteLegacyChannel(this)
@@ -87,9 +87,9 @@ class LanLibraryService : Service() {
                 serviceScope.launch { CastSession.state.drop(1).collect { postNotification() } }
             }.onFailure { PairLog.e("LAN library failed to start", it) }
         } else {
-            // start() is also called after pairing. Keep the live server in sync
-            // with the capabilities just persisted by PairingStore.
-            server?.replaceCapabilities(capabilities)
+            // start() is also called after pairing and after a TV is removed (CAB-37). Keep the live server in step
+            // with PairingStore: a removed TV is refused from now on, with no restart.
+            credentials?.sync(store.tvs, legacyToken)
         }
         // These talk to the control plane only, so they run even when the LAN server could not bind its port (another
         // app holds it): otherwise a TV waits for a Telegram approval or password that the phone is never asked for.
@@ -113,16 +113,11 @@ class LanLibraryService : Service() {
             val client = CatalogClient(store.apiBaseUrl, store)
             while (isActive) {
                 val token = store.accountToken
-                val http = server
-                if (!token.isNullOrBlank() && http != null) {
+                val accepted = credentials
+                if (!token.isNullOrBlank() && accepted != null) {
                     runCatching {
-                        val revoked = client.fetchRevokedDeviceIds(token)
-                        revoked.forEach { deviceId ->
-                            store.tvs.firstOrNull { it.deviceId == deviceId }?.capability?.let { cap ->
-                                http.revokeCapability(cap)
-                                PairLog.i("LAN revoked TV capability device=${deviceId.takeLast(6)}")
-                            }
-                        }
+                        // By device id, so a TV already removed from the store is still refused (CAB-37).
+                        client.fetchRevokedDeviceIds(token).forEach(accepted::revokeDevice)
                     }
                 }
                 delay(60_000)
@@ -191,12 +186,13 @@ class LanLibraryService : Service() {
         registration?.let { runCatching { nsdManager?.unregisterService(it) } }
         runCatching { server?.stop() }
         server = null
+        credentials = null
         multicastLock?.let { lock -> runCatching { if (lock.isHeld) lock.release() } }
         multicastLock = null
         super.onDestroy()
     }
 
-    private fun advertise(token: String) {
+    private fun advertise() {
         val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         multicastLock = wifi.createMulticastLock("cablegram-advertise").apply {
             setReferenceCounted(false)
@@ -208,7 +204,7 @@ class LanLibraryService : Service() {
             serviceName = LanLibraryServer.NSD_NAME
             serviceType = LanLibraryServer.NSD_TYPE
             port = LanLibraryServer.PORT
-            setAttribute("token", token.take(64))
+            // No credential here: TXT records are readable by anything on the network, and no client reads one (CAB-37).
             localIpv4()?.let { setAttribute("ip", it) }
         }
         val listener = object : NsdManager.RegistrationListener {

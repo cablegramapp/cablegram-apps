@@ -27,6 +27,21 @@ class CommandJournalTest {
         assertEquals("execution_interrupted", restored.get("seek")?.reason)
     }
 
+    @Test fun `a revoked account's commands leave the journal on disk and another account's stay (CAB-37)`() {
+        var disk: String? = null
+        val journal = CommandJournal(null, { disk = it }, { 1000 })
+        journal.begin(TvCommand("a", "pause", expiresAtMs = 30_000), "A"); journal.finish("a")
+        journal.begin(TvCommand("a2", "play", expiresAtMs = 30_000), "A") // still executing
+        journal.begin(TvCommand("b", "pause", expiresAtMs = 30_000), "B"); journal.finish("b")
+        journal.forgetAccount("A")
+        val restored = CommandJournal(disk, {}, { 2000 })
+        assertNull(restored.get("a"))
+        assertNull(restored.get("a2"))
+        assertEquals(1, restored.pending("B").size)
+        journal.forgetAll()
+        assertNull(CommandJournal(disk, {}, { 2000 }).get("b"))
+    }
+
     @Test fun `only a receipt for the matching account clears pending results`() {
         val journal = CommandJournal(null, {}, { 1000 })
         journal.begin(TvCommand("x", "pause", expiresAtMs = 30_000), "a")

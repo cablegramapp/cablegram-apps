@@ -293,6 +293,9 @@ class CablegramApi(
         executeNoContent(authenticatedRequest("api/telegram/logout-ack", token).post("{}".toRequestBody(jsonMediaType)).build())
     }
 
+    /** A cheap authenticated call: fails with 401 once this TV's session is revoked or its account deleted (CAB-37). */
+    suspend fun checkSession(token: String) = executeNoContent(authenticatedRequest("api/me", token).get().build())
+
     /** Revokes this TV's own device on the control plane (best effort on unpair). */
     suspend fun revokeSelf(token: String) {
         executeNoContent(authenticatedRequest("api/devices/self", token).delete().build())

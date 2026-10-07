@@ -30,4 +30,9 @@ class LanCapabilityVerifier(
     fun forget(capability: String) {
         cache.remove(capability)
     }
+
+    /** Drops every cached answer for this TV, for a capability this phone never held itself (CAB-37). */
+    fun forgetDevice(deviceId: String) {
+        cache.entries.removeIf { it.value.tvDeviceId == deviceId }
+    }
 }

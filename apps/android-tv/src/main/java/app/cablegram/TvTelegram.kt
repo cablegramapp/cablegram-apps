@@ -105,10 +105,14 @@ class TvTelegram(
 
     val configured: Boolean get() = BuildConfig.TELEGRAM_API_ID != 0
 
-    /** Called after the library loads (and on refreshes): follows the household link. */
-    fun sync(currentToken: String) {
+    /** The TV account whose household this TV signs in to Telegram for; [ensureSession] records it. */
+    @Volatile private var account: String? = null
+
+    /** Called after the library loads (and on refreshes): follows the household link of [accountId]. */
+    fun sync(currentToken: String, accountId: String?) {
         if (!configured) return
         token = currentToken
+        account = accountId
         scope.launch {
             val link = runCatching { api.telegramLink(currentToken) }
                 .onFailure { PairLog.e("Telegram link check failed", it) }
@@ -223,8 +227,22 @@ class TvTelegram(
         }
     }
 
+    /**
+     * One account was revoked or removed from a TV that holds others (CAB-37). The Telegram session goes only if it is
+     * that account's, or if this TV can't tell whose it is (signed in before owners were recorded): another
+     * household's session is kept, and a wrongly dropped one only needs approving again from that household's phone.
+     */
+    fun signOutIfOwnedBy(accountId: String) {
+        val owner = prefs.getString(PREF_OWNER, null)
+        if (owner == accountId || (owner == null && (session != null || TelegramDatabaseKey(context).hasLocalData()))) {
+            PairLog.i("Telegram on TV belonged to a removed account: signing out and wiping")
+            signOutAndWipe()
+        }
+    }
+
     /** Unpair, revocation, household disconnect: log out and delete everything Telegram left here. */
     fun signOutAndWipe() {
+        prefs.edit().remove(PREF_OWNER).apply()
         val current = session
         session = null
         standalone = false
@@ -260,6 +278,10 @@ class TvTelegram(
         if (session != null) return
         _status.value = TvTelegramStatus.Connecting
         val keys = TelegramDatabaseKey(context)
+        // A database already on disk was signed in for its recorded owner; only a fresh one takes this account's.
+        if (prefs.getString(PREF_OWNER, null) == null || !keys.hasLocalData()) {
+            account?.let { prefs.edit().putString(PREF_OWNER, it).apply() }
+        }
         val created = TelegramSession(
             api = TdlibTelegramApi(),
             role = TelegramRole.Tv,
@@ -468,6 +490,8 @@ class TvTelegram(
         const val PREF_TEMPORARY = "temporary"
         const val PREF_ACTIVE = "last_active"
         const val PREF_VIA_PHONE = "telegram_via_phone"
+        /** The TV account (pairing session) whose household this TV's Telegram session belongs to (CAB-37). */
+        const val PREF_OWNER = "telegram_owner_account"
         const val PHONE_LOGIN_POLL_MS = 4_000L
         const val PASSWORD_POLL_MS = 2_000L
         /** How long an accepted password may take to move Telegram past the password step. */

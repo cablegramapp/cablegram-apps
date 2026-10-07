@@ -20,6 +20,30 @@ class ProgressQueueTest {
 
     private val offline = IOException("offline")
 
+    @Test fun `a revoked account's unsent progress is dropped and another household's stays (CAB-37)`() {
+        var disk: String? = null
+        val queue = queue(onSave = { disk = it })
+        queue.enqueue("a1", "pa", 10, "paused", observedAt = 1, accountId = "A")
+        queue.enqueue("b1", "pb", 20, "paused", observedAt = 2, accountId = "B")
+        queue.enqueue("old", "pa", 30, "paused", observedAt = 3) // queued before entries carried an account
+        queue.enqueue("old-b", "pb", 40, "paused", observedAt = 4)
+        queue.forgetAccount("A", profileIds = setOf("pa"))
+        assertEquals(listOf("b1", "old-b"), queue.pending().map { it.videoId })
+        assertEquals(listOf("b1", "old-b"), queue(initial = disk).pending().map { it.videoId })
+    }
+
+    @Test fun `an account flushes only its own progress, and untagged entries (CAB-37)`() = runTest {
+        val queue = queue()
+        queue.enqueue("a1", "pa", 10, "paused", observedAt = 1, accountId = "A")
+        queue.enqueue("b1", "pb", 20, "paused", observedAt = 2, accountId = "B")
+        queue.enqueue("old", "p", 30, "paused", observedAt = 3)
+        val uploaded = mutableListOf<String>()
+        flushProgress(queue, upload = { uploaded += it.videoId }, isPermanentRejection = { false },
+            include = { it.accountId == null || it.accountId == "B" })
+        assertEquals(listOf("b1", "old"), uploaded)
+        assertEquals(listOf("a1"), queue.pending().map { it.videoId })
+    }
+
     @Test fun `a newer update enqueued during an upload survives the older upload finishing`() = runTest {
         val queue = queue()
         queue.add("v", 100, at = 1_000)
