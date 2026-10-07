@@ -954,6 +954,8 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             rememberOfflineLanToken(session.pin)
             PairLog.i("TV session ok ${PairLog.pinTail(session.pin)} session=${session.sessionId} tvIp=$tvLanIp")
             screen = ScreenState.Pairing(session)
+            // Another call may have started a poll while this one waited for the server: only one PIN is polled.
+            pairingJob?.takeIf { it !== currentJob }?.cancel()
             pairingJob = viewModelScope.launch { pollPairing(session) }
         } catch (_: CancellationException) {
             throw CancellationException()
@@ -980,6 +982,8 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     private suspend fun pollPairing(session: DeviceSession) {
         while (true) {
             delay(2_000)
+            // The PIN is no longer on screen (paired, cancelled, another screen): nothing waits for it.
+            if ((screen as? ScreenState.Pairing)?.session?.sessionId != session.sessionId) return
             try {
                 val result = api.getPairingStatus(session.sessionId, session.pairingToken)
                 PairLog.i(
@@ -1014,6 +1018,13 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                 if (result.status == "paired") {
                     pairingStatus = "Phone paired. Opening the library."
                     continueWithPhoneLibrary()
+                    return
+                }
+                // The server answers an expired PIN with 200 {"status":"expired"}, not 410: show a new one instead of
+                // polling the dead PIN every 2 s for as long as the app runs.
+                if (result.status == "expired") {
+                    PairLog.w("TV pairing expired, new PIN")
+                    createPairingSession()
                     return
                 }
                 if (result.status == "name_required") {
