@@ -154,6 +154,11 @@ class LocalSubtitleDiscovery internal constructor(private var credentials: Map<S
         val ranked = all.filter { it.language in p.languages && (p.includeForced || !it.forced) }.map { it to rank(it, context, p, tech) }.sortedByDescending { it.second.first }.filter { (c, _) -> perLanguage[c.language] = (perLanguage[c.language] ?: 0) + 1; perLanguage.getValue(c.language) <= 12 }
         val results = ranked.map { (c, r) -> candidates[c.id] = c; SubtitleMatch(c.id, c.language, r.second, provider = c.provider, releaseName = c.release, forced = c.forced, score = r.first) }.toMutableList()
         for (i in 0 until minOf(5, results.size)) if (results[i].confidence != "Poor Match") results[i] = prepareInternal(results[i])
+        val seen = mutableSetOf<String>()
+        results.removeAll { match -> match.cues?.let { cues ->
+            val hash = java.security.MessageDigest.getInstance("SHA-256").digest((match.language + json.encodeToString(cues)).toByteArray()).joinToString("") { "%02x".format(it) }
+            !seen.add(hash)
+        } ?: false }
         results.sortWith(compareByDescending<SubtitleMatch> { it.alignment?.verified == true }.thenByDescending { it.score })
         val best = results.firstOrNull { it.cues != null && it.error == null && it.confidence != "Poor Match" }
         SubtitleDiscovery(UUID.randomUUID().toString(), context.sourceId, results, if (!configured) "providers_not_configured" else if (results.isEmpty()) if (errors.isEmpty()) "no_subtitles" else "provider_unavailable" else if (best?.alignment?.verified == true) "verified" else "no_confident_match", errors, existingLanguages = tech?.embeddedLanguages.orEmpty())

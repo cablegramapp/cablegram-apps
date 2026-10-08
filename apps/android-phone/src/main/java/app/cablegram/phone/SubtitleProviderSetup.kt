@@ -16,6 +16,7 @@ private fun Context.activity(): Activity? = when (this) { is Activity -> this; i
 
 /** Inputs are never saveable/restored, prefilled, copied into diagnostics, or displayed in screenshots. */
 @Composable internal fun SubtitleProviderSetup(viewModel: PhoneViewModel, onDone: () -> Unit, doneLabel: String = "Find subtitles") {
+    val credentialRevision = viewModel.subtitleCredentialRevision
     val window = LocalContext.current.activity()?.window
     DisposableEffect(window) {
         val alreadySecure = window?.attributes?.flags?.and(WindowManager.LayoutParams.FLAG_SECURE) != 0
@@ -27,7 +28,7 @@ private fun Context.activity(): Activity? = when (this) { is Activity -> this; i
     Text("Only the subtitle you choose, its language, provider reference and timing are stored with your household for paired TVs. Remove a saved track from the title's subtitle controls; deleting its source or your account also deletes it. Removing a provider key stops discovery but keeps selected tracks.", color = VlcMuted)
     Text("Personal keys do not grant copyright permission. Use tracks you have a lawful right to store and share with your household. Provider terms apply: subdl.com/terms and opensubtitles.com. For copyright complaints contact copyright@cablegram.app with the title and track details for removal.", color = VlcMuted)
     listOf("subdl", "opensubtitles").forEach { provider ->
-        val configured = viewModel.subtitleProviderConfigured(provider)
+        val configured = remember(credentialRevision, provider) { viewModel.subtitleProviderConfigured(provider) }
         var key by remember(provider) { mutableStateOf("") }
         var username by remember(provider) { mutableStateOf("") }
         var password by remember(provider) { mutableStateOf("") }

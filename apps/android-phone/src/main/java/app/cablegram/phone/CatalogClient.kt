@@ -45,7 +45,7 @@ class CatalogClient(
         val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/subtitles/$path")
             .header("Authorization", "Bearer $token")
             .method(method, body?.toRequestBody("application/json".toMediaType())).build()
-        val longClient = client.newBuilder().callTimeout(100, TimeUnit.SECONDS).readTimeout(100, TimeUnit.SECONDS).build()
+        val longClient = client.newBuilder().callTimeout(20, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).build()
         longClient.newCall(request).await().use { response ->
             val text = response.body?.string().orEmpty()
             check(response.isSuccessful) { runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull() ?: "network_unavailable" }

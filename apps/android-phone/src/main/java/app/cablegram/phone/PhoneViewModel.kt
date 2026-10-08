@@ -237,12 +237,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         subtitleCredentialRevision++
     }
     fun saveSubtitleProvider(provider: String, credentials: PersonalSubtitleCredentials) {
-        val user = subtitleUser() ?: return
+        val user = subtitleUser() ?: throw LocalSubtitleError("sign_in_required")
         cancelSubtitleSessions(); subtitleCredentialStore.save(user, provider, credentials)
+        subtitleCredentialRevision++
     }
     fun removeSubtitleProvider(provider: String) {
         val user = subtitleUser() ?: return
         cancelSubtitleSessions(); subtitleCredentialStore.remove(user, provider)
+        subtitleCredentialRevision++
     }
     fun newSubtitleSession(): LocalSubtitleDiscovery {
         val user = subtitleUser() ?: return LocalSubtitleDiscovery(emptyMap())
