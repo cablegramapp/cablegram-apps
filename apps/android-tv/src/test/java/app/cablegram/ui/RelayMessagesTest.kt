@@ -27,6 +27,16 @@ class RelayMessagesTest {
         assertEquals(false, logged.contains("cap") || logged.contains("=p&") || logged.contains("ticket"))
     }
 
+    @Test fun `a phone's stream link is hidden in logs and kept alive only on the LAN`() {
+        val lan = "http://192.168.1.4:8765/media/x?link=secret-link"
+        assertEquals(false, playbackUrlForLog(lan).contains("secret-link"))
+        assertTrue(isLanStreamLink(lan))
+        assertTrue(isLanStreamLink("http://192.168.1.4:8765/telegram/AgADabcdEFGH?pass=p&link=l"))
+        assertTrue(!isLanStreamLink("http://192.168.1.4:8765/media/x"))
+        assertTrue(!isLanStreamLink("https://api.cablegram.app/relay/v1/p/abc/media/x?link=l&rt=r"))
+        assertTrue(!isLanStreamLink("http://127.0.0.1:41234/tg/17"))
+    }
+
     @Test fun `Telegram sources are told apart from the phone and the relay`() {
         val own = "http://127.0.0.1:41234/tg/17"
         val viaPhone = "http://192.168.1.4:8765/telegram/AgADabcdEFGH?token=t"

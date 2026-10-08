@@ -169,17 +169,45 @@ class CablegramApiTest {
     }
 
     @Test
-    fun `LAN playback carries the paired TV capability`() = runBlocking {
-        server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"origin_identity":"phone-video"}]}]}"""))
-        server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765}]}"""))
+    fun `LAN playback plays a short-lived link and sends the capability only in a header`() = runBlocking {
+        val phone = MockWebServer().apply { start() }
+        try {
+            server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"origin_identity":"phone-video"}]}]}"""))
+            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port}}]}"""))
+            phone.enqueue(MockResponse().setBody("""{"link":"one-title-link","expires_in_seconds":900}"""))
 
-        val playback = api.getPlayback("item-1", "jwt", "capability+/=")
+            val playback = api.getPlayback("item-1", "jwt", "capability+/=")
 
-        assertEquals("http://192.168.1.20:8765/media/phone-video?token=capability%2B%2F%3D", playback.url)
+            assertEquals("http://127.0.0.1:${phone.port}/media/phone-video?link=one-title-link", playback.url)
+            assertFalse(playback.url!!.contains("capability"))
+            val asked = phone.takeRequest(3, TimeUnit.SECONDS)!!
+            assertEquals("/links/media/phone-video", asked.path)
+            assertEquals("Bearer capability+/=", asked.getHeader("Authorization"))
+        } finally {
+            phone.shutdown()
+        }
     }
 
     @Test
-    fun `private phone artwork uses authenticated LAN poster URL`() = runBlocking {
+    fun `a phone that refuses the link is not played over the LAN`() = runBlocking {
+        val phone = MockWebServer().apply { start() }
+        try {
+            server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"Clip","sources":[{"origin_identity":"phone-video"}]}]}"""))
+            server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"127.0.0.1","last_lan_port":${phone.port}}]}"""))
+            phone.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"invalid_lan_token"}"""))
+
+            val playback = api.getPlayback("item-1", "jwt", "capability+/=")
+
+            // No relay ticket for a phone without an id either: the TV waits for the phone, with no URL at all.
+            assertEquals("preparing", playback.status)
+            assertEquals(null, playback.url)
+        } finally {
+            phone.shutdown()
+        }
+    }
+
+    @Test
+    fun `private phone artwork leaves the capability out of the poster URL`() = runBlocking {
         server.enqueue(MockResponse().setBody(
             """{"items":[{"id":"item-1","title":"Clip","poster_url":"https://api.test/private-poster","sources":[{"kind":"phone_local","origin_identity":"phone-video","private":true}]}]}""",
         ))
@@ -187,7 +215,7 @@ class CablegramApiTest {
 
         val video = api.getVideos("jwt", "capability+/=").videos.single()
 
-        assertEquals("http://192.168.1.20:8765/poster/phone-video?token=capability%2B%2F%3D", video.posterUrl)
+        assertEquals("http://192.168.1.20:8765/poster/phone-video", video.posterUrl)
     }
 
     @Test

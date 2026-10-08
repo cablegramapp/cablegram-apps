@@ -782,6 +782,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                 runCatching { kotlinx.coroutines.withTimeout(5_000) { api.revokeSelf(account.token) } }
             }
             authStore.clear()
+            app.cablegram.data.LanPosterAuth.clear()
             telegram.signOutAndWipe()
             forgetAllAccountData()
             token = null

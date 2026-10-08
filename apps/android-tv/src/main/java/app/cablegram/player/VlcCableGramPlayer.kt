@@ -38,8 +38,8 @@ object VlcEngine {
                 "--rate=1",
                 "--network-caching=1500",
             ))
-            // LibVLC writes the stream URL to logcat (even at its default level, when opening fails), and a URL from
-            // the phone carries the LAN credential as `?token=`: anything that can read the log could stream with it.
+            // LibVLC writes the stream URL to logcat (even at its default level, when opening fails). A URL from the
+            // phone no longer carries the TV's capability (CAB-44), but its short-lived link still plays that title.
             if (BuildConfig.VLC_VERBOSE) add("--verbose=2") else addAll(listOf("--quiet", "--verbose=-1"))
         },
     ).also { instance = it }

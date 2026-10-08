@@ -13,6 +13,10 @@ import kotlinx.serialization.json.Json
  *
  * R-2 / CAB-37: [credentials] is kept in step with the paired TVs by the service, so a removed or revoked TV is
  * refused at once, without restarting the server.
+ *
+ * CAB-44: a TV on the LAN sends its capability only in the `Authorization` header. The player cannot send one, so it
+ * plays a short-lived link from `/links/...` instead ([LanStreamLinks]). `?token=` is accepted only from 127.0.0.1,
+ * where the relay tunnel replays a TV's request.
  */
 class LanLibraryServer(
     private val store: LibraryStore,
@@ -22,16 +26,26 @@ class LanLibraryServer(
     private val privatePasses: PrivatePassVerifier? = null,
     /** Streams Telegram titles from this phone's session for TVs that hold none (spec 004 US8). */
     private val telegram: TelegramMedia? = null,
+    private val links: LanStreamLinks = LanStreamLinks(),
     port: Int = PORT,
 ) : NanoHTTPD(port) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     override fun serve(session: IHTTPSession): Response {
-        if (!authorized(session)) {
-            return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"invalid_lan_token"}""")
-        }
         val path = session.uri.trimEnd('/')
         val isHead = session.method == Method.HEAD
+        // A stream link stands in for the capability, only for the one path it was issued for.
+        val linkId = session.parameters[LINK_PARAM]?.firstOrNull()
+        val grant = if (linkId != null) {
+            links.redeem(linkId, path) { capability -> credentials.authorized(listOf(capability)) }
+                ?: return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"invalid_stream_link"}""")
+        } else null
+        if (grant == null && !authorized(session)) {
+            return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"invalid_lan_token"}""")
+        }
+        if (grant == null && session.method == Method.GET && path.startsWith("/links/")) {
+            return issueLink(session, path.removePrefix("/links"))
+        }
         // T076 / R-6: validate remote commands against the supported set before
         // queueing anything; unknown or malformed commands are rejected 400.
         if (session.method == Method.POST && path == "/commands") {
@@ -67,7 +81,7 @@ class LanLibraryServer(
                 val item = store.get(id) ?: return notFound()
                 if (item.isPrivate) {
                     val pass = session.parameters["pass"]?.firstOrNull()
-                    val tvDeviceId = suppliedCredentials(session).firstNotNullOfOrNull(credentials::tvDeviceId)
+                    val tvDeviceId = grant?.tvDeviceId ?: suppliedCredentials(session).firstNotNullOfOrNull(credentials::tvDeviceId)
                     if (privatePasses?.allows(pass, id, tvDeviceId) != true) {
                         return newFixedLengthResponse(Response.Status.FORBIDDEN, "application/json", """{"error":"approval_required"}""")
                     }
@@ -123,12 +137,36 @@ class LanLibraryServer(
             head
         }
 
+    /**
+     * A link to [path] (`/media/<id>` or `/telegram/<id>`) for the player, issued only to a TV that sent its capability
+     * in the header: one taken from a URL must not be able to mint more links (CAB-44).
+     */
+    private fun issueLink(session: IHTTPSession, path: String): Response {
+        val capability = headerCapability(session)?.takeIf { credentials.authorized(listOf(it)) }
+            ?: return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"header_required"}""")
+        val streamable = when {
+            path.startsWith("/media/") -> store.get(path.removePrefix("/media/")) != null
+            path.startsWith("/telegram/") -> telegram != null && path.removePrefix("/telegram/").matches(UNIQUE_ID)
+            else -> false
+        }
+        if (!streamable) return notFound()
+        val id = links.issue(path, capability, credentials.tvDeviceId(capability))
+        return jsonResponse(json.encodeToString(StreamLink(link = id, expiresInSeconds = links.idleSeconds)))
+    }
+
     /** Device capabilities only; the pairing PIN is never a LAN credential (CAB-43). */
     private fun authorized(session: IHTTPSession): Boolean = credentials.authorized(suppliedCredentials(session))
 
+    private fun headerCapability(session: IHTTPSession): String? =
+        session.headers["authorization"]?.removePrefix("Bearer ")?.trim()?.takeIf { it.isNotEmpty() }
+
+    /**
+     * The header from anyone; `?token=` only from this phone itself, where the relay tunnel replays a TV's request
+     * (the relay's own ticket authorizes the TV, and the TV's player cannot send a header there either).
+     */
     private fun suppliedCredentials(session: IHTTPSession): List<String> = listOfNotNull(
-        session.headers["authorization"]?.removePrefix("Bearer ")?.trim(),
-        session.parameters["token"]?.firstOrNull(),
+        headerCapability(session),
+        session.parameters["token"]?.firstOrNull()?.takeIf { isLoopback(session.remoteIpAddress) },
     )
 
     private fun jsonResponse(body: String) =
@@ -269,8 +307,19 @@ class LanLibraryServer(
         return r
     }
 
+    @kotlinx.serialization.Serializable
+    private data class StreamLink(
+        val link: String,
+        @kotlinx.serialization.SerialName("expires_in_seconds") val expiresInSeconds: Long,
+    )
+
     companion object {
         const val PORT = 8765
+        /** The query parameter carrying a stream link (CAB-44). */
+        const val LINK_PARAM = "link"
+
+        /** The relay tunnel connects to 127.0.0.1 ([RelayTunnel]); compared as text, so no name is ever looked up. */
+        internal fun isLoopback(address: String?): Boolean = address in setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")
         /** Telegram file unique ids: URL-safe base64-like text. */
         private val UNIQUE_ID = Regex("[A-Za-z0-9_-]{8,200}")
         const val NSD_TYPE = "_cablegram._tcp."
