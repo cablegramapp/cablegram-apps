@@ -64,7 +64,6 @@ object MaestroIds {
     const val CLOUD_CONTINUE = "cloud_continue"
     const val CLOUD_CONFIRM = "cloud_save_confirm"
     const val CLOUD_CLOSE = "cloud_close"
-    const val CLOUD_CABLEGRAM = "cloud_cablegram_plan"
     const val HOUSEHOLD_NAME = "household_name"
     const val HOUSEHOLD_CONTINUE = "household_continue"
 }

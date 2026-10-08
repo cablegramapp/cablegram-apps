@@ -824,7 +824,7 @@ private fun StorageScreen(viewModel: PhoneViewModel) {
         }
         SectionCard("Cloud storage") {
             StorageMetric("Media saved", formatBytes(cloudMediaBytes(viewModel.items)))
-            StorageMetric("Available", if (viewModel.cloudUnlimited) destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable) else formatBytes(viewModel.cloudAvailable))
+            StorageMetric("Available", if (viewModel.cloudConnected) destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable) else "Connect your own storage")
             if (viewModel.cloudConnected) Text("Connected: ${viewModel.storage?.connection?.displayLabel ?: "your own storage"}", color = Color(0xFF79D6B0))
             OutlinedButton(onClick = { viewModel.cloudSheet = CloudSheet.Manage }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.STORAGE_MANAGE)) { Text("Manage cloud storage") }
         }

@@ -126,26 +126,22 @@ fun searchLibrary(items: List<LibraryItem>, query: String): List<LibraryItem> {
 fun libraryMediaBytes(items: List<LibraryItem>): Long =
     items.filter { it.copied }.sumOf { it.fileSizeBytes ?: 0L }
 
+/** Bytes copied to the household's own storage (Drive or R2). */
 fun cloudMediaBytes(items: List<LibraryItem>): Long =
-    items.filter { it.cloudObjectPresent }.sumOf { it.fileSizeBytes ?: 0L }
+    items.filter { it.ownCloudCopy }.sumOf { it.fileSizeBytes ?: 0L }
 
 fun cloudAvailableBytes(items: List<LibraryItem>, cap: Long = CABLEGRAM_CLOUD_CAP_BYTES, unlimited: Boolean = false): Long {
     if (unlimited) return Long.MAX_VALUE / 4
     return (cap - cloudMediaBytes(items)).coerceAtLeast(0)
 }
 
-fun fitsInCloud(item: LibraryItem, available: Long): Boolean {
-    val size = item.fileSizeBytes ?: 0L
-    if (size <= 0) return true
-    return size <= available
-}
-
 /**
- * Free up space: only once a verified copy exists elsewhere (Cablegram cloud, Telegram after Save to Telegram, or the
- * user's own R2 bucket, which the control plane verifies by size before it records the copy).
+ * Free up space: only once a verified copy exists off this phone (Telegram after Save to Telegram, or the household's own
+ * storage, which the control plane verifies by size before it records the copy). A copy kept inside the app on this phone
+ * does not count (CAB-38).
  */
 fun canRemoveLocalCopy(item: LibraryItem): Boolean =
-    item.sourceAvailable != false && (item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
+    item.sourceAvailable != false && (item.telegramCopy || item.ownCloudCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
 
 /**
  * The phone still has this title's video: stored inside the app, or readable at its original place on the phone (a title
@@ -200,7 +196,7 @@ fun itemMatchesCollection(item: LibraryItem, collectionId: String): Boolean =
     collectionId in item.collectionIds
 
 fun cloudFiles(items: List<LibraryItem>): List<LibraryItem> =
-    items.filter { it.cloudObjectPresent || it.ownCloudCopy }.sortedByDescending { it.fileSizeBytes ?: 0L }
+    items.filter { it.ownCloudCopy }.sortedByDescending { it.fileSizeBytes ?: 0L }
 
 fun needsTitleInput(vararg labels: String?): Boolean = firstCatalogHint(*labels) == null
 

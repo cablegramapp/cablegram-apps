@@ -276,7 +276,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var freeUpTargetId by mutableStateOf<String?>(null)
     var actionMenuId by mutableStateOf<String?>(null)
     var transferCardDismissed by mutableStateOf(false)
-    var cablegramCloudReady by mutableStateOf(pairing.cablegramCloudReady)
     private val librarySyncMutex = kotlinx.coroutines.sync.Mutex()
 
     val selected: LibraryItem? get() = selectedId?.let { id -> items.firstOrNull { it.id == id } }
@@ -526,7 +525,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var googleConnectError by mutableStateOf<String?>(null)
         private set
 
-    /** Where a save goes, in the words on every save sheet: the connected provider, else Cablegram Cloud. */
+    /** Where a save goes, in the words on every save sheet: the connected provider (saves need one, CAB-38). */
     val saveDestinationName: String get() = saveDestination(storage)
 
     /** True while the "tick the box" note is on screen, before Google's sign-in opens. */
@@ -1676,7 +1675,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 persistRead(uri)
                 val item = withContext(Dispatchers.IO) { store.importUri(uri, displayName, null) }
                 refresh()
-                if (importDestination == STORAGE_BOTH && (cablegramCloudReady || cloudConnected)) {
+                if (importDestination == STORAGE_BOTH && cloudConnected) {
                     beginSaveToCloud(item)
                 }
                 recentlyAddedIds = listOf(item.id)
@@ -1938,7 +1937,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val updated = item.copy(isPrivate = isPrivate)
         store.update(updated)
         refresh()
-        if (importDestination == STORAGE_BOTH && (cablegramCloudReady || cloudConnected)) {
+        if (importDestination == STORAGE_BOTH && cloudConnected) {
             beginSaveToCloud(updated)
         }
         viewModelScope.launch { syncLibrary() }
@@ -1958,15 +1957,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun cloudStorageRoots(): List<StorageRoot> {
         val roots = mutableListOf<StorageRoot>()
-        if (cablegramCloudReady) {
-            roots += StorageRoot(
-                id = "cloud:cablegram",
-                name = "Cablegram Cloud",
-                kind = StorageRootKind.Cloud,
-                detail = "${formatBytes(cloudAvailable)} available",
-                cloudKey = "cablegram",
-            )
-        }
         val connections = buildList {
             addAll(storage?.connections.orEmpty())
             storage?.connection?.let(::add)
@@ -2525,22 +2515,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         runCatching {
             saveTargetId = item.id
             transferCardDismissed = false
-            cloudSheet = when {
-                !cablegramCloudReady && !cloudConnected -> CloudSheet.Setup
-                !fitsInCloud(item, cloudAvailable) && !cloudUnlimited -> CloudSheet.Oversize
-                else -> CloudSheet.Confirm
-            }
+            // Saves go only to the household's own storage (CAB-38): without one, the sheet leads to connecting it.
+            cloudSheet = if (cloudConnected) CloudSheet.Confirm else CloudSheet.Setup
         }.onFailure {
             PairLog.e("Save to Cloud screen failed", it)
             status = it.message ?: "Could not open Save to Cloud"
         }
-    }
-
-    fun acceptCablegramCloud() {
-        pairing.cablegramCloudReady = true
-        cablegramCloudReady = true
-        val item = saveTarget ?: return
-        cloudSheet = if (!fitsInCloud(item, cloudAvailable)) CloudSheet.Oversize else CloudSheet.Confirm
     }
 
     fun openOwnCloudSetup() {
@@ -2655,15 +2635,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         store.removeLocalCopy(item.id)
-        // Only in Telegram now: the phone file is gone, so this phone no longer serves it.
-        val elsewhereOnly = !item.cloudObjectPresent && (item.telegramCopy || item.ownCloudCopy)
-        if (elsewhereOnly) store.updateItem(item.id) { it.copy(sourceAvailable = false) }
+        // Only off the phone now (Telegram or own storage): the phone file is gone, so this phone no longer serves it.
+        store.updateItem(item.id) { it.copy(sourceAvailable = false) }
         refresh()
-        status = when {
-            elsewhereOnly && item.ownCloudCopy -> "Removed the phone copy. ${item.title} stays in your Cloudflare storage."
-            elsewhereOnly -> "Removed the phone copy. ${item.title} stays in Telegram."
-            else -> "Removed the phone copy. ${item.title} stays in the cloud."
-        }
+        status = if (item.ownCloudCopy) "Removed the phone copy. ${item.title} stays in $saveDestinationName."
+        else "Removed the phone copy. ${item.title} stays in Telegram."
     }
 
     fun keepOnPhone(item: LibraryItem) {
