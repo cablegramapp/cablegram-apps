@@ -22,7 +22,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 class LanLibraryService : Service() {
@@ -40,15 +39,37 @@ class LanLibraryService : Service() {
     private var telegramApprovals: TelegramTvApprovalWatcher? = null
     @Volatile private var lastNotifiedAt = 0L
     @Volatile private var relayText: String? = null
+    private val lifetime = LanLibraryLifetime(BuildConfig.LAN_IDLE_TIMEOUT_MS, android.os.SystemClock::elapsedRealtime)
+    private var lifetimeJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         val store = PairingStore(this)
         if (store.tvs.isEmpty()) {
             stopSelf()
             return START_NOT_STICKY
+        }
+        if (lifetimeJob == null) {
+            val app = application as PhoneApplication
+            lifetime.appForeground(app.foreground.value)
+            serviceScope.launch { app.foreground.collect(lifetime::appForeground) }
+            serviceScope.launch { CastSession.state.collect { postNotification() } }
+            lifetimeJob = serviceScope.launch(Dispatchers.Main) {
+                while (isActive) {
+                    delay(minOf(10_000L, BuildConfig.LAN_IDLE_TIMEOUT_MS / 10).coerceAtLeast(100L))
+                    if (lifetime.shouldStop(CastSession.state.value != null)) {
+                        PairLog.i("LAN library stopped after background idle")
+                        stopSelf()
+                        break
+                    }
+                }
+            }
         }
         runCatching {
             // Serving the library to paired TVs is a connection to another device, not a data sync: dataSync is also
@@ -80,6 +101,7 @@ class LanLibraryService : Service() {
                 fun listener(hostname: String?, port: Int) = LanLibraryServer(
                     library, commands, accepted, privatePasses = passes, telegram = telegram, links = links,
                     hostname = hostname, port = port, acceptQueryToken = hostname == "127.0.0.1",
+                    onTvRequest = lifetime::tvRequest, onStreamStarted = lifetime::streamStarted, onStreamFinished = lifetime::streamFinished,
                 )
                 // CAB-48: TVs reach the LAN listener over TLS only, and pin this phone's certificate.
                 val http = listener(null, LanLibraryServer.PORT)
@@ -94,8 +116,6 @@ class LanLibraryService : Service() {
                 startRevocationWatch()
                 startRelay(store, local.listeningPort)
                 PrivateApprovals.deleteLegacyChannel(this)
-                // While something plays on the TV, the ongoing notification becomes its remote.
-                serviceScope.launch { CastSession.state.drop(1).collect { postNotification() } }
             }.onFailure { PairLog.e("LAN library failed to start", it) }
         } else {
             // start() is also called after pairing and after a TV is removed (CAB-37). Keep the live server in step
@@ -108,7 +128,7 @@ class LanLibraryService : Service() {
         if (approvals == null) approvals = ApprovalWatcher(this, serviceScope).also { it.start() }
         // Spec 004 US2: sign paired TVs in to the household's Telegram.
         if (telegramApprovals == null) telegramApprovals = TelegramTvApprovalWatcher(this, serviceScope).also { it.start() }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     /**
@@ -145,6 +165,7 @@ class LanLibraryService : Service() {
             networkType = { RelayConsent.networkType(this) },
             admit = { network -> RelayConsent.admit(this, store, network) },
             onActivity = { active, bytes, network -> updateRelayNotification(active, bytes, network) },
+            onStreamStarted = lifetime::streamStarted, onStreamFinished = lifetime::streamFinished,
             localPort = localPort,
         )
         relay = tunnel
@@ -250,6 +271,14 @@ class LanLibraryService : Service() {
                 .setContentTitle(if (relay != null) "Cablegram is streaming to your TV" else "Cablegram library is on your TV")
                 .setContentText(relay ?: "Same Wi‑Fi streams directly; elsewhere Cablegram can use the relay.")
                 .setContentIntent(PhoneActivity.openIntent(this))
+                .addAction(Notification.Action.Builder(
+                    android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel),
+                    "Stop",
+                    PendingIntent.getService(
+                        this, 0, Intent(this, LanLibraryService::class.java).setAction(ACTION_STOP),
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    ),
+                ).build())
                 .build()
         }
         fun action(icon: Int, label: String, name: String) = Notification.Action.Builder(
@@ -279,6 +308,7 @@ class LanLibraryService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
+        private const val ACTION_STOP = "app.cablegram.phone.STOP_LAN_LIBRARY"
 
         fun start(context: Context) {
             val intent = Intent(context, LanLibraryService::class.java)

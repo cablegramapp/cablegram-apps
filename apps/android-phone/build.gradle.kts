@@ -83,7 +83,13 @@ android {
         }
     }
     buildTypes {
+        debug {
+            val idleMs = (project.findProperty("CABLEGRAM_LAN_IDLE_TIMEOUT_MS") as String?)?.toLong() ?: 1_800_000L
+            require(idleMs > 0) { "CABLEGRAM_LAN_IDLE_TIMEOUT_MS must be positive" }
+            buildConfigField("long", "LAN_IDLE_TIMEOUT_MS", "${idleMs}L")
+        }
         release {
+            buildConfigField("long", "LAN_IDLE_TIMEOUT_MS", "1800000L")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
