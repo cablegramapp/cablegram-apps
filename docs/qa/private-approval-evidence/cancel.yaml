@@ -1,0 +1,5 @@
+appId: app.cablegram.approvalqa
+---
+- pressKey: Back
+- assertVisible: "Approval cancelled"
+- assertNotVisible: "Waiting for approval"

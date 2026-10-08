@@ -1,0 +1,3 @@
+--------- beginning of main
+10-08 18:34:55.740 14538 14562 I SignatureJourneys: ready movie waited for a real signature cycle
+10-08 18:34:56.251 14538 14562 I SignatureJourneys: PASS opening, ready playback, cancellation, repeated opening

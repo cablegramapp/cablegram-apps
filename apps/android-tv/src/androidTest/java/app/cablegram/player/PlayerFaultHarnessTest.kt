@@ -52,6 +52,7 @@ class PlayerFaultHarnessTest {
                     remoteTitleCommandId = if (resume != null) "harness" else null,
                     onRemoteCommandConsumed = { _, _ -> },
                     onRemotePlaybackResult = { },
+                    onPlayerEvent = { event, position, duration -> Log.i(tag, "player event=$event position=$position duration=$duration") },
                     onRenewPlayback = { null },
                     onBack = { Log.i(tag, "onBack called"); finished.countDown() },
                 )

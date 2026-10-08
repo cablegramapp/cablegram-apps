@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) cablegramViewModel.showOpeningSignature()
         cablegramViewModel.attachCastReceiver()
         (application as? app.cablegram.cast.CablegramApplication)?.handleIntent(intent)
         enableEdgeToEdge()
@@ -44,6 +45,7 @@ class MainActivity : ComponentActivity() {
         (application as? app.cablegram.cast.CablegramApplication)?.handleIntent(intent)
         super.onNewIntent(intent)
         setIntent(intent)
+        if (intent.action == Intent.ACTION_MAIN) cablegramViewModel.showOpeningSignature()
     }
 
     override fun onResume() {

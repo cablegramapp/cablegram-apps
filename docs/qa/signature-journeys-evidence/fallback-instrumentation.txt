@@ -1,0 +1,6 @@
+
+app.cablegram.ui.SignatureJourneysTest:.
+
+Time: 8.74
+
+OK (1 test)

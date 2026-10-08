@@ -1,0 +1,2 @@
+{'tests': 45, 'failures': 0, 'errors': 0, 'skipped': 0}
+Filters: app.cablegram.ui.*, app.cablegram.SignaturePlaybackGateTest

@@ -126,6 +126,7 @@ fun PlayerScreen(
     onPlayerEvent: (PlayerEvent, Long, Long?) -> Unit,
     onRenewPlayback: suspend () -> PlaybackResponse?,
     onBack: () -> Unit,
+    errorVideoUrl: String? = null,
 ) {
     val context = LocalContext.current
     val activity = context as? MainActivity
@@ -828,7 +829,11 @@ fun PlayerScreen(
                     // While a switch is under way the badges would describe the path being left (it said "Local LAN" while
                     // the TV waited for mobile-data consent on the relay); the switch overlay explains instead.
                     if (hasStarted && !switchingSource) TransportBadge(transport = classifyTransport(activePlayback.url, isLive))
-                    if (error == null && hasStarted && !switchingSource) StreamHealthBadge(streamHealth)
+                    if (error == null && hasStarted && !switchingSource) StreamHealthBadge(
+                        streamHealth,
+                        showSignature = transition == null && transportNotice != WAITING_FOR_PHONE_NOTICE &&
+                            !(isRelayUrl(activePlayback.url.orEmpty()) && transportNotice == transportNoticeFor(activePlayback.url.orEmpty())),
+                    )
                 }
             }
             AnimatedVisibility(
@@ -983,12 +988,10 @@ fun PlayerScreen(
             }
         }
         error?.let { message ->
-            Column(
-                Modifier.align(Alignment.Center).background(Color(0xE610120F), RoundedCornerShape(16.dp)).padding(28.dp).widthIn(max = 640.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(message, color = Coral, fontSize = 18.sp)
-                Row(Modifier.padding(top = 22.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            UnhappyScenarioFrame(eventKey = message, modifier = Modifier.align(Alignment.Center), videoUrl = errorVideoUrl) {
+                Text("Playback interrupted", color = Coral, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text(message, color = Paper, fontSize = 17.sp, lineHeight = 24.sp)
+                Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     TransportButton(label = "Retry", focused = recoveryChoice == RecoveryChoice.RETRY)
                     TransportButton(label = "Back", focused = recoveryChoice == RecoveryChoice.BACK)
                 }
@@ -997,20 +1000,25 @@ fun PlayerScreen(
         // Spec 003: while the phone is asked to allow mobile data, show the Cablegram loop and what
         // to do on the phone instead of a frozen frame.
         if (error == null && transportNotice == WAITING_FOR_PHONE_NOTICE) {
-            TransitionOverlay(PHONE_APPROVAL_TRANSITION, Modifier.align(Alignment.Center))
+            TransitionOverlay(PHONE_APPROVAL_TRANSITION, Modifier.align(Alignment.Center), videoUrl = errorVideoUrl)
         } else if (error == null) {
-            transition?.let { TransitionOverlay(it, Modifier.align(Alignment.Center)) }
+            transition?.let { TransitionOverlay(it, Modifier.align(Alignment.Center), videoUrl = if (it.warning) errorVideoUrl else null) }
         }
         // The short banner is for after the handover; the full screen covers the handover itself.
-        if (error == null && transition == null && transportNotice != WAITING_FOR_PHONE_NOTICE) transportNotice?.let {
-            Text(
-                it,
+        if (error == null && transition == null && transportNotice != WAITING_FOR_PHONE_NOTICE) transportNotice?.let { notice ->
+            Row(
                 Modifier.align(Alignment.TopCenter).padding(top = 28.dp)
                     .background(Color(0xE610120F), RoundedCornerShape(14.dp))
                     .padding(horizontal = 22.dp, vertical = 12.dp),
-                color = Paper,
-                fontSize = 16.sp,
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                val url = activePlayback.url
+                if (url != null && isRelayUrl(url) && notice == transportNoticeFor(url)) {
+                    UnhappyVideoPanel(notice, Modifier.width(128.dp).height(72.dp), muted = true)
+                }
+                Text(notice, color = Paper, fontSize = 16.sp)
+            }
         }
         if (start == null) {
             Column(
@@ -1118,7 +1126,7 @@ private fun VolumeFeedbackOverlay(feedback: VolumeFeedback) {
 }
 
 @Composable
-private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifier) {
+private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifier, showSignature: Boolean = true) {
     val (label, tint) = when (health) {
         StreamHealth.GOOD -> "Stream quality: Good" to Color(0xFF4ADE80)
         StreamHealth.OK -> "Stream quality: OK" to Color(0xFFFBBF24)
@@ -1133,6 +1141,9 @@ private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifie
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        if (showSignature && health != StreamHealth.GOOD) {
+            UnhappyVideoPanel(label, Modifier.width(64.dp).height(36.dp), muted = true)
+        }
         Text("●", color = tint, fontSize = 13.sp)
         Text(label, color = Paper.copy(alpha = 0.9f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
@@ -1777,7 +1788,7 @@ private fun formatTime(ms: Long): String {
 }
 
 /** What the TV says while it moves a title between paths (spec 003). */
-internal data class SourceTransition(val eyebrow: String, val title: String, val body: String, val footnote: String? = null)
+internal data class SourceTransition(val eyebrow: String, val title: String, val body: String, val footnote: String? = null, val warning: Boolean = true)
 
 internal val PHONE_APPROVAL_TRANSITION = SourceTransition(
     eyebrow = "PHONE NOT ON THIS WI‑FI",
@@ -1791,6 +1802,7 @@ internal fun transitionTo(url: String, atStart: Boolean = false): SourceTransiti
         eyebrow = "SWITCHING SOURCE",
         title = "Continuing straight from Telegram",
         body = "Playback continues from where you were, using this TV's own Telegram connection.",
+        warning = false,
     )
     isPhoneTelegramUrl(url) -> SourceTransition(
         eyebrow = "SWITCHING SOURCE",
@@ -1811,13 +1823,14 @@ internal fun transitionTo(url: String, atStart: Boolean = false): SourceTransiti
         eyebrow = "BACK ON YOUR WI‑FI",
         title = "Switching back to your phone",
         body = "Your phone is on this Wi‑Fi again, so playback continues directly from it.",
+        warning = false,
     )
 }
 
 /** Full-screen handover: the Cablegram loop and what is happening, instead of a frozen frame. */
 @Composable
-private fun TransitionOverlay(transition: SourceTransition, modifier: Modifier = Modifier) {
-    val loopUrl = remember { DEFAULT_LOADING_VIDEOS.random() }
+internal fun TransitionOverlay(transition: SourceTransition, modifier: Modifier = Modifier, videoUrl: String? = null) {
+    val loopUrl = remember(transition, videoUrl) { videoUrl ?: if (transition.warning) app.cablegram.data.getRandomErrorVideoUrl() else DEFAULT_LOADING_VIDEOS.random() }
     Box(
         modifier.fillMaxSize().background(Color(0xFF0B0D10)),
         contentAlignment = Alignment.Center,
@@ -1831,7 +1844,7 @@ private fun TransitionOverlay(transition: SourceTransition, modifier: Modifier =
                 Modifier.weight(1f).aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color(0xFF15181D)),
-            ) { LoopingPrepareVideo(loopUrl) }
+            ) { SignatureVideo(loopUrl, muted = true) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(transition.eyebrow, color = Color(0xFFF3B86A), fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Text(transition.title, color = Paper, fontSize = 30.sp, fontWeight = FontWeight.Bold)

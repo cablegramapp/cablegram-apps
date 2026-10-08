@@ -1,0 +1,17 @@
+appId: app.cablegram.unhappyqa
+---
+- launchApp
+- assertVisible: "Skip"
+- tapOn: "Skip"
+- extendedWaitUntil:
+    visible: "Profiles unavailable"
+    timeout: 30000
+- assertVisible: "Try again"
+- assertVisible: "Unpair TV"
+- takeScreenshot: profiles-error
+- pressKey: Remote Dpad Center
+- extendedWaitUntil:
+    visible: "Profiles unavailable"
+    timeout: 30000
+- assertVisible: "Try again"
+- takeScreenshot: profiles-error-after-retry

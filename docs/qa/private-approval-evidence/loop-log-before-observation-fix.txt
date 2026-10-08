@@ -1,0 +1,2 @@
+--------- beginning of main
+10-08 18:17:37.254 13152 13166 I ApprovalHarness: PASS loops=4 longestProgressGapMs=501; Back removed and stopped video

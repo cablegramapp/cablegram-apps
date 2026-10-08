@@ -20,6 +20,8 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.Image
 import android.content.Intent
 import android.net.Uri
@@ -183,7 +185,10 @@ private fun TelegramSettingsSection(
             Text("Telegram videos play through your phone on this TV. Nothing from Telegram is stored here.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
         is app.cablegram.TvTelegramStatus.Connected ->
             SettingValue("Signed in as", status.name)
-        is app.cablegram.TvTelegramStatus.Problem -> Text(status.message, color = Cyan, fontSize = 14.sp, lineHeight = 20.sp)
+        is app.cablegram.TvTelegramStatus.Problem -> {
+            UnhappyVideoPanel(status.message, Modifier.width(200.dp).height(113.dp))
+            Text(status.message, color = Coral, fontSize = 14.sp, lineHeight = 20.sp)
+        }
         app.cablegram.TvTelegramStatus.CanConnect -> {
             Text(
                 "Telegram isn't connected for this household yet. You can connect it from this TV: scan a code with the Telegram app on your phone.",
@@ -262,6 +267,10 @@ internal fun TelegramPasswordScreen(
         )
         when (status) {
             is app.cablegram.TvTelegramStatus.NeedsPassword -> TelegramPasswordStep(status, onPassword, onAskPhone)
+            is app.cablegram.TvTelegramStatus.Problem -> {
+                UnhappyVideoPanel(status.message, Modifier.width(160.dp).height(90.dp))
+                Text(status.message, color = Coral, fontSize = 16.sp, lineHeight = 22.sp)
+            }
             is app.cablegram.TvTelegramStatus.WaitingForPhone ->
                 Text(
                     if (status.standalone) "Finish signing in from Settings → Telegram on this TV."
@@ -317,7 +326,12 @@ private fun TelegramPasswordStep(
             inner()
         },
     )
-    status.error?.let { Text(it, color = Cyan, fontSize = 14.sp) }
+    status.error?.let {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            UnhappyVideoPanel(it, Modifier.width(96.dp).height(54.dp))
+            Text(it, color = Coral, fontSize = 14.sp)
+        }
+    }
     Button(
         onClick = { if (password.isNotEmpty()) onPassword(password) },
         enabled = !status.busy && password.isNotEmpty(),
@@ -336,4 +350,3 @@ private fun TelegramPasswordStep(
         lineHeight = 17.sp,
     )
 }
-

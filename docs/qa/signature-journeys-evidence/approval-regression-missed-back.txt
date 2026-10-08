@@ -1,0 +1,19 @@
+
+app.cablegram.ui.PrivateApprovalScreenHarnessTest:
+Error in signatureKeepsLoopingUntilTheViewerCancels(app.cablegram.ui.PrivateApprovalScreenHarnessTest):
+java.lang.AssertionError: Back must cancel within 60 seconds
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at app.cablegram.ui.PrivateApprovalScreenHarnessTest.signatureKeepsLoopingUntilTheViewerCancels(PrivateApprovalScreenHarnessTest.kt:89)
+
+
+Time: 61.396
+There was 1 failure:
+1) signatureKeepsLoopingUntilTheViewerCancels(app.cablegram.ui.PrivateApprovalScreenHarnessTest)
+java.lang.AssertionError: Back must cancel within 60 seconds
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at app.cablegram.ui.PrivateApprovalScreenHarnessTest.signatureKeepsLoopingUntilTheViewerCancels(PrivateApprovalScreenHarnessTest.kt:89)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1

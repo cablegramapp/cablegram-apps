@@ -1,0 +1,1798 @@
+--------- beginning of main
+10-08 18:17:36.581 D/NuPlayerDriver(  547): reset(0xb4000078f3549990) at state 5
+--------- beginning of system
+10-08 18:17:36.582 E/AppOps  (  657): attributionTag  not declared in manifest of app.cablegram.approvalqa
+10-08 18:17:36.582 E/AppOps  (  657): attributionTag  not declared in manifest of app.cablegram.approvalqa
+10-08 18:17:36.592 E/AppOps  (  657): attributionTag  not declared in manifest of app.cablegram.approvalqa
+10-08 18:17:36.593 E/AppOps  (  657): attributionTag  not declared in manifest of app.cablegram.approvalqa
+10-08 18:17:36.593 D/CCodecBuffers(  547): [c2.android.aac.decoder#757:1D-Output.Impl[N]] Client returned a buffer it does not own according to our record: 0
+10-08 18:17:36.593 D/CCodecBuffers(  547): [c2.android.aac.decoder#757:1D-Output.Impl[N]] Client returned a buffer it does not own according to our record: 1
+10-08 18:17:36.593 D/CCodecBuffers(  547): [c2.android.aac.decoder#757:1D-Output.Impl[N]] Client returned a buffer it does not own according to our record: 2
+10-08 18:17:36.593 D/CCodecBuffers(  547): [c2.android.aac.decoder#757:1D-Output.Impl[N]] Client returned a buffer it does not own according to our record: 3
+10-08 18:17:36.594 I/hw-BpHwBinder(  547): onLastStrongRef automatically unlinking death recipients
+10-08 18:17:36.594 D/AudioAnalytics(  546): gc(1700, 2000): log size:1700 item map size:6, item map items:1700
+10-08 18:17:36.595 I/hw-BpHwBinder(  551): onLastStrongRef automatically unlinking death recipients
+10-08 18:17:36.595 I/hw-BpHwBinder(  551): onLastStrongRef automatically unlinking death recipients
+10-08 18:17:36.603 D/BufferPoolAccessor2.0(  551): bufferpool2 0xb40000785a118848 : 0(0 size) total buffers - 0(0 size) used buffers - 0/0 (recycle/alloc) - 0/0 (fetch/transfer)
+10-08 18:17:36.603 D/BufferPoolAccessor2.0(  551): Destruction - bufferpool2 0xb40000785a118848 cached: 0/0M, 0/0% in use; allocs: 0, 0% recycled; transfers: 0, 0% unfetched
+10-08 18:17:36.607 W/SimpleC2Component(  461): unknown frame index: 1017
+10-08 18:17:36.608 D/C2BqBuffer(  461): configuring null producer: igbp_information(0)
+10-08 18:17:36.608 D/SimpleC2Component(  461): work form old generation: was 5 now 4
+10-08 18:17:36.610 D/SurfaceUtils(  547): disconnecting from surface 0xb400007833545050, reason disconnectFromSurface
+10-08 18:17:36.610 I/hw-BpHwBinder(  547): onLastStrongRef automatically unlinking death recipients
+10-08 18:17:36.611 I/hw-BpHwBinder(  461): onLastStrongRef automatically unlinking death recipients
+10-08 18:17:36.611 D/BufferPoolAccessor2.0(  547): bufferpool2 0xb400007883553248 : 0(0 size) total buffers - 0(0 size) used buffers - 1015/1023 (recycle/alloc) - 18/1022 (fetch/transfer)
+10-08 18:17:36.612 I/GoldfishComponentStore(  461): in ~ComponentModule
+10-08 18:17:36.612 I/GoldfishComponentStore(  461): unloading dll
+10-08 18:17:36.612 D/SurfaceUtils(  547): connecting to surface 0xb400007833545050, reason onShutdown
+10-08 18:17:36.613 D/NuPlayerDriver(  547): notifyResetComplete(0xb4000078f3549990)
+10-08 18:17:36.614 D/NuPlayerDriver(  547): reset(0xb4000078f3549990) at state 0
+10-08 18:17:36.614 D/SurfaceUtils(  547): disconnecting from surface 0xb400007833545d30, reason disconnectNativeWindow
+10-08 18:17:36.614 W/AMessage(  547): failed to post message as target looper for handler 4 is gone.
+10-08 18:17:36.614 D/AudioTrack(  547): stop(29): called with 0 frames delivered
+10-08 18:17:36.614 V/MediaPlayer(13152): resetDrmState:  mDrmInfo=null mDrmProvisioningThread=null mPrepareDrmInProgress=false mActiveDrmScheme=false
+10-08 18:17:36.614 V/MediaPlayer(13152): cleanDrmObj: mDrmObj=null mDrmSessionId=null
+10-08 18:17:36.614 V/MediaPlayer(13152): resetDrmState:  mDrmInfo=null mDrmProvisioningThread=null mPrepareDrmInProgress=false mActiveDrmScheme=false
+10-08 18:17:36.614 V/MediaPlayer(13152): cleanDrmObj: mDrmObj=null mDrmSessionId=null
+10-08 18:17:36.615 E/AppOps  (  657): attributionTag  not declared in manifest of app.cablegram.approvalqa
+10-08 18:17:36.615 I/MediaFocusControl(  657): abandonAudioFocus() from uid/pid 10099/13152 clientId=android.media.AudioManager@b027828 callingPack=app.cablegram.approvalqa
+10-08 18:17:36.615 E/AppOps  (  657): attributionTag  not declared in manifest of app.cablegram.approvalqa
+10-08 18:17:36.618 W/WindowOnBackDispatcher(13152): sendCancelIfRunning: isInProgress=false callback=androidx.activity.OnBackPressedDispatcher$Api34Impl$createOnBackAnimationCallback$1@e3d7cf5
+10-08 18:17:36.618 D/CoreBackPreview(  657): Window{baa9bf3 u0 app.cablegram.approvalqa/app.cablegram.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@95e009, mPriority=-1, mIsAnimationCallback=false, mOverrideBehavior=0}
+10-08 18:17:36.981 I/cast_shell( 1870): [1008/181736.981109:INFO:metrics_recorder.cc(193)] Record action: Setup.eureka_info.Local
+10-08 18:17:36.981 W/libc    ( 1870): Access denied finding property "ro.boot.wificountrycode"
+10-08 18:17:36.981 W/libc    ( 1870): Access denied finding property "ro.boot.wificountrycode"
+10-08 18:17:36.981 W/libc    ( 1870): Access denied finding property "ro.boot.wificountrycode"
+10-08 18:17:36.981 I/cast_shell( 1870): [1008/181736.981653:INFO:metrics_recorder.cc(193)] Record action: Setup.eureka_info.Local.200
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): error parsing cast info Json {"device_info":{"4k_blocked":0,"capabilities":{"audio_hdr_supported":false,"audio_surround_mode_supported":false,"cast_connect_supported":true,"cloudcast_supported":true,"display_supported":true,"fdr_supported":false,"hdmi_prefer_50hz_supported":false,"hdmi_prefer_high_fps_supported":false,"hotspot_supported":false,"https_setup_supported":true,"keep_hotspot_until_connected_supported":true,"opencast_supported":false,"reboot_supported":false,"renaming_supported":true,"set_group_audio_delay_supported":true,"set_network_supported":true,"setup_supported":false,"stats_supported":false,"system_sound_effects_supported":false,"wifi_auto_save_supported":true,"wifi_supported":false},"cloud_device_id":"5531342FFA0E9D549347D93F87CEC32B","factory_country_code":"","hotspot_bssid":"FA:8F:CE:8F:06:28","mac_address":"00:00:00:00:00:00","manufacturer":"Google","model_name":"sdk_google_atv64_arm64","product_name":"emu64a","public_key":"MIIBCgKCAQEAsjpJlflSLES6eBM9vng4pDJ1xgzQLVavojlYXBK\/7x1eMtuq1g6ZFg4Do6KufAugaiDH3wYQwHFQYot+va5C5BhwiRwse+qnzPKFKeVfLUZ2a4YSBoKDmCcSPTpo4VClOMH5eFEkUj\/kSS\/pjTI3iHBs3lvh6rX42Yi9hWEVaneOkbjb0H3qOn1HB+YYm80HrmgTk\/CtGTOuiuvY1HwwXFw8LGmHpxyPiwkFPiy\/tNNE2+63UFnwezT4\/1vV9mS+e58DZK2eMCJuJjDxBcOu28vQvsze6X9DQmNum4soN+wL4a1lJlExxgAUSMEiBaw\/K6Wkt2l7i3oxreYTpqvxSQIDAQAB","ssdp_udn":"9b3f4a1f-b033-3417-568b-a81ab2009b3c","uma_client_id":"93bd078e-1532-4c50-adbe-213242181ead","uptime":95957.82205,"weave_device_id":""}}
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): org.json.JSONException: No value for sign
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at org.json.JSONObject.get(JSONObject.java:398)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at org.json.JSONObject.getJSONObject(JSONObject.java:618)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at flv.a(PG:25)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at fma.c(PG:79)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at fly.cp(PG:12)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at aihj.e(PG:12)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at aiqa.run(PG:112)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at wzi.run(PG:3)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at yck.run(PG:17)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at mss.run(PG:7)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at aara.run(PG:44)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at mrz.run(PG:83)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at java.lang.Thread.run(Thread.java:1119)
+10-08 18:17:36.983 E/katniss_search_LoadCastServiceInfoTaskImpl( 9157): 	at mty.run(PG:61)
+10-08 18:17:36.983 I/katniss_search_LoadCastServiceInfoTaskImpl( 9157): Failed to get cast id and certificate from cast service.
+10-08 18:17:36.984 W/katniss_search_CastServiceInfoImpl( 9157): Cast info failed to be loaded.
+10-08 18:17:36.985 W/katniss_search_TikTokListenableWorker( 9157): TikTokListenableWorker was cancelled while running client worker: com.google.android.apps.tvsearch.homegraph.HomeGraphUpdateWorker
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): Work [ id=e0c983b2-b156-419e-bde7-d84dfb63ac31, tags={ com.google.apps.tiktok.contrib.work.TikTokListenableWorker,TikTokWorker#com.google.android.apps.tvsearch.homegraph.HomeGraphUpdateWorker } ] was cancelled
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): java.util.concurrent.CancellationException: Continuation CancellableContinuation(DispatchedContinuation[cvk@231eff0, Continuation at coj@8a0716b]){Active}@2a114c8 was cancelled normally
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aiom.<init>(PG:13)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aioj.k(PG:23)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at cmk.run(PG:12)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at cje.execute(PG:4)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abat.g(PG:1)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abat.l(PG:95)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abat.eS(PG:29)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abcn.c(PG:5)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abcp.e(PG:6)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abei.run(PG:73)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abcr.execute(PG:1)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abcp.f(PG:3)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abcq.h(PG:5)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abbj.g(PG:53)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abbi.run(PG:5)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abcr.execute(PG:1)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abat.g(PG:1)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abat.l(PG:95)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at abat.p(PG:15)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aiyu.a(PG:14)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aiyv.j(PG:3)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aint.l(PG:15)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at airn.z(PG:280)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at airn.g(PG:197)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at airn.B(PG:5)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aint.e(PG:5)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aihj.e(PG:38)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aiqa.run(PG:104)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at wzi.run(PG:3)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at yck.run(PG:17)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at mss.run(PG:7)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at aara.run(PG:44)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at mrz.run(PG:83)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at java.lang.Thread.run(Thread.java:1119)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): 	at mty.run(PG:61)
+10-08 18:17:36.986 I/WM-WorkerWrapper( 9157): Worker result FAILURE for Work [ id=e0c983b2-b156-419e-bde7-d84dfb63ac31, tags={ com.google.apps.tiktok.contrib.work.TikTokListenableWorker,TikTokWorker#com.google.android.apps.tvsearch.homegraph.HomeGraphUpdateWorker } ]
+10-08 18:17:36.987 D/WM-Processor( 9157): cly e0c983b2-b156-419e-bde7-d84dfb63ac31 executed; reschedule = false
+10-08 18:17:36.988 D/WM-SystemJobService( 9157): e0c983b2-b156-419e-bde7-d84dfb63ac31 executed on JobScheduler
+10-08 18:17:36.990 D/WM-GreedyScheduler( 9157): Cancelling work ID e0c983b2-b156-419e-bde7-d84dfb63ac31
+10-08 18:17:36.991 I/katniss_search_TvSearchApp( 9157): onTrimMemory level=40
+10-08 18:17:36.992 I/katniss_search_KatnissAccountManagerImpl( 9157): Read invalid search account from PDS
+10-08 18:17:36.992 I/katniss_search_KatnissAccountManagerImpl( 9157): Read invalid search account from PDS
+10-08 18:17:36.992 D/WM-GreedyScheduler( 9157): Starting tracking for ed46b0ed-7f30-4085-89fc-040b6f7b7d01,0f7f6f49-c80f-4cfe-bd5e-d17016dc800c,03877db9-e7c0-4c44-ad64-a0dfaf40f948,84fc25a7-b9db-4b3f-b54a-5e5570557ad5
+10-08 18:17:36.992 I/katniss_search_KatnissAccountManagerImpl( 9157): Read invalid search account from PDS
+10-08 18:17:37.184 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:37.187 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:37.188 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:37.212 D/Maestro (13486): View hierarchy received in 28 ms
+10-08 18:17:37.224 I/CablegramPair(13152): TV poll status=pending host=null port=null public=null pin=…668
+10-08 18:17:37.254 I/ApprovalHarness(13152): PASS loops=4 longestProgressGapMs=501; Back removed and stopped video
+10-08 18:17:37.260 I/system_server(  657): AssetManager2(0xb400007d1c3aa2f8) locale list changing from [] to [en-US]
+10-08 18:17:37.261 V/GrammaticalInflectionUtils(  657): AttributionSource: android.content.AttributionSource@4fae3806 does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-08 18:17:37.261 W/OptProp (  657): Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_RESIZEABLE_ACTIVITY_OVERRIDES
+10-08 18:17:37.262 W/OptProp (  657): Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_MIN_ASPECT_RATIO_OVERRIDE
+10-08 18:17:37.263 E/CellBroadcastUtils(  657): getDefaultCellBroadcastReceiverPackageName: no package found
+10-08 18:17:37.265 W/OptProp (  657): Cannot read opt property android.window.PROPERTY_COMPAT_ALLOW_ORIENTATION_OVERRIDE
+10-08 18:17:37.268 I/ActivityTaskManager(  657): START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 xflg=0x4 cmp=app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} with LAUNCH_MULTIPLE from uid 10099 (BAL_ALLOW_VISIBLE_WINDOW) result code=0
+10-08 18:17:37.269 V/WindowManagerShell(  878): Transition requested (#17): android.os.BinderProxy@7cd6f0c TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=55 effectiveUid=10100 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity } baseActivity=ComponentInfo{app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} topActivity=ComponentInfo{app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} origActivity=null realActivity=ComponentInfo{app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} numActivities=1 lastActiveTime=95958108 supportsMultiWindow=false resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{android.window.IWindowContainerToken$Stub$Proxy@9962055} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=true launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=ActivityInfo{983da6a androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=Rect(687, 54 - 1233, 1026) capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false isLetterboxEducationEnabled= false isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1920, 1080) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null}, pipChange = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 17 }
+10-08 18:17:37.270 V/GrammaticalInflectionUtils(  657): AttributionSource: android.content.AttributionSource@4fae3806 does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+10-08 18:17:37.273 D/LifecycleMonitor(13152): Lifecycle status change: app.cablegram.MainActivity@1bfcbd8 in: PAUSED
+10-08 18:17:37.273 V/ActivityScenario(13152): Update currentActivityStage to PAUSED, currentActivity=app.cablegram.MainActivity@1bfcbd8
+10-08 18:17:37.274 I/AppsFilter(  657): interaction: PackageSetting{21955fa app.cablegram/10092} -> PackageSetting{bb1d835 app.cablegram.approvalqa.test/10100} BLOCKED
+10-08 18:17:37.274 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.275 I/AppsFilter(  657): interaction: PackageSetting{9f3eecc app.cablegram.test/10093} -> PackageSetting{bb1d835 app.cablegram.approvalqa.test/10100} BLOCKED
+10-08 18:17:37.275 I/AppsFilter(  657): interaction: PackageSetting{92389a1 app.cablegram.cab32/10096} -> PackageSetting{bb1d835 app.cablegram.approvalqa.test/10100} BLOCKED
+10-08 18:17:37.278 I/BpBinder(  516): onLastStrongRef automatically unlinking death recipients:
+10-08 18:17:37.308 D/Zygote  (  448): Forked child process 13539
+10-08 18:17:37.309 I/ActivityManager(  657): Start proc 13539:app.cablegram.approvalqa.test/u0a100 for next-top-activity {app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity}
+10-08 18:17:37.309 I/ActivityManager(  657): ProcessObserver broadcast disabled
+10-08 18:17:37.345 I/approvalqa.test(13539): Late-enabling -Xcheck:jni
+10-08 18:17:37.347 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:37.348 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:37.348 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:37.350 D/Maestro (13486): View hierarchy received in 3 ms
+10-08 18:17:37.361 I/approvalqa.test(13539): Using CollectorTypeCMC GC.
+10-08 18:17:37.363 I/adbd    (  518): jdwp connection from 13539
+10-08 18:17:37.366 D/nativeloader(13539): Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+10-08 18:17:37.370 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.370 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.376 D/WindowManagerShell(  878): TvPipController: onTaskStackChanged()
+10-08 18:17:37.378 D/ApplicationLoaders(13539): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+10-08 18:17:37.379 D/nativeloader(13539): Configuring clns-7 for other apk /system/framework/android.test.mock.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~iJY0s-qPu_9vAo45ThXAsQ==/app.cablegram.approvalqa.test-whwLbJVLtOfNstEwgZlUuA==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/app.cablegram.approvalqa.test
+10-08 18:17:37.380 D/ApplicationLoaders(13539): Returning zygote-cached class loader: /system/framework/android.test.base.jar
+10-08 18:17:37.381 D/nativeloader(13539): Configuring clns-8 for other apk /system/framework/android.test.runner.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~iJY0s-qPu_9vAo45ThXAsQ==/app.cablegram.approvalqa.test-whwLbJVLtOfNstEwgZlUuA==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/app.cablegram.approvalqa.test
+10-08 18:17:37.391 D/nativeloader(13539): Configuring clns-9 for other apk /data/app/~~iJY0s-qPu_9vAo45ThXAsQ==/app.cablegram.approvalqa.test-whwLbJVLtOfNstEwgZlUuA==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~iJY0s-qPu_9vAo45ThXAsQ==/app.cablegram.approvalqa.test-whwLbJVLtOfNstEwgZlUuA==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/app.cablegram.approvalqa.test
+10-08 18:17:37.393 I/approvalqa.test(13539): AssetManager2(0xb400007d1c395498) locale list changing from [] to [en-US]
+10-08 18:17:37.396 V/GraphicsEnvironment(13539): Currently set values for:
+10-08 18:17:37.396 V/GraphicsEnvironment(13539):   angle_gl_driver_selection_pkgs=[]
+10-08 18:17:37.396 V/GraphicsEnvironment(13539):   angle_gl_driver_selection_values=[]
+10-08 18:17:37.397 V/GraphicsEnvironment(13539): app.cablegram.approvalqa.test is not listed in per-application setting
+10-08 18:17:37.397 V/GraphicsEnvironment(13539): ANGLE allowlist from config:
+10-08 18:17:37.397 V/GraphicsEnvironment(13539): app.cablegram.approvalqa.test is not listed in ANGLE allowlist or settings, returning default
+10-08 18:17:37.397 V/GraphicsEnvironment(13539): Neither updatable production driver nor prerelease driver is supported.
+10-08 18:17:37.402 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 D/IntervalStats(  657): Unable to parse usage stats packages: [109]
+10-08 18:17:37.403 D/IntervalStats(  657): Unable to parse event packages: [109]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 D/IntervalStats(  657): Unable to parse usage stats packages: [112]
+10-08 18:17:37.403 D/IntervalStats(  657): Unable to parse event packages: [112]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 V/Configuration(  657): Updating configuration, locales updated from [] to [en_US]
+10-08 18:17:37.403 D/IntervalStats(  657): Unable to parse usage stats packages: [115]
+10-08 18:17:37.403 D/IntervalStats(  657): Unable to parse event packages: [115]
+10-08 18:17:37.403 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.403 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.404 I/DisplayManager(13539): Choreographer implicitly registered for the refresh rate.
+10-08 18:17:37.405 I/approvalqa.test(13539): AssetManager2(0xb400007d1c391f78) locale list changing from [] to [en-US]
+10-08 18:17:37.407 E/ashmem  (13539): Pinning is deprecated since Android Q. Please use trim or other methods.
+10-08 18:17:37.414 D/CompatChangeReporter(13539): Compat change id reported: 377864165; UID 10100; state: ENABLED
+10-08 18:17:37.414 D/DesktopModeFlags(13539): Toggle override initialized to: OVERRIDE_UNSET
+10-08 18:17:37.425 I/EGL_emulation(13539): Opening libGLESv1_CM_emulation.so
+10-08 18:17:37.425 I/EGL_emulation(13539): Opening libGLESv2_emulation.so
+10-08 18:17:37.428 W/HWUI    (13539): Unknown dataspace 0
+10-08 18:17:37.431 W/HWUI    (13539): Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-08 18:17:37.431 W/HWUI    (13539): Failed to initialize 101010-2 format, error = EGL_SUCCESS
+10-08 18:17:37.448 D/CoreBackPreview(  657): Window{f312594 u0 app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@5a06983, mPriority=-1, mIsAnimationCallback=false, mOverrideBehavior=0}
+10-08 18:17:37.452 W/ServiceManagerCppClient(  516): Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10100 pid=0
+10-08 18:17:37.452 D/PermissionCache(  516): checking android.permission.ACCESS_SURFACE_FLINGER for uid=10100 => denied (249 us)
+10-08 18:17:37.453 W/ServiceManagerCppClient(  516): Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10100 pid=13539
+10-08 18:17:37.453 D/PermissionCache(  516): checking android.permission.ACCESS_SURFACE_FLINGER for uid=10100 => denied (342 us)
+10-08 18:17:37.453 W/ServiceManagerCppClient(  516): Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10100 pid=0
+10-08 18:17:37.453 D/PermissionCache(  516): checking android.permission.ROTATE_SURFACE_FLINGER for uid=10100 => denied (317 us)
+10-08 18:17:37.453 W/ServiceManagerCppClient(  516): Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10100 pid=13539
+10-08 18:17:37.453 D/PermissionCache(  516): checking android.permission.ROTATE_SURFACE_FLINGER for uid=10100 => denied (251 us)
+10-08 18:17:37.453 W/ServiceManagerCppClient(  516): Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10100 pid=0
+10-08 18:17:37.453 D/PermissionCache(  516): checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10100 => denied (191 us)
+10-08 18:17:37.453 W/ServiceManagerCppClient(  516): Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10100 pid=13539
+10-08 18:17:37.453 D/PermissionCache(  516): checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10100 => denied (165 us)
+10-08 18:17:37.502 W/ServiceManagerCppClient(  657): Permission failure: android.permission.ACCESS_SURFACE_FLINGER from uid=10100 pid=0
+10-08 18:17:37.502 D/PermissionCache(  657): checking android.permission.ACCESS_SURFACE_FLINGER for uid=10100 => denied (57 us)
+10-08 18:17:37.502 W/ServiceManagerCppClient(  657): Permission failure: android.permission.ROTATE_SURFACE_FLINGER from uid=10100 pid=0
+10-08 18:17:37.502 D/PermissionCache(  657): checking android.permission.ROTATE_SURFACE_FLINGER for uid=10100 => denied (10 us)
+10-08 18:17:37.502 W/ServiceManagerCppClient(  657): Permission failure: android.permission.INTERNAL_SYSTEM_WINDOW from uid=10100 pid=0
+10-08 18:17:37.502 D/PermissionCache(  657): checking android.permission.INTERNAL_SYSTEM_WINDOW for uid=10100 => denied (3 us)
+10-08 18:17:37.504 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.505 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.505 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.505 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:37.506 D/ViewRootImpl(12695): Skipping stats log for color mode
+10-08 18:17:37.511 D/CoreBackPreview(  657): Window{199d09e u0 app.cablegram.cab32/app.cablegram.MainActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@49541f5, mPriority=0, mIsAnimationCallback=true, mOverrideBehavior=0}
+10-08 18:17:37.562 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:37.566 V/WindowManager(  657): Sent Transition (#17) createdAt=10-08 18:17:37.262 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=55 effectiveUid=10100 displayId=0 isRunning=true baseIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity } baseActivity=ComponentInfo{app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} topActivity=ComponentInfo{app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} origActivity=null realActivity=ComponentInfo{app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} numActivities=1 lastActiveTime=95958108 supportsMultiWindow=false resizeMode=1 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{5cb85fb Task{a29567d #55 type=standard A=10100:app.cablegram.approvalqa.test}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=true launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=ActivityInfo{59cb618 androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=false isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=Rect(687, 54 - 1233, 1026) capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false isLetterboxEducationEnabled= false isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1920, 1080) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null}, pipChange = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 17 }
+10-08 18:17:37.566 V/WindowManager(  657):     startWCT=WindowContainerTransaction { changes= {} hops= [] errorCallbackToken=null taskFragmentOrganizer=null }
+10-08 18:17:37.566 V/WindowManager(  657):     info={id=17 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+10-08 18:17:37.566 V/WindowManager(  657):         {WCT{RemoteToken{bea4a14 Task{5b766e1 #53 type=standard A=10096:app.cablegram.cab32}}} m=TO_FRONT f=MOVE_TO_TOP leash=Surface(name=Task=53)/@0x523bf81 sb=Rect(0, 0 - 1920, 1080) eb=Rect(0, 0 - 1920, 1080) epz=Point(1920, 1080) d=0 taskParent=-1},
+10-08 18:17:37.566 V/WindowManager(  657):         {WCT{RemoteToken{9bb966b Task{7679813 #54 type=standard A=10099:app.cablegram.approvalqa}}} m=TO_BACK f=NONE leash=Surface(name=Task=54)/@0x60117dc sb=Rect(0, 0 - 1920, 1080) eb=Rect(0, 0 - 1920, 1080) epz=Point(1920, 1080) d=0 taskParent=-1}
+10-08 18:17:37.566 V/WindowManager(  657):     ]}
+10-08 18:17:37.567 V/WindowManagerShell(  878): onTransitionReady(transaction=2821793515636)
+10-08 18:17:37.567 V/WindowManagerShell(  878): onTransitionReady (#17) android.os.BinderProxy@7cd6f0c: {id=17 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+10-08 18:17:37.567 V/WindowManagerShell(  878):         {m=TO_FRONT f=MOVE_TO_TOP leash=Surface(name=Task=53)/@0x7686ff8 sb=Rect(0, 0 - 1920, 1080) eb=Rect(0, 0 - 1920, 1080) epz=Point(1920, 1080) d=0 taskParent=-1},
+10-08 18:17:37.567 V/WindowManagerShell(  878):         {m=TO_BACK f=NONE leash=Surface(name=Task=54)/@0xb656cd1 sb=Rect(0, 0 - 1920, 1080) eb=Rect(0, 0 - 1920, 1080) epz=Point(1920, 1080) d=0 taskParent=-1}
+10-08 18:17:37.567 V/WindowManagerShell(  878):     ]}
+10-08 18:17:37.567 V/WindowManagerShell(  878): Playing animation for (#17) android.os.BinderProxy@7cd6f0c@0
+10-08 18:17:37.567 V/WindowManagerShell(  878): Transition doesn't have explicit remote, search filters for match for {id=17 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=TO_FRONT f=MOVE_TO_TOP leash=Surface(name=Task=53)/@0x7686ff8 sb=Rect(0, 0 - 1920, 1080) eb=Rect(0, 0 - 1920, 1080) epz=Point(1920, 1080) d=0 taskParent=-1},{m=TO_BACK f=NONE leash=Surface(name=Task=54)/@0xb656cd1 sb=Rect(0, 0 - 1920, 1080) eb=Rect(0, 0 - 1920, 1080) epz=Point(1920, 1080) d=0 taskParent=-1}]}
+10-08 18:17:37.567 V/WindowManagerShell(  878):  Delegate animation for (#17) to null
+10-08 18:17:37.567 V/WindowManagerShell(  878): start default transition animation, info = {id=17 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=TO_FRONT f=MOVE_TO_TOP leash=Surface(name=Task=53)/@0x7686ff8 sb=Rect(0, 0 - 1920, 1080) eb=Rect(0, 0 - 1920, 1080) epz=Point(1920, 1080) d=0 taskParent=-1},{m=TO_BACK f=NONE leash=Surface(name=Task=54)/@0xb656cd1 sb=Rect(0, 0 - 1920, 1080) eb=Rect(0, 0 - 1920, 1080) epz=Point(1920, 1080) d=0 taskParent=-1}]}
+10-08 18:17:37.567 V/WindowManagerShell(  878): loadAnimation: anim=android.view.animation.AlphaAnimation@22d7237 animAttr=0x9 type=OPEN isEntrance=false
+10-08 18:17:37.567 V/WindowManagerShell(  878): loadAnimation: anim=android.view.animation.AlphaAnimation@3b093a4 animAttr=0x8 type=OPEN isEntrance=true
+10-08 18:17:37.568 V/WindowManagerShell(  878):  animated by com.android.wm.shell.transition.DefaultTransitionHandler@95cd1ac
+10-08 18:17:37.605 D/WindowManagerShell(  878): TvPipController: onTaskStackChanged()
+10-08 18:17:37.609 D/C2BqPoolInvalidator(  461): invalidated 1 bqpool items
+10-08 18:17:37.625 I/approvalqa.test(13539): Compiler allocated 5111KB to compile void android.view.ViewRootImpl.performTraversals()
+10-08 18:17:37.639 I/ImeTracker(  657): app.cablegram.cab32:d366cc93: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+10-08 18:17:37.640 D/InsetsController(12695): hide(ime(), fromIme=false)
+10-08 18:17:37.640 I/ImeTracker(12695): app.cablegram.cab32:d366cc93: onCancelled at PHASE_CLIENT_ALREADY_HIDDEN
+10-08 18:17:37.641 I/GoogleInputMethodService( 4195): GoogleInputMethodService.onFinishInput():2259
+10-08 18:17:37.641 I/Module  ( 4195): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatus():103 repeatCheckTimes = 0, locked = false
+10-08 18:17:37.641 I/ImeTracker(  657): system_server:2c5b702: onRequestHide at ORIGIN_SERVER reason IME_REQUESTED_CHANGED_LISTENER fromUser false
+10-08 18:17:37.642 I/ImeTracker(  657): system_server:2c5b702: onCancelled at PHASE_SERVER_SHOULD_HIDE
+10-08 18:17:37.642 I/GoogleInputMethodService( 4195): GoogleInputMethodService.onStartInput():1446 onStartInput(EditorInfo{EditorInfo{packageName=app.cablegram.cab32, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+10-08 18:17:37.643 I/Module  ( 4195): DeviceLockedStatusModuleProvider$Module.updateDeviceLockedStatus():103 repeatCheckTimes = 1, locked = false
+10-08 18:17:37.644 W/PackageConfigPersister(  657): App-specific configuration not found for packageName: app.cablegram.cab32 and userId: 0
+10-08 18:17:37.958 W/AccessibilityManagerService(  657):  wait for adding window timeout: 396
+10-08 18:17:37.960 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:37.961 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:37.961 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:37.961 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:37.978 V/WindowManagerShell(  878): Transition animation finished (aborted=false), notifying core (#17) android.os.BinderProxy@7cd6f0c@0
+10-08 18:17:37.981 D/VRI[MainActivity](13152): visibilityChanged oldVisibility=true newVisibility=false
+10-08 18:17:37.981 V/WindowManagerShell(  878): Track 0 became idle
+10-08 18:17:37.981 V/WindowManagerShell(  878): All active transition animations finished
+10-08 18:17:37.983 V/WindowManager(  657): Finish Transition (#17): created at 10-08 18:17:37.262 collect-started=0.466ms request-sent=5.933ms started=7.278ms ready=241.929ms sent=303.207ms commit=12.829ms finished=718.236ms
+10-08 18:17:37.985 D/Maestro (13486): View hierarchy received in 24 ms
+10-08 18:17:38.002 W/WindowOnBackDispatcher(13539): sendCancelIfRunning: isInProgress=false callback=android.app.Activity$$ExternalSyntheticLambda0@4c0a648
+10-08 18:17:38.003 D/CoreBackPreview(  657): Window{f312594 u0 app.cablegram.approvalqa.test/androidx.test.core.app.InstrumentationActivityInvoker$EmptyActivity}: Setting back callback null
+10-08 18:17:38.010 D/ViewRootImpl(13539): Skipping stats log for color mode
+10-08 18:17:38.010 D/WargServiceStub( 1870): Cast-TV app app.cablegram.cab32 is launched.
+10-08 18:17:38.010 D/WargServiceStub( 1870): Attaching to app.cablegram.cab32
+10-08 18:17:38.011 D/WargCastTvAppManager( 1870): Binding to cast tv service of app.cablegram.cab32
+10-08 18:17:38.018 D/LifecycleMonitor(13152): Lifecycle status change: app.cablegram.MainActivity@1bfcbd8 in: STOPPED
+10-08 18:17:38.018 V/ActivityScenario(13152): Update currentActivityStage to STOPPED, currentActivity=app.cablegram.MainActivity@1bfcbd8
+10-08 18:17:38.022 W/WindowOnBackDispatcher(13152): sendCancelIfRunning: isInProgress=false callback=android.app.Activity$$ExternalSyntheticLambda0@5217450
+10-08 18:17:38.022 D/LifecycleMonitor(13152): Lifecycle status change: app.cablegram.MainActivity@1bfcbd8 in: DESTROYED
+10-08 18:17:38.022 V/ActivityScenario(13152): Update currentActivityStage to DESTROYED, currentActivity=null
+10-08 18:17:38.023 D/WargCastTvAppManager( 1870): app.cablegram.approvalqa's active state now is : false LaunchAppState : null AttachToAppState : ATTACHED
+10-08 18:17:38.023 D/WargCastTvAppManager( 1870): Cast TV app is inactive now: app.cablegram.approvalqa
+10-08 18:17:38.023 D/WargCastTvAppManager( 1870): Cast TV app is disconnected now: app.cablegram.approvalqa because of STOP_BY_APP
+10-08 18:17:38.023 D/WargServiceStub( 1870): TV app is closed: com.google.android.libraries.cast.tv.warg.service.internal.CastTvApp@590287c
+10-08 18:17:38.023 I/TestRunner(13152): finished: signatureKeepsLoopingUntilTheViewerCancels(app.cablegram.ui.PrivateApprovalScreenHarnessTest)
+10-08 18:17:38.024 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:38.024 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:38.024 D/CoreBackPreview(  657): Window{baa9bf3 u0 app.cablegram.approvalqa/app.cablegram.MainActivity}: Setting back callback null
+10-08 18:17:38.026 D/WargCastTvAppManager( 1870): Service connected: app.cablegram.cab32
+10-08 18:17:38.027 D/ViewRootImpl(13152): Skipping stats log for color mode
+10-08 18:17:38.030 I/TestRunner(13152): run finished: 1 tests, 0 failed, 0 ignored
+10-08 18:17:38.033 D/WargCastTvAppManager( 1870): Receiver info received: app.cablegram.cab32
+10-08 18:17:38.033 D/WargCastTvAppManager( 1870): Moving to WAITING_FOR_ACTIVATE_STATE
+10-08 18:17:38.033 D/WargCastTvAppManager( 1870): app.cablegram.cab32's active state now is : true LaunchAppState : null AttachToAppState : WAITING_FOR_ACTIVATE_STATE
+10-08 18:17:38.033 D/WargCastTvAppManager( 1870): Got activate while WAITING_FOR_ACTIVATE_STATE, notifying mediashell.
+10-08 18:17:38.038 D/WargServiceStub( 1870): Received attach result: SUCCESS
+10-08 18:17:38.038 D/WargServiceStub( 1870): New app attached: app.cablegram.cab32
+10-08 18:17:38.038 D/WargServiceStub( 1870): Notifying observer for the new app
+10-08 18:17:38.038 E/WargReceiverApp( 1870): LogEventSink not set.
+10-08 18:17:38.039 I/cast_shell( 1870): [1008/181738.039530:INFO:application_manager_impl.cc(1790)] App stopping: AndroidNativeApp (Cablegram), session_id=5fd3b2f2-53f6-46c2-8601-e15780b2aa75
+10-08 18:17:38.039 I/cast_shell( 1870): [1008/181738.039734:INFO:application_manager_impl.cc(1795)] App stopped: AndroidNativeApp (Cablegram), session_id=5fd3b2f2-53f6-46c2-8601-e15780b2aa75
+10-08 18:17:38.039 I/cast_shell( 1870): [1008/181738.039792:INFO:resource_manager_impl.cc(244)] All resources released for app AndroidNativeApp (Cablegram), session_id=5fd3b2f2-53f6-46c2-8601-e15780b2aa75
+10-08 18:17:38.039 E/cast_shell( 1870): [1008/181738.039812:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.041 D/cast_ChromecastServiceClientAndroid( 1870): [ChromecastServiceClientAndroid.java:91] Cast idle.
+10-08 18:17:38.041 I/cast_shell( 1870): [1008/181738.041749:INFO:api_reboot_idle_checker.cc(104)] active_activities count=0
+10-08 18:17:38.041 I/cast_shell( 1870): [1008/181738.041805:INFO:cast_session_manager_impl.cc(853)] Sending 0 media sessions. (from:OnCurrentAppChanged@chromecast/internal/receiver/cast_session/cast_session_manager_impl.cc:785)
+10-08 18:17:38.041 I/cast_shell( 1870): [1008/181738.041927:INFO:application_message_handler.cc(906)] Cast V2 IPC closed: app_id=AndroidNativeApp
+10-08 18:17:38.042 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:38.042 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:38.042 D/BackgroundInstallControlService(  657): Package event received: 0
+10-08 18:17:38.042 D/cast_CastToNative( 1870): [NativeApplication.java:394] onDestroyed
+10-08 18:17:38.042 W/ProviderHelper( 3289): Unknown dynamite feature cast_tv_dynamite
+10-08 18:17:38.042 D/cast_CastToNative( 1870): [NativeApplicationObserver.java:359] launchPendingApp(name=Cablegram, sessionId=3271f973-fa0e-4f71-a302-a99943643af3)
+10-08 18:17:38.042 D/cast_CastToNative( 1870): [NativeApplicationObserver.java:364] App launched by Warg has a higher priority. Try to override the old app.
+10-08 18:17:38.042 I/cast_shell( 1870): [1008/181738.042676:INFO:application_manager_impl.cc(697)] Starting app: app_id=AndroidNativeApp, session_id=3271f973-fa0e-4f71-a302-a99943643af3, launch_from=FROM_LOCAL, virtual_device_id=[REDACTED], session_owner=, group_session_id=, headless=1, silent_launch_enabled=0, action_script_id=, supported_app_types={ANDROID_TV,}, take_resources=1
+10-08 18:17:38.043 E/cast_shell( 1870): [1008/181738.043449:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.043 I/cast_shell( 1870): [1008/181738.043472:INFO:app_launch_authorizer_android.cc(170)] Allowing Android native app FROM_LOCAL
+10-08 18:17:38.043 E/cast_shell( 1870): [1008/181738.043493:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.043 I/cast_shell( 1870): [1008/181738.043511:INFO:application_manager_impl.cc(1612)] Creating factory with display id
+10-08 18:17:38.043 I/cast_shell( 1870): [1008/181738.043826:INFO:resource_manager_impl.cc(117)] Resources requested for app AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3, mandatory=1, optional=0, tokens=[], external=0, only_if_available=0
+10-08 18:17:38.043 I/cast_shell( 1870): [1008/181738.043856:INFO:application_manager_impl.cc(2006)] Resources granted to app: app=AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3, resources=1, token_resources=[]
+10-08 18:17:38.043 E/cast_shell( 1870): [1008/181738.043868:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.043 I/GmsDebugLogger( 3289): [89] cast_tv_dynamite
+10-08 18:17:38.043 W/cast_shell( 1870): [1008/181738.043889:WARNING:media_control_handler.cc(59)] Unknown player state:
+10-08 18:17:38.043 W/cast_shell( 1870): [1008/181738.043913:WARNING:media_control_handler.cc(59)] Unknown player state:
+10-08 18:17:38.043 I/cast_shell( 1870): [1008/181738.043918:INFO:remote_control_application_manager.cc(463)] Local media app AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3 does not require a remote control app
+10-08 18:17:38.043 I/cast_shell( 1870): [1008/181738.043928:INFO:api_reboot_idle_checker.cc(104)] active_activities count=1
+10-08 18:17:38.043 I/cast_shell( 1870): [1008/181738.043934:INFO:cast_session_manager_impl.cc(853)] Sending 0 media sessions. (from:OnCurrentAppChanged@chromecast/internal/receiver/cast_session/cast_session_manager_impl.cc:785)
+10-08 18:17:38.043 W/cast_shell( 1870): [1008/181738.043977:WARNING:media_control_handler.cc(59)] Unknown player state:
+10-08 18:17:38.044 I/cast_shell( 1870): [1008/181738.044017:INFO:application_manager_impl.cc(1754)] App starting: AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.044 I/cast_shell( 1870): [1008/181738.044034:INFO:application_identification_settings.cc(368)] new ApplicationIdentificationSettings session_id: 3271f973-fa0e-4f71-a302-a99943643af3 app_id: AndroidNativeApp universal_app_id: AndroidNativeApp flags: 0 headers: 0
+10-08 18:17:38.044 I/cast_shell( 1870): [1008/181738.044042:INFO:application_manager_impl.cc(1768)] App pending: AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.044 I/cast_shell( 1870): [1008/181738.044064:INFO:application_manager_impl.cc(1773)] App started: AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.044 I/cast_shell( 1870): [1008/181738.044189:INFO:external_mojo_broker.cc(270)] Request for cast_android_native:chromecast.receiver.mojom.ApplicationFactory
+10-08 18:17:38.044 I/cast_shell( 1870): [1008/181738.044207:INFO:external_mojo_broker.cc(275)] Found externally-registered cast_android_native
+10-08 18:17:38.044 I/cast_shell( 1870): [1008/181738.043105:INFO:mdns_cast_service.cc(857)] Device discovery state is idle
+10-08 18:17:38.044 I/cast_shell( 1870): [1008/181738.044464:INFO:mdns_app_filter.cc(1993)] Preparing mDNS message for offload.
+10-08 18:17:38.044 D/cast_MdnsOffloadClientImpl( 1870): [MdnsOffloadClientImpl.java:105] Publish mDNS packet binary length=380
+10-08 18:17:38.044 E/cast_MdnsOffloadClientImpl( 1870): Not connected, skipping offload
+10-08 18:17:38.045 E/ActivityThread( 1870): Failed to find provider info for com.google.android.apps.tv.launcherx.coreservices.account.AccountModeContentProvider
+10-08 18:17:38.045 E/cast_shell( 1870): [1008/181738.043385:ERROR:v2_transport.cc(1026)] Invalid connection: 5fd3b2f2-53f6-46c2-8601-e15780b2aa75:local-client.61:mediacontrol-0
+10-08 18:17:38.045 I/cast_shell( 1870): [1008/181738.045441:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.61): CastV2.Connection.Close.Out
+10-08 18:17:38.045 E/cast_shell( 1870): [1008/181738.045459:ERROR:v2_transport.cc(1026)] Invalid connection: 5fd3b2f2-53f6-46c2-8601-e15780b2aa75:local-client.62:mediacontrol-0
+10-08 18:17:38.045 I/cast_shell( 1870): [1008/181738.045467:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.62): CastV2.Connection.Close.Out
+10-08 18:17:38.045 E/cast_shell( 1870): [1008/181738.045478:ERROR:v2_transport.cc(1026)] Invalid connection: 5fd3b2f2-53f6-46c2-8601-e15780b2aa75:local-client.63:mediacontrol-0
+10-08 18:17:38.045 I/cast_shell( 1870): [1008/181738.045482:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.63): CastV2.Connection.Close.Out
+10-08 18:17:38.045 I/cast_shell( 1870): [1008/181738.045486:INFO:v2_transport.cc(456)] Removed Cast V2 endpoint: id=5fd3b2f2-53f6-46c2-8601-e15780b2aa75
+10-08 18:17:38.045 I/cast_shell( 1870): [1008/181738.045500:INFO:v2_transport.cc(1233)] Heartbeat for V2TransportImpl stopping
+10-08 18:17:38.045 I/cast_shell( 1870): [1008/181738.045516:INFO:v2_transport.cc(439)] Added Cast V2 endpoint: id=3271f973-fa0e-4f71-a302-a99943643af3, socket_factory_id=[REDACTED]
+10-08 18:17:38.045 I/cast_shell( 1870): [1008/181738.045755:INFO:mdns_cast_service.cc(857)] Device discovery state is non-idle
+10-08 18:17:38.045 I/cast_shell( 1870): [1008/181738.045781:INFO:mdns_app_filter.cc(1993)] Preparing mDNS message for offload.
+10-08 18:17:38.045 D/cast_MdnsOffloadClientImpl( 1870): [MdnsOffloadClientImpl.java:105] Publish mDNS packet binary length=389
+10-08 18:17:38.045 E/cast_MdnsOffloadClientImpl( 1870): Not connected, skipping offload
+10-08 18:17:38.055 I/ActivityManager(  657): Force stopping app.cablegram.approvalqa appid=10099 user=0: finished inst
+10-08 18:17:38.055 E/ActivityManager(  657): Unable to freeze binder for 13152: -11
+10-08 18:17:38.055 I/ActivityManager(  657): Killing 13152:app.cablegram.approvalqa/u0a99 (adj 0): stop app.cablegram.approvalqa due to finished inst
+10-08 18:17:38.057 E/ActivityThread( 1870): Failed to find provider info for com.google.android.apps.tv.launcherx.coreservices.account.AccountModeContentProvider
+10-08 18:17:38.057 I/app_process(13124): System.exit called, status: 0
+10-08 18:17:38.057 I/AndroidRuntime(13124): VM exiting with result code 0.
+10-08 18:17:38.057 I/ResourceManagerMetrics(  547): pushConcurrentUsageReport: Concurrent Codec Usage Report for the Process[pid(13152): uid(10099)] is Peak { AudioDec[ SW: 1 ] VideoDec[ HW: 1 ] } Peak Pixels: 2073600
+10-08 18:17:38.058 D/cast_CastToNative( 1870): [NativeApplication.java:420] new NativeApp is available.
+10-08 18:17:38.059 D/InetDiagMessage(  657): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+10-08 18:17:38.059 I/cast_shell( 1870): [1008/181738.059506:INFO:application_message_handler.cc(723)] Cast V2 IPC connected: app_id=AndroidNativeApp
+10-08 18:17:38.059 I/cast_shell( 1870): [1008/181738.059552:INFO:application_message_handler.cc(943)] Received READY message from app
+10-08 18:17:38.059 E/cast_shell( 1870): [1008/181738.059620:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.059 E/cast_shell( 1870): [1008/181738.059647:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.059 E/cast_shell( 1870): [1008/181738.059654:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.059 E/cast_shell( 1870): [1008/181738.059661:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.059 E/cast_shell( 1870): [1008/181738.059669:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.059 E/cast_shell( 1870): [1008/181738.059676:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.059 I/cast_shell( 1870): [1008/181738.059691:INFO:application_message_handler.cc(1775)] Application doesn't support playback device status
+10-08 18:17:38.059 D/InetDiagMessage(  657): Destroyed 1 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+10-08 18:17:38.059 D/InetDiagMessage(  657): Destroyed live tcp sockets for uids={10099} in 2ms
+10-08 18:17:38.059 I/cast_shell( 1870): [1008/181738.059971:INFO:application_manager_impl.cc(2109)] Focusing foreground application: session=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060000:INFO:media_trait_handler_impl.cc(955)] Sent untracked GET_STATUS to app: session_id=3271f973-fa0e-4f71-a302-a99943643af3, request_id=2080075178
+10-08 18:17:38.060 D/InetDiagMessage(  657): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060244:INFO:application_manager_impl.cc(1778)] App running: AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.060 E/cast_shell( 1870): [1008/181738.060265:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.060 E/cast_shell( 1870): [1008/181738.060278:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060326:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.64): CastV2.Connection.Connect.In
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060346:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.65): CastV2.Connection.Connect.In
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060714:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.66): CastV2.Connection.Connect.In
+10-08 18:17:38.060 E/cast_shell( 1870): [1008/181738.060756:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060768:INFO:metrics_recorder.cc(193)] cast event: CastV2.Ipc.Sender.Connected
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060783:INFO:application_message_handler.cc(554)] Invisible connection connected: conn=3271f973-fa0e-4f71-a302-a99943643af3:local-client.64:mediacontrol-0, app=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.060 E/cast_shell( 1870): [1008/181738.060793:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060797:INFO:metrics_recorder.cc(193)] cast event: CastV2.Ipc.Sender.Connected
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060799:INFO:application_message_handler.cc(554)] Invisible connection connected: conn=3271f973-fa0e-4f71-a302-a99943643af3:local-client.65:mediacontrol-0, app=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.060 E/cast_shell( 1870): [1008/181738.060805:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060807:INFO:metrics_recorder.cc(193)] cast event: CastV2.Ipc.Sender.Connected
+10-08 18:17:38.060 I/cast_shell( 1870): [1008/181738.060833:INFO:application_message_handler.cc(554)] Invisible connection connected: conn=3271f973-fa0e-4f71-a302-a99943643af3:local-client.66:mediacontrol-0, app=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.060 E/WargReceiverApp( 1870): LogEventSink not set.
+10-08 18:17:38.060 E/WargReceiverApp( 1870): LogEventSink not set.
+10-08 18:17:38.060 E/WargReceiverApp( 1870): LogEventSink not set.
+10-08 18:17:38.061 E/cast_shell( 1870): [1008/181738.061028:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.061 I/cast_shell( 1870): [1008/181738.061226:INFO:v2_transport.cc(1223)] Heartbeat for V2TransportImpl started: max_inactivity=10000000, heartbeat_interval_=5000000
+10-08 18:17:38.065 W/C2N_RCC_IMPL(12695): Unsupported type: FOCUS_STATE
+10-08 18:17:38.065 W/BasicMediaStatusFactory(12695): app.cablegram.cab32's media session has no metadata
+10-08 18:17:38.065 E/WargReceiverApp( 1870): LogEventSink not set.
+10-08 18:17:38.065 E/cast_shell( 1870): [1008/181738.065690:ERROR:application_message_handler.cc(810)] Invalid senderId=SystemSender received in message in app=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.065 D/InetDiagMessage(  657): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+10-08 18:17:38.065 D/InetDiagMessage(  657): Destroyed live tcp sockets for uids={20099} in 6ms
+10-08 18:17:38.068 D/BasicMediaStatusFactory(12695): Supported media session actions: 775
+10-08 18:17:38.069 V/ActivityManager(  657): Got obituary of 13152:app.cablegram.approvalqa
+10-08 18:17:38.070 I/MediaSessionStack(  657): removeSession | record: app.cablegram.approvalqa/Cablegram/12 (userId=0)
+10-08 18:17:38.070 D/MediaSessionService(  657): Media button session is changed to null
+10-08 18:17:38.072 D/WargServiceStub( 1870): TV app is closed: com.google.android.libraries.cast.tv.warg.service.internal.CastTvApp@590287c
+10-08 18:17:38.072 D/WargServiceStub( 1870): Notifying observer for the new app
+10-08 18:17:38.074 W/ActivityManager(  657): setHasOverlayUi called on unknown pid: 13152
+10-08 18:17:38.076 E/WargReceiverApp( 1870): LogEventSink not set.
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076347:INFO:application_manager_impl.cc(1790)] App stopping: AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076381:INFO:application_manager_impl.cc(1795)] App stopped: AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076391:INFO:resource_manager_impl.cc(244)] All resources released for app AndroidNativeApp (Cablegram), session_id=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.076 E/cast_shell( 1870): [1008/181738.076400:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.076 D/cast_ChromecastServiceClientAndroid( 1870): [ChromecastServiceClientAndroid.java:91] Cast idle.
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076545:INFO:api_reboot_idle_checker.cc(104)] active_activities count=0
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076551:INFO:cast_session_manager_impl.cc(853)] Sending 0 media sessions. (from:OnCurrentAppChanged@chromecast/internal/receiver/cast_session/cast_session_manager_impl.cc:785)
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076573:INFO:application_message_handler.cc(906)] Cast V2 IPC closed: app_id=AndroidNativeApp
+10-08 18:17:38.076 D/cast_CastToNative( 1870): [NativeApplication.java:394] onDestroyed
+10-08 18:17:38.076 D/cast_CastToNative( 1870): [NativeApplicationObserver.java:359] launchPendingApp(name=Cablegram, sessionId=19fea632-7738-45e3-9722-29fa3266e580)
+10-08 18:17:38.076 D/cast_CastToNative( 1870): [NativeApplicationObserver.java:364] App launched by Warg has a higher priority. Try to override the old app.
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076750:INFO:application_manager_impl.cc(697)] Starting app: app_id=AndroidNativeApp, session_id=19fea632-7738-45e3-9722-29fa3266e580, launch_from=FROM_LOCAL, virtual_device_id=[REDACTED], session_owner=, group_session_id=, headless=1, silent_launch_enabled=0, action_script_id=, supported_app_types={ANDROID_TV,}, take_resources=1
+10-08 18:17:38.076 E/cast_shell( 1870): [1008/181738.076769:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076773:INFO:app_launch_authorizer_android.cc(170)] Allowing Android native app FROM_LOCAL
+10-08 18:17:38.076 E/cast_shell( 1870): [1008/181738.076780:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076784:INFO:application_manager_impl.cc(1612)] Creating factory with display id
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076821:INFO:resource_manager_impl.cc(117)] Resources requested for app AndroidNativeApp (Cablegram), session_id=19fea632-7738-45e3-9722-29fa3266e580, mandatory=1, optional=0, tokens=[], external=0, only_if_available=0
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076826:INFO:application_manager_impl.cc(2006)] Resources granted to app: app=AndroidNativeApp (Cablegram), session_id=19fea632-7738-45e3-9722-29fa3266e580, resources=1, token_resources=[]
+10-08 18:17:38.076 E/cast_shell( 1870): [1008/181738.076831:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.076 W/cast_shell( 1870): [1008/181738.076837:WARNING:media_control_handler.cc(59)] Unknown player state:
+10-08 18:17:38.076 W/cast_shell( 1870): [1008/181738.076840:WARNING:media_control_handler.cc(59)] Unknown player state:
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076843:INFO:remote_control_application_manager.cc(463)] Local media app AndroidNativeApp (Cablegram), session_id=19fea632-7738-45e3-9722-29fa3266e580 does not require a remote control app
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076847:INFO:api_reboot_idle_checker.cc(104)] active_activities count=1
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076850:INFO:cast_session_manager_impl.cc(853)] Sending 0 media sessions. (from:OnCurrentAppChanged@chromecast/internal/receiver/cast_session/cast_session_manager_impl.cc:785)
+10-08 18:17:38.076 W/cast_shell( 1870): [1008/181738.076854:WARNING:media_control_handler.cc(59)] Unknown player state:
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076862:INFO:application_manager_impl.cc(1754)] App starting: AndroidNativeApp (Cablegram), session_id=19fea632-7738-45e3-9722-29fa3266e580
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076866:INFO:application_identification_settings.cc(368)] new ApplicationIdentificationSettings session_id: 19fea632-7738-45e3-9722-29fa3266e580 app_id: AndroidNativeApp universal_app_id: AndroidNativeApp flags: 0 headers: 0
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076870:INFO:application_manager_impl.cc(1768)] App pending: AndroidNativeApp (Cablegram), session_id=19fea632-7738-45e3-9722-29fa3266e580
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076879:INFO:application_manager_impl.cc(1773)] App started: AndroidNativeApp (Cablegram), session_id=19fea632-7738-45e3-9722-29fa3266e580
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076926:INFO:external_mojo_broker.cc(270)] Request for cast_android_native:chromecast.receiver.mojom.ApplicationFactory
+10-08 18:17:38.076 I/cast_shell( 1870): [1008/181738.076932:INFO:external_mojo_broker.cc(275)] Found externally-registered cast_android_native
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077161:INFO:mdns_cast_service.cc(857)] Device discovery state is idle
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077213:INFO:mdns_app_filter.cc(1993)] Preparing mDNS message for offload.
+10-08 18:17:38.077 D/cast_MdnsOffloadClientImpl( 1870): [MdnsOffloadClientImpl.java:105] Publish mDNS packet binary length=380
+10-08 18:17:38.077 E/cast_MdnsOffloadClientImpl( 1870): Not connected, skipping offload
+10-08 18:17:38.077 I/adbd    (  518): Remote process closed the socket (on MSG_PEEK)
+10-08 18:17:38.077 I/libprocessgroup(  657): Removed cgroup /sys/fs/cgroup/apps/uid_10099/pid_13152
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077418:INFO:mdns_cast_service.cc(857)] Device discovery state is non-idle
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077451:INFO:mdns_app_filter.cc(1993)] Preparing mDNS message for offload.
+10-08 18:17:38.077 D/cast_MdnsOffloadClientImpl( 1870): [MdnsOffloadClientImpl.java:105] Publish mDNS packet binary length=389
+10-08 18:17:38.077 E/cast_MdnsOffloadClientImpl( 1870): Not connected, skipping offload
+10-08 18:17:38.077 E/cast_shell( 1870): [1008/181738.077558:ERROR:v2_transport.cc(1026)] Invalid connection: 3271f973-fa0e-4f71-a302-a99943643af3:local-client.64:mediacontrol-0
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077600:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.64): CastV2.Connection.Close.Out
+10-08 18:17:38.077 E/cast_shell( 1870): [1008/181738.077640:ERROR:v2_transport.cc(1026)] Invalid connection: 3271f973-fa0e-4f71-a302-a99943643af3:local-client.65:mediacontrol-0
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077659:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.65): CastV2.Connection.Close.Out
+10-08 18:17:38.077 I/Zygote  (  448): Process 13152 exited due to signal 9 (Killed)
+10-08 18:17:38.077 E/cast_shell( 1870): [1008/181738.077688:ERROR:v2_transport.cc(1026)] Invalid connection: 3271f973-fa0e-4f71-a302-a99943643af3:local-client.66:mediacontrol-0
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077696:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.66): CastV2.Connection.Close.Out
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077731:INFO:v2_transport.cc(456)] Removed Cast V2 endpoint: id=3271f973-fa0e-4f71-a302-a99943643af3
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077743:INFO:v2_transport.cc(1233)] Heartbeat for V2TransportImpl stopping
+10-08 18:17:38.077 I/cast_shell( 1870): [1008/181738.077753:INFO:v2_transport.cc(439)] Added Cast V2 endpoint: id=19fea632-7738-45e3-9722-29fa3266e580, socket_factory_id=[REDACTED]
+10-08 18:17:38.078 E/BpTransactionCompletedListener(  516): Failed to transact (-32)
+10-08 18:17:38.079 D/MediaSessionService(  657): destroySessionLocked: record=app.cablegram.approvalqa/Cablegram/12 (userId=0)
+10-08 18:17:38.079 E/ActivityThread( 1870): Failed to find provider info for com.google.android.apps.tv.launcherx.coreservices.account.AccountModeContentProvider
+10-08 18:17:38.079 E/ActivityThread( 1870): Failed to find provider info for com.google.android.apps.tv.launcherx.coreservices.account.AccountModeContentProvider
+10-08 18:17:38.079 D/cast_CastToNative( 1870): [NativeApplication.java:420] new NativeApp is available.
+10-08 18:17:38.079 W/MediaPlayerWrapper(  966): The session was destroyed app.cablegram.approvalqa
+10-08 18:17:38.079 I/cast_shell( 1870): [1008/181738.079744:INFO:application_message_handler.cc(723)] Cast V2 IPC connected: app_id=AndroidNativeApp
+10-08 18:17:38.079 I/cast_shell( 1870): [1008/181738.079775:INFO:application_message_handler.cc(943)] Received READY message from app
+10-08 18:17:38.079 E/cast_shell( 1870): [1008/181738.079820:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.079 E/cast_shell( 1870): [1008/181738.079838:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.079 E/cast_shell( 1870): [1008/181738.079845:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.079 E/cast_shell( 1870): [1008/181738.079850:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.079 E/cast_shell( 1870): [1008/181738.079857:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.079 E/cast_shell( 1870): [1008/181738.079868:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.079 I/cast_shell( 1870): [1008/181738.079874:INFO:application_message_handler.cc(1775)] Application doesn't support playback device status
+10-08 18:17:38.079 I/cast_shell( 1870): [1008/181738.079966:INFO:application_manager_impl.cc(2109)] Focusing foreground application: session=19fea632-7738-45e3-9722-29fa3266e580
+10-08 18:17:38.080 I/cast_shell( 1870): [1008/181738.080112:INFO:media_trait_handler_impl.cc(955)] Sent untracked GET_STATUS to app: session_id=19fea632-7738-45e3-9722-29fa3266e580, request_id=675148146
+10-08 18:17:38.080 I/cast_shell( 1870): [1008/181738.080165:INFO:application_manager_impl.cc(1778)] App running: AndroidNativeApp (Cablegram), session_id=19fea632-7738-45e3-9722-29fa3266e580
+10-08 18:17:38.080 E/cast_shell( 1870): [1008/181738.080170:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.080 E/cast_shell( 1870): [1008/181738.080175:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.080 E/cast_shell( 1870): [1008/181738.080363:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.080 W/WargReceiverApp( 1870): Received a message of unsupported namespace: urn:x-cast:com.google.cast.system
+10-08 18:17:38.080 W/WargReceiverApp( 1870): Received a message of unsupported namespace: urn:x-cast:com.google.cast.system
+10-08 18:17:38.080 W/WargReceiverApp( 1870): Received a message of unsupported namespace: urn:x-cast:com.google.cast.system
+10-08 18:17:38.080 W/WargReceiverApp( 1870): Received a message of unsupported namespace: urn:x-cast:com.google.cast.system
+10-08 18:17:38.080 W/WargReceiverApp( 1870): Received a message of unsupported namespace: urn:x-cast:com.google.cast.system
+10-08 18:17:38.080 W/WargReceiverApp( 1870): Received a message of unsupported namespace: urn:x-cast:com.google.cast.system
+10-08 18:17:38.083 I/cast_shell( 1870): [1008/181738.083532:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.67): CastV2.Connection.Connect.In
+10-08 18:17:38.083 I/cast_shell( 1870): [1008/181738.083746:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.68): CastV2.Connection.Connect.In
+10-08 18:17:38.083 W/MediaControlGattService(  966): Feature MEDIA_STATE(BIT 17) support: true
+10-08 18:17:38.083 I/cast_shell( 1870): [1008/181738.083971:INFO:metrics_recorder.cc(193)] Cast v2 action(socket_id=local-client.69): CastV2.Connection.Connect.In
+10-08 18:17:38.083 I/cast_shell( 1870): [1008/181738.083988:INFO:v2_transport.cc(1223)] Heartbeat for V2TransportImpl started: max_inactivity=10000000, heartbeat_interval_=5000000
+10-08 18:17:38.084 I/AdapterProperties(  966): getBondedDevices: length=0
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PLAYER_NAME(BIT 1) support: true
+10-08 18:17:38.084 D/NowPlayingListener( 1340): onActiveSessionsChanged() called with: controllers = [[android.media.session.MediaController@4b570f1]], lastActiveMediaController = null, lastUpdatedAppPackageName = app.cablegram
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PLAYER_ICON_URL(BIT 3) support: false
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PLAYER_ICON_OBJ_ID(BIT 2) support: false
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature CURRENT_TRACK_SEGMENT_OBJ_ID(BIT 10) support: false
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature CURRENT_TRACK_OBJ_ID(BIT 11) support: false
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature NEXT_TRACK_OBJ_ID(BIT 12) support: false
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature CURRENT_GROUP_OBJ_ID(BIT 13) support: false
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PARENT_GROUP_OBJ_ID(BIT 14) support: false
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature SEARCH_RESULT_OBJ_ID(BIT 20) support: false
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature TRACK_TITLE(BIT 5) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature TRACK_DURATION(BIT 6) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature TRACK_POSITION(BIT 7) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature TRACK_POSITION_NOTIFY support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature MEDIA_STATE(BIT 17) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature MEDIA_STATE(BIT 17) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PLAYBACK_SPEED(BIT 8) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PLAYBACK_SPEED(BIT 8) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PLAYBACK_SPEED(BIT 8) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature SEEKING_SPEED(BIT 9) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature SEEKING_SPEED(BIT 9) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature SEEKING_SPEED(BIT 9) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PLAYING_ORDER_SUPPORTED(BIT 16) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature PLAYING_ORDER(BIT 15) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature MEDIA_CONTROL_POINT_OPCODES_SUPPORTED(BIT 19) support: true
+10-08 18:17:38.084 W/MediaControlGattService(  966): Feature MEDIA_STATE(BIT 17) support: true
+10-08 18:17:38.084 W/MediaPlayerWrapper(  966): The session was destroyed app.cablegram.approvalqa
+10-08 18:17:38.084 W/BasicMediaStatusFactory( 1870): app.cablegram.cab32's media session has no metadata
+10-08 18:17:38.087 D/NowPlayingListener( 1340): MediaController {packageName = app.cablegram.cab32, state = 0}
+10-08 18:17:38.088 D/BasicMediaStatusFactory( 1870): Supported media session actions: 775
+10-08 18:17:38.088 I/bluetooth(  966): system/btif/avrcp/avrcp_service.cc:536 SendMediaUpdate: track_changed=false :  play_state=true :  queue=false
+10-08 18:17:38.089 E/cast_shell( 1870): [1008/181738.089255:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.089 I/cast_shell( 1870): [1008/181738.089474:INFO:metrics_recorder.cc(193)] cast event: CastV2.Ipc.Sender.Connected
+10-08 18:17:38.089 I/cast_shell( 1870): [1008/181738.089480:INFO:application_message_handler.cc(554)] Invisible connection connected: conn=19fea632-7738-45e3-9722-29fa3266e580:local-client.67:mediacontrol-0, app=19fea632-7738-45e3-9722-29fa3266e580
+10-08 18:17:38.089 E/cast_shell( 1870): [1008/181738.089496:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.089 I/cast_shell( 1870): [1008/181738.089500:INFO:metrics_recorder.cc(193)] cast event: CastV2.Ipc.Sender.Connected
+10-08 18:17:38.089 I/cast_shell( 1870): [1008/181738.089502:INFO:application_message_handler.cc(554)] Invisible connection connected: conn=19fea632-7738-45e3-9722-29fa3266e580:local-client.68:mediacontrol-0, app=19fea632-7738-45e3-9722-29fa3266e580
+10-08 18:17:38.089 E/cast_shell( 1870): [1008/181738.089508:ERROR:legacy_app_id_mapper_impl.cc(58)] Unknown app_id AndroidNativeApp
+10-08 18:17:38.089 I/cast_shell( 1870): [1008/181738.089511:INFO:metrics_recorder.cc(193)] cast event: CastV2.Ipc.Sender.Connected
+10-08 18:17:38.089 I/cast_shell( 1870): [1008/181738.089513:INFO:application_message_handler.cc(554)] Invisible connection connected: conn=19fea632-7738-45e3-9722-29fa3266e580:local-client.69:mediacontrol-0, app=19fea632-7738-45e3-9722-29fa3266e580
+10-08 18:17:38.089 D/WargMsAppMgr( 1870): A new media session detected: app.cablegram.cab32
+10-08 18:17:38.089 D/WargMsAppMgr( 1870): Active app is the same session. Ignore.
+10-08 18:17:38.089 D/NowPlayingManager( 1340): onClientChanged() called
+10-08 18:17:38.089 D/NowPlayingManager( 1340): A notification for Now Playing Card has been canceled
+10-08 18:17:38.090 D/NowPlayingListener( 1340): onActiveSessionsChanged() called with: controllers = [[android.media.session.MediaController@510b4d6]], lastActiveMediaController = null, lastUpdatedAppPackageName = app.cablegram
+10-08 18:17:38.091 D/WargMsAppMgr( 1870): A new media session detected: app.cablegram.cab32
+10-08 18:17:38.091 D/WargMsAppMgr( 1870): Active app is the same session. Ignore.
+10-08 18:17:38.091 D/NowPlayingListener( 1340): MediaController {packageName = app.cablegram.cab32, state = 0}
+10-08 18:17:38.091 W/cast_shell( 1870): [1008/181738.091726:WARNING:media_trait_handler_impl.cc(688)] No media status
+10-08 18:17:38.092 D/NowPlayingManager( 1340): onClientChanged() called
+10-08 18:17:38.092 D/NowPlayingManager( 1340): A notification for Now Playing Card has been canceled
+10-08 18:17:38.094 W/AccessibilityWindowsPopulator(  657): Windows change within in 2 frames continuously over 500 ms and notify windows changed immediately
+10-08 18:17:38.134 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.134 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.134 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.144 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:38.201 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.201 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.201 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.210 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:38.265 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.266 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.266 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.276 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:38.328 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.328 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.328 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.338 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:38.388 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.388 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.388 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.399 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:38.452 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.452 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.452 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.463 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:38.519 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.519 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.519 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.530 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:38.581 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.582 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.582 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.594 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:38.644 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.645 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.645 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.656 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:38.713 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.714 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.714 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.725 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:38.776 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.776 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.777 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.788 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:38.840 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.841 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.841 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.852 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:38.904 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.904 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.904 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.912 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:38.963 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:38.964 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.964 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:38.972 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:39.022 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.022 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.023 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.031 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:39.082 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.082 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.082 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.092 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:39.145 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.145 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.145 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.154 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:39.201 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.201 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.201 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.209 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.264 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.264 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.264 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.279 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:39.291 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.292 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.292 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.299 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.355 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.355 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.356 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.364 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:39.371 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.371 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.372 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.379 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.430 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.430 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.430 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.438 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.446 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.446 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.446 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.455 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:39.469 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.469 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.469 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.477 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.484 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.484 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.484 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.490 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:39.543 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.543 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.543 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.551 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.557 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.558 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.558 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.567 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:39.569 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:39.578 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.578 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.578 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.586 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:39.596 D/android.hardware.audio@7.1-impl.ranchu(  451): threadLoop: entering standby, frames: 37106240
+10-08 18:17:39.596 D/android.hardware.audio@7.1-impl.ranchu(  451): ~TinyalsaSink: joining consumeThread
+10-08 18:17:39.596 D/android.hardware.audio@7.1-impl.ranchu(  451): consumeThread: exiting
+10-08 18:17:39.597 D/android.hardware.audio@7.1-impl.ranchu(  451): ~TinyalsaSink: stopping PCM stream
+10-08 18:17:39.634 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.634 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.634 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.642 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.650 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.650 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.650 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.657 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:39.663 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.663 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.663 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.672 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:39.678 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.679 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.679 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.686 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.736 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.736 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.736 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.744 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.797 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.797 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.797 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.805 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.812 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.812 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.812 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.820 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.827 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.827 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.827 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.834 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:39.885 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.886 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.886 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.893 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:39.942 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.942 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.942 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.949 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:39.955 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.955 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.955 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.962 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:39.968 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:39.968 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.968 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:39.974 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:40.026 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.026 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.026 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.034 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:40.079 I/cast_shell( 1870): [1008/181740.079578:INFO:mdns_app_filter.cc(1922)] MdnsAppFilter: Done announcing.
+10-08 18:17:40.082 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.082 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.082 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.090 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:40.138 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.139 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.139 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.148 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:40.198 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.198 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.199 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.207 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:40.214 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.214 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.214 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.224 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:40.280 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.280 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.280 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.290 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:40.299 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.299 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.300 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.307 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:40.364 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.364 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.364 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.373 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:40.424 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.424 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.424 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.433 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:40.484 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.484 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.484 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.492 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:40.545 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.545 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.545 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.556 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:40.611 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.612 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.612 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.622 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:40.681 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.681 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.682 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.690 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:40.700 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.700 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.700 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.707 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:40.761 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.761 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.762 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.774 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:40.784 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.785 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.785 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.794 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:40.844 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.845 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.845 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.851 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:40.907 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.907 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.907 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.919 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:40.929 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.929 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.929 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.937 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:40.991 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:40.991 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.992 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:40.996 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:41.053 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.054 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.054 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.066 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:41.122 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.122 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.122 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.132 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:41.191 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.191 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.192 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.204 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:41.264 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.264 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.265 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.286 D/Maestro (13486): View hierarchy received in 22 ms
+10-08 18:17:41.297 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.297 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.297 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.310 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:41.363 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.364 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.364 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.373 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:41.423 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.423 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.423 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.432 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:41.483 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.483 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.484 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.492 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:41.519 D/BufferPoolAccessor2.0(  551): bufferpool2 0xb40000785a115568 : 0(0 size) total buffers - 0(0 size) used buffers - 1971/1977 (recycle/alloc) - 19/1977 (fetch/transfer)
+10-08 18:17:41.519 D/BufferPoolAccessor2.0(  551): evictor expired: 1, evicted: 1
+10-08 18:17:41.523 D/BufferPoolAccessor2.0(  547): bufferpool2 0xb40000788354a098 : 0(0 size) total buffers - 0(0 size) used buffers - 1987/1996 (recycle/alloc) - 16/1989 (fetch/transfer)
+10-08 18:17:41.523 D/BufferPoolAccessor2.0(  547): evictor expired: 2, evicted: 2
+10-08 18:17:41.544 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.544 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.544 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.553 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:41.572 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:41.602 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.603 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.603 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.609 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:41.661 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.661 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.662 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.672 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:41.683 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.684 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.684 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.694 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:41.745 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.745 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.746 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.754 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:41.786 E/TaskPersister(  657): File error accessing recents directory (directory doesn't exist?).
+10-08 18:17:41.810 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.810 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.810 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.820 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:41.829 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.829 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.829 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.838 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:41.889 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.889 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.890 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.899 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:41.954 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:41.954 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.954 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:41.963 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:42.018 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.018 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.019 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.029 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:42.081 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.081 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.082 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.093 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:42.150 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.150 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.151 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.161 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:42.219 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.220 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.220 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.230 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:42.278 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.278 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.279 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.285 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:42.335 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.335 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.335 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.340 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:42.435 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.435 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.435 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.441 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:42.492 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.492 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.492 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.499 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:42.521 D/BufferPoolAccessor2.0(  551): evictor expired: 1, evicted: 0
+10-08 18:17:42.553 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.553 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.553 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.562 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:42.611 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.611 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.612 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.619 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:42.678 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.678 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.679 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.685 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:42.738 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.738 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.739 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.747 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:42.805 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.805 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.806 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.818 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:42.830 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.831 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.831 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.837 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:42.851 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.851 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.852 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.858 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:42.914 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.914 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.914 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.926 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:42.936 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.937 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.937 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.945 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:42.952 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:42.952 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.952 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:42.960 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:43.013 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.013 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.014 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.020 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:43.077 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.077 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.077 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.085 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:43.135 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.135 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.135 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.144 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:43.151 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.151 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.151 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.158 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:43.206 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.207 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.207 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.215 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:43.270 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.271 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.271 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.278 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:43.328 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.329 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.329 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.335 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:43.393 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.394 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.394 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.405 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:43.459 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.459 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.459 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.469 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:43.528 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.528 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.528 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.540 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:43.582 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:43.595 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.595 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.595 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.604 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:43.661 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.661 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.662 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.675 D/Maestro (13486): View hierarchy received in 14 ms
+10-08 18:17:43.731 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.731 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.731 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.740 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:43.797 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.797 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.798 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.805 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:43.858 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.858 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.858 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.867 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:43.928 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.929 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.929 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.943 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:43.999 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:43.999 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:43.999 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.014 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:44.066 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.066 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.066 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.077 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:44.085 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.085 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.085 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.090 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:44.098 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.099 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.099 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.104 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:44.154 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.154 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.155 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.160 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:44.217 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.217 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.217 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.227 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:44.282 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.282 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.282 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.293 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:44.300 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.300 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.300 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.307 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:44.358 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.359 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.359 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.365 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:44.418 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.418 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.418 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.429 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:44.483 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.483 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.483 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.498 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:44.509 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.510 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.510 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.520 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:44.576 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.576 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.576 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.582 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:44.590 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.590 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.591 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.596 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:44.647 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.647 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.647 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.652 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:44.710 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.711 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.711 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.719 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:44.777 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.777 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.777 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.784 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:44.834 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.835 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.835 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.847 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:44.898 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.898 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.899 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.907 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:44.961 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:44.962 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.962 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:44.965 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:45.017 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.018 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.018 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.024 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:45.031 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.032 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.032 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.040 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:45.092 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.093 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.093 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.100 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:45.108 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.109 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.109 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.113 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:45.161 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.161 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.161 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.166 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:45.258 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.258 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.258 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.265 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:45.314 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.314 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.315 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.321 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:45.371 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.372 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.372 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.379 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:45.432 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.432 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.432 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.437 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:45.488 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.488 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.488 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.493 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:45.530 I/keystore2(  243): system/security/keystore2/watchdog/src/lib.rs:377 - Watchdog thread idle -> terminating. Have a great day.
+10-08 18:17:45.531 D/ActivityManager(  657): freezing 2139 com.google.android.packageinstaller
+10-08 18:17:45.532 D/InetDiagMessage(  657): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+10-08 18:17:45.533 D/InetDiagMessage(  657): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+10-08 18:17:45.533 D/InetDiagMessage(  657): Destroyed live tcp sockets for uids={10031} in 0ms
+10-08 18:17:45.542 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.542 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.543 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.549 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:45.588 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:45.599 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.600 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.600 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.605 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:45.656 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.656 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.657 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.663 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:45.716 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.716 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.716 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.725 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:45.777 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.777 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.778 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.786 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:45.798 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.798 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.798 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.810 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:45.860 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.861 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.861 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.869 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:45.918 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.919 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.919 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.924 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:45.979 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:45.979 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.980 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:45.984 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:46.041 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.041 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.042 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.048 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:46.103 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.103 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.103 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.109 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:46.162 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.162 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.163 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.172 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:46.270 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.270 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.271 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.285 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:46.344 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.345 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.345 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.364 D/Maestro (13486): View hierarchy received in 20 ms
+10-08 18:17:46.417 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.418 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.418 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.425 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:46.478 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.479 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.479 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.486 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:46.548 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.549 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.549 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.562 D/Maestro (13486): View hierarchy received in 14 ms
+10-08 18:17:46.619 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.620 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.621 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.630 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:46.688 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.688 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.689 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.692 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:46.744 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.745 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.745 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.757 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:46.809 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.810 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.810 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.817 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:46.871 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.871 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.871 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.878 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:46.926 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.927 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.927 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.934 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:46.984 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:46.984 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.985 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:46.992 D/ActivityManager(  657): freezing 9157 com.google.android.katniss:search
+10-08 18:17:46.993 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:47.005 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.005 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.005 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.015 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:47.067 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.067 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.067 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.070 D/Maestro (13486): View hierarchy received in 3 ms
+10-08 18:17:47.122 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.123 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.123 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.129 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:47.179 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.179 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.179 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.183 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:47.233 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.233 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.234 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.241 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:47.290 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.290 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.290 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.296 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:47.349 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.349 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.349 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.356 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:47.397 I/cast_shell( 1870): [1008/181747.397101:INFO:service_base.h(78)] Size of the map for type AuthTokenResponse is 0
+10-08 18:17:47.408 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.408 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.409 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.416 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:47.450 I/cast_shell( 1870): [1008/181747.450305:INFO:service_base.h(246)] Container sizes for type CloudSetting are (session_info_map: 0), (topic_info_map: 21), (pending_events: 0).
+10-08 18:17:47.450 I/cast_shell( 1870): [1008/181747.450398:INFO:metrics_stat_logger.cc(38)] Metrics stat for the past 60 secs : total=17
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] AppReady=4
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] AppStarted=4
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] AppStopped=4
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] Cast.AppLaunchAuthorizer.AutoAuthorize=4
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] Cast.AppLaunchAuthorizer.TryAuthorizeLaunch=4
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] Cast.Discovery.Mdns.Query.Cast.Count=1
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Connection.Close.Out=6
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Connection.Connect.In=12
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Ipc.Sender.Connected=12
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Ipc.System.In.Internal=24
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Ipc.System.Out.Internal=8
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Receiver.DeviceStatus.Out=16
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Receiver.DeviceStatus.Out.Broadcast=8
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Transport.Accept=12
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] CastV2.Transport.Close=12
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] Setup.eureka_info.Local=8
+10-08 18:17:47.450 I/cast_shell( 1870): [metrics_stat_logger] Setup.eureka_info.Local.200=8
+10-08 18:17:47.470 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.471 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.471 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.478 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:47.532 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.533 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.533 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.546 D/Maestro (13486): View hierarchy received in 14 ms
+10-08 18:17:47.599 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:47.602 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.603 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.603 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.611 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:47.666 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.666 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.666 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.671 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:47.725 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.726 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.726 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.733 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:47.792 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.793 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.793 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.804 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:47.864 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.865 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.865 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.879 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:47.933 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.934 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.934 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.938 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:47.985 D/ActivityManager(  657): freezing 13539 app.cablegram.approvalqa.test
+10-08 18:17:47.989 D/InetDiagMessage(  657): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET, states=14
+10-08 18:17:47.989 D/InetDiagMessage(  657): Destroyed 0 sockets, proto=IPPROTO_TCP, family=AF_INET6, states=14
+10-08 18:17:47.989 D/InetDiagMessage(  657): Destroyed live tcp sockets for uids={10100} in 1ms
+10-08 18:17:47.997 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:47.998 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:47.998 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.009 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:48.060 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.061 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.061 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.067 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:48.120 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.120 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.120 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.125 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): Cannot acquire BluetoothActivityEnergyInfo
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): java.util.concurrent.ExecutionException: java.lang.RuntimeException: error: 11
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:372)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2072)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at com.android.server.power.stats.BluetoothPowerStatsCollector.collectBluetoothActivityInfo(BluetoothPowerStatsCollector.java:192)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at com.android.server.power.stats.BluetoothPowerStatsCollector.collectStats(BluetoothPowerStatsCollector.java:155)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at com.android.server.power.stats.PowerStatsCollector.collectAndDeliverStats(PowerStatsCollector.java:176)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at com.android.server.power.stats.PowerStatsCollector$$ExternalSyntheticLambda0.run(R8$$SyntheticClass:0)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.os.Handler.handleCallback(Handler.java:995)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.os.Handler.dispatchMessage(Handler.java:103)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.os.Looper.loopOnce(Looper.java:248)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.os.Looper.loop(Looper.java:338)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.os.HandlerThread.run(HandlerThread.java:85)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): Caused by: java.lang.RuntimeException: error: 11
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at com.android.server.power.stats.BluetoothPowerStatsCollector$1.onBluetoothActivityEnergyInfoError(BluetoothPowerStatsCollector.java:181)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.bluetooth.BluetoothAdapter$OnBluetoothActivityEnergyInfoProxy.lambda$onBluetoothActivityEnergyInfoAvailable$0(BluetoothAdapter.java:1037)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.bluetooth.BluetoothAdapter$OnBluetoothActivityEnergyInfoProxy$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.bluetooth.BluetoothUtils.lambda$executeFromBinder$0(BluetoothUtils.java:343)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.bluetooth.BluetoothUtils$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at com.android.server.SystemServerInitThreadPool$$ExternalSyntheticLambda0.execute(R8$$SyntheticClass:0)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.bluetooth.BluetoothUtils.executeFromBinder(BluetoothUtils.java:343)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.bluetooth.BluetoothAdapter$OnBluetoothActivityEnergyInfoProxy.onBluetoothActivityEnergyInfoAvailable(BluetoothAdapter.java:1035)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.bluetooth.IBluetoothActivityEnergyInfoListener$Stub.onTransact(IBluetoothActivityEnergyInfoListener.java:98)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.os.Binder.execTransactInternal(Binder.java:1426)
+10-08 18:17:48.158 E/BluetoothPowerStatsCollector(  657): 	at android.os.Binder.execTransact(Binder.java:1365)
+10-08 18:17:48.176 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.176 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.176 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.181 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:48.234 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.234 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.234 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.241 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:48.294 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.295 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.295 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.301 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:48.353 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.353 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.353 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.361 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:48.464 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.465 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.465 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.477 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:48.527 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.527 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.528 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.532 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:48.591 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.592 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.592 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.598 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:48.649 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.649 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.649 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.653 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:48.707 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.708 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.708 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.713 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:48.761 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.761 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.762 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.765 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:48.815 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.815 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.816 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.819 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:48.871 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.871 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.872 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.878 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:48.928 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.929 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.929 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.935 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:48.986 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:48.987 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.987 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:48.993 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:49.049 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.050 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.050 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.058 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:49.110 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.110 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.111 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.114 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:49.177 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.178 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.178 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.190 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:49.239 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.239 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.239 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.244 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:49.296 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.296 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.297 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.302 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:49.350 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.351 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.351 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.358 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:49.408 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.409 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.409 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.415 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:49.466 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.467 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.467 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.473 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:49.524 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.524 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.524 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.532 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:49.590 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.590 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.591 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.603 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:49.604 D/Maestro (13486): View hierarchy received in 14 ms
+10-08 18:17:49.660 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.661 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.661 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.677 D/Maestro (13486): View hierarchy received in 17 ms
+10-08 18:17:49.728 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.729 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.729 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.738 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:49.801 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.801 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.802 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.810 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:49.865 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.865 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.865 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.874 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:49.882 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.882 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.882 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.889 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:49.941 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:49.942 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.942 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:49.947 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:50.000 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.001 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.001 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.009 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:50.063 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.063 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.064 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.078 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:50.135 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.136 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.136 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.147 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:50.158 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.158 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.158 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.165 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:50.216 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.217 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.217 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.224 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:50.232 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.232 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.233 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.246 D/Maestro (13486): View hierarchy received in 14 ms
+10-08 18:17:50.253 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.253 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.253 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.257 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:50.306 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.306 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.307 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.309 D/Maestro (13486): View hierarchy received in 3 ms
+10-08 18:17:50.357 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.358 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.358 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.364 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:50.415 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.415 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.416 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.423 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:50.476 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.476 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.476 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.480 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:50.487 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.487 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.488 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.494 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:50.549 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.550 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.550 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.560 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:50.611 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.611 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.611 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.617 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:50.669 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.669 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.670 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.681 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:50.733 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.734 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.734 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.741 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:50.796 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.797 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.797 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.812 D/Maestro (13486): View hierarchy received in 16 ms
+10-08 18:17:50.874 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.874 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.874 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.890 D/Maestro (13486): View hierarchy received in 16 ms
+10-08 18:17:50.943 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:50.944 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.944 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:50.951 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:51.006 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.007 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.007 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.018 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:51.072 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.072 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.072 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.085 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:51.142 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.144 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.145 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.154 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:51.206 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.207 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.207 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.211 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:51.267 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.267 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.268 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.281 D/Maestro (13486): View hierarchy received in 14 ms
+10-08 18:17:51.338 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.339 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.339 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.347 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:51.405 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.406 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.406 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.415 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:51.462 D/ActivityManager(  657): freezing 1315 com.android.keychain
+10-08 18:17:51.464 D/ActivityManager(  657): freezing 2280 com.android.localtransport
+10-08 18:17:51.465 D/ActivityManager(  657): freezing 1768 com.android.dynsystem:dynsystem
+10-08 18:17:51.466 D/ActivityManager(  657): freezing 1705 com.android.dynsystem
+10-08 18:17:51.467 D/ActivityManager(  657): freezing 1011 com.android.tv.settings
+10-08 18:17:51.475 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.476 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.476 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.485 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:51.536 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.536 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.537 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.543 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:51.601 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.601 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.601 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.611 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:51.613 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:51.666 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.667 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.667 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.671 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:51.722 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.722 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.722 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.725 D/Maestro (13486): View hierarchy received in 3 ms
+10-08 18:17:51.774 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.774 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.775 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.780 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:51.830 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.831 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.831 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.835 D/Maestro (13486): View hierarchy received in 5 ms
+10-08 18:17:51.886 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.886 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.886 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.890 D/Maestro (13486): View hierarchy received in 4 ms
+10-08 18:17:51.943 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.943 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.944 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.945 D/Maestro (13486): View hierarchy received in 2 ms
+10-08 18:17:51.996 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:51.996 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:51.996 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.002 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:52.054 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.055 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.055 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.063 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:52.117 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.117 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.117 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.125 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:52.183 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.183 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.183 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.194 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:52.244 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.245 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.245 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.257 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:52.316 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.316 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.316 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.327 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:52.384 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.385 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.385 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.393 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:52.448 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.448 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.449 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.457 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:52.514 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.514 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.515 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.522 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:52.574 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.575 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.575 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.580 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:52.637 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.637 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.638 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.649 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:52.706 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.706 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.707 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.717 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:52.773 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.773 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.774 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.783 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:52.843 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.844 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.844 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.858 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:52.868 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.868 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.869 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.874 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:52.923 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.923 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.924 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.926 D/Maestro (13486): View hierarchy received in 3 ms
+10-08 18:17:52.983 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:52.983 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.984 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:52.996 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:53.054 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.055 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.055 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.070 D/Maestro (13486): View hierarchy received in 16 ms
+10-08 18:17:53.128 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.128 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.128 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.138 D/Maestro (13486): View hierarchy received in 10 ms
+10-08 18:17:53.193 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.194 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.194 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.207 D/Maestro (13486): View hierarchy received in 14 ms
+10-08 18:17:53.263 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.264 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.264 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.278 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:53.332 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.333 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.333 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.346 D/Maestro (13486): View hierarchy received in 14 ms
+10-08 18:17:53.403 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.404 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.404 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.412 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:53.465 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.465 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.466 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.474 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:53.531 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.531 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.531 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.544 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:53.616 I/CablegramPair(12695): TV poll status=pending host=null port=null public=null pin=…569
+10-08 18:17:53.645 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.645 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.645 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.660 D/Maestro (13486): View hierarchy received in 15 ms
+10-08 18:17:53.667 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.667 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.668 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.678 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:53.726 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.726 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.726 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.732 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:53.787 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.787 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.788 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.794 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:53.846 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.846 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.847 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.855 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:53.908 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.909 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.909 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.916 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:53.928 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.928 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.928 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.934 D/Maestro (13486): View hierarchy received in 6 ms
+10-08 18:17:53.987 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:53.988 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.988 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:53.995 D/Maestro (13486): View hierarchy received in 8 ms
+10-08 18:17:54.058 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.059 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.059 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.070 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:54.125 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.125 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.125 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.136 D/Maestro (13486): View hierarchy received in 11 ms
+10-08 18:17:54.193 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.194 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.194 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.200 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:54.258 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.258 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.258 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.266 D/Maestro (13486): View hierarchy received in 9 ms
+10-08 18:17:54.319 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.319 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.320 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.331 D/Maestro (13486): View hierarchy received in 12 ms
+10-08 18:17:54.389 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.389 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.390 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.396 D/ActivityManager(  657): sync unfroze 1315 com.android.keychain for 10
+10-08 18:17:54.396 D/ActivityManager(  657): sync unfroze 2280 com.android.localtransport for 10
+10-08 18:17:54.396 D/ActivityManager(  657): sync unfroze 1768 com.android.dynsystem:dynsystem for 10
+10-08 18:17:54.397 D/ActivityManager(  657): sync unfroze 1705 com.android.dynsystem for 10
+10-08 18:17:54.398 D/ActivityManager(  657): sync unfroze 1011 com.android.tv.settings for 10
+10-08 18:17:54.406 D/Maestro (13486): View hierarchy received in 17 ms
+10-08 18:17:54.464 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.465 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.465 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.480 D/Maestro (13486): View hierarchy received in 16 ms
+10-08 18:17:54.537 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.537 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.537 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.550 D/Maestro (13486): View hierarchy received in 13 ms
+10-08 18:17:54.642 D/Maestro (13486): Requesting view hierarchy
+10-08 18:17:54.643 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.643 W/QueryController(13486): Could not detect idle state.
+10-08 18:17:54.649 D/Maestro (13486): View hierarchy received in 7 ms
+10-08 18:17:54.790 D/WindowManager(  657): captureDisplay
+10-08 18:17:54.822 I/DisplayManager(13486): Choreographer implicitly registered for the refresh rate.
+10-08 18:17:54.835 I/EGL_emulation(13486): Opening libGLESv1_CM_emulation.so
+10-08 18:17:54.835 I/EGL_emulation(13486): Opening libGLESv2_emulation.so
+10-08 18:17:54.838 W/HWUI    (13486): Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+10-08 18:17:54.838 W/HWUI    (13486): Failed to initialize 101010-2 format, error = EGL_SUCCESS
