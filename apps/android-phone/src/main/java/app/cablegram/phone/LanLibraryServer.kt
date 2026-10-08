@@ -39,6 +39,9 @@ class LanLibraryServer(
      * address (an adb or VPN forward also arrives from 127.0.0.1).
      */
     private val acceptQueryToken: Boolean = false,
+    private val onTvRequest: () -> Unit = {},
+    private val onStreamStarted: () -> Unit = {},
+    private val onStreamFinished: () -> Unit = {},
 ) : NanoHTTPD(hostname, port) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
@@ -54,6 +57,7 @@ class LanLibraryServer(
         if (grant == null && !authorized(session)) {
             return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"invalid_lan_token"}""")
         }
+        onTvRequest()
         if (grant == null && session.method == Method.GET && path.startsWith("/links/")) {
             return issueLink(session, path.removePrefix("/links"))
         }
@@ -98,7 +102,7 @@ class LanLibraryServer(
                     }
                 }
                 val wrapped = serveItem(item, session.headers["range"], contentTypeFor(item))
-                if (isHead) headAware(wrapped, true, keepContentLength = true) else wrapped
+                if (isHead) headAware(wrapped, true, keepContentLength = true) else trackStream(wrapped)
             }
             (session.method == Method.GET || isHead) && path.startsWith("/telegram/") -> {
                 val media = telegram ?: return notFound()
@@ -119,7 +123,7 @@ class LanLibraryServer(
                         TelegramRangeStream({ p, w -> media.read(file.fileId, p, w) }, 0, file.size - 1), file.size,
                     ).apply { addHeader("Accept-Ranges", "bytes") }
                 }
-                if (isHead) headAware(response, true, keepContentLength = true) else response
+                if (isHead) headAware(response, true, keepContentLength = true) else trackStream(response)
             }
             (session.method == Method.GET || isHead) && path.startsWith("/poster/") -> {
                 val id = path.removePrefix("/poster/")
@@ -132,6 +136,14 @@ class LanLibraryServer(
             }
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, "application/json", """{"error":"not_found"}""")
         }
+    }
+
+    private fun trackStream(response: Response): Response {
+        if (response.status == Response.Status.OK || response.status == Response.Status.PARTIAL_CONTENT) {
+            onStreamStarted()
+            response.data = LanActivityInputStream(response.data, onStreamFinished)
+        }
+        return response
     }
 
     /** T076: HEAD must carry the same headers with no body. */
