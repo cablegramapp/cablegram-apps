@@ -1,0 +1,13 @@
+appId: app.cablegram.signatureqa
+---
+- launchApp
+- assertVisible: "Skip"
+- takeScreenshot: opening-signature
+- tapOn: "Skip"
+- assertNotVisible: "Skip"
+- pressKey: Home
+- launchApp:
+    stopApp: false
+- assertVisible: "Skip"
+- pressKey: Back
+- assertNotVisible: "Skip"

@@ -246,6 +246,14 @@ val DEFAULT_LOADING_VIDEOS = listOf(
 
 fun getRandomLoadingVideoUrl(): String = DEFAULT_LOADING_VIDEOS.random()
 
+val ERROR_SIGNATURE_VIDEOS = listOf(
+    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_1e5a5e12.mp4",
+    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_219a8857.mp4",
+    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_9abc993d.mp4",
+)
+
+fun getRandomErrorVideoUrl(): String = ERROR_SIGNATURE_VIDEOS.random()
+
 const val PRIVACY_POLICY_URL = "https://cablegram.app/privacy.html"
 const val DEMO_REVIEWER_PIN = "9999"
 const val DEMO_SELECT_CLICKS = 5

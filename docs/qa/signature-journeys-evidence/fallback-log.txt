@@ -1,0 +1,2 @@
+--------- beginning of main
+10-08 18:40:36.840 15659 15673 I SignatureJourneys: PASS missing signature did not block opening or ready playback

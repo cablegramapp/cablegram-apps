@@ -79,6 +79,12 @@ import kotlinx.serialization.json.jsonPrimitive
 
 @Composable
 fun CablegramApp(viewModel: CablegramViewModel) {
+    viewModel.openingSignature?.let { opening ->
+        androidx.compose.runtime.key(opening.id) {
+            SignatureOpeningScreen(opening.url, onFinished = { viewModel.finishOpeningSignature(opening.id) })
+        }
+        return
+    }
     val activity = LocalActivity.current as? MainActivity
     LaunchedEffect(viewModel.pendingNavCommand) {
         val command = viewModel.pendingNavCommand ?: return@LaunchedEffect
@@ -227,6 +233,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                 is ScreenState.Resolving -> PrepareStatusScreen(
                     screen = screen,
                     onCancel = viewModel::cancelResolving,
+                    onSignatureFinished = { viewModel.finishPlaybackSignature(screen.signatureAttemptId) },
                 )
                 is ScreenState.Player -> PlayerScreen(
                     videoId = screen.video.id,
@@ -325,6 +332,9 @@ private fun ProfilePickerScreen(
                         color = if (state.pinError != null && !state.pending) Warning else Muted,
                         fontSize = 15.sp,
                     )
+                    if (state.pinError != null && !state.pending) {
+                        UnhappyVideoPanel(state.pinError, Modifier.width(180.dp).height(101.dp).padding(top = 8.dp))
+                    }
                     Spacer(Modifier.height(22.dp))
                     Button(onClick = onPinCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
                         Text("Cancel")
@@ -376,7 +386,10 @@ private fun ProfilePickerScreen(
                 color = if (state.message != null && !state.pending) Warning else Muted,
                 fontSize = 18.sp,
             )
-            Spacer(Modifier.height(40.dp))
+            if (state.message != null && !state.pending) {
+                UnhappyVideoPanel(state.message, Modifier.width(160.dp).height(90.dp).padding(top = 8.dp))
+            }
+            Spacer(Modifier.height(if (state.message != null) 16.dp else 40.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(28.dp),
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
@@ -485,7 +498,10 @@ private fun SessionActionsScreen(
             Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.colors(containerColor = Panel)) {
                 Text("Back")
             }
-            message?.let { Text(it, color = Warning, fontSize = 13.sp) }
+            message?.let {
+                UnhappyVideoPanel(it, Modifier.width(140.dp).height(79.dp))
+                Text(it, color = Warning, fontSize = 13.sp)
+            }
         }
     }
 }
@@ -737,7 +753,7 @@ private fun PairingScreen(
 }
 
 @Composable
-private fun ErrorScreen(
+internal fun ErrorScreen(
     title: String,
     message: String,
     onRetry: () -> Unit,
@@ -745,36 +761,14 @@ private fun ErrorScreen(
     onConvert: (() -> Unit)?,
     onSignOut: (() -> Unit)?,
     onBack: (() -> Unit)? = null,
+    errorVideoUrl: String? = null,
 ) {
     if (onBack != null) BackHandler(onBack = onBack)
-    Box(Modifier.fillMaxSize().padding(72.dp), contentAlignment = Alignment.Center) {
-        Column(
-            modifier = Modifier
-                .width(640.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(PanelSoft)
-                .border(1.dp, Outline, RoundedCornerShape(22.dp))
-                .padding(horizontal = 44.dp, vertical = 36.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                Modifier.size(64.dp).clip(CircleShape).background(Coral.copy(alpha = 0.16f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("!", color = Coral, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(18.dp))
-            Text(title, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Spacer(Modifier.height(12.dp))
-            Text(
-                message,
-                color = Muted,
-                fontSize = 17.sp,
-                lineHeight = 25.sp,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-            Spacer(Modifier.height(28.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    UnhappyScenarioFrame(eventKey = "$title:$message", videoUrl = errorVideoUrl) {
+            Text("CABLEGRAM", color = Coral, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(title, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Paper, lineHeight = 31.sp)
+            Text(message, color = Muted, fontSize = 16.sp, lineHeight = 23.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 val retryFocus = remember { FocusRequester() }
                 LaunchedEffect(Unit) {
                     // Let the Button start observing focus before focusing it.
@@ -800,7 +794,6 @@ private fun ErrorScreen(
                     }
                 }
             }
-        }
     }
 }
 

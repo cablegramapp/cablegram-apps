@@ -1,0 +1,4 @@
+Full TV testDebugUnitTest: {'tests': 212, 'failures': 0, 'errors': 0, 'skipped': 0}
+Telegram package synchronization: passed (2 directories).
+Staged gitleaks: no leaks found.
+Whitespace in generated evidence logs normalized before publication.

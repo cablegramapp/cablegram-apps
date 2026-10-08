@@ -78,6 +78,7 @@ sealed interface ScreenState {
         val prepareLabel: String? = null,
         /** T075: private playback is waiting for phone approval — show the permit panel. */
         val awaitingApproval: Boolean = false,
+        val signatureAttemptId: String? = null,
     ) : ScreenState
     data class Player(val video: Video, val playback: PlaybackResponse) : ScreenState
     /** A Telegram title was opened while this TV still waits for the Telegram two-step password. */
@@ -99,7 +100,10 @@ internal fun ScreenState.acceptsCommandPolling(): Boolean =
         this is ScreenState.Resolving ||
         this is ScreenState.Player
 
-class CablegramViewModel(application: Application) : AndroidViewModel(application) {
+class CablegramViewModel @JvmOverloads constructor(
+    application: Application,
+    private val signatureUrl: () -> String = ::getRandomLoadingVideoUrl,
+) : AndroidViewModel(application) {
     private val api = CablegramApi(lanStream = ::lanStreamUrl)
     private val authStore = AuthStore(application)
     /** Spec 004: this TV's Telegram session, approved by the household phone. */
@@ -130,6 +134,48 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     private var remoteTitleCommand by mutableStateOf<Pair<String, String>?>(null)
     val pendingRemoteTitleId: String? get() = remoteTitleCommand?.first
     private var playbackJob: Job? = null
+    private val signatureGate = SignaturePlaybackGate<ScreenState.Player>()
+    private var signatureAttemptId: String? = null
+    private var lastPlayerPosition: Pair<String, Int>? = null
+    data class OpeningSignature(val id: String, val url: String)
+    var openingSignature by mutableStateOf<OpeningSignature?>(null)
+        private set
+
+    fun showOpeningSignature() {
+        (screen as? ScreenState.Player)?.let { player ->
+            lastPlayerPosition?.takeIf { it.first == player.video.id }?.let { position ->
+                screen = player.copy(playback = player.playback.copy(resumePositionSeconds = position.second))
+            }
+        }
+        openingSignature = OpeningSignature(java.util.UUID.randomUUID().toString(), signatureUrl())
+    }
+
+    fun finishOpeningSignature(id: String) {
+        if (openingSignature?.id == id) openingSignature = null
+    }
+
+    private fun beginSignature(video: Video, url: String, converting: Boolean = false): String {
+        val id = java.util.UUID.randomUUID().toString()
+        signatureAttemptId = id
+        signatureGate.begin(id)
+        screen = ScreenState.Resolving(video, converting = converting, loadingVideoUrl = url, signatureAttemptId = id)
+        return id
+    }
+
+    fun finishPlaybackSignature(id: String?) {
+        if (id == null || (screen as? ScreenState.Resolving)?.signatureAttemptId != id) return
+        signatureGate.complete(id)?.let { screen = it }
+    }
+
+    private fun presentReadyPlayback(player: ScreenState.Player, id: String) {
+        signatureGate.ready(id, player)?.let { screen = it } ?: run {
+            if (signatureAttemptId == id) {
+                val resolving = screen as? ScreenState.Resolving ?: return
+                screen = resolving.copy(video = player.video, awaitingApproval = false,
+                    prepareLabel = "Your video is ready. Starting after this clip.")
+            }
+        }
+    }
     private var cachedVideos: List<Video> = emptyList()
     private var profiles: List<Profile> = emptyList()
     private var activeProfileId: String? = null
@@ -505,7 +551,9 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             val url = demoPlaybackUrl(video.id) ?: return
             librarySyncJob?.cancel()
             failedPlaybackVideo = null
-            screen = ScreenState.Player(video, PlaybackResponse(status = "ready", url = url))
+            playbackJob?.cancel()
+            val id = beginSignature(video, signatureUrl())
+            presentReadyPlayback(ScreenState.Player(video, PlaybackResponse(status = "ready", url = url)), id)
             return
         }
         val currentToken = token ?: return
@@ -518,28 +566,20 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         }
         librarySyncJob?.cancel()
         failedPlaybackVideo = null
-        val loadingUrl = getRandomLoadingVideoUrl()
-        if (!video.hasCompletedIngest() || video.tier == "evicted") {
-            screen = ScreenState.Resolving(
-                video,
-                loadingVideoUrl = loadingUrl,
-                prepareProgress = video.ingestProgress,
-                prepareStage = video.ingestStage,
-                prepareLabel = video.ingestLabel,
-            )
-        }
+        val loadingUrl = signatureUrl()
         playbackJob?.cancel()
-        playbackJob = viewModelScope.launch { awaitPlayback(video, currentToken, loadingUrl) }
+        val id = beginSignature(video, loadingUrl)
+        playbackJob = viewModelScope.launch { awaitPlayback(video, currentToken, loadingUrl, id) }
     }
 
     fun requestTranscode(video: Video) {
         val currentToken = token ?: return
-        val loadingUrl = getRandomLoadingVideoUrl()
-        screen = ScreenState.Resolving(video, converting = true, loadingVideoUrl = loadingUrl)
+        val loadingUrl = signatureUrl()
+        val id = beginSignature(video, loadingUrl, converting = true)
         playbackJob?.cancel(); playbackJob = viewModelScope.launch {
             try {
                 api.requestTranscode(video.id, "manual_client_fallback", currentToken)
-                awaitPlayback(video, currentToken, loadingUrl)
+                awaitPlayback(video, currentToken, loadingUrl, id)
             }
             catch (error: CancellationException) { throw error }
             catch (error: Exception) {
@@ -558,8 +598,8 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         closePlayer()
     }
 
-    private suspend fun awaitPlayback(video: Video, currentToken: String, initialLoadingUrl: String? = null) {
-        var currentLoadingUrl = initialLoadingUrl ?: getRandomLoadingVideoUrl()
+    private suspend fun awaitPlayback(video: Video, currentToken: String, initialLoadingUrl: String, attemptId: String) {
+        var currentLoadingUrl = initialLoadingUrl
         var currentVideo = video
         try {
             while (true) {
@@ -574,6 +614,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                         screen = ScreenState.Resolving(
                             video = currentVideo,
                             loadingVideoUrl = currentLoadingUrl,
+                            signatureAttemptId = attemptId,
                             prepareLabel = label,
                         )
                     },
@@ -583,6 +624,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                         screen = ScreenState.Resolving(
                             video = currentVideo,
                             loadingVideoUrl = currentLoadingUrl,
+                            signatureAttemptId = attemptId,
                             prepareLabel = "Waiting for your phone to approve",
                             awaitingApproval = true,
                         )
@@ -604,10 +646,10 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                     libraryVideos = cachedVideos
                     // Playback responses carry no progress; resume from the
                     // profile's catalog position so Resume / Start over appears.
-                    screen = ScreenState.Player(
+                    presentReadyPlayback(ScreenState.Player(
                         currentVideo,
                         playback.copy(resumePositionSeconds = playback.resumePositionSeconds ?: video.resumePositionSeconds),
-                    )
+                    ), attemptId)
                     break
                 }
                 if (playback.status == "denied") {
@@ -640,6 +682,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
                     prepareStage = playback.prepareStage,
                     prepareLabel = playback.prepareLabel,
                     awaitingApproval = awaitingApproval,
+                    signatureAttemptId = attemptId,
                 )
                 delay((playback.pollAfterSeconds ?: 2) * 1_000L)
             }
@@ -675,6 +718,8 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun closePlayer() {
+        signatureGate.cancel()
+        signatureAttemptId = null
         castApp?.mediaSession?.stop()
         phoneRelayChoice = null
         telegram.releasePlayback()
@@ -690,6 +735,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun reportPlaybackState(videoId: String, positionSeconds: Int, durationSeconds: Int?, isPlaying: Boolean, volume: Int, muted: Boolean, engine: String? = null) {
+        lastPlayerPosition = videoId to positionSeconds
         castApp?.mediaSession?.progress(positionSeconds * 1000L, isPlaying)
         if (isPlaying) remotePlaybackResult(videoId, null)
         if (isDemoMode || isDemoVideoId(videoId)) return
