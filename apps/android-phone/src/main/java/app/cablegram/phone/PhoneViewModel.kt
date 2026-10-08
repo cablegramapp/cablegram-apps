@@ -223,6 +223,45 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var subtitleFlowOpen by mutableStateOf(false)
     var savedSubtitle by mutableStateOf<String?>(null)
         private set
+    private val subtitleCredentialStore = SubtitleCredentialStore(getApplication())
+    private val subtitleSessions = mutableSetOf<LocalSubtitleDiscovery>()
+    var subtitleCredentialRevision by mutableStateOf(0)
+        private set
+    private fun subtitleUser(): String? = pairing.accountToken?.let { token -> runCatching {
+        val payload = android.util.Base64.decode(token.split('.')[1], android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+        org.json.JSONObject(payload.toString(Charsets.UTF_8)).getString("sub").takeIf { it.isNotBlank() }
+    }.getOrNull() }
+    fun subtitleProviderConfigured(provider: String): Boolean = subtitleUser()?.let { subtitleCredentialStore.read(it, provider) != null } ?: false
+    private fun cancelSubtitleSessions() {
+        subtitleSessions.toList().forEach { it.close() }; subtitleSessions.clear()
+        subtitleCredentialRevision++
+    }
+    fun saveSubtitleProvider(provider: String, credentials: PersonalSubtitleCredentials) {
+        val user = subtitleUser() ?: return
+        cancelSubtitleSessions(); subtitleCredentialStore.save(user, provider, credentials)
+    }
+    fun removeSubtitleProvider(provider: String) {
+        val user = subtitleUser() ?: return
+        cancelSubtitleSessions(); subtitleCredentialStore.remove(user, provider)
+    }
+    fun newSubtitleSession(): LocalSubtitleDiscovery {
+        val user = subtitleUser() ?: return LocalSubtitleDiscovery(emptyMap())
+        val configured = listOf("subdl", "opensubtitles").mapNotNull { provider -> subtitleCredentialStore.read(user, provider)?.let { provider to it } }.toMap()
+        lateinit var session: LocalSubtitleDiscovery
+        session = LocalSubtitleDiscovery(configured, onClose = { subtitleSessions.remove(session) })
+        subtitleSessions += session
+        return session
+    }
+    fun removeSavedSubtitle(item: LibraryItem) {
+        val token = accountTokenOrNull() ?: return
+        viewModelScope.launch {
+            try {
+                val tracks = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<SavedSubtitleList>(subtitleRequest("playback/item/${item.id}", token)).subtitles
+                tracks.forEach { if (it.trackId.isNotEmpty()) subtitleRequest(it.trackId, token, "DELETE") }
+                refreshSubtitleStatus(item)
+            } catch (_: Exception) { status = "Subtitle couldn't be removed. Try again." }
+        }
+    }
     fun accountTokenOrNull(): String? = pairing.accountToken?.takeIf { it.isNotBlank() }
     suspend fun subtitleRequest(path: String, token: String, method: String = "GET", body: String? = null): String = catalog().subtitleRequest(path, token, method, body)
     // Analysis reads short sections far apart: a small download window keeps what Telegram fetches close to what the
@@ -884,6 +923,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Everything a signed-in phone holds in memory and in its stores, back to a fresh install's sign-in screen. */
     private fun clearSignedInState() {
         LanLibraryService.stop(getApplication())
+        subtitleFlowOpen = false
+        subtitleUser()?.let { subtitleCredentialStore.clear(it) }
+        cancelSubtitleSessions()
         pairing.accountToken = null
         pairing.refreshToken = null
         pairing.phoneDeviceId = null
@@ -906,6 +948,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun signOut() {
         if (busy) return
+        cancelSubtitleSessions()
         viewModelScope.launch {
             busy = true
             try {
@@ -2811,6 +2854,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        cancelSubtitleSessions()
         castRoutesJob?.cancel()
         castSender?.release()
         super.onCleared()

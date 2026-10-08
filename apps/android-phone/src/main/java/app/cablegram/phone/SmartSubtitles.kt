@@ -17,8 +17,8 @@ import kotlin.math.sqrt
 
 @Serializable data class SubtitlePreferences(val languages: List<String> = listOf("fa", "en", "de"), val sdh: String = "normal", val includeForced: Boolean = true, val autoSelect: Boolean = false)
 @Serializable data class SubtitleCue(val start: Double, val end: Double, val text: String)
-@Serializable data class SubtitleAlignment(val verified: Boolean = false, val offset: Double = 0.0, val scale: Double = 1.0, val reason: String = "", val correlation: Double = 0.0)
-@Serializable data class SubtitleMatch(val id: String, val language: String, val confidence: String = "Unverified", val alignment: SubtitleAlignment? = null, val cues: List<SubtitleCue>? = null, val error: String? = null, val provider: String = "", val releaseName: String = "", val explanations: List<String> = emptyList())
+@Serializable data class SubtitleAlignment(val verified: Boolean = false, val offset: Double = 0.0, val scale: Double = 1.0, val reason: String = "", val correlation: Double = 0.0, val samples: Int = 0)
+@Serializable data class SubtitleMatch(val id: String, val language: String, val confidence: String = "Unverified", val alignment: SubtitleAlignment? = null, val cues: List<SubtitleCue>? = null, val error: String? = null, val provider: String = "", val releaseName: String = "", val explanations: List<String> = emptyList(), val forced: Boolean = false, val score: Double = 0.0)
 @Serializable data class SubtitleSelection(val id: String, val language: String = "", val confidence: String = "Unverified")
 @Serializable data class SubtitleProviderFailure(val provider: String = "", val code: String, val retryAfter: Int? = null)
 @Serializable data class SubtitleDiscovery(val id: String, val sourceId: String, val candidates: List<SubtitleMatch> = emptyList(), val status: String, val errors: List<SubtitleProviderFailure> = emptyList(), val selected: SubtitleSelection? = null, val existingLanguages: List<String> = emptyList())
@@ -255,7 +255,7 @@ object LocalSubtitleAnalysis {
             }
             best?.takeIf { speechFraction(it) >= .08 }?.let { windows += it }
         }
-        // Two informative sections are enough for the server to suggest a shift (never to verify); a film with little dialogue often has no more.
+        // Two informative sections are enough for the phone to suggest a shift (never to verify); a film with little dialogue often has no more.
         return windows.takeIf { it.size >= 2 }?.let { SubtitleFingerprint(windows = it) }
     }
     private val INFORMATIVE = .12..0.85
@@ -312,7 +312,7 @@ object LocalSubtitleAnalysis {
     }
 }
 
-@Serializable data class SavedSubtitle(val language: String)
+@Serializable data class SavedSubtitle(val language: String, val trackId: String = "")
 @Serializable data class SavedSubtitleList(val subtitles: List<SavedSubtitle> = emptyList())
 
 /** A title whose bytes can't be read for subtitle matching; the message is shown to the person as is. */
