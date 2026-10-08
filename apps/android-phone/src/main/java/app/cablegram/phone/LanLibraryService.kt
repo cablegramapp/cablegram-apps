@@ -165,6 +165,7 @@ class LanLibraryService : Service() {
             networkType = { RelayConsent.networkType(this) },
             admit = { network -> RelayConsent.admit(this, store, network) },
             onActivity = { active, bytes, network -> updateRelayNotification(active, bytes, network) },
+            onStreamStarted = lifetime::streamStarted, onStreamFinished = lifetime::streamFinished,
             localPort = localPort,
         )
         relay = tunnel

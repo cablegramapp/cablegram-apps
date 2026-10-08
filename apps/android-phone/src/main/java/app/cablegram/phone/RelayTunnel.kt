@@ -1,5 +1,6 @@
 package app.cablegram.phone
 
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,6 +53,8 @@ class RelayTunnel(
     /** Returns null to serve, or the refusal to send back (mobile-data policy). */
     private val admit: (network: String) -> RelayRefusal?,
     private val onActivity: (activeStreams: Int, bytesSent: Long, network: String) -> Unit = { _, _, _ -> },
+    private val onStreamStarted: () -> Unit = {},
+    private val onStreamFinished: () -> Unit = {},
     /** The media server's plain listener on 127.0.0.1; the LAN one is TLS (CAB-48). */
     private val localPort: Int,
     private val client: OkHttpClient = OkHttpClient.Builder()
@@ -169,7 +172,7 @@ class RelayTunnel(
         val headers = message["headers"]?.jsonObject
         val initialCredit = message["credit"]?.jsonPrimitive?.longOrNull ?: (1024L * 1024L)
         val credit = Channel<Long>(Channel.UNLIMITED)
-        val job = scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             var connection: HttpURLConnection? = null
             try {
                 connection = (URL("http://127.0.0.1:$localPort$path").openConnection() as HttpURLConnection).apply {
@@ -213,7 +216,11 @@ class RelayTunnel(
                 onActivity(streams.size, bytesSent.get(), network)
             }
         }
+        onStreamStarted()
+        job.invokeOnCompletion { onStreamFinished() }
         streams[sid] = Stream(job, credit)
+        onActivity(streams.size, bytesSent.get(), network)
+        job.start()
     }
 
     private fun cancelAll() {

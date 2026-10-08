@@ -42,6 +42,18 @@ class LanLibraryLifetimeTest {
         assertTrue(lifetime.shouldStop(false))
     }
 
+    @Test fun relayHoldsAfterLoopbackResponseHasFinished() {
+        lifetime.streamStarted() // Relay request.
+        lifetime.streamStarted() // Its loopback response.
+        lifetime.streamFinished()
+        now = 90 * 60_000L
+        assertFalse(lifetime.shouldStop(false))
+        lifetime.streamFinished()
+        assertFalse(lifetime.shouldStop(false))
+        now += 30 * 60_000L
+        assertTrue(lifetime.shouldStop(false))
+    }
+
     @Test fun castSessionHoldsServicePastIdleDeadline() {
         now = 30 * 60_000L
         assertFalse(lifetime.shouldStop(true))
