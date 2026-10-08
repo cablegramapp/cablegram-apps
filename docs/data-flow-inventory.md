@@ -184,6 +184,19 @@ tokens and the chosen TV in the browser's `localStorage`. It sends the same remo
   OAuth callback. Paths include item and source ids. Query strings are not logged (CAB-47).
 - **syslog** (and `auth.log`, `kern.log`, `mail.log`): daily, 14 kept, so at most 15 days (CAB-41).
 
+## Sharing between users (Play UGC)
+
+Content is never shared between Cablegram users (checked 2026-10-08, CAB-33). Each registration creates its own
+household, and no endpoint adds another account to one. Profiles are the account holder's own. A household's library,
+Telegram channel and own storage are visible only to that account's phones and TVs; there's nothing public, and no
+sharing, following or messaging. A temporary TV is a device the owner paired, not another user. One nuance: a cover saved
+to the household is served by `GET /api/catalog/items/:id/poster` without sign-in, reachable only through its random item
+id, which only that household's devices receive, and never for a private title.
+
+For the Play Console UGC questions: users can't share content with other users. Sign-up terms include a
+prohibited-content clause and the copyright contact (copyright@cablegram.app). In-app reporting comes with
+multi-member households (CAB-53).
+
 ## Open items
 
 These stop the policy from being simpler, or are gaps found while writing this. Not fixed in CAB-30.
