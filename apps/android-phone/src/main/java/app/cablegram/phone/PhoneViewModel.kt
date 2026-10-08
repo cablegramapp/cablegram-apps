@@ -19,6 +19,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -355,6 +357,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         refreshPendingApprovals()
         // One poller serves the notification and this list: ApprovalWatcher, in LanLibraryService.
         viewModelScope.launch { PrivateApprovals.pending.collect { pendingApprovals = it } }
+        // CAB-51: redraw when anything writes the library, e.g. a background save that started and finished between
+        // two polls. collectLatest with a short pause folds the progress writes of a running save into one redraw.
+        viewModelScope.launch {
+            store.revision.drop(1).collectLatest {
+                delay(250)
+                refresh()
+            }
+        }
         refreshPhoneIps()
         viewModelScope.launch { ads = catalog().ads() }
         refreshStorage()
