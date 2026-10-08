@@ -1,0 +1,2 @@
+INSTRUMENTATION_RESULT: result=PASS: selected folder count=3; selected folders readable; removed grant absent and removed tree unreadable when supplied; library entries retained
+INSTRUMENTATION_CODE: -1

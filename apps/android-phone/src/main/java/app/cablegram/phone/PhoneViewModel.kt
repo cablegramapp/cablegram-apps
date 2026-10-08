@@ -154,8 +154,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var browseSource by mutableStateOf(BrowseSource.None)
         private set
-    var browseVolumeName by mutableStateOf<String?>(null)
-        private set
     var browseRoots by mutableStateOf<List<StorageRoot>>(emptyList())
         private set
     var browseTreeUri by mutableStateOf<Uri?>(null)
@@ -1556,8 +1554,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 val remotes = client.fetchCatalog(token, failOnError = true)
                 // Restore household titles this phone doesn't list (reinstall, new phone): re-link the
-                // ones whose file is still here by fingerprint, keep the rest as "not on this phone".
-                val deviceVideos by lazy { store.deviceVideosByFingerprint() }
+                // files the user selected again by fingerprint; keep the rest as "not on this phone".
+                val deviceVideos by lazy { store.selectedVideosByFingerprint() }
                 val dismissed = store.dismissedRemoteIds()
                 val relinked = mutableListOf<LibraryItem>()
                 // New Telegram titles the server could not match by itself: ask the owner once (T008).
@@ -1817,35 +1815,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun ensureBrowseRoot() {
         browseSource = BrowseSource.Roots
         browseTreeUri = null
-        browseVolumeName = null
         browseCrumbs = emptyList()
         browseEntries = emptyList()
         selectedBrowseIds = emptySet()
         refreshStorage()
-        viewModelScope.launch {
-            browseLoading = true
-            try {
-                val volumes = withContext(Dispatchers.IO) { indexer.listStorageVolumes() }
-                    .ifEmpty {
-                        listOf(
-                            StorageRoot(
-                                id = "vol:primary",
-                                name = "Internal storage",
-                                kind = StorageRootKind.Internal,
-                                detail = "This phone",
-                                volumeName = if (android.os.Build.VERSION.SDK_INT >= 29) {
-                                    android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY
-                                } else {
-                                    null
-                                },
-                            ),
-                        )
-                    }
-                browseRoots = volumes + cloudStorageRoots()
-            } finally {
-                browseLoading = false
-            }
-        }
+        browseRoots = cloudStorageRoots()
     }
 
     fun openStorageRoot(root: StorageRoot) {
@@ -1866,21 +1840,50 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun applyBrowseFilter(videosOnly: Boolean) {
         browseVideosOnly = videosOnly
-        if (browseSource == BrowseSource.Phone || browseSource == BrowseSource.Folder) reloadBrowse()
+        if (browseSource == BrowseSource.Folder) reloadBrowse()
     }
 
-    fun openBrowseFolder(treeUri: Uri, folderName: String) {
-        persistRead(treeUri)
-        store.rememberFolder(treeUri.toString(), folderName)
-        refresh()
-        browseSource = BrowseSource.Folder
-        browseTreeUri = treeUri
-        browseCrumbs = listOf(BrowseCrumb(folderName, documentId = DocumentsContract.getTreeDocumentId(treeUri)))
-        reloadBrowse()
+    fun openBrowseFolder(treeUri: Uri, folderName: String? = null) {
+        if (!persistRead(treeUri)) {
+            status = "Folder access could not be saved. Choose the folder again."
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val name = folderName ?: withContext(Dispatchers.IO) {
+                    indexer.displayName(DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri)))
+                }
+                store.rememberFolder(treeUri.toString(), name)
+                refresh()
+                browseSource = BrowseSource.Folder
+                browseTreeUri = treeUri
+                browseCrumbs = listOf(BrowseCrumb(name, documentId = DocumentsContract.getTreeDocumentId(treeUri)))
+                status = null
+                reloadBrowse()
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                status = "Could not open that folder. Choose it again."
+            }
+        }
     }
 
-    fun openBrowsePhone() {
-        ensureBrowseRoot()
+    fun removeBrowseFolder(folder: IndexedFolder) {
+        val uri = Uri.parse(folder.uri)
+        val resolver = getApplication<Application>().contentResolver
+        val grant = resolver.persistedUriPermissions.firstOrNull { it.uri == uri }
+        try {
+            if (grant != null) {
+                val flags = (if (grant.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                    (if (grant.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                resolver.releasePersistableUriPermission(uri, flags)
+            }
+            store.forgetFolder(folder.uri)
+            refresh()
+            if (browseTreeUri == uri) ensureBrowseRoot()
+            status = "Removed ${folder.name} from selected folders."
+        } catch (error: SecurityException) {
+            status = "Could not release folder access. Try again."
+        }
     }
 
     fun openBrowseEntry(entry: BrowseEntry) {
@@ -1898,9 +1901,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 reloadBrowse()
                 return
             }
-            browseSource = BrowseSource.Phone
-            browseCrumbs = browseCrumbs + BrowseCrumb(entry.name, mediaPath = entry.mediaPath)
-            reloadBrowse()
+            status = "Choose this folder with the system picker."
             return
         }
         toggleBrowseFile(entry)
@@ -1923,19 +1924,25 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun addPickedFiles(uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
-            val files = withContext(Dispatchers.IO) {
-                uris.map { uri ->
-                    persistRead(uri)
-                    val name = indexer.displayName(uri)
-                    BrowseEntry(
-                        id = uri.toString(),
-                        name = name,
-                        isDirectory = false,
-                        isVideo = MediaIndexer.isVideoFile(name, ""),
-                        sizeBytes = indexer.sizeBytes(uri),
-                        uri = uri,
-                    )
+            val files = try {
+                withContext(Dispatchers.IO) {
+                    uris.map { uri ->
+                        check(persistRead(uri)) { "File access could not be saved. Choose the video again." }
+                        val name = indexer.displayName(uri)
+                        BrowseEntry(
+                            id = uri.toString(),
+                            name = name,
+                            isDirectory = false,
+                            isVideo = MediaIndexer.isVideoFile(name, ""),
+                            sizeBytes = indexer.sizeBytes(uri),
+                            uri = uri,
+                        )
+                    }
                 }
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                status = "Could not save access to these videos. Choose them again."
+                return@launch
             }
             addBrowseFileEntries(files.filter { it.isVideo })
         }
@@ -2044,18 +2051,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             if (tree == null || doc == null) emptyList()
                             else indexer.listSafChildren(tree, doc)
                         }
-                        BrowseSource.Phone -> {
-                            indexer.listMediaStoreBrowse(
-                                crumb?.mediaPath.orEmpty(),
-                                browseVideosOnly,
-                                browseVolumeName,
-                            )
-                        }
                         BrowseSource.Cloud, BrowseSource.Roots, BrowseSource.None -> emptyList()
                     }
                 }
             } catch (error: Exception) {
-                status = error.message ?: "Could not open that folder"
+                status = "Folder access is unavailable. Choose the folder again."
                 browseEntries = emptyList()
             } finally {
                 browseLoading = false
@@ -2862,14 +2862,13 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
     }
 
-    private fun persistRead(uri: Uri) {
-        runCatching {
-            getApplication<Application>().contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION,
-            )
-        }
-    }
+    private fun persistRead(uri: Uri): Boolean = runCatching {
+        getApplication<Application>().contentResolver.takePersistableUriPermission(
+            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        )
+        true
+    }.getOrDefault(false)
+
 }
 
 enum class PhoneTab { Library, Browse, Remote, Storage, Settings }

@@ -108,6 +108,9 @@ fun LibraryShell(viewModel: PhoneViewModel) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         viewModel.addPickedFiles(uris)
     }
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let { viewModel.openBrowseFolder(it) }
+    }
     BackHandler(enabled = viewModel.selected != null || viewModel.openSeriesKey != null || viewModel.tab != PhoneTab.Library) {
         if (viewModel.selected != null) viewModel.closeItem()
         else if (viewModel.openSeriesKey != null) viewModel.closeSeries()
@@ -135,7 +138,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 Box(Modifier.weight(1f)) {
                     when (viewModel.tab) {
                         PhoneTab.Library -> LibraryHome(viewModel)
-                        PhoneTab.Browse -> BrowseScreen(viewModel, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) })
+                        PhoneTab.Browse -> BrowseScreen(viewModel, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) }, onChooseFolder = { pickFolder.launch(null) })
                         PhoneTab.Remote -> if (viewModel.legacyRemote) RemoteScreen(viewModel) else LibraryHome(viewModel)
                         PhoneTab.Storage -> StorageScreen(viewModel)
                         PhoneTab.Settings -> SettingsScreen(viewModel)
@@ -583,10 +586,23 @@ private fun CompactMenuItem(label: String, enabled: Boolean = true, onClick: () 
 private fun BrowseScreen(
     viewModel: PhoneViewModel,
     onOpenLocalRoot: () -> Unit,
+    onChooseFolder: () -> Unit,
 ) {
     var webUrl by rememberSaveable { mutableStateOf("") }
+    var folderToRemove by remember { mutableStateOf<IndexedFolder?>(null) }
+    folderToRemove?.let { folder ->
+        AlertDialog(
+            onDismissRequest = { folderToRemove = null },
+            title = { Text("Remove ${folder.name}?") },
+            text = { Text("Cablegram will stop remembering access to this folder. Imported videos stay in your library, but videos that rely on this folder may need it selected again to play.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.removeBrowseFolder(folder); folderToRemove = null }) { Text("Remove folder") }
+            },
+            dismissButton = { TextButton(onClick = { folderToRemove = null }) { Text("Cancel") } },
+        )
+    }
     LaunchedEffect(Unit) {
-        if (viewModel.browseSource == BrowseSource.None || viewModel.browseRoots.isEmpty()) {
+        if (viewModel.browseSource == BrowseSource.None) {
             viewModel.ensureBrowseRoot()
         }
     }
@@ -619,6 +635,7 @@ private fun BrowseScreen(
                     color = VlcOrange,
                     fontSize = 13.sp,
                 )
+                TextButton(onClick = onChooseFolder) { Text("Add or reselect folder", color = VlcOrange) }
                 val fileCount = entries.count { !it.isDirectory }
                 TextButton(onClick = viewModel::selectAllBrowseFiles, enabled = fileCount > 0) {
                     Text(
@@ -662,9 +679,25 @@ private fun BrowseScreen(
                     SectionCard("From your phone") {
                         Icon(Icons.Default.FolderOpen, null, Modifier.size(36.dp), tint = VlcOrange)
                         Text("Make it a movie night", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                        Text("Choose videos from your phone or connected storage. Select several to add them together.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                        Text("Choose videos or add folders with Android's picker, one folder at a time. Your selected folders stay available here until you remove them.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
                         Button(onClick = onOpenLocalRoot, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.BROWSE_PHONE)) {
                             Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Choose videos")
+                        }
+                        OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.BROWSE_OPEN_FOLDER)) {
+                            Text("Add folder")
+                        }
+                        if (viewModel.folders.isNotEmpty()) {
+                            Text("Selected folders", color = Color.White, style = MaterialTheme.typography.titleSmall)
+                        }
+                        viewModel.folders.forEach { folder ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { viewModel.openBrowseFolder(Uri.parse(folder.uri), folder.name) }, modifier = Modifier.weight(1f)) {
+                                    Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(folder.name)
+                                }
+                                IconButton(onClick = { folderToRemove = folder }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Remove folder ${folder.name}", tint = VlcMuted)
+                                }
+                            }
                         }
                     }
                 }

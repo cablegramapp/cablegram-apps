@@ -1,0 +1,32 @@
+appId: app.cablegram.phone.cab32
+---
+# Precondition: system picker confirmation for CAB32SecondFolder is open.
+- tapOn: ALLOW
+- tapOn:
+    id: browse_back
+- scrollUntilVisible:
+    element: CAB32SecondFolder
+    timeout: 10000
+- assertVisible: CAB32Folder
+- assertVisible: Selected folders
+- tapOn: Remove folder CAB32SecondFolder
+- assertVisible: 'Remove CAB32SecondFolder?'
+- tapOn: Cancel
+- assertVisible: CAB32SecondFolder
+- stopApp
+- launchApp
+- tapOn:
+    id: nav_browse
+- scrollUntilVisible:
+    element: CAB32SecondFolder
+    timeout: 10000
+- assertVisible: CAB32Folder
+- tapOn: CAB32Folder
+- assertVisible: Nested
+- tapOn:
+    id: browse_back
+- scrollUntilVisible:
+    element: CAB32SecondFolder
+    timeout: 10000
+- tapOn: CAB32SecondFolder
+- assertVisible: No videos in this folder. Try another location.

@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="Pixel_9" tests="1" failures="0" time="29.415" timestamp="2026-10-08T17:41:34">
+    <testcase id="remove-folder-corrective" name="remove-folder-corrective" classname="remove-folder-corrective" file="docs/qa/cab-32-evidence/remove-folder-corrective.yaml" time="29.408" timestamp="2026-10-08T17:41:34" status="SUCCESS"/>
+  </testsuite>
+</testsuites>

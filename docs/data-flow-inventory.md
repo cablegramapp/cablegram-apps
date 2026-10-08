@@ -62,6 +62,11 @@ them a new account on the same phone would get a fresh free allowance. The polic
 
 ## Library and media metadata
 
+CAB-32: phone-local videos are selected through Android's file/folder pickers. Persisted read URI
+grants remain on the phone; no broad media/storage permission or whole-device MediaStore scan is used.
+Remembered folders can be reopened and traversed, but only selected videos enter the library. Reselect
+files after reinstall, revoked grants or moved/deleted documents. See [the permission audit](qa/cab-32-permissions.md).
+
 | Data | From → to | Why | Kept | Deleted by |
 |---|---|---|---|---|
 | Title, year, description, genres, cast, director, season/episode, media type | Phone → service; TMDB → service | Library on every TV | Until the title is removed or account deletion | Remove title; account deletion |
