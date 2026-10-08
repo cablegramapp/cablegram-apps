@@ -1179,7 +1179,7 @@ internal fun classifyTransport(url: String?, isLive: Boolean): Transport {
         isTelegramLocalUrl(url) -> Transport.TELEGRAM
         isRelayUrl(url) -> Transport.RELAY
         isPhoneTelegramUrl(url) -> Transport.TELEGRAM_VIA_PHONE
-        url.startsWith("http://") && !isPublicHost(url) -> Transport.LAN
+        (url.startsWith("http://") || url.startsWith("https://")) && !isPublicHost(url) -> Transport.LAN
         else -> Transport.CLOUD
     }
 }
@@ -1574,9 +1574,16 @@ private fun PictureSpinner() {
 
 internal fun isRelayUrl(url: String): Boolean = url.contains("/relay/v1/")
 
-/** A phone's short-lived LAN stream link (CAB-44). */
+/**
+ * A phone's short-lived LAN stream link (CAB-44): as the phone serves it, or (CAB-48) through the TV's local proxy that
+ * pins the phone's certificate, `http://127.0.0.1:<port>/lan/<id>/...`.
+ */
 internal fun isLanStreamLink(url: String): Boolean =
-    !isRelayUrl(url) && url.toHttpUrlOrNull()?.queryParameter(STREAM_LINK_PARAM) != null
+    isLanProxyUrl(url) || (!isRelayUrl(url) && url.toHttpUrlOrNull()?.queryParameter(STREAM_LINK_PARAM) != null)
+
+internal fun isLanProxyUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && LAN_PROXY_PATH.containsMatchIn(url)
+
+private val LAN_PROXY_PATH = Regex("^http://127\\.0\\.0\\.1:\\d+/lan/[0-9a-f]+/")
 
 /** Well inside the 15 minutes a phone keeps an unused link. */
 private const val LAN_LINK_KEEPALIVE_MS = 5 * 60_000L
@@ -1598,7 +1605,7 @@ internal fun isPhoneTelegramUrl(url: String): Boolean {
     return PHONE_TELEGRAM_PATH.matches(path)
 }
 
-private val PHONE_TELEGRAM_PATH = Regex("(/relay/v1/p/[^/]+)?/telegram/[A-Za-z0-9_-]+")
+private val PHONE_TELEGRAM_PATH = Regex("(/relay/v1/p/[^/]+|/lan/[0-9a-f]+)?/telegram/[A-Za-z0-9_-]+")
 
 /** Telegram delivers the first bytes in seconds and may pause while it fetches the next window. */
 internal fun stallSwitchSeconds(url: String?): Int = if (url != null && isTelegramLocalUrl(url)) TELEGRAM_STALL_SWITCH_SECONDS else STALL_SWITCH_SECONDS

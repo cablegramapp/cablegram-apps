@@ -37,6 +37,16 @@ class RelayMessagesTest {
         assertTrue(!isLanStreamLink("http://127.0.0.1:41234/tg/17"))
     }
 
+    @Test fun `the TV's pinning proxy for the phone counts as the phone over the LAN (CAB-48)`() {
+        val media = "http://127.0.0.1:41234/lan/0a1b2c/media/x"
+        val telegram = "http://127.0.0.1:41234/lan/0a1b2c/telegram/AgADabcdEFGH"
+        assertTrue(isLanStreamLink(media) && isLanStreamLink(telegram))
+        assertTrue(!isLanStreamLink("http://127.0.0.1:41234/cloud/0a1b2c"))
+        assertEquals(Transport.LAN, classifyTransport(media, isLive = false))
+        assertEquals(Transport.TELEGRAM_VIA_PHONE, classifyTransport(telegram, isLive = false))
+        assertEquals(media, lanReturnCandidate("https://api.cablegram.app/relay/v1/p/a/media/x?rt=r", media))
+    }
+
     @Test fun `Telegram sources are told apart from the phone and the relay`() {
         val own = "http://127.0.0.1:41234/tg/17"
         val viaPhone = "http://192.168.1.4:8765/telegram/AgADabcdEFGH?token=t"

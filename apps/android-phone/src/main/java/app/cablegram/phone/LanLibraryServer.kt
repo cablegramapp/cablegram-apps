@@ -15,8 +15,11 @@ import kotlinx.serialization.json.Json
  * refused at once, without restarting the server.
  *
  * CAB-44: a TV on the LAN sends its capability only in the `Authorization` header. The player cannot send one, so it
- * plays a short-lived link from `/links/...` instead ([LanStreamLinks]). `?token=` is accepted only from 127.0.0.1,
- * where the relay tunnel replays a TV's request.
+ * plays a short-lived link from `/links/...` instead ([LanStreamLinks]). `?token=` is accepted only by the loopback
+ * listener, where the relay tunnel replays a TV's request ([acceptQueryToken]).
+ *
+ * CAB-48: the LAN listener speaks TLS with this phone's [LanTlsIdentity], which TVs pin; the service also runs a plain
+ * listener bound to 127.0.0.1 for the relay tunnel. Both share the same credentials and links.
  */
 class LanLibraryServer(
     private val store: LibraryStore,
@@ -27,8 +30,16 @@ class LanLibraryServer(
     /** Streams Telegram titles from this phone's session for TVs that hold none (spec 004 US8). */
     private val telegram: TelegramMedia? = null,
     private val links: LanStreamLinks = LanStreamLinks(),
+    /** Null listens on every interface (the LAN, over TLS); "127.0.0.1" is the relay tunnel's plain listener. */
+    hostname: String? = null,
     port: Int = PORT,
-) : NanoHTTPD(port) {
+    /**
+     * Only the relay tunnel's listener, bound to 127.0.0.1, takes the capability as `?token=`: the relay's ticket
+     * authorizes the TV there, and its player cannot send a header. The LAN listener never does, whatever the client's
+     * address (an adb or VPN forward also arrives from 127.0.0.1).
+     */
+    private val acceptQueryToken: Boolean = false,
+) : NanoHTTPD(hostname, port) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     override fun serve(session: IHTTPSession): Response {
@@ -160,13 +171,10 @@ class LanLibraryServer(
     private fun headerCapability(session: IHTTPSession): String? =
         session.headers["authorization"]?.removePrefix("Bearer ")?.trim()?.takeIf { it.isNotEmpty() }
 
-    /**
-     * The header from anyone; `?token=` only from this phone itself, where the relay tunnel replays a TV's request
-     * (the relay's own ticket authorizes the TV, and the TV's player cannot send a header there either).
-     */
+    /** The header on either listener; `?token=` on the relay tunnel's loopback listener only ([acceptQueryToken]). */
     private fun suppliedCredentials(session: IHTTPSession): List<String> = listOfNotNull(
         headerCapability(session),
-        session.parameters["token"]?.firstOrNull()?.takeIf { isLoopback(session.remoteIpAddress) },
+        session.parameters["token"]?.firstOrNull()?.takeIf { acceptQueryToken },
     )
 
     private fun jsonResponse(body: String) =
@@ -318,8 +326,6 @@ class LanLibraryServer(
         /** The query parameter carrying a stream link (CAB-44). */
         const val LINK_PARAM = "link"
 
-        /** The relay tunnel connects to 127.0.0.1 ([RelayTunnel]); compared as text, so no name is ever looked up. */
-        internal fun isLoopback(address: String?): Boolean = address in setOf("127.0.0.1", "::1", "0:0:0:0:0:0:0:1")
         /** Telegram file unique ids: URL-safe base64-like text. */
         private val UNIQUE_ID = Regex("[A-Za-z0-9_-]{8,200}")
         const val NSD_TYPE = "_cablegram._tcp."

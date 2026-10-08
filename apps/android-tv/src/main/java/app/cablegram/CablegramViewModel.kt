@@ -100,7 +100,7 @@ internal fun ScreenState.acceptsCommandPolling(): Boolean =
         this is ScreenState.Player
 
 class CablegramViewModel(application: Application) : AndroidViewModel(application) {
-    private val api = CablegramApi()
+    private val api = CablegramApi(lanStream = ::lanStreamUrl)
     private val authStore = AuthStore(application)
     /** Spec 004: this TV's Telegram session, approved by the household phone. */
     val telegram = TvTelegram(application, api, onLibraryChanged = { refreshLibrary() })
@@ -783,6 +783,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
             }
             authStore.clear()
             app.cablegram.data.LanPosterAuth.clear()
+            app.cablegram.data.LanTls.clear()
             telegram.signOutAndWipe()
             forgetAllAccountData()
             token = null
@@ -1191,6 +1192,30 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private var cloudStreamServer: CloudStreamServer? = null
+    private var lanStreamServer: CloudStreamServer? = null
+
+    /**
+     * CAB-48: a local URL for the phone's HTTPS LAN stream. LibVLC cannot pin the phone's certificate; this proxy's client
+     * does, and it fetches only addresses with a pin.
+     */
+    private fun lanStreamUrl(url: String): String? {
+        val server = synchronized(this) {
+            lanStreamServer ?: CloudStreamServer(
+                http = app.cablegram.data.LanTls.pinned(
+                    okhttp3.OkHttpClient.Builder()
+                        .followRedirects(false)
+                        .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                        .build(),
+                ),
+                allowed = { it.isHttps && app.cablegram.data.LanTls.isPinned(it.host, it.port) },
+                log = { app.cablegram.data.PairLog.i(it.replace("Cloud stream", "LAN stream")) },
+                prefix = "lan",
+                keepPath = true,
+            ).also { it.start(5 * 60 * 1000, true); lanStreamServer = it }
+        }
+        return server.register(url, emptyMap())
+    }
 
     /** A local URL for a cloud copy that needs a header LibVLC cannot send (Google Drive); see [CloudStreamServer]. */
     private fun cloudStreamUrl(url: String, headers: Map<String, String>): String? {
@@ -1205,6 +1230,7 @@ class CablegramViewModel(application: Application) : AndroidViewModel(applicatio
         castApp?.mediaSession?.onControl = null
         castApp?.mediaSession?.stop()
         cloudStreamServer?.stop()
+        lanStreamServer?.stop()
         commandDelivery.stop()
         super.onCleared()
     }

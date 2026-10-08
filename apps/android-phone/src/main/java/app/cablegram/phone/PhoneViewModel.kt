@@ -1654,6 +1654,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             pairing.phoneDeviceId,
             pairing.accountToken,
             hardwareId(),
+            // CAB-48: TVs accept this phone's LAN server only with this certificate.
+            certSha256 = withContext(Dispatchers.IO) {
+                runCatching { LanTlsIdentity.load().fingerprint }.onFailure { PairLog.e("LAN TLS identity unavailable", it) }.getOrNull()
+            },
         )
         PairLog.i("Phone announce ok=$announced ${PairLog.pinTail(pin)} $host:${LanLibraryServer.PORT} api=${pairing.apiBaseUrl}")
         connectionDetail = when {

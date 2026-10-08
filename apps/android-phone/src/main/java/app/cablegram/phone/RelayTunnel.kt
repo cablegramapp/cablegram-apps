@@ -52,7 +52,8 @@ class RelayTunnel(
     /** Returns null to serve, or the refusal to send back (mobile-data policy). */
     private val admit: (network: String) -> RelayRefusal?,
     private val onActivity: (activeStreams: Int, bytesSent: Long, network: String) -> Unit = { _, _, _ -> },
-    private val localPort: Int = LanLibraryServer.PORT,
+    /** The media server's plain listener on 127.0.0.1; the LAN one is TLS (CAB-48). */
+    private val localPort: Int,
     private val client: OkHttpClient = OkHttpClient.Builder()
         .pingInterval(20, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
