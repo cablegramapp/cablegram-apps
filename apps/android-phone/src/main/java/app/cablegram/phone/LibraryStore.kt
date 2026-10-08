@@ -124,7 +124,7 @@ class LibraryStore private constructor(private val context: Context) {
 
     /**
      * Same formula as [sourceFingerprint] for a picked/indexed file, whose "mtime" is its stat size.
-     * Lets a reinstalled phone recognise its household titles from MediaStore without opening files.
+     * Lets a reinstalled phone recognise household titles after the user selects their files again.
      */
     private fun fingerprintOf(name: String, size: Long, mtime: Long): String {
         val namePart = name.lowercase().trim()
@@ -133,30 +133,15 @@ class LibraryStore private constructor(private val context: Context) {
 
     data class DeviceVideo(val uri: String, val name: String, val size: Long)
 
-    /** Videos on this phone keyed by fingerprint; empty without media permission. */
-    fun deviceVideosByFingerprint(): Map<String, DeviceVideo> {
-        val permission = if (android.os.Build.VERSION.SDK_INT >= 33) android.Manifest.permission.READ_MEDIA_VIDEO
-            else android.Manifest.permission.READ_EXTERNAL_STORAGE
-        if (context.checkSelfPermission(permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) return emptyMap()
-        val collection = android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            android.provider.MediaStore.Video.Media._ID,
-            android.provider.MediaStore.Video.Media.DISPLAY_NAME,
-            android.provider.MediaStore.Video.Media.SIZE,
-        )
-        val found = mutableMapOf<String, DeviceVideo>()
-        runCatching {
-            context.contentResolver.query(collection, projection, null, null, null)?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    val name = cursor.getString(1) ?: continue
-                    val size = cursor.getLong(2).takeIf { it > 0 } ?: continue
-                    val uri = android.content.ContentUris.withAppendedId(collection, cursor.getLong(0)).toString()
-                    found[fingerprintOf(name, size, size)] = DeviceVideo(uri, name, size)
-                }
-            }
-        }
-        return found
-    }
+    /** Only files already selected into this household's library; never scans shared storage. */
+    fun selectedVideosByFingerprint(): Map<String, DeviceVideo> = list()
+        .filter { !it.householdOnly && !it.copied && it.sourceKind == "phone_local" }
+        .mapNotNull { item ->
+            val uri = item.sourceUri ?: return@mapNotNull null
+            val size = item.fileSizeBytes?.takeIf { it > 0 } ?: return@mapNotNull null
+            if (!hasSource(item)) return@mapNotNull null
+            fingerprintOf(item.filename, size, size) to DeviceVideo(uri, item.filename, size)
+        }.toMap()
 
     /**
      * Ties this library to a household. A library that belongs to another account is set aside

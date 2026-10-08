@@ -1,0 +1,19 @@
+appId: app.cablegram.phone.cab32
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: nav_browse
+    timeout: 10000
+- tapOn:
+    id: nav_browse
+- scrollUntilVisible:
+    element: CAB32Folder
+    timeout: 10000
+- tapOn: CAB32Folder
+- extendedWaitUntil:
+    visible: Nested
+    timeout: 10000
+- tapOn: Nested
+- assertVisible: FolderClip.mp4
+- assertNotVisible: UnselectedClip.mp4

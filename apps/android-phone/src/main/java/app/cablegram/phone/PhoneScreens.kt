@@ -108,6 +108,9 @@ fun LibraryShell(viewModel: PhoneViewModel) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         viewModel.addPickedFiles(uris)
     }
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let { viewModel.openBrowseFolder(it) }
+    }
     BackHandler(enabled = viewModel.selected != null || viewModel.openSeriesKey != null || viewModel.tab != PhoneTab.Library) {
         if (viewModel.selected != null) viewModel.closeItem()
         else if (viewModel.openSeriesKey != null) viewModel.closeSeries()
@@ -135,7 +138,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 Box(Modifier.weight(1f)) {
                     when (viewModel.tab) {
                         PhoneTab.Library -> LibraryHome(viewModel)
-                        PhoneTab.Browse -> BrowseScreen(viewModel, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) })
+                        PhoneTab.Browse -> BrowseScreen(viewModel, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) }, onChooseFolder = { pickFolder.launch(null) })
                         PhoneTab.Remote -> if (viewModel.legacyRemote) RemoteScreen(viewModel) else LibraryHome(viewModel)
                         PhoneTab.Storage -> StorageScreen(viewModel)
                         PhoneTab.Settings -> SettingsScreen(viewModel)
@@ -583,10 +586,11 @@ private fun CompactMenuItem(label: String, enabled: Boolean = true, onClick: () 
 private fun BrowseScreen(
     viewModel: PhoneViewModel,
     onOpenLocalRoot: () -> Unit,
+    onChooseFolder: () -> Unit,
 ) {
     var webUrl by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(Unit) {
-        if (viewModel.browseSource == BrowseSource.None || viewModel.browseRoots.isEmpty()) {
+        if (viewModel.browseSource == BrowseSource.None) {
             viewModel.ensureBrowseRoot()
         }
     }
@@ -619,6 +623,7 @@ private fun BrowseScreen(
                     color = VlcOrange,
                     fontSize = 13.sp,
                 )
+                TextButton(onClick = onChooseFolder) { Text("Choose folder again", color = VlcOrange) }
                 val fileCount = entries.count { !it.isDirectory }
                 TextButton(onClick = viewModel::selectAllBrowseFiles, enabled = fileCount > 0) {
                     Text(
@@ -662,9 +667,17 @@ private fun BrowseScreen(
                     SectionCard("From your phone") {
                         Icon(Icons.Default.FolderOpen, null, Modifier.size(36.dp), tint = VlcOrange)
                         Text("Make it a movie night", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                        Text("Choose videos from your phone or connected storage. Select several to add them together.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                        Text("Choose specific videos or a folder with Android's picker. Cablegram remembers access to your selection; it does not scan your whole phone.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
                         Button(onClick = onOpenLocalRoot, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.BROWSE_PHONE)) {
                             Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Choose videos")
+                        }
+                        OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.BROWSE_OPEN_FOLDER)) {
+                            Text("Choose folder")
+                        }
+                        viewModel.folders.forEach { folder ->
+                            TextButton(onClick = { viewModel.openBrowseFolder(Uri.parse(folder.uri), folder.name) }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(folder.name)
+                            }
                         }
                     }
                 }

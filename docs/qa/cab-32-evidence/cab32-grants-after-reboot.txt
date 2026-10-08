@@ -1,0 +1,2 @@
+INSTRUMENTATION_RESULT: result=PASS: selected bytes readable, persisted grants, unselected control denied; folder revoked=false
+INSTRUMENTATION_CODE: -1

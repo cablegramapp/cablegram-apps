@@ -95,7 +95,8 @@ apps, Other app performance data, Crash logs.
   and the fingerprint never leave the phone. Neither is backend collection.
 - **Web browsing history:** an imported page URL is something the user pasted to add a video, not a history of sites
   visited. It is declared under Files and docs.
-- The camera (QR scan for pairing) and `READ_MEDIA_VIDEO` are used on the device only.
+- The camera (QR scan for pairing) is used on the device only. CAB-32 uses Android document/file and
+  folder pickers with persisted read grants; neither broad media access nor storage access is requested.
 
 ### Judgement calls to confirm
 
@@ -113,13 +114,13 @@ apps, Other app performance data, Crash logs.
 
 ## Section 3: Permissions to be ready to justify
 
-- Phone: `CAMERA` (scan the TV's QR code), `READ_MEDIA_VIDEO` and `READ_EXTERNAL_STORAGE` up to API 32 (choose and
-  serve videos), `FOREGROUND_SERVICE_CONNECTED_DEVICE` (the LAN library service, CAB-25),
+- Phone: `CAMERA` (scan the TV's QR code), `FOREGROUND_SERVICE_CONNECTED_DEVICE` (the LAN library service, CAB-25),
   `FOREGROUND_SERVICE_DATA_SYNC` (uploads to the household's own storage), `POST_NOTIFICATIONS`,
   `CHANGE_WIFI_MULTICAST_STATE` (find the TV on the local network), `WAKE_LOCK`.
 - TV: `INTERNET`, `ACCESS_NETWORK_STATE`, `CHANGE_WIFI_MULTICAST_STATE`. Nothing sensitive.
-- `READ_MEDIA_VIDEO` is sensitive. Play may ask for a broad-access declaration. If the app can use the system
-  photo/video picker, remove the permission instead.
+- CAB-32 removes `READ_MEDIA_VIDEO` and `READ_EXTERNAL_STORAGE` entirely. A broad photo/video access
+  declaration is not needed for this permission-free picker flow. Audit the merged release manifests
+  with `node scripts/audit-release-permissions.mjs`; see [the permission audit](qa/cab-32-permissions.md).
 
 ## Before you submit
 
