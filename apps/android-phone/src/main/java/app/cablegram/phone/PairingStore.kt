@@ -38,6 +38,7 @@ class PairingStore(context: Context) : AccountTokens {
             if (secrets.phoneDeviceId == null) secrets.phoneDeviceId = it
         }
         prefs.edit().remove("phone_device_id").apply()
+        synchronized(pairingLock) { migratePairedTvs() }
     }
 
     var tvName: String
@@ -60,53 +61,77 @@ class PairingStore(context: Context) : AccountTokens {
         get() = prefs.getString("display_name", "") ?: ""
         set(value) { prefs.edit().putString("display_name", value).apply() }
 
+    /** The whole pairing record is encrypted: no LAN capability or pairing PIN is stored in plain preferences. */
     var tvs: List<PairedTv>
-        get() {
-            val raw = prefs.getString("tvs_json", null)
-            if (raw.isNullOrBlank()) {
-                val pin = prefs.getString("lan_token", null) ?: return emptyList()
-                return listOf(PairedTv(pin, prefs.getString("tv_name", "TV") ?: "TV"))
-            }
-            return runCatching {
-                val array = JSONArray(raw)
-                (0 until array.length()).map { index ->
-                    val obj = array.getJSONObject(index)
-                    PairedTv(
-                        pin = obj.getString("pin"),
-                        name = obj.optString("name", "TV"),
-                        capability = obj.optString("capability", "").takeIf { it.isNotBlank() },
-                        deviceId = obj.optString("device_id", "").takeIf { it.isNotBlank() },
-                        castDeviceId = obj.optString("cast_device_id", "").takeIf { it.isNotBlank() },
-                        trust = TvTrust(
-                            temporary = obj.optBoolean("temporary", false),
-                            expiresAt = obj.optString("expires_at", "").takeIf { it.isNotBlank() }?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() },
-                            telegramDirect = obj.optBoolean("telegram_direct", false),
-                        ),
-                    )
-                }
-            }.getOrDefault(emptyList())
+        get() = synchronized(pairingLock) {
+            // No fallback to legacy credentials when the key is missing or ciphertext is damaged.
+            val raw = secrets.readPairedTvs() ?: return@synchronized emptyList()
+            decodeTvs(raw)
         }
-        set(value) {
-            val array = JSONArray()
-            value.forEach { tv ->
-                array.put(
-                    JSONObject()
-                        .put("pin", tv.pin)
-                        .put("name", tv.name)
-                        .put("capability", tv.capability.orEmpty())
-                        .put("device_id", tv.deviceId.orEmpty())
-                        .put("cast_device_id", tv.castDeviceId.orEmpty())
-                        .put("temporary", tv.trust.temporary)
-                        .put("expires_at", tv.trust.expiresAt?.toString().orEmpty())
-                        .put("telegram_direct", tv.trust.telegramDirect),
-                )
-            }
-            prefs.edit()
-                .putString("tvs_json", array.toString())
-                .putString("lan_token", value.lastOrNull()?.capability ?: value.lastOrNull()?.pin)
+        set(value) = synchronized(pairingLock) {
+            secrets.savePairedTvs(encodeTvs(value))
+            check(prefs.edit()
+                .remove("tvs_json")
+                .remove("lan_token")
                 .putString("tv_name", value.lastOrNull()?.name ?: "TV")
-                .apply()
+                .commit()) { "Couldn't finish saving paired TVs." }
         }
+
+    /** Idempotent, crash-safe migration: ciphertext is durable before either plaintext copy is removed. */
+    private fun migratePairedTvs() {
+        if (!secrets.hasPairedTvs) {
+            val legacy = prefs.getString("tvs_json", null)?.takeIf { it.isNotBlank() }
+                ?: prefs.getString("lan_token", null)?.takeIf { it.isNotBlank() }?.let { pin ->
+                    // Old PIN-only records remain unprivileged; the LAN server never authorizes a PIN.
+                    encodeTvs(listOf(PairedTv(pin, prefs.getString("tv_name", "TV") ?: "TV")))
+                }
+            if (legacy != null) secrets.savePairedTvs(encodeTvs(decodeTvs(legacy)))
+        }
+        if (prefs.contains("tvs_json") || prefs.contains("lan_token")) {
+            if (secrets.hasPairedTvs) secrets.confirmPairedTvsSaved()
+            check(prefs.edit().remove("tvs_json").remove("lan_token").commit()) {
+                "Couldn't remove legacy pairing credentials."
+            }
+        }
+    }
+
+    private fun decodeTvs(raw: String): List<PairedTv> = runCatching {
+        val array = JSONArray(raw)
+        (0 until array.length()).map { index ->
+            val obj = array.getJSONObject(index)
+            PairedTv(
+                pin = obj.getString("pin"),
+                name = obj.optString("name", "TV"),
+                capability = obj.optString("capability", "").takeIf { it.isNotBlank() },
+                deviceId = obj.optString("device_id", "").takeIf { it.isNotBlank() },
+                castDeviceId = obj.optString("cast_device_id", "").takeIf { it.isNotBlank() },
+                trust = TvTrust(
+                    temporary = obj.optBoolean("temporary", false),
+                    expiresAt = obj.optString("expires_at", "").takeIf { it.isNotBlank() }
+                        ?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() },
+                    telegramDirect = obj.optBoolean("telegram_direct", false),
+                ),
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    private fun encodeTvs(value: List<PairedTv>): String = JSONArray().apply {
+        value.forEach { tv ->
+            put(JSONObject()
+                .put("pin", tv.pin)
+                .put("name", tv.name)
+                .put("capability", tv.capability.orEmpty())
+                .put("device_id", tv.deviceId.orEmpty())
+                .put("cast_device_id", tv.castDeviceId.orEmpty())
+                .put("temporary", tv.trust.temporary)
+                .put("expires_at", tv.trust.expiresAt?.toString().orEmpty())
+                .put("telegram_direct", tv.trust.telegramDirect))
+        }
+    }.toString()
+
+    private companion object {
+        val pairingLock = Any()
+    }
 
     fun addTv(pin: String, name: String, capability: String? = null, deviceId: String? = null, trust: TvTrust = TvTrust.Home) {
         tvs = tvs.filterNot { it.pin == pin } + PairedTv(pin, name, capability, deviceId, trust)

@@ -48,11 +48,12 @@ cd apps/android-phone   # or apps/android-tv
 ./gradlew assembleDebug
 ```
 
-Telegram features need your own API credentials. Register an application at <https://my.telegram.org>, then
-pass them as `-PTELEGRAM_API_ID=... -PTELEGRAM_API_HASH=...` or put `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`
-in the app's git-ignored `local.properties`. Without them `assemble`, `bundle` and `install` stop with an error, because the
-app would build with Telegram switched off; add `-PALLOW_NO_TELEGRAM=true` to build that way on purpose. Tests and
-compiling don't need them.
+Telegram application credentials are fetched after Cablegram sign-in from the authenticated
+`GET /api/telegram/client-config` endpoint over HTTPS. They are held in memory and never embedded
+in BuildConfig, stored in app preferences, or supplied to release CI. A new process needs the server
+before TDLib can start; a running session keeps working without fetching them again. The backend must
+be deployed before distributing these builds. Remote delivery raises the effort to extract the
+application identity; someone inspecting a running client can still recover it.
 
 By default the apps talk to `https://api.cablegram.app/`. Override it with `-PCABLEGRAM_API_BASE=https://...`.
 The backend is not part of this repository, so a build pointed at your own host needs a server that implements

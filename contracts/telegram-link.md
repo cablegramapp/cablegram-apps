@@ -396,3 +396,19 @@ LibVLC.
 A TV without direct Telegram (a temporary TV) gets the phone path instead:
 `http://<phone>:8765/telegram/<unique_file_id>?token=<capability>`, or the same path over the relay.
 
+
+## Native client application identity
+
+`GET /api/telegram/client-config` requires a valid Cablegram bearer token. Native phones and TVs
+with permission for direct Telegram access receive `{ "api_id": <positive int>, "api_hash": <32 hex characters> }`.
+Unauthenticated/revoked clients receive 401, browser clients and temporary TVs without direct permission
+receive 403. Missing or invalid server credentials return 503 `telegram_client_unavailable`.
+All responses use `Cache-Control: private, no-store`. Serve the route over HTTPS; no redirects are accepted
+by the apps. Configure `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` in the control-plane environment.
+
+Deploy the endpoint before releasing the updated apps. Applications hold this identity in memory for TDLib
+and verify approved devices against the API ID used for that session. They have no embedded fallback or
+persistent credential cache, so a fresh process needs the control plane before Telegram starts. A failed
+fetch can be retried without deleting the existing Telegram account database. Running sessions don't fetch
+the configuration per movie. Remote delivery reduces static APK exposure; application credentials remain
+recoverable from an authenticated running client. User account passwords, codes and sessions stay on devices.

@@ -1,0 +1,2 @@
+INSTRUMENTATION_RESULT: result=PASS: encrypted migration, plaintext removal, metadata preservation, reopen, update/remove/clear, interrupted migration, corruption, key loss and PIN-only migration
+INSTRUMENTATION_CODE: -1

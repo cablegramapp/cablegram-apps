@@ -1,0 +1,44 @@
+INSTRUMENTATION_STATUS: class=app.cablegram.ui.TelegramPasswordChoiceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+app.cablegram.ui.TelegramPasswordChoiceTest:
+INSTRUMENTATION_STATUS: test=chooseKeyboardWithoutAutomaticPhonePromptAndKeepSignatureLooping
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=app.cablegram.ui.TelegramPasswordChoiceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Expected condition within 6000 ms
+	at org.junit.Assert.fail(Assert.java:89)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.waitUntil(TelegramPasswordChoiceTest.kt:146)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.waitUntil$default(TelegramPasswordChoiceTest.kt:140)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.chooseKeyboardWithoutAutomaticPhonePromptAndKeepSignatureLooping(TelegramPasswordChoiceTest.kt:114)
+
+INSTRUMENTATION_STATUS: stream=
+Error in chooseKeyboardWithoutAutomaticPhonePromptAndKeepSignatureLooping(app.cablegram.ui.TelegramPasswordChoiceTest):
+java.lang.AssertionError: Expected condition within 6000 ms
+	at org.junit.Assert.fail(Assert.java:89)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.waitUntil(TelegramPasswordChoiceTest.kt:146)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.waitUntil$default(TelegramPasswordChoiceTest.kt:140)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.chooseKeyboardWithoutAutomaticPhonePromptAndKeepSignatureLooping(TelegramPasswordChoiceTest.kt:114)
+
+INSTRUMENTATION_STATUS: test=chooseKeyboardWithoutAutomaticPhonePromptAndKeepSignatureLooping
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 21.634
+There was 1 failure:
+1) chooseKeyboardWithoutAutomaticPhonePromptAndKeepSignatureLooping(app.cablegram.ui.TelegramPasswordChoiceTest)
+java.lang.AssertionError: Expected condition within 6000 ms
+	at org.junit.Assert.fail(Assert.java:89)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.waitUntil(TelegramPasswordChoiceTest.kt:146)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.waitUntil$default(TelegramPasswordChoiceTest.kt:140)
+	at app.cablegram.ui.TelegramPasswordChoiceTest.chooseKeyboardWithoutAutomaticPhonePromptAndKeepSignatureLooping(TelegramPasswordChoiceTest.kt:114)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

@@ -40,7 +40,7 @@ class TelegramSession(
     /** The Telegram layer this session signs in with; the library sync and file reader use it too. */
     val api: TelegramApi,
     private val role: TelegramRole,
-    private val parameters: () -> TgParameters,
+    private val parameters: suspend () -> TgParameters,
     private val scope: CoroutineScope,
 ) {
     private val _state = MutableStateFlow<TelegramState>(TelegramState.Starting)
@@ -53,6 +53,22 @@ class TelegramSession(
     private val _lastError = MutableStateFlow<String?>(null)
     /** Why the last phone number, code or password was rejected; cleared when Telegram moves on. */
     val lastError: StateFlow<String?> = _lastError.asStateFlow()
+
+    /** Identity actually used to start this session, also used to verify newly approved devices. */
+    @Volatile var clientApiId: Int = 0
+        private set
+    @Volatile private var startupUnavailable = false
+    private val startupLock = Mutex()
+
+    /** Retry configuration without recreating TDLib or deleting an existing account database. */
+    fun retryStartup() {
+        if (!startupUnavailable || !startupLock.tryLock()) return
+        startupUnavailable = false
+        _state.value = TelegramState.Starting
+        scope.launch {
+            try { handle(TgAuthState.WaitParameters) } finally { startupLock.unlock() }
+        }
+    }
 
     private val inputLock = Mutex()
     private var job: Job? = null
@@ -153,7 +169,11 @@ class TelegramSession(
         _lastError.value = null
         try {
             when (auth) {
-                TgAuthState.WaitParameters -> api.start(parameters())
+                TgAuthState.WaitParameters -> {
+                    val supplied = parameters()
+                    clientApiId = supplied.apiId
+                    api.start(supplied)
+                }
                 TgAuthState.WaitPhoneNumber -> if (role == TelegramRole.Tv) {
                     _state.value = TelegramState.Starting
                     api.requestQrLogin()
@@ -167,6 +187,9 @@ class TelegramSession(
                 TgAuthState.LoggingOut, TgAuthState.Closed -> _state.value = TelegramState.SignedOut
                 is TgAuthState.Unsupported -> _state.value = TelegramState.Failed(unsupportedMessage(auth.name))
             }
+        } catch (e: TelegramClientUnavailable) {
+            startupUnavailable = true
+            _state.value = TelegramState.Failed(e.message!!)
         } catch (e: TgException) {
             _state.value = TelegramState.Failed(describe(e))
         }

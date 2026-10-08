@@ -57,6 +57,9 @@ class CablegramApi(
     private val json = Json { ignoreUnknownKeys = true }
     private val jsonMediaType = "application/json".toMediaType()
 
+    suspend fun telegramClientCredentials(token: String) =
+        app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, BuildConfig.DEBUG)
+
     suspend fun getLibraryAds(): LibraryAds = try {
         execute(Request.Builder().url(url("api/ads")).get().build())
     } catch (_: Exception) {
