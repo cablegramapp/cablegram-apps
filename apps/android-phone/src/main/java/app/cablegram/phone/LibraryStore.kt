@@ -10,6 +10,9 @@ import android.system.Os
 import java.io.File
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -27,6 +30,13 @@ class LibraryStore private constructor(private val context: Context) {
     private val postersDir: File get() = File(root, "posters").apply { mkdirs() }
     private val cloudDir: File get() = File(root, "cloud").apply { mkdirs() }
     private val indexFile: File get() = File(root, "index.json")
+
+    /**
+     * Goes up on every write to the library index. The screen and CloudTransferService share this instance (one
+     * process), so the screen can redraw when the service finishes a save it never saw running (CAB-51).
+     */
+    private val writes = MutableStateFlow(0L)
+    val revision: StateFlow<Long> = writes.asStateFlow()
 
     @Synchronized
     fun snapshot(): LibraryFile {
@@ -892,6 +902,7 @@ class LibraryStore private constructor(private val context: Context) {
             atomic.failWrite(output)
             throw error
         }
+        writes.value += 1
     }
 
     fun probeEmbeddedTitle(file: File): String? = runCatching {
