@@ -74,9 +74,9 @@ fun connectedSummary(connection: StorageConnection, status: StorageStatusRespons
 /** Free bytes when the provider reports a limit; null when unknown (R2 has no fixed quota). */
 fun freeSpace(quota: StorageQuota?): Long? = quota?.limitBytes?.let { (it - quota.usedBytes).coerceAtLeast(0) }
 
-/** Where a save goes, for the words on every save sheet: the connected provider, else Cablegram Cloud. */
+/** Where a save goes, for the words on every save sheet: the connected provider. Saves need one (CAB-38). */
 fun saveDestination(status: StorageStatusResponse?): String {
-    val active = status?.connection?.takeIf { it.status == "active" } ?: return "Cablegram Cloud"
+    val active = status?.connection?.takeIf { it.status == "active" } ?: return "your own storage"
     return providerName(active.provider, status)
 }
 

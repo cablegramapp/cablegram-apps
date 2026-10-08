@@ -719,43 +719,6 @@ class LibraryStore private constructor(private val context: Context) {
         return updated
     }
 
-    fun saveToCloud(item: LibraryItem, onProgress: (Long, Long) -> Unit): LibraryItem {
-        val dest = cloudFile(item)
-        if (dest.exists() && dest.length() > 0) {
-            return finishCloudSave(item, dest)
-        }
-        val sourceFile = videoFile(item).takeIf { it.exists() }
-        val total = item.fileSizeBytes ?: sourceFile?.length() ?: 0L
-        onProgress(0, total)
-        if (sourceFile != null) {
-            if (!hardLink(sourceFile, dest)) {
-                sourceFile.inputStream().use { copyWithProgress(it, dest, total, onProgress) }
-            } else {
-                onProgress(dest.length(), dest.length().coerceAtLeast(total))
-            }
-        } else {
-            val uri = item.sourceUri ?: error("Nothing to save to cloud")
-            context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
-                copyWithProgress(input, dest, total, onProgress)
-            } ?: error("Could not read that video")
-        }
-        return finishCloudSave(item, dest)
-    }
-
-    private fun finishCloudSave(item: LibraryItem, dest: File): LibraryItem {
-        val updated = item.copy(
-            cloudObjectPresent = true,
-            copied = videoFile(item).exists(),
-            storageState = if (videoFile(item).exists()) STORAGE_BOTH else STORAGE_CLOUD,
-            transferStatus = TRANSFER_IDLE,
-            uploadBytes = dest.length(),
-            uploadTotal = dest.length(),
-            fileSizeBytes = item.fileSizeBytes ?: dest.length(),
-        )
-        update(updated)
-        return updated
-    }
-
     private fun hardLink(source: File, dest: File): Boolean {
         dest.delete()
         return runCatching {

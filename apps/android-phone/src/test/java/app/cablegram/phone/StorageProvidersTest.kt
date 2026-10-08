@@ -89,11 +89,11 @@ class StorageProvidersTest {
     // ---- the words on the save sheets ----
 
     @Test fun `save sheets name the destination`() {
-        assertEquals("Cablegram Cloud", saveDestination(status()))
-        assertEquals("Cablegram Cloud", saveDestination(null))
+        assertEquals("your own storage", saveDestination(status()))
+        assertEquals("your own storage", saveDestination(null))
         assertEquals("Google Drive", saveDestination(status(connection = driveActive)))
         assertEquals("Cloudflare R2", saveDestination(status(connection = StorageConnection(provider = "cloudflare_r2", status = "active"))))
-        assertEquals("Cablegram Cloud", saveDestination(status(connection = null, connections = listOf(driveActive.copy(status = "error")))))
+        assertEquals("your own storage", saveDestination(status(connection = null, connections = listOf(driveActive.copy(status = "error")))))
     }
 
     @Test fun `the space line is the provider's free space, not an absurd cloud figure`() {

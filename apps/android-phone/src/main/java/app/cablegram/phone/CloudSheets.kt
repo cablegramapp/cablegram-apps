@@ -110,24 +110,19 @@ private fun SheetScaffold(title: String, onClose: () -> Unit, content: @Composab
 
 @Composable
 private fun SaveSetupSheet(viewModel: PhoneViewModel) {
+    // Saves go only to the household's own storage (CAB-38): this sheet leads to connecting it.
     SheetScaffold("Save to Cloud", viewModel::dismissCloudSheet) {
-        Text("Keep your videos available even when your phone is off.", color = VlcMuted)
-        Text("☁️  ${formatBytes(viewModel.cloudAvailable)} available", color = Color.White)
-        Text("Choose where your cloud files are stored.", color = VlcMuted)
-        Button(onClick = viewModel::acceptCablegramCloud, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.CLOUD_CABLEGRAM)) {
-            Text("Cablegram Cloud    5 GB free")
-        }
-        TextButton(onClick = viewModel::openOwnCloudSetup) {
-            Text("Use my own cloud storage")
-        }
+        Text("Keep your videos available even when your phone is off by saving a copy to your own storage.", color = VlcMuted)
         val offered = providerRows(viewModel.storage)
         Text(
             if (offered.isEmpty()) "Your own storage isn't available on this server."
             else offered.joinToString(" · ") { it.name },
             color = VlcMuted, fontSize = 12.sp,
         )
-        Button(onClick = viewModel::acceptCablegramCloud, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.CLOUD_CONTINUE)) {
-            Text("Continue")
+        if (offered.isNotEmpty()) {
+            Button(onClick = viewModel::openOwnCloudSetup, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.CLOUD_CONTINUE)) {
+                Text("Connect your storage")
+            }
         }
     }
 }
@@ -175,17 +170,6 @@ private fun ManageCloudSheet(viewModel: PhoneViewModel) {
     val status = viewModel.storage
     val rows = providerRows(status).filter { it.state != ProviderState.Connected }
     SheetScaffold("Cloud Storage", viewModel::dismissCloudSheet) {
-        Text("Cablegram Cloud", color = Color.White, style = MaterialTheme.typography.titleMedium)
-        Text(
-            if (viewModel.cablegramCloudReady) "5 GB free · ${formatBytes(viewModel.cloudAvailable)} available"
-            else "5 GB free",
-            color = VlcMuted,
-        )
-        if (!viewModel.cablegramCloudReady) {
-            Button(onClick = viewModel::acceptCablegramCloud, modifier = Modifier.fillMaxWidth()) {
-                Text("Use Cablegram Cloud")
-            }
-        }
         Text("Your own storage", color = Color.White, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         val connection = status?.connection?.takeIf { it.status == "active" }
         if (connection != null) {

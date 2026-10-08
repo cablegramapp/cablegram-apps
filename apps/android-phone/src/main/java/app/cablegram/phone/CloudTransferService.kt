@@ -19,15 +19,15 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Saves a title to the cloud while the app is backgrounded, with a progress notification: into Cablegram Cloud, or,
- * when the household connected its own Cloudflare R2 storage, straight into that bucket (spec 005).
+ * Saves a title to the household's own storage (Google Drive or Cloudflare R2, specs 005 and 006) while the app is
+ * backgrounded, with a progress notification. There is no Cablegram-hosted cloud (CAB-38).
  */
 class CloudTransferService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val queue = ConcurrentLinkedQueue<String>()
-    /** Titles whose save goes to the household's own R2 bucket instead of Cablegram Cloud. */
+    /** Titles queued while the household's own storage was connected; any other title is refused. */
     private val ownR2 = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-    /** Where each queued title goes, for the notification: "Google Drive", or "Cloud" for Cablegram Cloud. */
+    /** Where each queued title goes, for the notification: "Google Drive" or "Cloudflare R2". */
     private val destinations = java.util.concurrent.ConcurrentHashMap<String, String>()
     /** Where the title being saved now goes. A queue can mix destinations, so it is set per title in [saveOne]. */
     @Volatile private var destination = "Cloud"
@@ -125,25 +125,9 @@ class CloudTransferService : Service() {
                 notifyDone(item.title, ok = true, detail = "Saved to $destination")
                 return
             }
-            store.saveToCloud(item) { copied, total ->
-                val now = System.currentTimeMillis()
-                val elapsed = ((System.nanoTime() - started) / 1_000_000_000L).coerceAtLeast(1)
-                store.get(id)?.let { current ->
-                    store.update(
-                        current.copy(
-                            transferStatus = TRANSFER_SAVING,
-                            uploadBytes = copied,
-                            uploadTotal = total,
-                            transferBytesPerSec = copied / elapsed,
-                        ),
-                    )
-                }
-                if (now - lastNotify >= 400) {
-                    lastNotify = now
-                    notifyProgress(item.title, copied, total, copied / elapsed)
-                }
-            }
-            notifyDone(item.title, ok = true)
+            // Saves go only to the household's own storage (CAB-38); the save sheet never queues one without it.
+            store.get(id)?.let { store.update(it.copy(transferStatus = TRANSFER_FAILED)) }
+            notifyDone(item.title, ok = false, detail = "Connect Google Drive or Cloudflare R2 to save to the cloud.")
         } catch (error: Throwable) {
             PairLog.e("Save to cloud failed", error)
             store.get(id)?.let { store.update(it.copy(transferStatus = TRANSFER_FAILED)) }

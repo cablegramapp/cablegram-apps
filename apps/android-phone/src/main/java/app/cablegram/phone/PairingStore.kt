@@ -187,7 +187,4 @@ class PairingStore(context: Context) : AccountTokens {
         get() = prefs.getLong("relay_mobile_allowed_until", 0L)
         set(value) { prefs.edit().putLong("relay_mobile_allowed_until", value).apply() }
 
-    var cablegramCloudReady: Boolean
-        get() = prefs.getBoolean("cablegram_cloud_ready", false)
-        set(value) { prefs.edit().putBoolean("cablegram_cloud_ready", value).apply() }
 }
