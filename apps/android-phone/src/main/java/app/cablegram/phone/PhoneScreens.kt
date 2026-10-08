@@ -589,6 +589,18 @@ private fun BrowseScreen(
     onChooseFolder: () -> Unit,
 ) {
     var webUrl by rememberSaveable { mutableStateOf("") }
+    var folderToRemove by remember { mutableStateOf<IndexedFolder?>(null) }
+    folderToRemove?.let { folder ->
+        AlertDialog(
+            onDismissRequest = { folderToRemove = null },
+            title = { Text("Remove ${folder.name}?") },
+            text = { Text("Cablegram will stop remembering access to this folder. Imported videos stay in your library, but videos that rely on this folder may need it selected again to play.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.removeBrowseFolder(folder); folderToRemove = null }) { Text("Remove folder") }
+            },
+            dismissButton = { TextButton(onClick = { folderToRemove = null }) { Text("Cancel") } },
+        )
+    }
     LaunchedEffect(Unit) {
         if (viewModel.browseSource == BrowseSource.None) {
             viewModel.ensureBrowseRoot()
@@ -623,7 +635,7 @@ private fun BrowseScreen(
                     color = VlcOrange,
                     fontSize = 13.sp,
                 )
-                TextButton(onClick = onChooseFolder) { Text("Choose folder again", color = VlcOrange) }
+                TextButton(onClick = onChooseFolder) { Text("Add or reselect folder", color = VlcOrange) }
                 val fileCount = entries.count { !it.isDirectory }
                 TextButton(onClick = viewModel::selectAllBrowseFiles, enabled = fileCount > 0) {
                     Text(
@@ -667,16 +679,24 @@ private fun BrowseScreen(
                     SectionCard("From your phone") {
                         Icon(Icons.Default.FolderOpen, null, Modifier.size(36.dp), tint = VlcOrange)
                         Text("Make it a movie night", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                        Text("Choose specific videos or a folder with Android's picker. Cablegram remembers access to your selection; it does not scan your whole phone.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                        Text("Choose videos or add folders with Android's picker, one folder at a time. Your selected folders stay available here until you remove them.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
                         Button(onClick = onOpenLocalRoot, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.BROWSE_PHONE)) {
                             Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Choose videos")
                         }
                         OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.BROWSE_OPEN_FOLDER)) {
-                            Text("Choose folder")
+                            Text("Add folder")
+                        }
+                        if (viewModel.folders.isNotEmpty()) {
+                            Text("Selected folders", color = Color.White, style = MaterialTheme.typography.titleSmall)
                         }
                         viewModel.folders.forEach { folder ->
-                            TextButton(onClick = { viewModel.openBrowseFolder(Uri.parse(folder.uri), folder.name) }, modifier = Modifier.fillMaxWidth()) {
-                                Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(folder.name)
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { viewModel.openBrowseFolder(Uri.parse(folder.uri), folder.name) }, modifier = Modifier.weight(1f)) {
+                                    Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(folder.name)
+                                }
+                                IconButton(onClick = { folderToRemove = folder }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Remove folder ${folder.name}", tint = VlcMuted)
+                                }
                             }
                         }
                     }

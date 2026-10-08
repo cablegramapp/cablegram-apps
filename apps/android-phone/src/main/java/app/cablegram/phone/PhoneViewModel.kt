@@ -1867,6 +1867,25 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun removeBrowseFolder(folder: IndexedFolder) {
+        val uri = Uri.parse(folder.uri)
+        val resolver = getApplication<Application>().contentResolver
+        val grant = resolver.persistedUriPermissions.firstOrNull { it.uri == uri }
+        try {
+            if (grant != null) {
+                val flags = (if (grant.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                    (if (grant.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                resolver.releasePersistableUriPermission(uri, flags)
+            }
+            store.forgetFolder(folder.uri)
+            refresh()
+            if (browseTreeUri == uri) ensureBrowseRoot()
+            status = "Removed ${folder.name} from selected folders."
+        } catch (error: SecurityException) {
+            status = "Could not release folder access. Try again."
+        }
+    }
+
     fun openBrowseEntry(entry: BrowseEntry) {
         if (entry.id.startsWith("lib:")) {
             store.get(entry.id.removePrefix("lib:"))?.let(::openItem)

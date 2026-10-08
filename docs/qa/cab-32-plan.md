@@ -22,3 +22,13 @@ FAIL is a violated valid expectation. Missing observations or infrastructure fai
 Zero blind retries. Stop and inspect unexpected UI; make a bounded corrective run only after identifying
 an app, selector or setup error and record the failed attempt. Each flow has a 60-second observation limit.
 Save flows, manifest audit and a result summary alongside this plan. No real-device coverage is claimed.
+
+## Multiple-folder follow-up
+
+On the same isolated phone package, add CAB32SecondFolder alongside CAB32Folder, then restart the
+application and verify both appear and open. Reselect a folder and verify no duplicate. Cancel removal
+and verify no change; confirm removal of the second folder and restart. Verify the first still opens.
+Remove/reselect CAB32Folder to exercise a folder with an imported video. Native instrumentation must
+confirm folder counts (including the existing separately selected Nested test folder), readable remaining grants, absence of the removed grant and denial of listing
+the removed tree, while the two imported library entries remain. No blind retries; inspect failures
+and save corrective evidence separately. Each UI flow has a 60-second observation limit.

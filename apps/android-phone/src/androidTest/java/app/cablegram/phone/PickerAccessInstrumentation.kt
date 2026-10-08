@@ -20,6 +20,36 @@ class PickerAccessInstrumentation : Instrumentation() {
             check(targetContext.packageName.endsWith(".cab32"))
             val resolver = targetContext.contentResolver
             val store = LibraryStore(targetContext)
+            if (arguments.getString("folderCheck") == "true") {
+                val folders = store.folders()
+                check(folders.size == arguments.getString("folders", "2").toInt())
+                check(store.list().filter { it.sourceUri != null && !it.householdOnly }.size == 2)
+                val grants = resolver.persistedUriPermissions.filter { it.isReadPermission }
+                folders.forEach { folder ->
+                    val tree = Uri.parse(folder.uri)
+                    check(grants.any { it.uri == tree })
+                    val children = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
+                        tree, android.provider.DocumentsContract.getTreeDocumentId(tree))
+                    check(resolver.query(children, arrayOf(android.provider.DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)?.use { true } == true)
+                }
+                arguments.getString("removedTree")?.let { value ->
+                    val tree = Uri.parse(value)
+                    check(folders.none { it.uri == value })
+                    check(resolver.persistedUriPermissions.none { it.uri == tree })
+                    val children = android.provider.DocumentsContract.buildChildDocumentsUriUsingTree(
+                        tree, android.provider.DocumentsContract.getTreeDocumentId(tree))
+                    var denied = false
+                    try {
+                        resolver.query(children, null, null, null, null)?.close()
+                    } catch (_: SecurityException) {
+                        denied = true
+                    }
+                    check(denied)
+                }
+                result.putString("result", "PASS: selected folder count=" + folders.size + "; selected folders readable; removed tree checked=" + arguments.containsKey("removedTree") + "; library entries retained")
+                finish(android.app.Activity.RESULT_OK, result)
+                return
+            }
             val items = store.list().filter { it.sourceUri != null && !it.householdOnly }
             check(items.size == arguments.getString("count", "2").toInt())
             check(items.none { it.filename == "UnselectedClip.mp4" })
@@ -48,7 +78,7 @@ class PickerAccessInstrumentation : Instrumentation() {
             result.putString("result", "PASS: selected bytes readable, persisted grants, unselected control denied; folder revoked=" + arguments.getString("revokeFolder", "false"))
             finish(android.app.Activity.RESULT_OK, result)
         } catch (error: Throwable) {
-            result.putString("result", "FAIL: " + error.javaClass.simpleName)
+            result.putString("result", "FAIL: " + error.javaClass.simpleName + "; " + error.stackTrace.firstOrNull { it.className == PickerAccessInstrumentation::class.java.name })
             finish(android.app.Activity.RESULT_CANCELED, result)
         }
     }

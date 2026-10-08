@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuites>
+  <testsuite name="Test Suite" device="Pixel_9" tests="1" failures="0" time="48.982" timestamp="2026-10-08T17:37:06">
+    <testcase id="multiple-folders" name="multiple-folders" classname="multiple-folders" file="docs/qa/cab-32-evidence/multiple-folders.yaml" time="48.972" timestamp="2026-10-08T17:37:06" status="SUCCESS"/>
+  </testsuite>
+</testsuites>

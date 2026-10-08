@@ -2,7 +2,11 @@
 
 Local files use `ACTION_OPEN_DOCUMENT` (multiple videos) and folders use `ACTION_OPEN_DOCUMENT_TREE`.
 Read grants are persisted before indexing or remembering a selection. Import remembers chosen folders;
-opening one lists its video files and subfolders. Revoked access reports a reselect message. Cablegram
+opening one lists its video files and subfolders. Add folder keeps previous selections (Android selects
+one tree per picker visit); selecting the same tree again updates it without duplicates. Remove releases
+that tree's persisted access and forgets the selection after confirmation. Imported library entries stay;
+files relying on the removed grant may require reselection. Other independently selected files/folders
+keep their own grants. Revoked access reports a reselect message. Cablegram
 does not enumerate MediaStore or automatically search the device after reinstall. Re-select files to
 restore access; a folder grant covers that folder and its descendants, not the whole storage volume.
 

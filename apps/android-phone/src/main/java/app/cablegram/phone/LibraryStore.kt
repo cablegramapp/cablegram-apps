@@ -780,6 +780,11 @@ class LibraryStore private constructor(private val context: Context) {
         save(snapshot().copy(folders = folders))
     }
 
+    @Synchronized
+    fun forgetFolder(uri: String) {
+        save(snapshot().copy(folders = folders().filterNot { it.uri == uri }))
+    }
+
     fun setWatchProgress(id: String, positionSeconds: Int) {
         val item = get(id) ?: return
         update(
