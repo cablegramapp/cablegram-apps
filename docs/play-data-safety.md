@@ -5,7 +5,7 @@ Answers for the Data safety form of both Play listings, in the order the Console
 deletion; check a row there before changing it here. The privacy policy (`https://cablegram.app/privacy.html`) says
 the same things in plain words. Reviewers compare the three, and a wrong Data safety form is a policy violation.
 
-Last checked against code on 2026-10-07 (this repo `8d33090`, server `CableGram` `42b2cae`). Recheck before each
+CAB-28 draft updated against code on 2026-10-08; publish these answers only with the coordinated phone/backend rollout. Recheck before each
 release that changes what an app sends.
 
 ## What changed since the last version of this file
@@ -16,8 +16,8 @@ release that changes what an app sends.
 - **Covers made from the user's videos stay on the phone** unless the user saves one to the household (CAB-29).
 - **Gemini no longer sees Telegram text automatically** (CAB-35). It sees what the user types in the cover editor's
   search box.
-- **Subtitle search** sends file details and a speech-timing fingerprint to the server, and ids or titles to
-  OpenSubtitles and SubDL.
+- **Subtitle search** goes directly from the phone to the user's chosen providers with personal authentication,
+  title/file name/catalog ids/languages and (OpenSubtitles) file hash. Activity fingerprints stay local.
 - **The household's own storage** (Google Drive, Cloudflare R2): the server keeps an encrypted credential; videos go
   straight between the devices and the user's storage.
 - **The Google Cast SDK** is in both apps and collects its own anonymised usage data.
@@ -33,7 +33,7 @@ release that changes what an app sends.
 | Which account creation methods does your app support? | Username (email address) and password | None: the TV pairs with a household made on a phone |
 | Do you provide a way for users to request that their data is deleted? | Yes | Yes |
 | Where can users request deletion? | In the app (Settings, Delete account) and `https://api.cablegram.app/delete-account` | `https://api.cablegram.app/delete-account` |
-| Can users request that some data is deleted without deleting their account? | Yes: profiles (with their progress), titles, saved covers, devices, Telegram link, connected storage | Same |
+| Can users request that some data is deleted without deleting their account? | Yes: profiles (with their progress), titles, saved covers, selected subtitle tracks, provider credentials on this phone, devices, Telegram link, connected storage | Same |
 | Committed to the Play Families Policy? | No | No |
 | Independent security review? | No | No |
 
@@ -45,7 +45,8 @@ certificate (CAB-48). That stream is between the user's own devices, so it is no
 
 For every row: **Shared = No.** The providers that receive data process it for Cablegram as service providers:
 Contabo (hosting), Cloudflare (mail, hosting), Google Gemini, TMDB, OpenSubtitles, SubDL. They get a title, ids
-or a file hash from the server, never an account identifier. Transfers to the user's own Telegram, Google Drive or R2
+or a file hash. For subtitles, the phone sends the user's personal provider authentication directly to the provider;
+provider searches are an explicit user action on their own provider account. Transfers to the user's own Telegram, Google Drive or R2
 are user-initiated, to the user's own accounts. Both are exceptions to "sharing" in Play's definitions.
 
 **Processed ephemerally = No** unless the row says Yes. "Required" means the user cannot turn it off and still use
@@ -60,7 +61,7 @@ the app.
 | Personal info | User IDs | Required | No | App functionality, Account management | Account and household ids; Telegram user id; Google account email and id when Drive is connected |
 | Photos and videos | Photos | Optional | No | App functionality | A cover the user saves to the household ("Save artwork to household") |
 | Photos and videos | Videos | Optional | **Yes** | App functionality | Relay playback away from home: bytes pass through the server in memory, never stored |
-| Files and docs | Files and docs | Required | No | App functionality | File names, sizes and source keys in the catalog; Telegram file and message ids; imported page URLs; for subtitle search, file hash, technical details and a speech-timing fingerprint |
+| Files and docs | Files and docs | Required | No | App functionality | File names, sizes and source keys in the catalog; Telegram file and message ids; imported page URLs; for direct provider subtitle search, file hash and file name; activity fingerprints and other technical details stay on the phone |
 | App activity | App interactions | Required | No | App functionality, Analytics | Watch progress, My List, remote commands (App functionality); Cast SDK usage events (Analytics) |
 | App activity | In-app search history | Optional | No | App functionality | Title searches in the cover editor (sent to Gemini and TMDB; not logged since CAB-46) |
 | App activity | Other user-generated content | Optional | No | App functionality | Edited titles and details, collections, subtitle choices and timing corrections |
@@ -91,7 +92,7 @@ apps, Other app performance data, Crash logs.
   two-step password is sealed on the phone for that TV and passes through the server only as ciphertext, for at
   most 5 minutes.
 - **Audio:** the speech-timing fingerprint is up to six windows of "speech or not" bits, made on the phone; raw audio
-  never leaves the phone. It is declared under Files and docs.
+  and the fingerprint never leave the phone. Neither is backend collection.
 - **Web browsing history:** an imported page URL is something the user pasted to add a video, not a history of sites
   visited. It is declared under Files and docs.
 - The camera (QR scan for pairing) and `READ_MEDIA_VIDEO` are used on the device only.

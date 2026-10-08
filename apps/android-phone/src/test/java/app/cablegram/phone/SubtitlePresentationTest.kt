@@ -11,7 +11,7 @@ class SubtitlePresentationTest {
 
     @Test fun verifiedOffsetIsDescribedWithoutTechnicalDetail() {
         val h = headline(match("Verified Match", SubtitleAlignment(verified = true, offset = 1.25)))
-        assertEquals("Persian", h.language); assertEquals("✓ Verified Match", h.trust)
+        assertEquals("Persian", h.language); assertEquals("Local activity match · heuristic", h.trust)
         assertEquals("Automatically synchronized · +1.25 sec", h.timing); assertTrue(h.verified)
     }
 

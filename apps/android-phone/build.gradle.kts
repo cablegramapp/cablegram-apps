@@ -45,7 +45,7 @@ android {
         targetSdk = 36
         versionCode = 3
         versionName = "0.2.2"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = (project.findProperty("CABLEGRAM_TEST_RUNNER") as String?) ?: "androidx.test.runner.AndroidJUnitRunner"
         val apiBase = (project.findProperty("CABLEGRAM_API_BASE") as String?)
             ?: (project.findProperty("CABLEGRAM_API_BASE_URL") as String?)
             ?: "https://api.cablegram.app/"

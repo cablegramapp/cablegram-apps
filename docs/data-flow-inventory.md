@@ -18,8 +18,8 @@ Log retention on the VPS was last checked on 2026-09-30 and not rechecked.
 | Cloudflare | Mail, web remote hosting, public video bucket | Email address and mail text (mailer Worker); IP address and requests of web-remote users (`app.cablegram.app`); IP address of TVs that load the loading-screen videos (`pub-…r2.dev`) | `CableGram/apps/mailer`, `apps/web-remote/wrangler.jsonc`, `DEFAULT_LOADING_VIDEOS` in the TV app (the server has no `/api/videos/loading-videos` route, so the TV always uses this list) |
 | Google (Gemini API) | Title lookup | Text typed in the cover editor's search box, cleaned (links, emails, @handles, #hashtags and Telegram lines removed, at most 800 characters) | `GOOGLE_AI_STUDIO_API_KEY` is set in production |
 | TMDB | Title lookup and artwork | From the server: a title, year, season and episode. From phones and TVs: image requests, so TMDB sees their IP address | `TMDB_API_KEY` is set in production |
-| OpenSubtitles | Subtitle search | From the server: subtitle languages, the OpenSubtitles file hash, IMDb or TMDB id (or the title when there is none), season, episode, year | `OPENSUBTITLES_API_KEY` is set in production |
-| SubDL | Subtitle search | From the server: subtitle languages, IMDb or TMDB id or title, season, episode | `SUBDL_API_KEY` is set in production |
+| OpenSubtitles | Subtitle search | From the phone: personal API key/login, subtitle languages, file hash, TMDB id (or title), season, episode, year and phone IP | The user configures their personal OpenSubtitles key and login on the phone |
+| SubDL | Subtitle search | From the phone: personal API key, file name, TMDB id or title, season, episode, year, languages and phone IP | The user configures their personal SubDL key on the phone |
 | Google Drive | The household's own storage (optional) | OAuth sign-in from the server; video uploads straight from the phone; playback straight to the TV | `GOOGLE_OAUTH_CLIENT_ID` is set in production; scope `drive.file` |
 | Cloudflare R2 (the user's own bucket) | The household's own storage (optional) | The user's bucket keys (given to the server); video uploads straight from the phone; playback straight to the TV | The user's own Cloudflare account |
 | Telegram | The user's own Telegram account (optional) | Everything a Telegram client sends: phone number, login code, two-step password, session, channel and file requests, uploads | TDLib in both apps; the server never contacts Telegram |
@@ -98,15 +98,19 @@ while the title is private. The policy says "anyone you give its link to".
   never sets it.
 - Gemini and TMDB never get the video, its contents, or the file path. The server's IP address is what they see.
 
-## Subtitles (OpenSubtitles, SubDL)
+## Subtitles (OpenSubtitles, SubDL) — CAB-28 coordinated rollout
 
 | Data | From → to | Why | Kept | Deleted by |
 |---|---|---|---|---|
-| Technical details: OpenSubtitles hash, size, duration, fps, container, codec, resolution, audio and embedded subtitle languages | Phone → service; hash, ids, title, season, episode, year and languages → OpenSubtitles; ids or title, season, episode and languages → SubDL | Find matching subtitles | Search results 1 hour (`subtitle_discoveries`, deleted at the next search after expiry) | Expiry; account deletion |
-| Speech-timing fingerprint: up to 6 windows of 100–600 bits, each bit "speech or not" for 0.1–0.5 s of audio. Computed on the phone; raw audio never leaves the phone | Phone → service only | Check that a subtitle's timing fits the video | With the search, 1 hour | Same |
-| Chosen subtitle: provider, provider ref, all cues, offset, scale, corrections | Provider → service; service → TVs | Show the subtitle on every TV | Until replaced or account deletion (`media_subtitles`, cascade on user and source) | Account deletion; removing the source |
+| Personal SubDL key; OpenSubtitles key, username and password | Entered on phone → chosen provider over HTTPS only | Authenticate the user's own account and quotas | Android Keystore AES-GCM encrypted file in noBackupFilesDir, scoped to signed-in user; login token in session memory | Replace/remove, sign-out, account deletion; credentials excluded from backup/transfer, logs and diagnostics |
+| Technical details and sparse activity fingerprint | Local phone memory only; hash/title/file name/catalog ids/episode/year/languages → provider as needed | Local ranking and activity matching heuristic | One visit, maximum one hour; no video/audio/fingerprint sent to backend or provider | Close, expiry, credential changes, sign-out |
+| Chosen parsed subtitle, language, numeric provider reference, corrections | Provider → phone; only selected track → household service → paired TVs | Subtitle playback and corrections | Until replaced, track/source removal or account deletion | Remove saved subtitle action; source/account cascade; copyright removal |
 
-Logged: counts and reasons per search, no titles or cues. Providers see the server's IP address, never the user's.
+Providers see the phone's IP address and personal provider identity, not the server's. Provider HTTP errors are
+reduced to fixed codes without response bodies or URL-bearing exception logs. No shared credentials or backend
+provider execution remain. Legacy discovery/fingerprint rows are dropped by migration 037; selected tracks and
+preferences survive. Keys do not grant copyright permission; see the provider review and rollout notes in
+`CableGram/docs/subtitles/cab-28-migration.md`. Production rollout and live checks must be recorded separately.
 
 ## Watch activity and remote control
 
@@ -177,7 +181,7 @@ tokens and the chosen TV in the browser's `localStorage`. It sends the same remo
 
 - **Apps:** no crash reporting and no log upload. LibVLC no longer writes stream URLs to logcat (CAB-37).
 - **Server, systemd journal** (14 days; daily files, so at most 15): title-lookup lengths, timings and TMDB ids (above),
-  TMDB queries, poster stored/removed events (item id and size), subtitle search counts, Google OAuth callback
+  TMDB queries, poster stored/removed events (item id and size),  Google OAuth callback
   results, mail send failures. If `MAILER_URL` were unset, the recipient and subject of each mail would be logged
   instead of sent. It is set in production.
 - **nginx access log** (15 days): IP address, path and user agent for all paths except `/relay/` and the Google
@@ -217,7 +221,7 @@ These stop the policy from being simpler, or are gaps found while writing this. 
 5. **Done in CAB-45: expired and ended rows are purged.** The control plane (`src/maintenance/purge.ts`) runs on
    start and hourly. Telegram login links and sealed TV passwords are cleared as soon as a request expires or is
    resolved. Expired rows are deleted after 1 day (email codes, pairing sessions, private approvals, profile switch
-   requests, Google sign-in states, subtitle searches, Telegram login and password requests), 7 days (sessions, remote
+   requests, Google sign-in states, Telegram login and password requests), 7 days (sessions, remote
    commands) or 30 days (ended Telegram TV sessions, finished library jobs). Relay usage older than 12 months, and
    device links to deleted households first seen over 12 months ago, are deleted too (the CAB-31 retention).
 6. **Done in CAB-41: journal and syslog are limited to 15 days.** `deploy/deploy-vps.sh` installs a journald

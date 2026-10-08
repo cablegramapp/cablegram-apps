@@ -855,6 +855,15 @@ private fun StorageMetric(label: String, value: String) {
 
 @Composable
 private fun SettingsScreen(viewModel: PhoneViewModel) {
+    var subtitleAccounts by remember { mutableStateOf(false) }
+    if (subtitleAccounts) {
+        BackHandler { subtitleAccounts = false }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TextButton(onClick = { subtitleAccounts = false }) { Text("Back to Settings") }
+            SubtitleProviderSetup(viewModel, onDone = { subtitleAccounts = false }, doneLabel = "Done")
+        }
+        return
+    }
     var advanced by rememberSaveable { mutableStateOf(false) }
     var apiDraft by remember(viewModel.apiBaseUrl) { mutableStateOf(viewModel.apiBaseUrl) }
     var tunnelDraft by remember(viewModel.tunnelUrl) { mutableStateOf(viewModel.tunnelUrl) }
@@ -890,6 +899,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 OutlinedButton(onClick = viewModel::startEmailVerification, modifier = Modifier.fillMaxWidth().maestro("settings_confirm_email")) { Text("Confirm email") }
             }
         }
+        OutlinedButton(onClick = { subtitleAccounts = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle provider accounts") }
         SectionCard("Your TVs") {
             if (!viewModel.paired) Text("Connect a TV to enjoy your library on a bigger screen.", color = VlcMuted)
             viewModel.tvs.forEach { tv ->
@@ -1157,6 +1167,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             }
             item.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodyLarge) }
             LaunchedEffect(item.id) { viewModel.refreshSubtitleStatus(item) }
+            if (viewModel.savedSubtitle != null) TextButton(onClick = { viewModel.removeSavedSubtitle(item) }, modifier = Modifier.fillMaxWidth()) { Text("Remove saved subtitle") }
             OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
                 Text(viewModel.savedSubtitle?.let { "Subtitles: $it · Find another" } ?: "Find Subtitles")
             }

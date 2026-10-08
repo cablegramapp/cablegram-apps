@@ -74,6 +74,7 @@ private val subtitleJson = Json { ignoreUnknownKeys = true; encodeDefaults = tru
 private val moreLanguages = listOf("en", "fa", "de", "fr", "es", "ar", "tr", "ru", "it")
 
 private sealed interface SubtitleStage {
+    data object Setup : SubtitleStage
     data object Searching : SubtitleStage
     data class Results(val discovery: SubtitleDiscovery) : SubtitleStage
     data class Adjust(val discovery: SubtitleDiscovery, val match: SubtitleMatch, val subtitleId: String) : SubtitleStage
@@ -83,7 +84,10 @@ private sealed interface SubtitleStage {
 /** Phone-side driver for Find Subtitles: local analysis → one server call → selection → corrections. */
 @Composable
 internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose: () -> Unit) {
+    val revision = viewModel.subtitleCredentialRevision
+    val engine = remember(revision) { viewModel.newSubtitleSession() }
     val scope = rememberCoroutineScope()
+    val openingRevision = remember { revision }
     var stage by remember { mutableStateOf<SubtitleStage>(SubtitleStage.Searching) }
     var preferences by remember { mutableStateOf(SubtitlePreferences()) }
     var progress by remember { mutableStateOf("Looking at your video…") }
@@ -107,8 +111,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
 
     fun cancelSearch() {
         job?.cancel(); activeInput?.close()
-        val id = requestId; val t = token
-        if (id != null && t != null) scope.launch(NonCancellable) { runCatching { viewModel.subtitleRequest("discoveries/$id", t, "DELETE") } }
+
     }
 
     suspend fun ensureAnalysis(): Pair<SubtitleTechnical?, SubtitleFingerprint?> = analysis ?: withContext(kotlinx.coroutines.Dispatchers.IO) {
@@ -119,7 +122,6 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
         val media = runCatching { viewModel.openVideo(item) }
         if (media.isFailure) {
             val reason = media.exceptionOrNull()
-            android.util.Log.w("Subtitles", "video unavailable: ${reason?.message}")
             analysisNote = (reason as? VideoUnavailable)?.message ?: "Your video couldn't be opened, so matches can't be checked against its audio."
             null to null
         } else media.getOrThrow().use {
@@ -150,18 +152,24 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
     /** The one search of this visit: the person's preferred languages. */
     fun search() {
         val t = token ?: run { stage = SubtitleStage.Failed(errorMessage(null)); return }
+        if (!engine.configured) { stage = SubtitleStage.Setup; return }
         cancelSearch(); requestedLanguage = null; others = null; othersNote = null; stage = SubtitleStage.Searching
         val id = UUID.randomUUID().toString(); requestId = id
         job = scope.launch {
             try {
                 val (technical, fingerprint) = ensureAnalysis()
                 progress = "Searching for subtitles…"
-                val body = subtitleJson.encodeToString(SubtitleSearchRequest(id = id, identity = item.id, technical = technical, fingerprint = fingerprint))
-                val discovery = subtitleJson.decodeFromString<SubtitleDiscovery>(viewModel.subtitleRequest("discoveries", t, "POST", body))
+                val context = subtitleJson.decodeFromString<SubtitleSourceContext>(viewModel.subtitleRequest("source-context", t, "POST", subtitleJson.encodeToString(SourceContextRequest(item.id))))
+                var discovery = engine.discover(context, preferences, technical, fingerprint)
+                val best = discovery.candidates.firstOrNull { it.cues != null && it.error == null }
+                if (preferences.autoSelect && best?.alignment?.verified == true && best.score >= 90 && !best.forced && best.alignment.correlation >= .8 && best.alignment.samples >= 4) {
+                    val saved = subtitleJson.decodeFromString<SubtitleSelection>(viewModel.subtitleRequest("selected-track", t, "POST", subtitleJson.encodeToString(engine.selected(best, true))))
+                    discovery = discovery.copy(selected = saved)
+                }
                 if (discovery.selected != null) viewModel.refreshSubtitleStatus(item)
                 stage = SubtitleStage.Results(discovery)
             } catch (e: CancellationException) { throw e
-            } catch (e: Exception) { android.util.Log.w("Subtitles", "search failed: ${e::class.simpleName} ${e.message}", e); stage = SubtitleStage.Failed(errorMessage(e.message)) }
+            } catch (e: Exception) { stage = SubtitleStage.Failed(errorMessage(e.message)) }
         }
     }
 
@@ -175,17 +183,19 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             try {
                 val (technical, fingerprint) = ensureAnalysis()
                 val languages = listOf(code) + moreLanguages.filter { it != code && it !in preferences.languages }
-                val body = subtitleJson.encodeToString(SubtitleSearchRequest(id = UUID.randomUUID().toString(), identity = item.id, languages = languages, technical = technical, fingerprint = fingerprint))
-                others = subtitleJson.decodeFromString<SubtitleDiscovery>(viewModel.subtitleRequest("discoveries", t, "POST", body))
+                val context = subtitleJson.decodeFromString<SubtitleSourceContext>(viewModel.subtitleRequest("source-context", t, "POST", subtitleJson.encodeToString(SourceContextRequest(item.id))))
+                others = engine.discover(context, preferences.copy(languages = languages, autoSelect = false), technical, fingerprint)
             } catch (e: CancellationException) { throw e
-            } catch (e: Exception) { android.util.Log.w("Subtitles", "other languages failed: ${e.message}", e); othersNote = errorMessage(e.message) }
+            } catch (e: Exception) { othersNote = errorMessage(e.message) }
             finally { loadingOthers = false }
         }
     }
 
-    LaunchedEffect(item.id) {
+    DisposableEffect(engine) { onDispose { job?.cancel(); activeInput?.close(); engine.close() } }
+    LaunchedEffect(item.id, revision) {
+        job?.cancel(); activeInput?.close(); analysis = null; others = null; requestId = null
         token?.let { t -> runCatching { subtitleJson.decodeFromString<SubtitlePreferences>(viewModel.subtitleRequest("preferences", t)) }.getOrNull()?.let { preferences = it } }
-        search()
+        if (revision == openingRevision) search() else stage = SubtitleStage.Setup
     }
     val close = { cancelSearch(); onClose() }
     BackHandler { if (stage is SubtitleStage.Adjust) (stage as SubtitleStage.Adjust).let { stage = SubtitleStage.Results(it.discovery) } else close() }
@@ -199,13 +209,15 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             Text("Subtitles", color = Color.White, style = MaterialTheme.typography.headlineSmall)
             Text(item.title, color = VlcMuted)
         }
+        if (!adjusting && stage != SubtitleStage.Setup) TextButton(onClick = { cancelSearch(); stage = SubtitleStage.Setup }) { Text("Subtitle provider accounts") }
         when (val s = stage) {
+            SubtitleStage.Setup -> SubtitleProviderSetup(viewModel, onDone = { search() })
             SubtitleStage.Searching -> {
                 Row(Modifier.maestro(MaestroIds.SUBTITLES_SEARCHING), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     CircularProgressIndicator(Modifier.width(28.dp).height(28.dp), color = VlcOrange); Text(progress, color = Color.White)
                 }
                 if (fetchedMb > 0) Text("Fetched ${"%.1f".format(fetchedMb)} MB from Telegram so far", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-                Text("Your video stays on your phone. Only a short timing pattern is sent for matching.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                Text("Video and timing patterns stay on this phone. Searches go directly to your providers using your personal quota.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 if (analysing) OutlinedButton(onClick = { skipped = true; activeInput?.close(); listening?.cancel() }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SKIP)) { Text("Skip — I'll line it up myself") }
                 OutlinedButton(onClick = { cancelSearch(); stage = SubtitleStage.Failed(errorMessage("cancelled")) }) { Text("Cancel") }
             }
@@ -213,7 +225,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                 StatusNote(s.message)
                 Button(onClick = { search() }, modifier = Modifier.fillMaxWidth()) { Text("Try again") }
             }
-            is SubtitleStage.Results -> ResultsContent(viewModel, item, s.discovery, others, loadingOthers, othersNote, analysisNote, preferences, requestedLanguage,
+            is SubtitleStage.Results -> ResultsContent(viewModel, engine, item, s.discovery, others, loadingOthers, othersNote, analysisNote, preferences, requestedLanguage,
                 onSelectLanguage = ::selectLanguage,
                 onPreferences = { updated -> preferences = updated; token?.let { t -> scope.launch { runCatching { viewModel.subtitleRequest("preferences", t, "PUT", subtitleJson.encodeToString(updated)) } } } },
                 onSelected = { match, id -> viewModel.refreshSubtitleStatus(item); stage = SubtitleStage.Adjust(s.discovery, match, id) },
@@ -225,7 +237,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
 
 @Composable
 private fun ResultsContent(
-    viewModel: PhoneViewModel, item: LibraryItem, discovery: SubtitleDiscovery, otherLanguages: SubtitleDiscovery?, loadingOthers: Boolean, othersNote: String?,
+    viewModel: PhoneViewModel, engine: LocalSubtitleDiscovery, item: LibraryItem, discovery: SubtitleDiscovery, otherLanguages: SubtitleDiscovery?, loadingOthers: Boolean, othersNote: String?,
     analysisNote: String?, preferences: SubtitlePreferences, language: String?,
     onSelectLanguage: (String?) -> Unit, onPreferences: (SubtitlePreferences) -> Unit,
     onSelected: (SubtitleMatch, String) -> Unit, onError: (String) -> Unit,
@@ -251,10 +263,8 @@ private fun ResultsContent(
         val t = token ?: return onError(errorMessage(null)); busyId = match.id
         scope.launch {
             try {
-                val prepared = if (match.cues != null) match else subtitleJson.decodeFromString<PreviewResponse>(
-                    viewModel.subtitleRequest("discoveries/${origin[match.id] ?: discovery.id}/preview", t, "POST", """{"candidateId":${subtitleJson.encodeToString(match.id)}}""")).let { match.copy(cues = it.cues, alignment = it.candidate.alignment) }
-                val saved = subtitleJson.decodeFromString<SubtitleSelection>(
-                    viewModel.subtitleRequest("discoveries/${origin[match.id] ?: discovery.id}/select", t, "POST", """{"candidateId":${subtitleJson.encodeToString(match.id)}}"""))
+                val prepared = if (match.cues != null) match else engine.prepare(match)
+                val saved = subtitleJson.decodeFromString<SubtitleSelection>(viewModel.subtitleRequest("selected-track", t, "POST", subtitleJson.encodeToString(engine.selected(prepared))))
                 onSelected(prepared, saved.id)
             } catch (e: CancellationException) { throw e
             } catch (e: Exception) { busyId = null; onError(errorMessage(e.message)) }
@@ -288,7 +298,7 @@ private fun ResultsContent(
     if (settings) PreferencesCard(preferences, onPreferences)
 }
 
-@Serializable private data class PreviewResponse(val candidate: SubtitleMatch, val cues: List<SubtitleCue>)
+@Serializable private data class SourceContextRequest(val identity: String)
 
 @Composable
 private fun OptionCard(match: SubtitleMatch, primary: Boolean, busy: Boolean, enabled: Boolean = true, details: Boolean, canCheck: Boolean, onUse: () -> Unit) {

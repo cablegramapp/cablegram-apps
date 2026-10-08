@@ -10,15 +10,15 @@ fun languageName(code: String): String = Locale.forLanguageTag(code).getDisplayL
 
 fun formatSyncOffset(seconds: Double): String = "%+.2f sec".format(Locale.US, seconds)
 
-/** Verification is only claimed when the speech check actually succeeded on the server. */
+/** Verification is only claimed when the speech check actually succeeded locally. */
 fun headline(match: SubtitleMatch, canCheck: Boolean = true): SubtitleHeadline {
     val alignment = match.alignment
-    val verified = alignment?.verified == true && match.confidence in setOf("Perfect Match", "Verified Match")
+    val verified = alignment?.verified == true && match.confidence in setOf("Local Activity Match", "Perfect Match", "Verified Match")
     val partial = !verified && alignment?.reason == "partial_match"
     val trust = when {
         match.confidence == "Poor Match" -> "Poor match"
         partial -> "Likely match · partly checked"
-        verified -> "✓ ${match.confidence}"
+        verified -> "Local activity match · heuristic"
         match.confidence == "Likely Match" -> "Likely match · not verified"
         else -> "Not verified"
     }
@@ -36,7 +36,7 @@ fun headline(match: SubtitleMatch, canCheck: Boolean = true): SubtitleHeadline {
 }
 
 fun discoveryNotice(discovery: SubtitleDiscovery): String? = when (discovery.status) {
-    "providers_not_configured" -> "Subtitle search isn't set up on this server yet."
+    "providers_not_configured" -> "Add a personal subtitle provider account to search."
     "provider_unavailable" -> providerFailure(discovery.errors) ?: "Subtitle sources couldn't be reached. Try again in a moment."
     "no_subtitles" -> "No subtitles were found for this title in your languages."
     "no_confident_match" -> "No subtitle could be confirmed against your video. Review the options below."
@@ -49,6 +49,9 @@ private fun providerFailure(errors: List<SubtitleProviderFailure>): String? {
 }
 
 fun errorMessage(code: String?): String = when (code) {
+    "invalid_credentials" -> "Your provider credentials were refused. Replace them in Subtitle provider accounts."
+    "provider_rate_limited", "quota_exhausted" -> "Your personal provider quota is exhausted or rate limited. Try later."
+    "ambiguous_subtitle_archive" -> "That pack does not identify one exact episode. Choose another subtitle."
     "cancelled" -> "Search cancelled."
     "search_in_progress" -> "A search is already running."
     "search_rate_limited" -> "Please wait a few seconds before searching again."
@@ -81,7 +84,7 @@ fun unsupportedAudioNote(format: String): String =
     "This video's sound is $format, which this phone can't play or analyse. The preview will be silent and matches can't be checked against the audio. It will still play normally on your TV."
 
 /**
- * The option to feature and the rest. A candidate the server already checked against the video comes first, but when
+ * The option to feature and the rest. A candidate the phone already checked against the video comes first, but when
  * none was checked (or none was usable) the top-ranked unchecked one is featured instead, so a language never ends
  * up as a collapsed list with nothing recommended.
  */
