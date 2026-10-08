@@ -201,10 +201,12 @@ These stop the policy from being simpler, or are gaps found while writing this. 
    (`LanTls.kt`). LibVLC can't pin, so the TV plays through a 127.0.0.1 proxy that does. The relay tunnel reaches a
    separate plain listener bound to 127.0.0.1 on the phone. Release builds allow plain HTTP only to 127.0.0.1. The
    policy may now say the LAN stream is encrypted, but not end-to-end through the relay.
-5. **Expired short-lived rows are never purged:** pairing sessions, remote commands, profile switch requests,
-   private approvals, email codes, Telegram login and password requests, library jobs. Their secrets are hashed or
-   cleared, but the rows stay until account deletion. A daily purge (for example 30 days after expiry) would let
-   the policy say "deleted" rather than "expire".
+5. **Done in CAB-45: expired and ended rows are purged.** The control plane (`src/maintenance/purge.ts`) runs on
+   start and hourly. Telegram login links and sealed TV passwords are cleared as soon as a request expires or is
+   resolved. Expired rows are deleted after 1 day (email codes, pairing sessions, private approvals, profile switch
+   requests, Google sign-in states, subtitle searches, Telegram login and password requests), 7 days (sessions, remote
+   commands) or 30 days (ended Telegram TV sessions, finished library jobs). Relay usage older than 12 months, and
+   device links to deleted households first seen over 12 months ago, are deleted too (the CAB-31 retention).
 6. **Done in CAB-41: journal and syslog are limited to 15 days.** `deploy/deploy-vps.sh` installs a journald
    drop-in (`MaxRetentionSec=14day`, `MaxFileSec=1day`) and rotates syslog daily with 14 kept. The policy now says
    all logs are kept for up to 15 days.
