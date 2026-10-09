@@ -360,6 +360,9 @@ class CatalogClient(
         runCatching { client.newCall(request).execute().use { it.code } }.getOrNull()
     }
 
+    suspend fun telegramClientCredentials(token: String) =
+        app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, BuildConfig.DEBUG)
+
     // ---- Telegram as cloud storage (spec 004, contracts/telegram-link.md) ----
 
     /** The household's Telegram link; null when offline. */

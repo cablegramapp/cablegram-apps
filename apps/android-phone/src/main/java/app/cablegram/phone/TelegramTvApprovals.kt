@@ -134,7 +134,7 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
             }
             // Verified approval: only a Cablegram session is accepted, and it is identified exactly, so the
             // phone can end that TV's session later even when the TV is off (US8), and never another one.
-            val outcome = session.approveTvLogin(request.loginLink, BuildConfig.TELEGRAM_API_ID)
+            val outcome = session.approveTvLogin(request.loginLink, session.clientApiId)
             val error = (outcome.exceptionOrNull() as? TgException)?.name?.let(::telegramErrorName)
             client.postTvLoginResult(token, request.requestId, if (outcome.isSuccess) "approved" else "failed", error)
             val identified = outcome.getOrNull()?.session

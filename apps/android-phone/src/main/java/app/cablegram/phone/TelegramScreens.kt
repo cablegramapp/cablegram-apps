@@ -314,7 +314,10 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
                     secret = true,
                 ) { session.submitPassword(input) }
             }
-            is TelegramState.Failed -> Text(s.message, color = VlcOrange)
+            is TelegramState.Failed -> {
+                Text(s.message, color = VlcOrange)
+                OutlinedButton(onClick = { session.retryStartup() }) { Text("Try again") }
+            }
             is TelegramState.WaitingForApproval ->
                 if (viewModel.telegramViaTv) Working("Waiting for your TV to approve… Keep Cablegram open on the TV.")
                 else Working("Starting Telegram…")

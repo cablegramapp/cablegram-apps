@@ -27,10 +27,6 @@ jobs:
         run: ./gradlew testDebugUnitTest
       - name: Build release APK
         working-directory: apps/${{ matrix.app }}
-        # Environment variables named ORG_GRADLE_PROJECT_<name> reach the build as -P<name>.
-        env:
-          ORG_GRADLE_PROJECT_TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
-          ORG_GRADLE_PROJECT_TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
         run: ./gradlew assembleRelease bundleRelease
       - uses: actions/setup-node@v4
         with:

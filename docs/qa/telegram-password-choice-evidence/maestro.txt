@@ -1,0 +1,14 @@
+Running on CG_TV_1080p
+ > Flow keyboard-choice
+Assert that "TV keyboard" is visible... COMPLETED
+Assert that "Phone keyboard" is visible... COMPLETED
+Take screenshot keyboard-choice... COMPLETED
+Press Remote Dpad Down key... COMPLETED
+Press Remote Dpad Center key... COMPLETED
+Assert that "Type on your phone" is visible... COMPLETED
+Assert that "Send phone prompt again" is visible... COMPLETED
+Take screenshot phone-keyboard... COMPLETED
+Press Back key... COMPLETED
+Assert that "TV keyboard" is visible... COMPLETED
+Assert that "Phone keyboard" is visible... COMPLETED
+Press Back key... COMPLETED

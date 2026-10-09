@@ -7,33 +7,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.10"
 }
 
-// Telegram API credentials: -PTELEGRAM_API_ID / -PTELEGRAM_API_HASH, else the git-ignored
-// local.properties. Register your own at https://my.telegram.org. A build without them has
-// Telegram switched off.
-val telegramEnv = Properties().apply {
+// Optional local build settings (e.g. Cast receiver ID); Telegram identity comes from the server.
+val localSettings = Properties().apply {
     val local = rootProject.file("local.properties")
     if (local.exists()) local.inputStream().use { load(it) }
 }
-fun telegramSetting(name: String): String =
-    (project.findProperty(name) as String?) ?: telegramEnv.getProperty(name) ?: ""
-
-// A build without these ships with Telegram switched off: it installs fine and then quietly can't use Telegram.
-// Packaging and installing therefore fail unless that is asked for with -PALLOW_NO_TELEGRAM=true. Tests and
-// compiling are not affected.
-val requireTelegramCredentials by tasks.registering {
-    doLast {
-        val missing = telegramSetting("TELEGRAM_API_ID").let { it.isBlank() || it == "0" } || telegramSetting("TELEGRAM_API_HASH").isBlank()
-        if (missing && project.findProperty("ALLOW_NO_TELEGRAM") != "true") {
-            throw GradleException(
-                "TELEGRAM_API_ID / TELEGRAM_API_HASH are not set, so this build would have Telegram switched off. " +
-                    "Set them in local.properties or with -PTELEGRAM_API_ID / -PTELEGRAM_API_HASH, " +
-                    "or build without Telegram on purpose with -PALLOW_NO_TELEGRAM=true.",
-            )
-        }
-    }
-}
-tasks.matching { it.name.matches(Regex("(assemble|bundle|install)(Debug|Release)?")) }
-    .configureEach { dependsOn(requireTelegramCredentials) }
+fun localSetting(name: String): String =
+    (project.findProperty(name) as String?) ?: localSettings.getProperty(name) ?: ""
 
 android {
     namespace = "app.cablegram.phone"
@@ -52,7 +32,7 @@ android {
         buildConfigField("String", "API_BASE", "\"$apiBase\"")
         buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
         // Optional Cast console receiver ID; an empty value keeps Cast disabled.
-        val castAppId = telegramSetting("CABLEGRAM_CAST_APP_ID").trim()
+        val castAppId = localSetting("CABLEGRAM_CAST_APP_ID").trim()
             .replace("\\", "\\\\").replace("\"", "\\\"")
         buildConfigField("String", "CABLEGRAM_CAST_APP_ID", "\"$castAppId\"")
         // Test-only: emulators sit behind separate NATs, so the E2E harness forwards the LAN
@@ -64,8 +44,6 @@ android {
         (project.findProperty("CABLEGRAM_ABIS") as String?)?.let { abis ->
             ndk { abiFilters += abis.split(',').map { it.trim() }.filter { it.isNotEmpty() } }
         }
-        buildConfigField("int", "TELEGRAM_API_ID", telegramSetting("TELEGRAM_API_ID").ifBlank { "0" })
-        buildConfigField("String", "TELEGRAM_API_HASH", "\"${telegramSetting("TELEGRAM_API_HASH")}\"")
     }
     // Sideload releases get one APK per ABI instead of a universal one (LibVLC and TDLib ship native
     // code for four ABIs). -PCABLEGRAM_ABIS is an ndk filter and cannot be combined with splits, so a
