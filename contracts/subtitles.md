@@ -10,9 +10,9 @@ Authenticated `POST /api/subtitles/source-context` accepts the catalog identity 
 `sourceId`. The service checks household ownership and returns `sourceId`, `sourceIdentity` (the
 source version), title/file name and available catalog/episode/duration metadata for local discovery.
 
-Authenticated `POST /api/subtitles/selected-track` accepts the exact `sourceId` and `sourceIdentity`,
-parsed `cues`, two-letter `language`, `provider` (`subdl` or `opensubtitles`), numeric `providerRef`,
-`offsetSeconds`, `scale`, `forced`, `confidence` and `automatic`. Confidence is `Likely Match`,
+Authenticated `POST /api/subtitles/selected-track` accepts the exact `sourceId` and version `identity`,
+parsed `cues`, two-letter `language`, `provider` (`subdl`, `opensubtitles` or `local`), `providerRef`,
+`offset`, `scale`, `forced`, `confidence` and `automatic`. Confidence is `Likely Match`,
 `Unverified` or `Local Activity Match`; local matching is a heuristic. The service rechecks ownership,
 availability and version under a source lock before saving. A changed source must be rediscovered.
 
@@ -23,6 +23,28 @@ text/timing and out-of-range corrections. Limits: 2 MB serialized cues, 20,000 c
 
 Only the selected parsed track and its provenance/timing enter household storage. Authenticated
 `DELETE /api/subtitles/:id` removes a saved track belonging to the phone's household.
+
+## User-attached SRT/VTT files
+
+Video details offers **Attach subtitle file**, independently of personal provider setup. Android's
+document picker grants access to one file for this visit; broad storage permission and persistent
+access are unnecessary. The phone reads at most 2,000,000 bytes, validates the `.srt`/`.vtt` extension
+and content, and shows language, cue count and a text preview before confirmation. UTF-8, BOM-marked
+UTF-16 and language-specific legacy encodings use the existing timeline decoder. Archives are refused.
+WebVTT styling/positioning metadata is not retained; the shared track contains plain timed text.
+
+Confirmation explicitly uploads parsed cues to the existing selected-track endpoint with `provider`
+`local`, `providerRef` equal to the lowercase SHA-256 of the file bytes, `confidence` `Unverified`,
+`automatic` false, initial `offset` 0 and `scale` 1. No filename or document URI is uploaded. Provider
+references keep their existing numeric-only validation; local references require exactly 64 hex digits.
+Existing cue, household, source-version and correction checks apply unchanged. One selected track per
+user/source is replaced only after a valid save. Picker cancellation and validation errors preserve it.
+
+After attachment, the existing timing-adjustment/preview screen is available, including when the video
+cannot be previewed on this phone. Paired TVs receive the same normalized VTT contract on next playback;
+an already playing title needs restarting to load a newly attached track. The existing remove action
+and source/account deletion lifecycle apply. No TV code or database migration is needed. The coordinated
+backend change must be deployed before releasing the phone feature.
 
 ## Compatibility and lifecycle
 

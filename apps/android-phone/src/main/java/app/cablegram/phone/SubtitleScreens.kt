@@ -343,7 +343,7 @@ private fun PreferencesCard(p: SubtitlePreferences, onChange: (SubtitlePreferenc
 private data class SyncPoint(val cue: SubtitleCue, val video: Double)
 
 @Composable
-private fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryItem, match: SubtitleMatch, subtitleId: String, onDone: () -> Unit) {
+internal fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryItem, match: SubtitleMatch, subtitleId: String, onDone: () -> Unit) {
     val scope = rememberCoroutineScope(); val context = LocalContext.current
     val token = viewModel.accountTokenOrNull()
     val cues = match.cues.orEmpty()
