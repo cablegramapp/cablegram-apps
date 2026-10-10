@@ -1,6 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<testsuites>
-  <testsuite name="Test Suite" device="Pixel_9" tests="1" failures="0" time="22.942" timestamp="2026-10-08T16:16:56">
-    <testcase id="reopen-folder" name="reopen-folder" classname="reopen-folder" file="docs/qa/cab-32-evidence/reopen-folder.yaml" time="22.934" timestamp="2026-10-08T16:16:56" status="SUCCESS"/>
-  </testsuite>
-</testsuites>

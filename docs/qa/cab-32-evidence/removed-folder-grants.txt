@@ -1,2 +1,0 @@
-INSTRUMENTATION_RESULT: result=PASS: selected folder count=2; selected folders readable; removed tree checked=true; library entries retained
-INSTRUMENTATION_CODE: -1
