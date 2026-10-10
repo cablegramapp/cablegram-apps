@@ -1,9 +1,0 @@
-appId: app.cablegram.signatureqa
----
-- assertVisible: "Waiting for approval"
-- assertVisible: "Allow this play on your phone"
-- assertNotVisible: "0%"
-- extendedWaitUntil:
-    visible: "Approval cancelled"
-    timeout: 30000
-- assertNotVisible: "Waiting for approval"

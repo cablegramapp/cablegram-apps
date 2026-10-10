@@ -1,8 +1,0 @@
-appId: app.cablegram.signatureqa
----
-- extendedWaitUntil:
-    visible: "Preparing your video"
-    timeout: 25000
-- assertVisible: "Getting your video ready"
-- assertVisible: "Your video is ready. Starting after this clip."
-- takeScreenshot: preparing-signature

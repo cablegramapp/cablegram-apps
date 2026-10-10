@@ -1,2 +1,0 @@
-INSTRUMENTATION_RESULT: result=PASS: encrypted pairings survived a fresh process and were cleared
-INSTRUMENTATION_CODE: -1

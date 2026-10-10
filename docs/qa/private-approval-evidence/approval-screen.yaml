@@ -1,9 +1,0 @@
-appId: app.cablegram.approvalqa
----
-- assertVisible: "Waiting for approval"
-- assertVisible: "Allow this play on your phone"
-- assertVisible: 'This title is private. Open Cablegram or its notification on your phone and tap “Allow once”.'
-- assertVisible: "Your title starts automatically after approval."
-- assertNotVisible: "Preparing Your Movie..."
-- assertNotVisible: "0%"
-- takeScreenshot: approval-wait

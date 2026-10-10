@@ -1,8 +1,0 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<testsuites>
-  <testsuite name="Test Suite" device="Pixel_9" tests="1" failures="1" time="39.455" timestamp="2026-10-08T17:39:42">
-    <testcase id="remove-folder" name="remove-folder" classname="remove-folder" file="docs/qa/cab-32-evidence/remove-folder.yaml" time="39.447" timestamp="2026-10-08T17:39:42" status="ERROR">
-      <failure>Element not found: Id matching regex: browse_remove_folder_confirm</failure>
-    </testcase>
-  </testsuite>
-</testsuites>

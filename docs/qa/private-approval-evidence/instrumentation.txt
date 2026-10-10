@@ -1,6 +1,0 @@
-
-app.cablegram.ui.PrivateApprovalScreenHarnessTest:.
-
-Time: 73.432
-
-OK (1 test)
