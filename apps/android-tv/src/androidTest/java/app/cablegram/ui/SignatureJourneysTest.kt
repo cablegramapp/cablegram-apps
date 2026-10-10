@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
 class SignatureJourneysTest {
     @get:Rule val activityRule = ActivityScenarioRule(MainActivity::class.java)
 
-    @Test fun readyMovieWaitsForTheSignatureAndOpeningCanBeSkippedRepeatedly() {
+    @Test fun quickReadyMovieSkipsTheClipAndOpeningCanBeSkippedRepeatedly() {
         val clip = InstrumentationRegistry.getArguments().getString("url")
         assumeNotNull(clip)
         val store = ViewModelStore()
@@ -62,18 +62,17 @@ class SignatureJourneysTest {
                 assertTrue(model.screen is ScreenState.Resolving)
             }
             val preparingAt = SystemClock.elapsedRealtime()
-            // A ready demo URL must remain behind the preparing screen while the brand video plays.
-            SystemClock.sleep(1500)
-            activityRule.scenario.onActivity { assertTrue(model.screen is ScreenState.Resolving) }
-            waitUntil(30_000) { model.screen is ScreenState.Player }
-            assertTrue("Ready playback waits for a full 10-second signature", SystemClock.elapsedRealtime() - preparingAt >= 9500)
-            Log.i("SignatureJourneys", "ready movie waited for a real signature cycle")
+            // A demo URL is ready at once: the clip is skipped, only the short fade remains.
+            waitUntil(5_000) { model.screen is ScreenState.Player }
+            assertTrue("A quickly ready title is not held for the clip", SystemClock.elapsedRealtime() - preparingAt < 3_000)
+            Log.i("SignatureJourneys", "quick ready movie started without waiting for the clip")
             // Cancellation during the gate cannot be undone by a late completion from that clip.
             activityRule.scenario.onActivity {
                 model.play(demoLibraryVideos().first())
                 val oldAttempt = (model.screen as ScreenState.Resolving).signatureAttemptId
                 model.cancelResolving()
-                model.finishPlaybackSignature(oldAttempt)
+                model.signatureClipStarted(oldAttempt)
+                model.startReadyPlaybackNow(oldAttempt)
                 assertEquals(ScreenState.Library, model.screen)
                 model.showOpeningSignature()
             }

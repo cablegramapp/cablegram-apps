@@ -1,6 +1,5 @@
 package app.cablegram.ui
 
-import app.cablegram.data.DEFAULT_LOADING_VIDEOS
 import androidx.compose.foundation.layout.aspectRatio
 import android.app.Activity
 import android.content.Context
@@ -829,11 +828,7 @@ fun PlayerScreen(
                     // While a switch is under way the badges would describe the path being left (it said "Local LAN" while
                     // the TV waited for mobile-data consent on the relay); the switch overlay explains instead.
                     if (hasStarted && !switchingSource) TransportBadge(transport = classifyTransport(activePlayback.url, isLive))
-                    if (error == null && hasStarted && !switchingSource) StreamHealthBadge(
-                        streamHealth,
-                        showSignature = transition == null && transportNotice != WAITING_FOR_PHONE_NOTICE &&
-                            !(isRelayUrl(activePlayback.url.orEmpty()) && transportNotice == transportNoticeFor(activePlayback.url.orEmpty())),
-                    )
+                    if (error == null && hasStarted && !switchingSource) StreamHealthBadge(streamHealth)
                 }
             }
             AnimatedVisibility(
@@ -1013,10 +1008,6 @@ fun PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                val url = activePlayback.url
-                if (url != null && isRelayUrl(url) && notice == transportNoticeFor(url)) {
-                    UnhappyVideoPanel(notice, Modifier.width(128.dp).height(72.dp), muted = true)
-                }
                 Text(notice, color = Paper, fontSize = 16.sp)
             }
         }
@@ -1126,7 +1117,7 @@ private fun VolumeFeedbackOverlay(feedback: VolumeFeedback) {
 }
 
 @Composable
-private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifier, showSignature: Boolean = true) {
+private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifier) {
     val (label, tint) = when (health) {
         StreamHealth.GOOD -> "Stream quality: Good" to Color(0xFF4ADE80)
         StreamHealth.OK -> "Stream quality: OK" to Color(0xFFFBBF24)
@@ -1141,9 +1132,6 @@ private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifie
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        if (showSignature && health != StreamHealth.GOOD) {
-            UnhappyVideoPanel(label, Modifier.width(64.dp).height(36.dp), muted = true)
-        }
         Text("●", color = tint, fontSize = 13.sp)
         Text(label, color = Paper.copy(alpha = 0.9f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
@@ -1830,7 +1818,7 @@ internal fun transitionTo(url: String, atStart: Boolean = false): SourceTransiti
 /** Full-screen handover: the Cablegram loop and what is happening, instead of a frozen frame. */
 @Composable
 internal fun TransitionOverlay(transition: SourceTransition, modifier: Modifier = Modifier, videoUrl: String? = null) {
-    val loopUrl = remember(transition, videoUrl) { videoUrl ?: if (transition.warning) app.cablegram.data.getRandomErrorVideoUrl() else DEFAULT_LOADING_VIDEOS.random() }
+    val loopUrl = remember(transition, videoUrl) { videoUrl ?: if (transition.warning) app.cablegram.data.getRandomErrorVideoUrl() else app.cablegram.data.getRandomLoadingVideoUrl() }
     Box(
         modifier.fillMaxSize().background(Color(0xFF0B0D10)),
         contentAlignment = Alignment.Center,

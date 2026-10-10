@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
+import app.cablegram.data.SignatureClips
 import kotlinx.coroutines.delay
 
 @Composable
@@ -32,7 +33,8 @@ internal fun SignatureOpeningScreen(url: String, onFinished: () -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(url) { focus.requestFocus() }
     Box(Modifier.fillMaxSize().background(InkDeep)) {
-        SignatureVideo(url, loop = false, onFirstCycleFinished = onFinished, onUnavailable = onFinished)
+        // The opening is the one clip that may play its sound.
+        SignatureVideo(url, loop = false, muted = false, onFirstCycleFinished = onFinished, onUnavailable = onFinished)
         Text("CABLEGRAM", color = Cyan, modifier = Modifier.align(Alignment.TopStart).padding(28.dp))
         Button(onClick = onFinished, modifier = Modifier.align(Alignment.BottomEnd).padding(28.dp).focusRequester(focus)) {
             Text("Skip")
@@ -40,17 +42,23 @@ internal fun SignatureOpeningScreen(url: String, onFinished: () -> Unit) {
     }
 }
 
-/** Native looping keeps the brand clip continuous; completion is signalled once per appearance. */
+/**
+ * Native looping keeps the brand clip continuous; completion is signalled once per appearance. Clips are silent and
+ * take no audio focus unless [muted] is false, and play from the copy [SignatureClips] keeps once one exists.
+ */
 @Composable
 internal fun SignatureVideo(
     url: String?,
     loop: Boolean = true,
-    muted: Boolean = false,
+    muted: Boolean = true,
+    onStarted: () -> Unit = {},
     onFirstCycleFinished: () -> Unit = {},
     onUnavailable: () -> Unit = {},
 ) {
+    val started by rememberUpdatedState(onStarted)
     val finished by rememberUpdatedState(onFirstCycleFinished)
     val unavailable by rememberUpdatedState(onUnavailable)
+    val source = remember(url) { url?.takeIf { it.isNotBlank() }?.let(SignatureClips::playable) }
     var viewRef by remember(url) { mutableStateOf<VideoView?>(null) }
     var failed by remember(url) { mutableStateOf(false) }
     var reported by remember(url) { mutableStateOf(false) }
@@ -59,28 +67,29 @@ internal fun SignatureVideo(
     LaunchedEffect(url) {
         var previousPosition = -1
         var lastProgressAt = SystemClock.elapsedRealtime()
-        var started = false
+        var playing = false
         while (!failed) {
             delay(100)
             val view = viewRef
             val position = view?.currentPosition ?: 0
             val now = SystemClock.elapsedRealtime()
             if (view?.isPlaying == true && position != previousPosition) {
-                if (started && position < previousPosition - 500 && !reported) {
+                if (playing && position < previousPosition - 500 && !reported) {
                     reported = true
                     finished()
                 }
                 previousPosition = position
                 lastProgressAt = now
-                started = true
+                if (!playing) started()
+                playing = true
             }
-            if (now - lastProgressAt > if (started) 15_000 else 8_000) {
+            if (now - lastProgressAt > if (playing) 15_000 else 8_000) {
                 failed = true
                 unavailable()
             }
         }
     }
-    if (!url.isNullOrBlank() && !failed) {
+    if (source != null && !failed) {
         key(url) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -103,7 +112,7 @@ internal fun SignatureVideo(
                             unavailable()
                             true
                         }
-                        setVideoURI(Uri.parse(url))
+                        setVideoURI(Uri.parse(source))
                     }
                 },
                 onRelease = { it.stopPlayback() },

@@ -226,35 +226,38 @@ data class LoadingVideosResponse(
     val videos: List<String> = emptyList(),
 )
 
+/** The clip bucket behind its own domain (not the rate-limited r2.dev address); see [SignatureClips]. */
+const val SIGNATURE_CLIP_BASE = "https://media.cablegram.app"
+
 val DEFAULT_LOADING_VIDEOS = listOf(
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/71d5c9fa12bcb2c00065650ec0a9c036_1788595470(1).mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/8ce3920ad5938019cd4da4a35b10e4d3_1788596836%20copy.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/Italy.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/Japan.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/Paris.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/Persian.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/a0973935ccd2cacdf98b9957473a7b46_1788595113.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/a4571b080d6c76759e3bb973c3ca8ce8_1788597900%20copy.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/africa.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/arabic.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/brazil.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/c51e98d6da756d6f38c62a2651a7cc8f_1788595799%20copy.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/germany.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/mexico.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/russia.mp4",
+    "$SIGNATURE_CLIP_BASE/71d5c9fa12bcb2c00065650ec0a9c036_1788595470(1).mp4",
+    "$SIGNATURE_CLIP_BASE/8ce3920ad5938019cd4da4a35b10e4d3_1788596836%20copy.mp4",
+    "$SIGNATURE_CLIP_BASE/Italy.mp4",
+    "$SIGNATURE_CLIP_BASE/Japan.mp4",
+    "$SIGNATURE_CLIP_BASE/Paris.mp4",
+    "$SIGNATURE_CLIP_BASE/Persian.mp4",
+    "$SIGNATURE_CLIP_BASE/a0973935ccd2cacdf98b9957473a7b46_1788595113.mp4",
+    "$SIGNATURE_CLIP_BASE/a4571b080d6c76759e3bb973c3ca8ce8_1788597900%20copy.mp4",
+    "$SIGNATURE_CLIP_BASE/africa.mp4",
+    "$SIGNATURE_CLIP_BASE/arabic.mp4",
+    "$SIGNATURE_CLIP_BASE/brazil.mp4",
+    "$SIGNATURE_CLIP_BASE/c51e98d6da756d6f38c62a2651a7cc8f_1788595799%20copy.mp4",
+    "$SIGNATURE_CLIP_BASE/germany.mp4",
+    "$SIGNATURE_CLIP_BASE/mexico.mp4",
+    "$SIGNATURE_CLIP_BASE/russia.mp4",
 )
 
-fun getRandomLoadingVideoUrl(): String = DEFAULT_LOADING_VIDEOS.random()
+fun getRandomLoadingVideoUrl(): String = SignatureClips.pick(DEFAULT_LOADING_VIDEOS)
 
-const val TELEGRAM_PASSWORD_VIDEO_URL = "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/custom/pass.mp4"
+const val TELEGRAM_PASSWORD_VIDEO_URL = "$SIGNATURE_CLIP_BASE/custom/pass.mp4"
 
 val ERROR_SIGNATURE_VIDEOS = listOf(
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_1e5a5e12.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_219a8857.mp4",
-    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_9abc993d.mp4",
+    "$SIGNATURE_CLIP_BASE/error/gemini_generated_video_1e5a5e12.mp4",
+    "$SIGNATURE_CLIP_BASE/error/gemini_generated_video_219a8857.mp4",
+    "$SIGNATURE_CLIP_BASE/error/gemini_generated_video_9abc993d.mp4",
 )
 
-fun getRandomErrorVideoUrl(): String = ERROR_SIGNATURE_VIDEOS.random()
+fun getRandomErrorVideoUrl(): String = SignatureClips.pick(ERROR_SIGNATURE_VIDEOS)
 
 const val PRIVACY_POLICY_URL = "https://cablegram.app/privacy.html"
 const val DEMO_REVIEWER_PIN = "9999"
