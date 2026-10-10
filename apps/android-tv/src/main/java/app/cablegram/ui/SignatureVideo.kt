@@ -58,13 +58,21 @@ internal fun SignatureVideo(
     val started by rememberUpdatedState(onStarted)
     val finished by rememberUpdatedState(onFirstCycleFinished)
     val unavailable by rememberUpdatedState(onUnavailable)
-    val source = remember(url) { url?.takeIf { it.isNotBlank() }?.let(SignatureClips::playable) }
-    var viewRef by remember(url) { mutableStateOf<VideoView?>(null) }
-    var failed by remember(url) { mutableStateOf(false) }
+    // One retry from the old r2.dev address if the clip domain can't be reached (a resolver that cached "not found").
+    var useFallback by remember(url) { mutableStateOf(false) }
+    val source = remember(url, useFallback) {
+        url?.takeIf { it.isNotBlank() }?.let { if (useFallback) SignatureClips.fallbackFor(it) else SignatureClips.playable(it) }
+    }
+    var viewRef by remember(source) { mutableStateOf<VideoView?>(null) }
+    var failed by remember(source) { mutableStateOf(false) }
     var reported by remember(url) { mutableStateOf(false) }
+    fun fail() {
+        if (!useFallback && url != null && SignatureClips.fallbackFor(url) != null && source?.startsWith("http") == true) useFallback = true
+        else { failed = true; unavailable() }
+    }
 
     // A failed or stalled decorative clip must never block opening the app or playing a ready title.
-    LaunchedEffect(url) {
+    LaunchedEffect(source) {
         var previousPosition = -1
         var lastProgressAt = SystemClock.elapsedRealtime()
         var playing = false
@@ -84,13 +92,13 @@ internal fun SignatureVideo(
                 playing = true
             }
             if (now - lastProgressAt > if (playing) 15_000 else 8_000) {
-                failed = true
-                unavailable()
+                fail()
+                break
             }
         }
     }
     if (source != null && !failed) {
-        key(url) {
+        key(source) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
@@ -108,8 +116,7 @@ internal fun SignatureVideo(
                             if (!reported) { reported = true; finished() }
                         }
                         setOnErrorListener { _, _, _ ->
-                            failed = true
-                            unavailable()
+                            fail()
                             true
                         }
                         setVideoURI(Uri.parse(source))

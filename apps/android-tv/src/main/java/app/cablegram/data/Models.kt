@@ -228,6 +228,8 @@ data class LoadingVideosResponse(
 
 /** The clip bucket behind its own domain (not the rate-limited r2.dev address); see [SignatureClips]. */
 const val SIGNATURE_CLIP_BASE = "https://media.cablegram.app"
+/** The same bucket's r2.dev address: a fallback only, it is rate-limited. */
+const val LEGACY_CLIP_BASE = "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev"
 
 val DEFAULT_LOADING_VIDEOS = listOf(
     "$SIGNATURE_CLIP_BASE/71d5c9fa12bcb2c00065650ec0a9c036_1788595470(1).mp4",

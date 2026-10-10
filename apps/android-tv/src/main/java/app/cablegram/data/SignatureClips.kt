@@ -62,6 +62,10 @@ object SignatureClips {
         return url
     }
 
+    /** The same clip at the bucket's r2.dev address, used only when [SIGNATURE_CLIP_BASE] can't be reached. */
+    fun fallbackFor(url: String): String? =
+        url.takeIf { it.startsWith("$SIGNATURE_CLIP_BASE/") }?.replaceFirst(SIGNATURE_CLIP_BASE, LEGACY_CLIP_BASE)
+
     /** A random clip, preferring stored ones once there are at least two to vary between. */
     fun pick(urls: List<String>): String {
         val stored = urls.filter(::isCached)
@@ -69,13 +73,19 @@ object SignatureClips {
     }
 
     private fun fetch(url: String) {
-        val target = fileFor(url) ?: return
-        if (isCached(url) || !downloading.add(url)) return
+        if (!download(url, url)) fallbackFor(url)?.let { download(url, it) }
+    }
+
+    /** Stores the clip named [url], read from [from]; true when it is stored. */
+    private fun download(url: String, from: String): Boolean {
+        val target = fileFor(url) ?: return false
+        if (isCached(url)) return true
+        if (!downloading.add(url)) return false
         val part = File(target.path + ".part")
         try {
-            client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+            client.newCall(Request.Builder().url(from).build()).execute().use { response ->
                 val body = response.body
-                if (!response.isSuccessful || body == null || body.contentLength() > MAX_CLIP_BYTES) return
+                if (!response.isSuccessful || body == null || body.contentLength() > MAX_CLIP_BYTES) return false
                 var written = 0L
                 body.byteStream().use { input ->
                     part.outputStream().use { output ->
@@ -84,15 +94,17 @@ object SignatureClips {
                             val read = input.read(buffer)
                             if (read < 0) break
                             written += read
-                            if (written > MAX_CLIP_BYTES) return
+                            if (written > MAX_CLIP_BYTES) return false
                             output.write(buffer, 0, read)
                         }
                     }
                 }
             }
-            if (part.length() > 0 && part.renameTo(target)) trim()
+            if (part.length() > 0 && part.renameTo(target)) { trim(); return true }
+            return false
         } catch (_: Exception) {
             // Decoration only: the clip streams again next time.
+            return false
         } finally {
             part.delete()
             downloading.remove(url)
