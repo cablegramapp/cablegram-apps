@@ -51,14 +51,16 @@ internal fun AboutSettingsPanel(
     onTelegramConnect: () -> Unit = {},
     onTelegramCancel: () -> Unit = {},
 ) {
-    if (telegramStatus is app.cablegram.TvTelegramStatus.NeedsPassword) {
+    // The password step opens over Settings, but never locks the viewer out of the rest of it (sign-out, pairing).
+    var passwordStepOpen by remember { mutableStateOf(true) }
+    if (telegramStatus is app.cablegram.TvTelegramStatus.NeedsPassword && passwordStepOpen) {
         TelegramPasswordStep(
             telegramStatus, onTelegramPassword, onTelegramAskPhone, onTelegramCancelPasswordRequest,
         ) {
+            Button(onClick = { passwordStepOpen = false }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Back to Settings") }
             if (telegramViaPhone) {
                 Button(onClick = { onTelegramViaPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Use this TV for Telegram playback") }
             }
-            Text("Press Back to leave this screen.", color = Muted, fontSize = 12.sp)
         }
         return
     }
@@ -141,7 +143,8 @@ internal fun AboutSettingsPanel(
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )
-            TelegramSettingsSection(telegramStatus, telegramViaPhone, onTelegramViaPhone, onTelegramConnect, onTelegramCancel)
+            TelegramSettingsSection(telegramStatus, telegramViaPhone, onTelegramViaPhone, onTelegramConnect, onTelegramCancel,
+                onOpenPassword = { passwordStepOpen = true })
         }
     }
 }
@@ -168,6 +171,7 @@ private fun TelegramSettingsSection(
     onViaPhone: (Boolean) -> Unit,
     onConnect: () -> Unit,
     onCancel: () -> Unit,
+    onOpenPassword: () -> Unit = {},
 ) {
     if (status == app.cablegram.TvTelegramStatus.Off) return
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -185,10 +189,7 @@ private fun TelegramSettingsSection(
             Text("Telegram videos play through your phone on this TV. Nothing from Telegram is stored here.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
         is app.cablegram.TvTelegramStatus.Connected ->
             SettingValue("Signed in as", status.name)
-        is app.cablegram.TvTelegramStatus.Problem -> {
-            UnhappyVideoPanel(status.message, Modifier.width(200.dp).height(113.dp))
-            Text(status.message, color = Coral, fontSize = 14.sp, lineHeight = 20.sp)
-        }
+        is app.cablegram.TvTelegramStatus.Problem -> Text(status.message, color = Coral, fontSize = 14.sp, lineHeight = 20.sp)
         app.cablegram.TvTelegramStatus.CanConnect -> {
             Text(
                 "Telegram isn't connected for this household yet. You can connect it from this TV: scan a code with the Telegram app on your phone.",
@@ -220,7 +221,10 @@ private fun TelegramSettingsSection(
                 Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Cancel") }
             }
         }
-        is app.cablegram.TvTelegramStatus.NeedsPassword -> Unit // The password chooser is shown above Settings.
+        is app.cablegram.TvTelegramStatus.NeedsPassword -> {
+            Text("Telegram needs your two-step verification password to finish signing in on this TV.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Button(onClick = onOpenPassword, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Enter Telegram password") }
+        }
         app.cablegram.TvTelegramStatus.Off -> Unit
     }
 }
@@ -266,10 +270,7 @@ internal fun TelegramPasswordScreen(
         )
         when (status) {
             is app.cablegram.TvTelegramStatus.NeedsPassword -> Unit
-            is app.cablegram.TvTelegramStatus.Problem -> {
-                UnhappyVideoPanel(status.message, Modifier.width(160.dp).height(90.dp))
-                Text(status.message, color = Coral, fontSize = 16.sp, lineHeight = 22.sp)
-            }
+            is app.cablegram.TvTelegramStatus.Problem -> Text(status.message, color = Coral, fontSize = 16.sp, lineHeight = 22.sp)
             is app.cablegram.TvTelegramStatus.WaitingForPhone ->
                 Text(
                     if (status.standalone) "Finish signing in from Settings → Telegram on this TV."

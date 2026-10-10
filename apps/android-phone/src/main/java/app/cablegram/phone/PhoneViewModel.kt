@@ -1924,10 +1924,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun addPickedFiles(uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
-            val files = try {
-                withContext(Dispatchers.IO) {
-                    uris.map { uri ->
-                        check(persistRead(uri)) { "File access could not be saved. Choose the video again." }
+            var refused = 0
+            val files = withContext(Dispatchers.IO) {
+                // Make room first: Android keeps only a few hundred file grants per app.
+                releaseUnusedGrants()
+                uris.mapNotNull { uri ->
+                    // One file Android won't keep access to doesn't stop the others.
+                    if (!persistRead(uri)) { refused++; return@mapNotNull null }
+                    runCatching {
                         val name = indexer.displayName(uri)
                         BrowseEntry(
                             id = uri.toString(),
@@ -1937,14 +1941,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             sizeBytes = indexer.sizeBytes(uri),
                             uri = uri,
                         )
-                    }
+                    }.getOrElse { releaseGrant(uri); refused++; null }
                 }
-            } catch (error: Exception) {
-                if (error is kotlinx.coroutines.CancellationException) throw error
-                status = "Could not save access to these videos. Choose them again."
-                return@launch
             }
-            addBrowseFileEntries(files.filter { it.isVideo })
+            if (files.isNotEmpty()) addBrowseFileEntries(files.filter { it.isVideo })
+            if (refused > 0) {
+                status = "$refused ${if (refused == 1) "video" else "videos"} couldn't be added: Android limits how many " +
+                    "single files an app can keep. Remove videos you no longer need, or add their folder instead."
+            }
         }
     }
 
@@ -2299,6 +2303,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun removeFromLibrary(item: LibraryItem) {
         if (nowPlaying?.id == item.id) nowPlaying = null
         store.removeFromLibrary(item.id)
+        viewModelScope.launch(Dispatchers.IO) { releaseUnusedGrants() }
         deleteTarget = null
         if (selectedId == item.id) selectedId = null
         refresh()
@@ -2309,6 +2314,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteFilePermanently(item: LibraryItem) {
         if (nowPlaying?.id == item.id) nowPlaying = null
         store.deleteFile(item.id)
+        viewModelScope.launch(Dispatchers.IO) { releaseUnusedGrants() }
         deleteTarget = null
         if (selectedId == item.id) selectedId = null
         refresh()
@@ -2860,6 +2866,28 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         castRoutesJob?.cancel()
         castSender?.release()
         super.onCleared()
+    }
+
+    private fun releaseGrant(uri: Uri) {
+        runCatching { getApplication<Application>().contentResolver.releasePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+    }
+
+    /**
+     * Android caps persisted file grants per app (128, or 512 from Android 11), so a grant that no library title or
+     * selected folder uses any more is given back. Grants from the last minute are left alone: an import may still
+     * be saving the title that uses it.
+     */
+    private fun releaseUnusedGrants() {
+        val resolver = getApplication<Application>().contentResolver
+        val inUse = (store.list().mapNotNull { it.sourceUri } + store.folders().map { it.uri }).toSet()
+        val now = System.currentTimeMillis()
+        resolver.persistedUriPermissions
+            .filter { it.uri.toString() !in inUse && now - it.persistedTime > 60_000 }
+            .forEach { grant ->
+                val flags = (if (grant.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                    (if (grant.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                runCatching { resolver.releasePersistableUriPermission(grant.uri, flags) }
+            }
     }
 
     private fun persistRead(uri: Uri): Boolean = runCatching {

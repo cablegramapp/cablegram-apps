@@ -234,7 +234,8 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                 is ScreenState.Resolving -> PrepareStatusScreen(
                     screen = screen,
                     onCancel = viewModel::cancelResolving,
-                    onSignatureFinished = { viewModel.finishPlaybackSignature(screen.signatureAttemptId) },
+                    onClipStarted = { viewModel.signatureClipStarted(screen.signatureAttemptId) },
+                    onStartNow = { viewModel.startReadyPlaybackNow(screen.signatureAttemptId) },
                 )
                 is ScreenState.Player -> PlayerScreen(
                     videoId = screen.video.id,
@@ -334,9 +335,6 @@ private fun ProfilePickerScreen(
                         color = if (state.pinError != null && !state.pending) Warning else Muted,
                         fontSize = 15.sp,
                     )
-                    if (state.pinError != null && !state.pending) {
-                        UnhappyVideoPanel(state.pinError, Modifier.width(180.dp).height(101.dp).padding(top = 8.dp))
-                    }
                     Spacer(Modifier.height(22.dp))
                     Button(onClick = onPinCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
                         Text("Cancel")
@@ -388,10 +386,7 @@ private fun ProfilePickerScreen(
                 color = if (state.message != null && !state.pending) Warning else Muted,
                 fontSize = 18.sp,
             )
-            if (state.message != null && !state.pending) {
-                UnhappyVideoPanel(state.message, Modifier.width(160.dp).height(90.dp).padding(top = 8.dp))
-            }
-            Spacer(Modifier.height(if (state.message != null) 16.dp else 40.dp))
+            Spacer(Modifier.height(40.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(28.dp),
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
@@ -500,10 +495,7 @@ private fun SessionActionsScreen(
             Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.colors(containerColor = Panel)) {
                 Text("Back")
             }
-            message?.let {
-                UnhappyVideoPanel(it, Modifier.width(140.dp).height(79.dp))
-                Text(it, color = Warning, fontSize = 13.sp)
-            }
+            message?.let { Text(it, color = Warning, fontSize = 13.sp) }
         }
     }
 }

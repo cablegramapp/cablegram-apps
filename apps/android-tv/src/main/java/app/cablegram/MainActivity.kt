@@ -30,7 +30,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null) cablegramViewModel.showOpeningSignature()
+        app.cablegram.data.SignatureClips.init(this)
+        if (savedInstanceState == null && openingDue(intent)) cablegramViewModel.showOpeningSignature()
         cablegramViewModel.attachCastReceiver()
         (application as? app.cablegram.cast.CablegramApplication)?.handleIntent(intent)
         enableEdgeToEdge()
@@ -45,7 +46,24 @@ class MainActivity : ComponentActivity() {
         (application as? app.cablegram.cast.CablegramApplication)?.handleIntent(intent)
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == Intent.ACTION_MAIN) cablegramViewModel.showOpeningSignature()
+    }
+
+    /**
+     * The opening clip greets a cold launch from the home screen, at most once a day. Returning to a running app, a
+     * Cast launch or a deep link goes straight in; replaying it would also tear down a title that is playing.
+     */
+    private fun openingDue(intent: Intent?): Boolean {
+        if (intent?.action != Intent.ACTION_MAIN) return false
+        val prefs = getSharedPreferences("signature", MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val last = prefs.getLong("opening_shown_at", 0L)
+        if (last in (now - OPENING_INTERVAL_MS + 1)..now) return false
+        prefs.edit().putLong("opening_shown_at", now).apply()
+        return true
+    }
+
+    private companion object {
+        const val OPENING_INTERVAL_MS = 20L * 60 * 60 * 1000
     }
 
     override fun onResume() {

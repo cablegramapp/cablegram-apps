@@ -50,6 +50,11 @@ class LocalSubtitleFileTest {
         rejected("invalid_subtitle") { parse("file.vtt", srt) }
     }
 
+    @Test fun captionMarksWithAngleBracketsAreKeptAndControlCharactersDropped() {
+        val file = parse("cc.srt", "1\n00:00:01,000 --> 00:00:02,000\n>> NARRATOR: I <3 it\n\n2\n00:00:03,000 --> 00:00:04,000\nform\u000cfeed\n")
+        assertEquals(listOf(">> NARRATOR: I <3 it", "formfeed"), file.cues.map { it.text })
+    }
+
     @Test fun unknownLengthStreamIsBoundedAndCancellationIsObserved() {
         var consumed = 0
         val infinite = object : InputStream() {
