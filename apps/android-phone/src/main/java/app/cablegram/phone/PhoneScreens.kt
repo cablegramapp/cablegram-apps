@@ -1204,6 +1204,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
                 Text(viewModel.savedSubtitle?.let { "Subtitles: $it · Find another" } ?: "Find Subtitles")
             }
+            LocalSubtitleAttachmentButton(viewModel, item, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null)
             SectionCard("Your copy") {
                 StorageMetric("Location", storageStatusLine(item))
                 item.fileSizeBytes?.let { StorageMetric("File size", formatBytes(it)) }
