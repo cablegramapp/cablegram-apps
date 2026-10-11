@@ -8,7 +8,13 @@ import android.media.MediaFormat
 import android.media.MediaPlayer
 import android.os.ParcelFileDescriptor
 import android.system.Os
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.ensureActive
 import kotlinx.serialization.Serializable
 import java.nio.ByteBuffer
@@ -233,13 +239,18 @@ object LocalSubtitleAnalysis {
     }
     /** Six zones across the film; inside a zone a quiet stretch (action, music, no dialogue) is replaced by a nearby
      * one, because a window without speech can neither confirm nor contradict a subtitle. */
-    suspend fun fingerprint(input: SubtitleMediaInput, duration: Double, onZone: (done: Int, total: Int) -> Unit = { _, _ -> }): SubtitleFingerprint? {
+    /**
+     * [onUnseekable] is called when the file can't be sought (a jump lands at the start, or never answers). The check
+     * then stops trying new spots: on such files most jumps fail, and each failed one keeps a native scan of the file
+     * running in the background.
+     */
+    suspend fun fingerprint(input: SubtitleMediaInput, duration: Double, onZone: (done: Int, total: Int) -> Unit = { _, _ -> }, onUnseekable: () -> Unit = {}): SubtitleFingerprint? {
         if (duration < 120) return null
         val windows = mutableListOf<SubtitleActivityWindow>()
         // Over the network each section means fetching from a different part of the file, so give up sooner.
         val budgetEnd = android.os.SystemClock.elapsedRealtime() + if (input.remote) 45_000 else 120_000
         val zones = listOf(.03, .15, .35, .55, .75, .90)
-        for ((index, zone) in zones.withIndex()) {
+        zones@ for ((index, zone) in zones.withIndex()) {
             onZone(index, zones.size)
             var best: SubtitleActivityWindow? = null
             for (shift in if (input.remote) listOf(0.0, .06) else listOf(0.0, .06, -.06, .11)) {
@@ -249,7 +260,11 @@ object LocalSubtitleAnalysis {
                 val seconds = if (input.remote) 20 else 30
                 val start = (duration * (zone + shift).coerceIn(.02, .93)).coerceAtMost(duration - seconds)
                 input.startSection()
-                val window = (try { decodeWindow(input, start, seconds) } catch (e: kotlin.coroutines.cancellation.CancellationException) { throw e } catch (e: Exception) { trace("window at ${start.toInt()}s failed: ${e::class.simpleName}: ${e.message}"); null }) ?: continue
+                val window = when (val outcome = boundedWindow(input, start, seconds)) {
+                    is WindowOutcome.Heard -> outcome.window
+                    WindowOutcome.Unusable -> continue
+                    WindowOutcome.Unseekable -> { onUnseekable(); break@zones }
+                }
                 if (speechFraction(window) > speechFraction(best)) best = window
                 if (speechFraction(window) in INFORMATIVE) break
             }
@@ -259,6 +274,37 @@ object LocalSubtitleAnalysis {
         return windows.takeIf { it.size >= 2 }?.let { SubtitleFingerprint(windows = it) }
     }
     private val INFORMATIVE = .12..0.85
+    /** Threads for windows given up on; they finish (and release their extractor) whenever the native call returns. */
+    private val abandoned = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private const val WINDOW_LIMIT_MS = 15_000L
+    /** How far before the asked-for spot a seek may land (the previous sync point) and still count. */
+    private const val SEEK_SLACK_SECONDS = 30.0
+
+    /**
+     * MediaExtractor and MediaCodec calls block in native code and ignore cancellation; a read or seek can stall on a
+     * large MKV opened through a document provider. The window runs on its own thread and is given up after
+     * [WINDOW_LIMIT_MS], so the per-window deadline, the overall budget and "Skip" all still work.
+     */
+    private sealed interface WindowOutcome {
+        data class Heard(val window: SubtitleActivityWindow) : WindowOutcome
+        data object Unusable : WindowOutcome
+        data object Unseekable : WindowOutcome
+    }
+    private class SeekFailed : Exception()
+
+    private suspend fun boundedWindow(input: SubtitleMediaInput, start: Double, seconds: Int): WindowOutcome {
+        val work = abandoned.async {
+            try { decodeWindow(input, start, seconds)?.let { WindowOutcome.Heard(it) } ?: WindowOutcome.Unusable }
+            catch (e: CancellationException) { throw e }
+            catch (_: SeekFailed) { WindowOutcome.Unseekable }
+            catch (e: Exception) { trace("window at ${start.toInt()}s failed: ${e::class.simpleName}: ${e.message}"); WindowOutcome.Unusable }
+        }
+        return withTimeoutOrNull(WINDOW_LIMIT_MS) { work.await() } ?: run {
+            trace("window at ${start.toInt()}s gave no answer in ${WINDOW_LIMIT_MS / 1000}s; the file can't be sought")
+            work.cancel()
+            WindowOutcome.Unseekable
+        }
+    }
     private fun speechFraction(w: SubtitleActivityWindow?): Double = w?.let { it.bits.count { c -> c == '1' }.toDouble() / it.bits.length } ?: -1.0
     private suspend fun decodeWindow(input: SubtitleMediaInput, start: Double, seconds: Int): SubtitleActivityWindow? {
         val extractor = MediaExtractor(); var codec: MediaCodec? = null
@@ -267,6 +313,10 @@ object LocalSubtitleAnalysis {
             val track = (0 until extractor.trackCount).firstOrNull { extractor.getTrackFormat(it).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true } ?: return null
             val format = extractor.getTrackFormat(track); extractor.selectTrack(track)
             extractor.seekTo((start * 1e6).toLong(), MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            // Some MKVs can't be sought to this spot ("Did not locate the video track for seeking"): the reader quietly
+            // restarts at the beginning, and decoding from there would never reach the window. Give up on it at once.
+            val landed = extractor.sampleTime
+            if (landed < 0 || landed < (start - SEEK_SLACK_SECONDS) * 1e6) { trace("seek to ${start.toInt()}s landed at ${landed / 1_000_000}s; the file can't be sought"); throw SeekFailed() }
             val decoder = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!); codec = decoder
             format.setInteger(MediaFormat.KEY_PCM_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
             decoder.configure(format, null, null, 0); decoder.start()
