@@ -209,7 +209,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             Text("Subtitles", color = Color.White, style = MaterialTheme.typography.headlineSmall)
             Text(item.title, color = VlcMuted)
         }
-        if (!adjusting && stage != SubtitleStage.Setup) TextButton(onClick = { cancelSearch(); stage = SubtitleStage.Setup }) { Text("Subtitle provider accounts") }
+        if (!adjusting && stage != SubtitleStage.Setup) TextButton(onClick = { cancelSearch(); stage = SubtitleStage.Setup }) { Text("Subtitle accounts") }
         when (val s = stage) {
             SubtitleStage.Setup -> SubtitleProviderSetup(viewModel, onDone = { search() })
             SubtitleStage.Searching -> {
