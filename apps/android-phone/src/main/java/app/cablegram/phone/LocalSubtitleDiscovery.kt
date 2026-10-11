@@ -188,3 +188,60 @@ class LocalSubtitleDiscovery internal constructor(private var credentials: Map<S
         return SelectedSubtitleTrack(m.sourceId, m.identity, c.language, c.provider, c.ref, match.cues, offset, scale, c.forced, match.confidence, automatic)
     }
 }
+
+/** What a provider said about credentials checked before they are saved. */
+internal sealed interface CredentialCheck {
+    data object Accepted : CredentialCheck
+    /** The provider couldn't be asked (offline, busy); the details are saved unchecked. */
+    data class Unchecked(val message: String) : CredentialCheck
+    /** The provider refused them; nothing is saved. */
+    data class Refused(val message: String) : CredentialCheck
+}
+
+/**
+ * One small request with the typed details: a one-result SubDL search, or an OpenSubtitles sign-in (which uses no
+ * download). Same client rules as discovery: HTTPS to the provider only, no redirects, nothing logged or cached.
+ */
+internal suspend fun checkSubtitleCredentials(provider: String, credentials: PersonalSubtitleCredentials, client: OkHttpClient = providerHttpClient()): CredentialCheck =
+    withContext(Dispatchers.IO) {
+        val name = if (provider == "opensubtitles") "OpenSubtitles" else "SubDL"
+        val request = if (provider == "opensubtitles") {
+            Request.Builder().url("https://api.opensubtitles.com/api/v1/login")
+                .header("Api-Key", credentials.key).header("User-Agent", "Cablegram v1.0")
+                .post(buildJsonObject { put("username", credentials.username); put("password", credentials.password) }.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+        } else {
+            Request.Builder().url("https://api.subdl.com/api/v1/subtitles".toHttpUrl().newBuilder()
+                .addQueryParameter("api_key", credentials.key).addQueryParameter("film_name", "Inception")
+                .addQueryParameter("type", "movie").addQueryParameter("subs_per_page", "1").build()).build()
+        }
+        try {
+            client.newCall(request).execute().use { response ->
+                val body = runCatching { response.body?.string().orEmpty() }.getOrDefault("")
+                classifyCredentialResponse(provider, response.code, body)
+            }
+        } catch (e: CancellationException) { throw e }
+        catch (_: Exception) { CredentialCheck.Unchecked("Couldn't reach $name to check it, so it was saved unchecked. A search will tell you if it's wrong.") }
+    }
+
+/** Pure mapping of a provider's answer, kept apart so it can be tested without the network. */
+internal fun classifyCredentialResponse(provider: String, code: Int, body: String): CredentialCheck {
+    val json = runCatching { Json.parseToJsonElement(body).jsonObject }.getOrNull()
+    if (provider == "opensubtitles") return when {
+        code == 200 && !(json?.get("token") as? JsonPrimitive)?.contentOrNull.isNullOrBlank() -> CredentialCheck.Accepted
+        code == 401 -> CredentialCheck.Refused("Wrong OpenSubtitles username or password.")
+        code == 403 -> CredentialCheck.Refused("OpenSubtitles didn't accept this API key. Copy it again from the API page.")
+        code == 429 || code == 406 -> CredentialCheck.Unchecked("OpenSubtitles is busy, so it couldn't be checked. It was saved; a search will tell you if it's wrong.")
+        else -> CredentialCheck.Unchecked("OpenSubtitles couldn't check it right now. It was saved; a search will tell you if it's wrong.")
+    }
+    val status = (json?.get("status") as? JsonPrimitive)?.contentOrNull
+    val error = listOfNotNull((json?.get("error") as? JsonPrimitive)?.contentOrNull, (json?.get("message") as? JsonPrimitive)?.contentOrNull).joinToString(" ")
+    return when {
+        code == 401 || code == 403 || Regex("(?i)not.?authori[sz]ed|invalid.*(api|key)").containsMatchIn(error) ->
+            CredentialCheck.Refused("SubDL didn't accept this key. Copy it again from the API page, and don't use your SubDL password.")
+        // A working key answers with results, or with "can't find" for a title it doesn't have.
+        code == 200 && (status == "true" || Regex("(?i)can.?t find|not found").containsMatchIn(error)) -> CredentialCheck.Accepted
+        code == 429 -> CredentialCheck.Unchecked("SubDL is busy, so it couldn't be checked. It was saved; a search will tell you if it's wrong.")
+        else -> CredentialCheck.Unchecked("SubDL couldn't check it right now. It was saved; a search will tell you if it's wrong.")
+    }
+}

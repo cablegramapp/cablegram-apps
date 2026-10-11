@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 private fun Context.activity(): Activity? = when (this) { is Activity -> this; is ContextWrapper -> baseContext.activity(); else -> null }
 
@@ -123,6 +124,9 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
     var password by remember(provider) { mutableStateOf("") }
     var passwordVisible by remember(provider) { mutableStateOf(false) }
     var note by remember(provider) { mutableStateOf<String?>(null) }
+    var refused by remember(provider) { mutableStateOf(false) }
+    var checking by remember(provider) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val needsLogin = provider == "opensubtitles"
     val name = if (needsLogin) "OpenSubtitles" else "SubDL"
 
@@ -146,13 +150,24 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
                 modifier = Modifier.fillMaxWidth().maestro("subtitle_opensubtitles_password"))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(enabled = key.isNotBlank() && (!needsLogin || username.isNotBlank() && password.isNotBlank()), onClick = {
-                note = try {
-                    viewModel.saveSubtitleProvider(provider, PersonalSubtitleCredentials(key.trim(), username.trim(), password))
-                    key = ""; username = ""; password = ""; editing = false
-                    "Saved on this phone. If $name refuses it, the search will tell you."
-                } catch (_: Exception) { "Couldn't save it securely. Try again." }
-            }, modifier = Modifier.maestro("subtitle_${provider}_save")) { Text(if (connected) "Save new details" else "Connect $name") }
+            Button(enabled = !checking && key.isNotBlank() && (!needsLogin || username.isNotBlank() && password.isNotBlank()), onClick = {
+                val typed = PersonalSubtitleCredentials(key.trim(), username.trim(), password)
+                checking = true; note = null; refused = false
+                scope.launch {
+                    // Ask the provider first: a refused key is never saved, and what was typed stays to be corrected.
+                    val check = checkSubtitleCredentials(provider, typed)
+                    checking = false
+                    if (check is CredentialCheck.Refused) { refused = true; note = check.message; return@launch }
+                    note = try {
+                        viewModel.saveSubtitleProvider(provider, typed)
+                        key = ""; username = ""; password = ""; editing = false
+                        (check as? CredentialCheck.Unchecked)?.message ?: "$name accepted it. You're ready to search."
+                    } catch (_: Exception) { "Couldn't save it securely. Try again." }
+                }
+            }, modifier = Modifier.maestro("subtitle_${provider}_save")) {
+                if (checking) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)); Text("Checking…") }
+                else Text(if (connected) "Save new details" else "Connect $name")
+            }
             if (connected) TextButton(onClick = { editing = false; key = ""; username = ""; password = "" }) { Text("Cancel") }
         }
     } else {
@@ -161,7 +176,8 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
             TextButton(onClick = { viewModel.removeSubtitleProvider(provider); note = "$name removed. Subtitles you already chose stay." }) { Text("Remove") }
         }
     }
-    note?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodySmall) }
+    note?.let { Text(it, color = if (refused) MaterialTheme.colorScheme.error else VlcMuted, style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.maestro("subtitle_${provider}_note")) }
 }
 
 @Composable private fun PrivacyAndTerms() {
