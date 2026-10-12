@@ -148,9 +148,6 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onC
 @Composable
 private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onClipStarted: () -> Unit, onStartNow: () -> Unit) {
     val offline = screen.prepareStage == app.cablegram.data.PHONE_OFFLINE_STAGE
-    val clipUrl = remember(screen.signatureAttemptId, offline, screen.loadingVideoUrl) {
-        if (offline) app.cablegram.data.getRandomErrorVideoUrl() else screen.loadingVideoUrl
-    }
     val visibility by animateFloatAsState(if (screen.fadingOut) 0f else 1f, tween(400), label = "signature-fade")
     Row(
         modifier = Modifier
@@ -168,8 +165,10 @@ private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onClipStarte
                 .clip(RoundedCornerShape(18.dp))
                 .background(DarkSlate),
         ) {
-            androidx.compose.runtime.key(screen.signatureAttemptId ?: screen.video.id) {
-                SignatureVideo(clipUrl, onStarted = onClipStarted)
+            // While the phone is offline nothing can start, so the error animation has no clip timing to report.
+            if (offline) ErrorAnimation(screen.signatureAttemptId ?: screen.video.id)
+            else androidx.compose.runtime.key(screen.signatureAttemptId ?: screen.video.id) {
+                SignatureVideo(screen.loadingVideoUrl, onStarted = onClipStarted)
             }
         }
         Column(

@@ -63,6 +63,8 @@ class CablegramApplication : Application(), DefaultLifecycleObserver, SingletonI
      */
     override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader.Builder(context)
         .components {
+            // The bundled error animations are GIFs; the platform decoder is lighter where there is one.
+            if (android.os.Build.VERSION.SDK_INT >= 28) add(coil3.gif.AnimatedImageDecoder.Factory()) else add(coil3.gif.GifDecoder.Factory())
             add(OkHttpNetworkFetcherFactory(callFactory = {
                 app.cablegram.data.LanTls.pinned(okhttp3.OkHttpClient.Builder().addInterceptor(LanPosterAuth.interceptor).build())
             }))

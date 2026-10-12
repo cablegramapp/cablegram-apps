@@ -1819,7 +1819,7 @@ internal fun transitionTo(url: String, atStart: Boolean = false): SourceTransiti
 /** Full-screen handover: the Cablegram loop and what is happening, instead of a frozen frame. */
 @Composable
 internal fun TransitionOverlay(transition: SourceTransition, modifier: Modifier = Modifier, videoUrl: String? = null) {
-    val loopUrl = remember(transition, videoUrl) { videoUrl ?: if (transition.warning) app.cablegram.data.getRandomErrorVideoUrl() else app.cablegram.data.getRandomLoadingVideoUrl() }
+    val loopUrl = remember(transition, videoUrl) { videoUrl ?: if (transition.warning) null else app.cablegram.data.getRandomLoadingVideoUrl() }
     Box(
         modifier.fillMaxSize().background(Color(0xFF0B0D10)),
         contentAlignment = Alignment.Center,
@@ -1833,7 +1833,7 @@ internal fun TransitionOverlay(transition: SourceTransition, modifier: Modifier 
                 Modifier.weight(1f).aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color(0xFF15181D)),
-            ) { SignatureVideo(loopUrl, muted = true) }
+            ) { if (loopUrl == null) ErrorAnimation(transition) else SignatureVideo(loopUrl, muted = true) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(transition.eyebrow, color = Color(0xFFF3B86A), fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Text(transition.title, color = Paper, fontSize = 30.sp, fontWeight = FontWeight.Bold)

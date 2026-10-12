@@ -37,10 +37,11 @@ object SignatureClips {
         dir.mkdirs()
         directory = dir
         if (prefetch) scope.launch {
-            // Enough for the usual journeys: two waiting clips to vary between, one error clip, the password clip.
+            // Enough for the usual journeys: two waiting clips to vary between and the password clip. Error
+            // animations are bundled in the app.
             val missingLoading = DEFAULT_LOADING_VIDEOS.filterNot(::isCached).shuffled()
                 .take((2 - DEFAULT_LOADING_VIDEOS.count(::isCached)).coerceAtLeast(0))
-            (missingLoading + ERROR_SIGNATURE_VIDEOS.take(1) + TELEGRAM_PASSWORD_VIDEO_URL).forEach(::fetch)
+            (missingLoading + TELEGRAM_PASSWORD_VIDEO_URL).forEach(::fetch)
         }
     }
 
