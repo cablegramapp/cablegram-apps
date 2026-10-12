@@ -1,6 +1,6 @@
 name: CI
-# The Android unit tests are not run here for now: they take long, and releases run them (release.yml, on v* tags).
-# Re-add the `android` job (matrix android-phone, android-tv: ./gradlew testDebugUnitTest) to bring them back.
+# The Android unit tests (./gradlew testDebugUnitTest, no secrets needed) run for pull requests that touch the Android
+# apps or the release scripts, and on every push to main. Releases run them again (release.yml, on v* tags).
 on:
   push:
     branches: [main]
@@ -16,6 +16,70 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/check-telegram-sync.mjs
+
+  release-scripts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release packaging scripts (fixtures, no real key)
+        run: scripts/release/test.sh
+
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      android: ${{ steps.filter.outputs.android }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        # Anything but a pull request (push to main, manual run) always runs the Android tests.
+        run: |
+          if [ "$EVENT" != pull_request ] || git diff --name-only "$BASE_SHA" HEAD | grep -qE '^(apps/android-(phone|tv)/|scripts/release/|\.github/workflows/(ci|release)\.yml$)'; then
+            echo "android=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "android=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  android:
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [android-phone, android-tv]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          # Only main writes the Gradle cache; pull requests read it.
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+      - name: Unit tests
+        working-directory: apps/${{ matrix.app }}
+        run: ./gradlew testDebugUnitTest
+      - name: Keep the test report of a failed run
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ matrix.app }}
+          path: apps/${{ matrix.app }}/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore
+          retention-days: 7
 
   web-remote:
     runs-on: ubuntu-latest
