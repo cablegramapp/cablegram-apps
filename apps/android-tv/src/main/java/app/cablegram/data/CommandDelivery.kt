@@ -44,6 +44,18 @@ internal class CommandDelivery(
     private val sessions = mutableMapOf<String, Session>()
     private var job: Job? = null
 
+    /** Wake-triggered poll; receive() still journals and validates every server-delivered command. */
+    fun pollNow() {
+        sessions.values.toList().forEach { session ->
+            scope.launch {
+                session.polledAt = now()
+                try { transport.poll(session.account.token).forEach { receive(it, session) } }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { /* Normal delivery keeps reconnecting and polling. */ }
+            }
+        }
+    }
+
     fun setAccounts(accounts: List<AccountCredential>) {
         val wanted = accounts.associateBy { it.sessionId }
         sessions.keys.toList().forEach { id ->

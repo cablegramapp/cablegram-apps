@@ -1,16 +1,6 @@
 package app.cablegram.ui
 
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.graphics.asImageBitmap
@@ -20,6 +10,8 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.Image
 import android.content.Intent
 import android.net.Uri
@@ -53,11 +45,23 @@ internal fun AboutSettingsPanel(
     telegramStatus: app.cablegram.TvTelegramStatus = app.cablegram.TvTelegramStatus.Off,
     onTelegramPassword: (String) -> Unit = {},
     onTelegramAskPhone: () -> Unit = {},
+    onTelegramCancelPasswordRequest: () -> Unit = {},
     telegramViaPhone: Boolean = false,
     onTelegramViaPhone: (Boolean) -> Unit = {},
     onTelegramConnect: () -> Unit = {},
     onTelegramCancel: () -> Unit = {},
 ) {
+    if (telegramStatus is app.cablegram.TvTelegramStatus.NeedsPassword) {
+        TelegramPasswordStep(
+            telegramStatus, onTelegramPassword, onTelegramAskPhone, onTelegramCancelPasswordRequest,
+        ) {
+            if (telegramViaPhone) {
+                Button(onClick = { onTelegramViaPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Use this TV for Telegram playback") }
+            }
+            Text("Press Back to leave this screen.", color = Muted, fontSize = 12.sp)
+        }
+        return
+    }
     val context = LocalContext.current
     Row(
         modifier = Modifier
@@ -137,7 +141,7 @@ internal fun AboutSettingsPanel(
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )
-            TelegramSettingsSection(telegramStatus, onTelegramPassword, onTelegramAskPhone, telegramViaPhone, onTelegramViaPhone, onTelegramConnect, onTelegramCancel)
+            TelegramSettingsSection(telegramStatus, telegramViaPhone, onTelegramViaPhone, onTelegramConnect, onTelegramCancel)
         }
     }
 }
@@ -160,8 +164,6 @@ private fun SettingValue(label: String, value: String, monospace: Boolean = fals
 @Composable
 private fun TelegramSettingsSection(
     status: app.cablegram.TvTelegramStatus,
-    onPassword: (String) -> Unit,
-    onAskPhone: () -> Unit,
     viaPhone: Boolean,
     onViaPhone: (Boolean) -> Unit,
     onConnect: () -> Unit,
@@ -183,7 +185,10 @@ private fun TelegramSettingsSection(
             Text("Telegram videos play through your phone on this TV. Nothing from Telegram is stored here.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
         is app.cablegram.TvTelegramStatus.Connected ->
             SettingValue("Signed in as", status.name)
-        is app.cablegram.TvTelegramStatus.Problem -> Text(status.message, color = Cyan, fontSize = 14.sp, lineHeight = 20.sp)
+        is app.cablegram.TvTelegramStatus.Problem -> {
+            UnhappyVideoPanel(status.message, Modifier.width(200.dp).height(113.dp))
+            Text(status.message, color = Coral, fontSize = 14.sp, lineHeight = 20.sp)
+        }
         app.cablegram.TvTelegramStatus.CanConnect -> {
             Text(
                 "Telegram isn't connected for this household yet. You can connect it from this TV: scan a code with the Telegram app on your phone.",
@@ -215,18 +220,7 @@ private fun TelegramSettingsSection(
                 Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Cancel") }
             }
         }
-        is app.cablegram.TvTelegramStatus.NeedsPassword -> {
-            TelegramPasswordStep(status, onPassword, onAskPhone)
-            if (viaPhone) {
-                Text(
-                    "Telegram titles currently play through your phone, which uses its battery and data. Signing in here switches to streaming straight from Telegram.",
-                    color = Muted,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                )
-                Button(onClick = { onViaPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Ask me again when I play a Telegram title") }
-            }
-        }
+        is app.cablegram.TvTelegramStatus.NeedsPassword -> Unit // The password chooser is shown above Settings.
         app.cablegram.TvTelegramStatus.Off -> Unit
     }
 }
@@ -240,10 +234,20 @@ internal fun TelegramPasswordScreen(
     onSignedIn: () -> Unit,
     onPlayThroughPhone: (always: Boolean) -> Unit,
     onBack: () -> Unit,
+    onCancelPasswordRequest: () -> Unit = {},
+    passwordVideoUrl: String = app.cablegram.data.TELEGRAM_PASSWORD_VIDEO_URL,
 ) {
     androidx.activity.compose.BackHandler(onBack = onBack)
     LaunchedEffect(status is app.cablegram.TvTelegramStatus.Connected) {
         if (status is app.cablegram.TvTelegramStatus.Connected) onSignedIn()
+    }
+    if (status is app.cablegram.TvTelegramStatus.NeedsPassword) {
+        TelegramPasswordStep(status, onPassword, onAskPhone, onCancelPasswordRequest, videoUrl = passwordVideoUrl) {
+            Button(onClick = { onPlayThroughPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Play through my phone this time") }
+            Button(onClick = { onPlayThroughPhone(true) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Always use my phone") }
+            Button(onClick = onBack, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Back to library") }
+        }
+        return
     }
     Column(
         modifier = Modifier
@@ -260,10 +264,21 @@ internal fun TelegramPasswordScreen(
             fontSize = 14.sp,
             lineHeight = 20.sp,
         )
-        if (status is app.cablegram.TvTelegramStatus.NeedsPassword) {
-            TelegramPasswordStep(status, onPassword, onAskPhone)
-        } else {
-            Text("Signing in…", color = Muted, fontSize = 16.sp)
+        when (status) {
+            is app.cablegram.TvTelegramStatus.NeedsPassword -> Unit
+            is app.cablegram.TvTelegramStatus.Problem -> {
+                UnhappyVideoPanel(status.message, Modifier.width(160.dp).height(90.dp))
+                Text(status.message, color = Coral, fontSize = 16.sp, lineHeight = 22.sp)
+            }
+            is app.cablegram.TvTelegramStatus.WaitingForPhone ->
+                Text(
+                    if (status.standalone) "Finish signing in from Settings → Telegram on this TV."
+                    else "Approve this TV in the Cablegram notification on your phone. The video starts as soon as you do.",
+                    color = Muted,
+                    fontSize = 16.sp,
+                    lineHeight = 22.sp,
+                )
+            else -> Text("Signing in…", color = Muted, fontSize = 16.sp)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = { onPlayThroughPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Play through my phone this time") }
@@ -272,61 +287,3 @@ internal fun TelegramPasswordScreen(
         }
     }
 }
-
-/** Two-step verification on the TV: typed with the remote or the Google TV app; sent to Telegram only. */
-@Composable
-private fun TelegramPasswordStep(
-    status: app.cablegram.TvTelegramStatus.NeedsPassword,
-    onPassword: (String) -> Unit,
-    onAskPhone: () -> Unit,
-) {
-    var password by remember { mutableStateOf("") }
-    // The phone gets a notification with a text field; an open request is kept, an expired one is renewed.
-    LaunchedEffect(Unit) { onAskPhone() }
-    val fieldFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { fieldFocus.requestFocus() } }
-    Text(
-        "Your phone approved this TV. Your Telegram account also has two-step verification, so enter its password here once.",
-        color = Muted,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-    )
-    BasicTextField(
-        value = password,
-        onValueChange = { password = it },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { if (password.isNotEmpty()) onPassword(password) }),
-        textStyle = TextStyle(color = Color.White, fontSize = 18.sp),
-        cursorBrush = SolidColor(Cyan),
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRequester(fieldFocus)
-            .background(PanelRaised, RoundedCornerShape(10.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        decorationBox = { inner ->
-            if (password.isEmpty()) Text(status.hint.takeIf { it.isNotBlank() }?.let { "Hint: $it" } ?: "Telegram password", color = Slate, fontSize = 16.sp)
-            inner()
-        },
-    )
-    status.error?.let { Text(it, color = Cyan, fontSize = 14.sp) }
-    Button(
-        onClick = { if (password.isNotEmpty()) onPassword(password) },
-        enabled = !status.busy && password.isNotEmpty(),
-        colors = ButtonDefaults.colors(containerColor = PanelRaised),
-    ) { Text(if (status.busy) "Checking…" else "Sign in") }
-    Text(
-        "Or type it on your phone: open the Cablegram notification there and enter the password in it. Signing in here lets the TV stream straight from Telegram, which saves your phone's battery.",
-        color = Cyan,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-    )
-    Text(
-        "Tip: the Google TV app on your phone can type for you too. Your password goes to Telegram only; Cablegram never stores it.",
-        color = Slate,
-        fontSize = 12.sp,
-        lineHeight = 17.sp,
-    )
-}
-

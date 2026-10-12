@@ -113,7 +113,11 @@ paths:
     get:
       responses:
         "200":
-          description: User, household, devices, membership
+          description: >
+            User, household, devices, membership. Each TV also has `online` (boolean): true while it has Cablegram
+            open and takes remote commands (an open command socket, or a command poll in the last 15 s). A phone sends
+            "Play on TV" to the TV that is on when the selected one isn't and exactly one other is; older control
+            planes omit the field.
   /api/account/delete:
     post:
       summary: Phone deletes the signed-in account and all its data (Google Play account deletion)

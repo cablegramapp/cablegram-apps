@@ -13,6 +13,8 @@ internal fun TvCommand.validationError(now: Long = System.currentTimeMillis()): 
         "seek" -> if ((primitive("seconds")?.intOrNull ?: primitive("value")?.intOrNull) in -86400..86400) null else "invalid_payload"
         "volume" -> if (primitive("level")?.intOrNull in 0..100) null else "invalid_payload"
         "mute" -> if (primitive("muted")?.booleanOrNull != null) null else "invalid_payload"
+        // Live subtitle shift from the phone, in milliseconds (positive shows subtitles later).
+        "subtitle_delay" -> if (primitive("delay_ms")?.longOrNull in -600_000L..600_000L) null else "invalid_payload"
         else -> "unsupported_command"
     }
 }

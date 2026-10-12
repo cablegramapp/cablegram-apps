@@ -81,7 +81,7 @@ class ArtworkEditorController(
         searchJob = scope.launch {
             try {
                 val api = catalog()
-                val resolved = api.resolveTitle(current.query.trim(), token(), strict = true)
+                val resolved = api.resolveTitle(current.query.trim(), token(), strict = true, itemId = current.base.catalogItemId)
                 if (!active()) return@launch
                 val match = resolved.metadata
                 if (!resolved.found || match == null || match.title.isBlank() || match.title.equals("Unknown", true)) {

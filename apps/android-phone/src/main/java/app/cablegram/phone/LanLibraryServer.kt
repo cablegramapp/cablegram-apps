@@ -8,55 +8,59 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
- * LAN media server. Authenticates callers with the paired TV's device
- * capability (R-1). During the transition rollout it also accepts the legacy
- * pairing PIN so older TV builds keep streaming until both apps are updated.
- * The PIN is never the long-term credential: new pairings always mint a
- * capability, and capability-only enforcement resumes once T071 completes.
+ * LAN media server. Authenticates callers only with a paired TV's device
+ * capability (R-1); the pairing PIN is never a LAN credential.
  *
- * R-2: [revokeCapability] lets the host drop a capability mid-stream when the
- * control plane reports that TV as revoked; revocation survives app restart
- * through [persistRevocation].
+ * R-2 / CAB-37: [credentials] is kept in step with the paired TVs by the service, so a removed or revoked TV is
+ * refused at once, without restarting the server.
+ *
+ * CAB-44: a TV on the LAN sends its capability only in the `Authorization` header. The player cannot send one, so it
+ * plays a short-lived link from `/links/...` instead ([LanStreamLinks]). `?token=` is accepted only by the loopback
+ * listener, where the relay tunnel replays a TV's request ([acceptQueryToken]).
+ *
+ * CAB-48: the LAN listener speaks TLS with this phone's [LanTlsIdentity], which TVs pin; the service also runs a plain
+ * listener bound to 127.0.0.1 for the relay tunnel. Both share the same credentials and links.
  */
 class LanLibraryServer(
     private val store: LibraryStore,
     private val commands: CommandQueue,
-    private val token: String,
-    private val capabilities: MutableSet<String> = mutableSetOf(),
+    private val credentials: LanCredentials,
     /** Required for private titles; without it private media is never served. */
     private val privatePasses: PrivatePassVerifier? = null,
-    private val deviceIdForCapability: (String) -> String? = { null },
-    /** Confirms capabilities of TVs paired by another household phone. */
-    private val capabilityVerifier: LanCapabilityVerifier? = null,
     /** Streams Telegram titles from this phone's session for TVs that hold none (spec 004 US8). */
     private val telegram: TelegramMedia? = null,
+    private val links: LanStreamLinks = LanStreamLinks(),
+    /** Null listens on every interface (the LAN, over TLS); "127.0.0.1" is the relay tunnel's plain listener. */
+    hostname: String? = null,
     port: Int = PORT,
-) : NanoHTTPD(port) {
+    /**
+     * Only the relay tunnel's listener, bound to 127.0.0.1, takes the capability as `?token=`: the relay's ticket
+     * authorizes the TV there, and its player cannot send a header. The LAN listener never does, whatever the client's
+     * address (an adb or VPN forward also arrives from 127.0.0.1).
+     */
+    private val acceptQueryToken: Boolean = false,
+    private val onTvRequest: () -> Unit = {},
+    private val onStreamStarted: () -> Unit = {},
+    private val onStreamFinished: () -> Unit = {},
+) : NanoHTTPD(hostname, port) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    /** Called when the control plane reports this capability's TV revoked. */
-    fun revokeCapability(capability: String) {
-        capabilities.remove(capability)
-        capabilityVerifier?.forget(capability)
-    }
-
-    /** Called when a previously revoked capability should be accepted again (un-revoke / repair). */
-    fun restoreCapability(capability: String) {
-        capabilities.add(capability)
-    }
-
-    /** Refresh credentials when another TV pairs while this service is alive. */
-    fun replaceCapabilities(current: Set<String>) {
-        capabilities.clear()
-        capabilities.addAll(current)
-    }
-
     override fun serve(session: IHTTPSession): Response {
-        if (!authorized(session)) {
-            return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"invalid_lan_token"}""")
-        }
         val path = session.uri.trimEnd('/')
         val isHead = session.method == Method.HEAD
+        // A stream link stands in for the capability, only for the one path it was issued for.
+        val linkId = session.parameters[LINK_PARAM]?.firstOrNull()
+        val grant = if (linkId != null) {
+            links.redeem(linkId, path) { capability -> credentials.authorized(listOf(capability)) }
+                ?: return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"invalid_stream_link"}""")
+        } else null
+        if (grant == null && !authorized(session)) {
+            return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"invalid_lan_token"}""")
+        }
+        onTvRequest()
+        if (grant == null && session.method == Method.GET && path.startsWith("/links/")) {
+            return issueLink(session, path.removePrefix("/links"))
+        }
         // T076 / R-6: validate remote commands against the supported set before
         // queueing anything; unknown or malformed commands are rejected 400.
         if (session.method == Method.POST && path == "/commands") {
@@ -92,15 +96,13 @@ class LanLibraryServer(
                 val item = store.get(id) ?: return notFound()
                 if (item.isPrivate) {
                     val pass = session.parameters["pass"]?.firstOrNull()
-                    val tvDeviceId = suppliedCredentials(session).firstNotNullOfOrNull {
-                        deviceIdForCapability(it) ?: capabilityVerifier?.tvDeviceId(it)
-                    }
+                    val tvDeviceId = grant?.tvDeviceId ?: suppliedCredentials(session).firstNotNullOfOrNull(credentials::tvDeviceId)
                     if (privatePasses?.allows(pass, id, tvDeviceId) != true) {
                         return newFixedLengthResponse(Response.Status.FORBIDDEN, "application/json", """{"error":"approval_required"}""")
                     }
                 }
                 val wrapped = serveItem(item, session.headers["range"], contentTypeFor(item))
-                if (isHead) headAware(wrapped, true, keepContentLength = true) else wrapped
+                if (isHead) headAware(wrapped, true, keepContentLength = true) else trackStream(wrapped)
             }
             (session.method == Method.GET || isHead) && path.startsWith("/telegram/") -> {
                 val media = telegram ?: return notFound()
@@ -121,7 +123,7 @@ class LanLibraryServer(
                         TelegramRangeStream({ p, w -> media.read(file.fileId, p, w) }, 0, file.size - 1), file.size,
                     ).apply { addHeader("Accept-Ranges", "bytes") }
                 }
-                if (isHead) headAware(response, true, keepContentLength = true) else response
+                if (isHead) headAware(response, true, keepContentLength = true) else trackStream(response)
             }
             (session.method == Method.GET || isHead) && path.startsWith("/poster/") -> {
                 val id = path.removePrefix("/poster/")
@@ -134,6 +136,14 @@ class LanLibraryServer(
             }
             else -> newFixedLengthResponse(Response.Status.NOT_FOUND, "application/json", """{"error":"not_found"}""")
         }
+    }
+
+    private fun trackStream(response: Response): Response {
+        if (response.status == Response.Status.OK || response.status == Response.Status.PARTIAL_CONTENT) {
+            onStreamStarted()
+            response.data = LanActivityInputStream(response.data, onStreamFinished)
+        }
+        return response
     }
 
     /** T076: HEAD must carry the same headers with no body. */
@@ -150,18 +160,33 @@ class LanLibraryServer(
             head
         }
 
-    /** Double-accept: device capabilities first; legacy PIN during rollout. */
-    private fun authorized(session: IHTTPSession): Boolean {
-        if (capabilities.isEmpty() && token.isBlank() && capabilityVerifier == null) return false
-        val supplied = suppliedCredentials(session)
-        if (supplied.isEmpty()) return false
-        if (supplied.any { it == token || capabilities.contains(it) }) return true
-        return supplied.any { capabilityVerifier?.tvDeviceId(it) != null }
+    /**
+     * A link to [path] (`/media/<id>` or `/telegram/<id>`) for the player, issued only to a TV that sent its capability
+     * in the header: one taken from a URL must not be able to mint more links (CAB-44).
+     */
+    private fun issueLink(session: IHTTPSession, path: String): Response {
+        val capability = headerCapability(session)?.takeIf { credentials.authorized(listOf(it)) }
+            ?: return newFixedLengthResponse(Response.Status.UNAUTHORIZED, "application/json", """{"error":"header_required"}""")
+        val streamable = when {
+            path.startsWith("/media/") -> store.get(path.removePrefix("/media/")) != null
+            path.startsWith("/telegram/") -> telegram != null && path.removePrefix("/telegram/").matches(UNIQUE_ID)
+            else -> false
+        }
+        if (!streamable) return notFound()
+        val id = links.issue(path, capability, credentials.tvDeviceId(capability))
+        return jsonResponse(json.encodeToString(StreamLink(link = id, expiresInSeconds = links.idleSeconds)))
     }
 
+    /** Device capabilities only; the pairing PIN is never a LAN credential (CAB-43). */
+    private fun authorized(session: IHTTPSession): Boolean = credentials.authorized(suppliedCredentials(session))
+
+    private fun headerCapability(session: IHTTPSession): String? =
+        session.headers["authorization"]?.removePrefix("Bearer ")?.trim()?.takeIf { it.isNotEmpty() }
+
+    /** The header on either listener; `?token=` on the relay tunnel's loopback listener only ([acceptQueryToken]). */
     private fun suppliedCredentials(session: IHTTPSession): List<String> = listOfNotNull(
-        session.headers["authorization"]?.removePrefix("Bearer ")?.trim(),
-        session.parameters["token"]?.firstOrNull(),
+        headerCapability(session),
+        session.parameters["token"]?.firstOrNull()?.takeIf { acceptQueryToken },
     )
 
     private fun jsonResponse(body: String) =
@@ -302,8 +327,17 @@ class LanLibraryServer(
         return r
     }
 
+    @kotlinx.serialization.Serializable
+    private data class StreamLink(
+        val link: String,
+        @kotlinx.serialization.SerialName("expires_in_seconds") val expiresInSeconds: Long,
+    )
+
     companion object {
         const val PORT = 8765
+        /** The query parameter carrying a stream link (CAB-44). */
+        const val LINK_PARAM = "link"
+
         /** Telegram file unique ids: URL-safe base64-like text. */
         private val UNIQUE_ID = Regex("[A-Za-z0-9_-]{8,200}")
         const val NSD_TYPE = "_cablegram._tcp."

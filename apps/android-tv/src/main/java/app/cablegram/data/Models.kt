@@ -14,6 +14,8 @@ data class AccountCredential(
     val sessionId: String,
     val token: String,
     val userId: String? = null,
+    /** The LAN credential minted when this account's phone paired the TV; each account has its own. */
+    val lanCapability: String? = null,
 ) {
     val effectiveUserId: String?
         get() = userId ?: extractUserIdFromToken(token)
@@ -62,6 +64,8 @@ data class TvCommand(
     @SerialName("expires_at_ms") val expiresAtMs: Long? = null,
     /** Time left when the server sent it; lets a TV with a wrong clock compute a local deadline. */
     @SerialName("expires_in_ms") val expiresInMs: Long? = null,
+    /** Absolute seek from this process's media session; never read from a relay/Cast JSON payload. */
+    @kotlinx.serialization.Transient val localSeekToMs: Long? = null,
 )
 
 @Serializable
@@ -196,11 +200,26 @@ data class PlaybackResponse(
      */
     @kotlinx.serialization.Transient val fallbackUrl: String? = null,
     /**
+     * The headers [fallbackUrl] needs, kept apart from [headers] so a cloud bearer token is never sent to a phone, a relay
+     * or a local stream (spec 006). Empty for every fallback today.
+     */
+    @kotlinx.serialization.Transient val fallbackHeaders: Map<String, String> = emptyMap(),
+    /**
      * Review fix 9: a fallback that costs requests to find (the phone's own Telegram session) is looked up
      * only when the player actually needs it, not before every Telegram playback starts.
      */
     @kotlinx.serialization.Transient val fallbackResolver: (suspend () -> String?)? = null,
 )
+
+/** A saved Cablegram subtitle: [id] changes whenever the person picks a new one, [label] is what the TV menu shows. */
+data class SmartSubtitle(val id: String, val label: String, val content: String)
+
+/** Inline subtitles (smart subtitles), in track order. */
+fun PlaybackResponse.smartSubtitles(): List<SmartSubtitle> = subtitles.mapNotNull { track ->
+    val content = track.content?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+    val name = track.label?.takeIf(String::isNotBlank) ?: track.language?.takeIf(String::isNotBlank) ?: "Subtitles"
+    SmartSubtitle(track.trackId, "$name · Cablegram", content)
+}
 
 @Serializable
 data class LoadingVideosResponse(
@@ -226,6 +245,16 @@ val DEFAULT_LOADING_VIDEOS = listOf(
 )
 
 fun getRandomLoadingVideoUrl(): String = DEFAULT_LOADING_VIDEOS.random()
+
+const val TELEGRAM_PASSWORD_VIDEO_URL = "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/custom/pass.mp4"
+
+val ERROR_SIGNATURE_VIDEOS = listOf(
+    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_1e5a5e12.mp4",
+    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_219a8857.mp4",
+    "https://pub-e1061ea99e4c4c17bf26411787d5a160.r2.dev/error/gemini_generated_video_9abc993d.mp4",
+)
+
+fun getRandomErrorVideoUrl(): String = ERROR_SIGNATURE_VIDEOS.random()
 
 const val PRIVACY_POLICY_URL = "https://cablegram.app/privacy.html"
 const val DEMO_REVIEWER_PIN = "9999"
@@ -363,7 +392,12 @@ data class SubtitleTrack(
     val isDefault: Boolean = false,
     val isForced: Boolean = false,
     val url: String,
+    /** Synchronized WebVTT delivered inline so no second authenticated fetch is needed (smart subtitles). */
+    val content: String? = null,
 )
+
+@Serializable
+data class SubtitlePlaybackResponse(val subtitles: List<SubtitleTrack> = emptyList())
 
 @Serializable
 private data class ApiError(
@@ -392,3 +426,10 @@ internal fun decodeApiError(statusCode: Int, body: String, json: kotlinx.seriali
         parsed?.error,
     )
 }
+
+/**
+ * Whether a renewed playback needs the player reloaded. A signed URL (R2) changes with every renewal; a Drive URL stays
+ * the same and only the bearer header changes, so the headers count too (spec 006).
+ */
+fun playbackNeedsReload(current: PlaybackResponse, renewed: PlaybackResponse): Boolean =
+    renewed.url != null && (renewed.url != current.url || renewed.headers != current.headers)

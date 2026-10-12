@@ -19,6 +19,28 @@ class TelegramSessionTest {
         TelegramSession(api, role, { params }, backgroundScope).also { it.start(); runCurrent() }
 
     @Test
+    fun `unavailable configuration can be retried without replacing the Telegram session`() = runTest {
+        val api = FakeTelegramApi()
+        var requests = 0
+        val s = TelegramSession(api, TelegramRole.Phone, {
+            requests++
+            if (requests == 1) throw TelegramClientUnavailable()
+            params
+        }, backgroundScope)
+        s.start(); runCurrent()
+        api.authStates.emit(TgAuthState.WaitParameters); runCurrent()
+        assertTrue(s.state.value is TelegramState.Failed)
+        assertTrue(api.calls.isEmpty())
+        assertEquals(0, s.clientApiId)
+        s.retryStartup(); s.retryStartup(); runCurrent()
+        assertEquals(2, requests)
+        assertEquals(listOf("start"), api.calls)
+        assertEquals(params.apiId, s.clientApiId)
+        s.retryStartup(); runCurrent()
+        assertEquals(2, requests)
+    }
+
+    @Test
     fun `phone signs in with number, code and password`() = runTest {
         val api = FakeTelegramApi()
         val s = session(api, TelegramRole.Phone)

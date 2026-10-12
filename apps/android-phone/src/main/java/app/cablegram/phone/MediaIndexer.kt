@@ -1,10 +1,8 @@
 package app.cablegram.phone
 
-import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.provider.MediaStore
 import android.provider.OpenableColumns
 
 data class IndexedCandidate(
@@ -33,7 +31,7 @@ data class BrowseCrumb(
     val mediaPath: String? = null,
 )
 
-enum class BrowseSource { None, Roots, Folder, Phone, Cloud }
+enum class BrowseSource { None, Roots, Folder, Cloud }
 
 enum class StorageRootKind { Internal, Attached, Cloud }
 
@@ -91,95 +89,6 @@ class MediaIndexer(private val context: Context) {
         return out
     }
 
-    fun listStorageVolumes(): List<StorageRoot> {
-        val manager = context.getSystemService(android.os.storage.StorageManager::class.java) ?: return emptyList()
-        val mediaNames = if (android.os.Build.VERSION.SDK_INT >= 29) {
-            MediaStore.getExternalVolumeNames(context)
-        } else {
-            emptySet()
-        }
-        return manager.storageVolumes.map { volume ->
-            val mediaName = when {
-                android.os.Build.VERSION.SDK_INT >= 29 && volume.isPrimary -> MediaStore.VOLUME_EXTERNAL_PRIMARY
-                volume.uuid != null -> mediaNames.firstOrNull { it.equals(volume.uuid, ignoreCase = true) } ?: volume.uuid
-                else -> null
-            }
-            StorageRoot(
-                id = "vol:${volume.uuid ?: "primary"}",
-                name = if (volume.isPrimary) "Internal storage" else volume.getDescription(context).ifBlank { "Attached storage" },
-                kind = if (volume.isPrimary) StorageRootKind.Internal else StorageRootKind.Attached,
-                detail = when {
-                    volume.isPrimary -> "This phone"
-                    volume.isRemovable -> "SD card or USB"
-                    else -> "Attached storage"
-                },
-                volumeName = mediaName,
-            )
-        }
-    }
-
-    fun listMediaStoreBrowse(pathPrefix: String, videosOnly: Boolean = true, volumeName: String? = null): List<BrowseEntry> {
-        val resolver = context.contentResolver
-        val useFiles = !videosOnly
-        val collection = mediaCollection(useFiles, volumeName)
-        val pathColumn = if (android.os.Build.VERSION.SDK_INT >= 29) {
-            if (useFiles) MediaStore.Files.FileColumns.RELATIVE_PATH else MediaStore.Video.Media.RELATIVE_PATH
-        } else {
-            null
-        }
-        val mimeColumn = if (useFiles) MediaStore.Files.FileColumns.MIME_TYPE else null
-        val mediaTypeColumn = if (useFiles) MediaStore.Files.FileColumns.MEDIA_TYPE else null
-        val projection = buildList {
-            add(MediaStore.MediaColumns._ID)
-            add(MediaStore.MediaColumns.DISPLAY_NAME)
-            add(MediaStore.MediaColumns.SIZE)
-            if (pathColumn != null) add(pathColumn)
-            if (mimeColumn != null) add(mimeColumn)
-            if (mediaTypeColumn != null) add(mediaTypeColumn)
-        }.toTypedArray()
-        val folders = linkedMapOf<String, BrowseEntry>()
-        val files = mutableListOf<BrowseEntry>()
-        val prefix = pathPrefix.trim('/')
-        resolver.query(collection, projection, null, null, "${MediaStore.MediaColumns.DISPLAY_NAME} ASC")?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
-            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
-            val pathCol = pathColumn?.let { cursor.getColumnIndex(it) } ?: -1
-            val mimeCol = mimeColumn?.let { cursor.getColumnIndex(it) } ?: -1
-            val typeCol = mediaTypeColumn?.let { cursor.getColumnIndex(it) } ?: -1
-            while (cursor.moveToNext()) {
-                val name = cursor.getString(nameCol) ?: continue
-                val mime = if (mimeCol >= 0) cursor.getString(mimeCol).orEmpty() else ""
-                val mediaType = if (typeCol >= 0) cursor.getInt(typeCol) else MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
-                val isVideo = mediaType == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO ||
-                    isVideoFile(name, mime)
-                if (videosOnly && !isVideo) continue
-                val relative = if (pathCol >= 0) cursor.getString(pathCol).orEmpty().trim('/') else ""
-                val id = cursor.getLong(idCol)
-                val uri = ContentUris.withAppendedId(collection, id)
-                when {
-                    prefix.isEmpty() && relative.isEmpty() -> {
-                        files += fileEntry(uri, name, cursor.getLong(sizeCol), isVideo, mime)
-                    }
-                    prefix.isEmpty() && relative.isNotEmpty() -> {
-                        val folder = relative.substringBefore('/')
-                        if (!isHiddenBrowseName(folder)) folders.putIfAbsent(folder, dirEntry(folder, folder))
-                    }
-                    relative == prefix -> {
-                        files += fileEntry(uri, name, cursor.getLong(sizeCol), isVideo, mime)
-                    }
-                    prefix.isNotEmpty() && relative.startsWith("$prefix/") -> {
-                        val rest = relative.removePrefix("$prefix/")
-                        val folder = rest.substringBefore('/')
-                        val childPath = "$prefix/$folder"
-                        folders.putIfAbsent(childPath, dirEntry(folder, childPath))
-                    }
-                }
-            }
-        }
-        return folders.values.toList() + files
-    }
-
     fun rememberedFolderEntry(folder: IndexedFolder): BrowseEntry? {
         val uri = Uri.parse(folder.uri)
         val documentId = runCatching { DocumentsContract.getTreeDocumentId(uri) }.getOrNull() ?: return null
@@ -194,69 +103,10 @@ class MediaIndexer(private val context: Context) {
         )
     }
 
-    private fun dirEntry(name: String, mediaPath: String) = BrowseEntry(
-        id = "media-dir:$mediaPath",
-        name = name,
-        isDirectory = true,
-        isVideo = false,
-        mediaPath = mediaPath,
-    )
-
-    private fun fileEntry(uri: Uri, name: String, size: Long, isVideo: Boolean, mime: String) = BrowseEntry(
-        id = uri.toString(),
-        name = name,
-        isDirectory = false,
-        isVideo = isVideo,
-        sizeBytes = size.takeIf { it > 0 },
-        mime = mime.ifBlank { if (isVideo) "video/*" else "application/octet-stream" },
-        uri = uri,
-    )
-
-    private fun mediaCollection(useFiles: Boolean, volumeName: String?): android.net.Uri {
-        val named = !volumeName.isNullOrBlank() && android.os.Build.VERSION.SDK_INT >= 29
-        return when {
-            named && useFiles -> MediaStore.Files.getContentUri(volumeName)
-            named -> MediaStore.Video.Media.getContentUri(volumeName)
-            useFiles -> MediaStore.Files.getContentUri("external")
-            else -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        }
-    }
-
     fun listTreeVideos(treeUri: Uri, limit: Int = 2_000): List<IndexedCandidate> {
         val found = mutableListOf<IndexedCandidate>()
         walk(treeUri, DocumentsContract.getTreeDocumentId(treeUri), found, limit)
         return found
-    }
-
-    fun listMediaStoreVideos(limit: Int = 2_000): List<IndexedCandidate> {
-        val resolver = context.contentResolver
-        val collection = MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            MediaStore.Video.Media._ID,
-            MediaStore.Video.Media.DISPLAY_NAME,
-            MediaStore.Video.Media.SIZE,
-            MediaStore.Video.Media.DURATION,
-        )
-        val out = mutableListOf<IndexedCandidate>()
-        resolver.query(collection, projection, null, null, "${MediaStore.Video.Media.DATE_ADDED} DESC")?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
-            val durCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-            while (cursor.moveToNext() && out.size < limit) {
-                val id = cursor.getLong(idCol)
-                val name = cursor.getString(nameCol) ?: "video.mp4"
-                if (!looksLikeVideo(name)) continue
-                val durationMs = cursor.getLong(durCol)
-                out += IndexedCandidate(
-                    uri = ContentUris.withAppendedId(collection, id),
-                    displayName = name,
-                    sizeBytes = cursor.getLong(sizeCol).takeIf { it > 0 },
-                    durationSeconds = if (durationMs > 0) (durationMs / 1000L).toInt() else null,
-                )
-            }
-        }
-        return out
     }
 
     fun displayName(uri: Uri): String {

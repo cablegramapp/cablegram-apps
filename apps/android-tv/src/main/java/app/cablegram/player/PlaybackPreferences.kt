@@ -13,6 +13,8 @@ data class SubtitlePreference(
     val off: Boolean = false,
     val trackId: String? = null,
     val label: String? = null,
+    /** The saved Cablegram subtitle this choice was made for; a new subtitle starts afresh. */
+    val smartId: String? = null,
 )
 
 fun matchSubtitleTrack(preference: SubtitlePreference, tracks: List<PlayerTrack>): String? {
@@ -35,6 +37,7 @@ class PlaybackPreferencesStore(context: Context) {
             off = preferences.getBoolean(offKey(videoId), false),
             trackId = preferences.getString(idKey(videoId), null),
             label = preferences.getString(labelKey(videoId), null),
+            smartId = preferences.getString(smartKey(videoId), null),
         )
     }
 
@@ -43,6 +46,7 @@ class PlaybackPreferencesStore(context: Context) {
             .putBoolean(offKey(videoId), preference.off)
             .putString(idKey(videoId), preference.trackId)
             .putString(labelKey(videoId), preference.label)
+            .putString(smartKey(videoId), preference.smartId)
             .apply()
     }
 
@@ -67,6 +71,7 @@ class PlaybackPreferencesStore(context: Context) {
     private fun offKey(videoId: String) = "subtitle_off_$videoId"
     private fun idKey(videoId: String) = "subtitle_id_$videoId"
     private fun labelKey(videoId: String) = "subtitle_label_$videoId"
+    private fun smartKey(videoId: String) = "subtitle_smart_$videoId"
 
     private companion object {
         const val PREFS = "cablegram_playback"

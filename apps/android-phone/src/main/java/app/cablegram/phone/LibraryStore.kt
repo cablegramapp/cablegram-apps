@@ -10,6 +10,9 @@ import android.system.Os
 import java.io.File
 import java.time.Instant
 import java.util.UUID
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -27,6 +30,13 @@ class LibraryStore private constructor(private val context: Context) {
     private val postersDir: File get() = File(root, "posters").apply { mkdirs() }
     private val cloudDir: File get() = File(root, "cloud").apply { mkdirs() }
     private val indexFile: File get() = File(root, "index.json")
+
+    /**
+     * Goes up on every write to the library index. The screen and CloudTransferService share this instance (one
+     * process), so the screen can redraw when the service finishes a save it never saw running (CAB-51).
+     */
+    private val writes = MutableStateFlow(0L)
+    val revision: StateFlow<Long> = writes.asStateFlow()
 
     @Synchronized
     fun snapshot(): LibraryFile {
@@ -114,7 +124,7 @@ class LibraryStore private constructor(private val context: Context) {
 
     /**
      * Same formula as [sourceFingerprint] for a picked/indexed file, whose "mtime" is its stat size.
-     * Lets a reinstalled phone recognise its household titles from MediaStore without opening files.
+     * Lets a reinstalled phone recognise household titles after the user selects their files again.
      */
     private fun fingerprintOf(name: String, size: Long, mtime: Long): String {
         val namePart = name.lowercase().trim()
@@ -123,30 +133,15 @@ class LibraryStore private constructor(private val context: Context) {
 
     data class DeviceVideo(val uri: String, val name: String, val size: Long)
 
-    /** Videos on this phone keyed by fingerprint; empty without media permission. */
-    fun deviceVideosByFingerprint(): Map<String, DeviceVideo> {
-        val permission = if (android.os.Build.VERSION.SDK_INT >= 33) android.Manifest.permission.READ_MEDIA_VIDEO
-            else android.Manifest.permission.READ_EXTERNAL_STORAGE
-        if (context.checkSelfPermission(permission) != android.content.pm.PackageManager.PERMISSION_GRANTED) return emptyMap()
-        val collection = android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(
-            android.provider.MediaStore.Video.Media._ID,
-            android.provider.MediaStore.Video.Media.DISPLAY_NAME,
-            android.provider.MediaStore.Video.Media.SIZE,
-        )
-        val found = mutableMapOf<String, DeviceVideo>()
-        runCatching {
-            context.contentResolver.query(collection, projection, null, null, null)?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    val name = cursor.getString(1) ?: continue
-                    val size = cursor.getLong(2).takeIf { it > 0 } ?: continue
-                    val uri = android.content.ContentUris.withAppendedId(collection, cursor.getLong(0)).toString()
-                    found[fingerprintOf(name, size, size)] = DeviceVideo(uri, name, size)
-                }
-            }
-        }
-        return found
-    }
+    /** Only files already selected into this household's library; never scans shared storage. */
+    fun selectedVideosByFingerprint(): Map<String, DeviceVideo> = list()
+        .filter { !it.householdOnly && !it.copied && it.sourceKind == "phone_local" }
+        .mapNotNull { item ->
+            val uri = item.sourceUri ?: return@mapNotNull null
+            val size = item.fileSizeBytes?.takeIf { it > 0 } ?: return@mapNotNull null
+            if (!hasSource(item)) return@mapNotNull null
+            fingerprintOf(item.filename, size, size) to DeviceVideo(uri, item.filename, size)
+        }.toMap()
 
     /**
      * Ties this library to a household. A library that belongs to another account is set aside
@@ -246,6 +241,7 @@ class LibraryStore private constructor(private val context: Context) {
             tmdbId = remote.tmdbId, seasonNumber = remote.seasonNumber, episodeNumber = remote.episodeNumber,
             posterUrl = remote.posterUrl ?: existing?.posterUrl,
             sourceAvailable = source.availability != "unavailable",
+            telegramFileKey = source.stableSourceKey?.takeIf { it.startsWith("tgfile:") } ?: existing?.telegramFileKey,
         )
         val merged = mergeManualMetadata(item, remote)
         if (existing == null) save(snapshot().copy(items = list() + merged)) else update(merged)
@@ -499,19 +495,32 @@ class LibraryStore private constructor(private val context: Context) {
         ).also(::update)
     }
 
-    fun materialize(item: LibraryItem, onProgress: (Long, Long) -> Unit = { _, _ -> }): LibraryItem {
+    /**
+     * Makes a phone copy of [item]. With [remoteUrl] (a presigned read URL for the user's own R2 bucket, spec 005)
+     * the bytes come from there, which is how a title freed up from the phone comes back.
+     */
+    fun materialize(item: LibraryItem, remote: ReadUrl? = null, onProgress: (Long, Long) -> Unit = { _, _ -> }): LibraryItem {
         if (videoFile(item).exists()) return item.copy(copied = true)
-        val uri = item.sourceUri ?: error("No file to download")
         val dest = videoFile(item)
-        val parsed = Uri.parse(uri)
         val total = item.fileSizeBytes ?: 0L
-        val source = cloudFile(item).takeIf { it.exists() }
-        if (source != null) {
-            source.inputStream().use { copyWithProgress(it, dest, total, onProgress) }
+        if (remote != null) {
+            val request = okhttp3.Request.Builder().url(remote.url).apply { remote.headers.forEach { (name, value) -> header(name, value) } }.build()
+            okhttp3.OkHttpClient.Builder().readTimeout(2, java.util.concurrent.TimeUnit.MINUTES).build().newCall(request).execute().use { response ->
+                check(response.isSuccessful) { cloudDownloadMessage(response.code) }
+                val body = response.body ?: error("Your cloud storage sent an empty answer.")
+                body.byteStream().use { copyWithProgress(it, dest, total.takeIf { t -> t > 0 } ?: body.contentLength(), onProgress) }
+            }
         } else {
-            context.contentResolver.openInputStream(parsed)?.use { input ->
-                copyWithProgress(input, dest, total, onProgress)
-            } ?: error("Could not read that video")
+            val uri = item.sourceUri ?: error("No file to download")
+            val parsed = Uri.parse(uri)
+            val source = cloudFile(item).takeIf { it.exists() }
+            if (source != null) {
+                source.inputStream().use { copyWithProgress(it, dest, total, onProgress) }
+            } else {
+                context.contentResolver.openInputStream(parsed)?.use { input ->
+                    copyWithProgress(input, dest, total, onProgress)
+                } ?: error("Could not read that video")
+            }
         }
         val duration = item.durationSeconds ?: probeDuration(dest)
         val poster = item.posterPath?.let { File(it) }?.takeIf { it.exists() } ?: extractPoster(dest, item.id)
@@ -705,43 +714,6 @@ class LibraryStore private constructor(private val context: Context) {
         return updated
     }
 
-    fun saveToCloud(item: LibraryItem, onProgress: (Long, Long) -> Unit): LibraryItem {
-        val dest = cloudFile(item)
-        if (dest.exists() && dest.length() > 0) {
-            return finishCloudSave(item, dest)
-        }
-        val sourceFile = videoFile(item).takeIf { it.exists() }
-        val total = item.fileSizeBytes ?: sourceFile?.length() ?: 0L
-        onProgress(0, total)
-        if (sourceFile != null) {
-            if (!hardLink(sourceFile, dest)) {
-                sourceFile.inputStream().use { copyWithProgress(it, dest, total, onProgress) }
-            } else {
-                onProgress(dest.length(), dest.length().coerceAtLeast(total))
-            }
-        } else {
-            val uri = item.sourceUri ?: error("Nothing to save to cloud")
-            context.contentResolver.openInputStream(Uri.parse(uri))?.use { input ->
-                copyWithProgress(input, dest, total, onProgress)
-            } ?: error("Could not read that video")
-        }
-        return finishCloudSave(item, dest)
-    }
-
-    private fun finishCloudSave(item: LibraryItem, dest: File): LibraryItem {
-        val updated = item.copy(
-            cloudObjectPresent = true,
-            copied = videoFile(item).exists(),
-            storageState = if (videoFile(item).exists()) STORAGE_BOTH else STORAGE_CLOUD,
-            transferStatus = TRANSFER_IDLE,
-            uploadBytes = dest.length(),
-            uploadTotal = dest.length(),
-            fileSizeBytes = item.fileSizeBytes ?: dest.length(),
-        )
-        update(updated)
-        return updated
-    }
-
     private fun hardLink(source: File, dest: File): Boolean {
         dest.delete()
         return runCatching {
@@ -806,6 +778,11 @@ class LibraryStore private constructor(private val context: Context) {
         val folders = folders().filterNot { it.uri == uri || (volumeId != null && it.volumeId == volumeId) } +
             IndexedFolder(uri, name, volumeId)
         save(snapshot().copy(folders = folders))
+    }
+
+    @Synchronized
+    fun forgetFolder(uri: String) {
+        save(snapshot().copy(folders = folders().filterNot { it.uri == uri }))
     }
 
     fun setWatchProgress(id: String, positionSeconds: Int) {
@@ -915,6 +892,7 @@ class LibraryStore private constructor(private val context: Context) {
             atomic.failWrite(output)
             throw error
         }
+        writes.value += 1
     }
 
     fun probeEmbeddedTitle(file: File): String? = runCatching {

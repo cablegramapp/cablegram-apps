@@ -9,6 +9,9 @@ fun storageBadge(item: LibraryItem): StorageBadge = when {
     // Saved to Telegram: still on the phone too (Both), or only in Telegram once the phone copy was freed.
     item.telegramCopy && item.sourceAvailable == false -> StorageBadge.Telegram
     item.telegramCopy && !item.cloudObjectPresent -> StorageBadge.Both
+    // Saved to the user's own R2 bucket: same two states.
+    item.ownCloudCopy && item.sourceAvailable == false -> StorageBadge.Cloud
+    item.ownCloudCopy && !item.cloudObjectPresent -> StorageBadge.Both
     item.sourceAvailable == false -> when {
         item.cloudObjectPresent -> StorageBadge.Cloud
         item.householdOnly -> StorageBadge.NotOnPhone
@@ -123,23 +126,40 @@ fun searchLibrary(items: List<LibraryItem>, query: String): List<LibraryItem> {
 fun libraryMediaBytes(items: List<LibraryItem>): Long =
     items.filter { it.copied }.sumOf { it.fileSizeBytes ?: 0L }
 
+/** Bytes copied to the household's own storage (Drive or R2). */
 fun cloudMediaBytes(items: List<LibraryItem>): Long =
-    items.filter { it.cloudObjectPresent }.sumOf { it.fileSizeBytes ?: 0L }
+    items.filter { it.ownCloudCopy }.sumOf { it.fileSizeBytes ?: 0L }
 
 fun cloudAvailableBytes(items: List<LibraryItem>, cap: Long = CABLEGRAM_CLOUD_CAP_BYTES, unlimited: Boolean = false): Long {
     if (unlimited) return Long.MAX_VALUE / 4
     return (cap - cloudMediaBytes(items)).coerceAtLeast(0)
 }
 
-fun fitsInCloud(item: LibraryItem, available: Long): Boolean {
-    val size = item.fileSizeBytes ?: 0L
-    if (size <= 0) return true
-    return size <= available
-}
-
-/** Free up space: only once a verified copy exists elsewhere (Cablegram cloud, or Telegram after Save to Telegram). */
+/**
+ * Free up space: only once a verified copy exists off this phone (Telegram after Save to Telegram, or the household's own
+ * storage, which the control plane verifies by size before it records the copy). A copy kept inside the app on this phone
+ * does not count (CAB-38).
+ */
 fun canRemoveLocalCopy(item: LibraryItem): Boolean =
-    item.sourceAvailable != false && (item.cloudObjectPresent || item.telegramCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
+    item.sourceAvailable != false && (item.telegramCopy || item.ownCloudCopy) && item.copied && item.transferStatus != TRANSFER_SAVING
+
+/**
+ * The phone still has this title's video: stored inside the app, or readable at its original place on the phone (a title
+ * imported by reference has `copied` false but plays from there). A source known to be gone does not count.
+ */
+fun phoneStillHoldsVideo(item: LibraryItem): Boolean =
+    item.copied || (item.sourceUri != null && item.sourceAvailable != false)
+
+/**
+ * Remove just the copy in the household's own storage (spec 006). Only while this phone still holds the video: removing the
+ * only copy of a title is a different, bigger step ("Remove title"), so it is not offered here.
+ */
+fun canRemoveOwnCloudCopy(item: LibraryItem): Boolean =
+    item.ownCloudCopy && item.ownCloudSourceId != null && phoneStillHoldsVideo(item) && item.transferStatus != TRANSFER_SAVING
+
+/** The catalog id of a title's usable copy in the household's own storage, or null. */
+fun ownCloudSourceIdOf(sources: List<RemoteCatalogSource>): String? =
+    sources.firstOrNull { it.kind == "own_cloud" && it.archiveState != "archived" && it.availability != "unavailable" }?.id
 
 /**
  * Save to Telegram (spec 004 T011). Private titles never go to Telegram: the channel would hold a copy that any
@@ -159,8 +179,12 @@ fun telegramUploadRefusal(sizeBytes: Long, limitBytes: Long): String? = when {
 
 private fun formatGigabytes(bytes: Long): String = String.format(java.util.Locale.US, "%.1f", bytes / (1024.0 * 1024 * 1024))
 
+/**
+ * Web titles are not saved: Cablegram no longer keeps copies of web videos on its server (CAB-27), and saving them to the
+ * household's own storage is not built yet. They still play from the original link.
+ */
 fun canSaveToCloud(item: LibraryItem): Boolean =
-    item.sourceKind != "telegram" && item.sourceAvailable != false && !item.cloudObjectPresent && item.transferStatus != TRANSFER_SAVING
+    item.sourceKind != "telegram" && item.sourceKind != "web" && item.sourceAvailable != false && !item.cloudObjectPresent && !item.ownCloudCopy && item.transferStatus != TRANSFER_SAVING
 
 fun freeUpCandidates(items: List<LibraryItem>): List<LibraryItem> =
     items.filter(::canRemoveLocalCopy).sortedByDescending { it.fileSizeBytes ?: 0L }
@@ -172,7 +196,7 @@ fun itemMatchesCollection(item: LibraryItem, collectionId: String): Boolean =
     collectionId in item.collectionIds
 
 fun cloudFiles(items: List<LibraryItem>): List<LibraryItem> =
-    items.filter { it.cloudObjectPresent }.sortedByDescending { it.fileSizeBytes ?: 0L }
+    items.filter { it.ownCloudCopy }.sortedByDescending { it.fileSizeBytes ?: 0L }
 
 fun needsTitleInput(vararg labels: String?): Boolean = firstCatalogHint(*labels) == null
 
@@ -192,6 +216,32 @@ fun needsArtworkChoice(item: LibraryItem): Boolean =
 
 fun catalogMayReplaceArtwork(item: LibraryItem): Boolean =
     !item.artworkUserSelected
+
+private val householdPosterPath = Regex("/api/catalog/items/[^/]+/poster$")
+
+/** The server's copy of a cover a phone uploaded; the phone that shared it keeps drawing its own file. */
+fun isHouseholdPosterUrl(url: String?): Boolean = url != null && householdPosterPath.containsMatchIn(url)
+
+/**
+ * CAB-29: only a cover made on this phone (a video frame or the user's image) can be saved to the
+ * household. Catalog covers already reach TVs by URL, and private videos keep everything local.
+ */
+fun canSaveArtworkToHousehold(item: LibraryItem): Boolean =
+    !item.isPrivate && !item.posterPath.isNullOrBlank() &&
+        (item.posterUrl.isNullOrBlank() || isHouseholdPosterUrl(item.posterUrl))
+
+fun artworkSavedToHousehold(item: LibraryItem): Boolean =
+    item.householdArtworkVersion == item.posterVersion && canSaveArtworkToHousehold(item)
+
+enum class HouseholdArtworkStep { None, Upload, Remove }
+
+/** Frames stay on the phone unless the user saved exactly this cover; anything else uploaded is removed. */
+fun householdArtworkStep(item: LibraryItem): HouseholdArtworkStep = when {
+    artworkSavedToHousehold(item) ->
+        if (item.householdArtworkUploadedVersion == item.posterVersion) HouseholdArtworkStep.None else HouseholdArtworkStep.Upload
+    item.householdArtworkUploadedVersion != null -> HouseholdArtworkStep.Remove
+    else -> HouseholdArtworkStep.None
+}
 
 fun visibleBrowseEntries(entries: List<BrowseEntry>, videosOnly: Boolean): List<BrowseEntry> {
     // Flow 2 (legacy parity): browse lists video files only. The `videosOnly`

@@ -22,11 +22,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 class LanLibraryService : Service() {
     private var server: LanLibraryServer? = null
+    /** Plain HTTP on 127.0.0.1 only, for the relay tunnel; the LAN listener ([server]) is TLS (CAB-48). */
+    private var loopbackServer: LanLibraryServer? = null
+    private var credentials: LanCredentials? = null
     private var nsdManager: NsdManager? = null
     private var registration: NsdManager.RegistrationListener? = null
     private var multicastLock: WifiManager.MulticastLock? = null
@@ -37,22 +39,43 @@ class LanLibraryService : Service() {
     private var telegramApprovals: TelegramTvApprovalWatcher? = null
     @Volatile private var lastNotifiedAt = 0L
     @Volatile private var relayText: String? = null
+    private val lifetime = LanLibraryLifetime(BuildConfig.LAN_IDLE_TIMEOUT_MS, android.os.SystemClock::elapsedRealtime)
+    private var lifetimeJob: Job? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val store = PairingStore(this)
-        // Prefer device capabilities; fall back to the legacy PIN for old TVs.
-        val legacyToken = store.lanToken
-        val capabilities = store.tvs.mapNotNull { it.capability }.toSet()
-        if (legacyToken.isNullOrBlank()) {
+        if (intent?.action == ACTION_STOP) {
             stopSelf()
             return START_NOT_STICKY
         }
+        val store = PairingStore(this)
+        if (store.tvs.isEmpty()) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        if (lifetimeJob == null) {
+            val app = application as PhoneApplication
+            lifetime.appForeground(app.foreground.value)
+            serviceScope.launch { app.foreground.collect(lifetime::appForeground) }
+            serviceScope.launch { CastSession.state.collect { postNotification() } }
+            lifetimeJob = serviceScope.launch(Dispatchers.Main) {
+                while (isActive) {
+                    delay(minOf(10_000L, BuildConfig.LAN_IDLE_TIMEOUT_MS / 10).coerceAtLeast(100L))
+                    if (lifetime.shouldStop(CastSession.state.value != null)) {
+                        PairLog.i("LAN library stopped after background idle")
+                        stopSelf()
+                        break
+                    }
+                }
+            }
+        }
         runCatching {
+            // Serving the library to paired TVs is a connection to another device, not a data sync: dataSync is also
+            // capped at about 6 hours a day from Android 15, after which the system stops the service.
             if (Build.VERSION.SDK_INT >= 29) {
-                startForeground(NOTIFICATION_ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                startForeground(NOTIFICATION_ID, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
             } else {
                 startForeground(NOTIFICATION_ID, notification())
             }
@@ -63,39 +86,49 @@ class LanLibraryService : Service() {
                 val passes = PrivatePassVerifier(verify = { pass ->
                     store.accountToken?.let { token -> kotlinx.coroutines.runBlocking { client.verifyLanPass(token, pass) } }
                 })
-                val http = LanLibraryServer(
-                    LibraryStore(this), CommandQueue(this), legacyToken, capabilities.toMutableSet(),
-                    privatePasses = passes,
-                    deviceIdForCapability = { capability -> store.tvs.firstOrNull { it.capability == capability }?.deviceId },
-                    capabilityVerifier = LanCapabilityVerifier(verify = { capability ->
-                        store.accountToken?.let { token -> kotlinx.coroutines.runBlocking { client.verifyLanCapability(token, capability) } }
-                    }),
-                    telegram = if (PhoneTelegram.configured) {
-                        val removed = RemovedTelegramSources(client, store)
-                        PhoneTelegramMedia(this, isRemoved = removed::contains) {
-                            store.accountToken?.let { client.telegramLink(it)?.chatId }
-                        }
-                    } else null,
+                val accepted = LanCredentials(LanCapabilityVerifier(verify = { capability ->
+                    store.accountToken?.let { token -> kotlinx.coroutines.runBlocking { client.verifyLanCapability(token, capability) } }
+                })).apply { sync(store.tvs) }
+                val library = LibraryStore(this)
+                val commands = CommandQueue(this)
+                val telegram = if (PhoneTelegram.configured) {
+                    val removed = RemovedTelegramSources(client, store)
+                    PhoneTelegramMedia(this, isRemoved = removed::contains) {
+                        store.accountToken?.let { client.telegramLink(it)?.chatId }
+                    }
+                } else null
+                val links = LanStreamLinks()
+                fun listener(hostname: String?, port: Int) = LanLibraryServer(
+                    library, commands, accepted, privatePasses = passes, telegram = telegram, links = links,
+                    hostname = hostname, port = port, acceptQueryToken = hostname == "127.0.0.1",
+                    onTvRequest = lifetime::tvRequest, onStreamStarted = lifetime::streamStarted, onStreamFinished = lifetime::streamFinished,
                 )
+                // CAB-48: TVs reach the LAN listener over TLS only, and pin this phone's certificate.
+                val http = listener(null, LanLibraryServer.PORT)
+                http.makeSecure(LanTlsIdentity.load().serverSocketFactory(), null)
+                val local = listener("127.0.0.1", 0)
+                local.start()
+                loopbackServer = local
                 http.start()
                 server = http
-                advertise(legacyToken)
+                credentials = accepted
+                advertise()
                 startRevocationWatch()
-                startRelay(store)
-                // T075 / R-5: private-playback approvals, surfaced only when the TV asks.
-                approvals = ApprovalWatcher(this, serviceScope).also { it.start() }
-                // Spec 004 US2: sign paired TVs in to the household's Telegram.
-                telegramApprovals = TelegramTvApprovalWatcher(this, serviceScope).also { it.start() }
+                startRelay(store, local.listeningPort)
                 PrivateApprovals.deleteLegacyChannel(this)
-                // While something plays on the TV, the ongoing notification becomes its remote.
-                serviceScope.launch { CastSession.state.drop(1).collect { postNotification() } }
             }.onFailure { PairLog.e("LAN library failed to start", it) }
         } else {
-            // start() is also called after pairing. Keep the live server in sync
-            // with the capabilities just persisted by PairingStore.
-            server?.replaceCapabilities(capabilities)
+            // start() is also called after pairing and after a TV is removed (CAB-37). Keep the live server in step
+            // with PairingStore: a removed TV is refused from now on, with no restart.
+            credentials?.sync(store.tvs)
         }
-        return START_STICKY
+        // These talk to the control plane only, so they run even when the LAN server could not bind its port (another
+        // app holds it): otherwise a TV waits for a Telegram approval or password that the phone is never asked for.
+        // T075 / R-5: private-playback approvals, surfaced only when the TV asks.
+        if (approvals == null) approvals = ApprovalWatcher(this, serviceScope).also { it.start() }
+        // Spec 004 US2: sign paired TVs in to the household's Telegram.
+        if (telegramApprovals == null) telegramApprovals = TelegramTvApprovalWatcher(this, serviceScope).also { it.start() }
+        return START_NOT_STICKY
     }
 
     /**
@@ -111,16 +144,11 @@ class LanLibraryService : Service() {
             val client = CatalogClient(store.apiBaseUrl, store)
             while (isActive) {
                 val token = store.accountToken
-                val http = server
-                if (!token.isNullOrBlank() && http != null) {
+                val accepted = credentials
+                if (!token.isNullOrBlank() && accepted != null) {
                     runCatching {
-                        val revoked = client.fetchRevokedDeviceIds(token)
-                        revoked.forEach { deviceId ->
-                            store.tvs.firstOrNull { it.deviceId == deviceId }?.capability?.let { cap ->
-                                http.revokeCapability(cap)
-                                PairLog.i("LAN revoked TV capability device=${deviceId.takeLast(6)}")
-                            }
-                        }
+                        // By device id, so a TV already removed from the store is still refused (CAB-37).
+                        client.fetchRevokedDeviceIds(token).forEach(accepted::revokeDevice)
                     }
                 }
                 delay(60_000)
@@ -129,7 +157,7 @@ class LanLibraryService : Service() {
     }
 
     /** Spec 003: keep this phone reachable through the relay when the TV can't reach it directly. */
-    private fun startRelay(store: PairingStore) {
+    private fun startRelay(store: PairingStore, localPort: Int) {
         val tunnel = RelayTunnel(
             relayUrl = { RelayTunnel.phoneUrl(store.apiBaseUrl) },
             accountToken = { store.accountToken },
@@ -137,6 +165,8 @@ class LanLibraryService : Service() {
             networkType = { RelayConsent.networkType(this) },
             admit = { network -> RelayConsent.admit(this, store, network) },
             onActivity = { active, bytes, network -> updateRelayNotification(active, bytes, network) },
+            onStreamStarted = lifetime::streamStarted, onStreamFinished = lifetime::streamFinished,
+            localPort = localPort,
         )
         relay = tunnel
         tunnel.start()
@@ -189,12 +219,15 @@ class LanLibraryService : Service() {
         registration?.let { runCatching { nsdManager?.unregisterService(it) } }
         runCatching { server?.stop() }
         server = null
+        runCatching { loopbackServer?.stop() }
+        loopbackServer = null
+        credentials = null
         multicastLock?.let { lock -> runCatching { if (lock.isHeld) lock.release() } }
         multicastLock = null
         super.onDestroy()
     }
 
-    private fun advertise(token: String) {
+    private fun advertise() {
         val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         multicastLock = wifi.createMulticastLock("cablegram-advertise").apply {
             setReferenceCounted(false)
@@ -206,7 +239,7 @@ class LanLibraryService : Service() {
             serviceName = LanLibraryServer.NSD_NAME
             serviceType = LanLibraryServer.NSD_TYPE
             port = LanLibraryServer.PORT
-            setAttribute("token", token.take(64))
+            // No credential here: TXT records are readable by anything on the network, and no client reads one (CAB-37).
             localIpv4()?.let { setAttribute("ip", it) }
         }
         val listener = object : NsdManager.RegistrationListener {
@@ -238,6 +271,14 @@ class LanLibraryService : Service() {
                 .setContentTitle(if (relay != null) "Cablegram is streaming to your TV" else "Cablegram library is on your TV")
                 .setContentText(relay ?: "Same Wi‑Fi streams directly; elsewhere Cablegram can use the relay.")
                 .setContentIntent(PhoneActivity.openIntent(this))
+                .addAction(Notification.Action.Builder(
+                    android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel),
+                    "Stop",
+                    PendingIntent.getService(
+                        this, 0, Intent(this, LanLibraryService::class.java).setAction(ACTION_STOP),
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    ),
+                ).build())
                 .build()
         }
         fun action(icon: Int, label: String, name: String) = Notification.Action.Builder(
@@ -267,6 +308,7 @@ class LanLibraryService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
+        private const val ACTION_STOP = "app.cablegram.phone.STOP_LAN_LIBRARY"
 
         fun start(context: Context) {
             val intent = Intent(context, LanLibraryService::class.java)

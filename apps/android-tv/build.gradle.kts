@@ -7,39 +7,21 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "2.4.10"
 }
 
-// Telegram API credentials: -PTELEGRAM_API_ID / -PTELEGRAM_API_HASH, else the git-ignored
-// local.properties. Register your own at https://my.telegram.org. A build without them has
-// Telegram switched off.
-val telegramEnv = Properties().apply {
+// Optional local build settings (e.g. Cast receiver ID); Telegram identity comes from the server.
+val localSettings = Properties().apply {
     val local = rootProject.file("local.properties")
     if (local.exists()) local.inputStream().use { load(it) }
 }
-fun telegramSetting(name: String): String =
-    (project.findProperty(name) as String?) ?: telegramEnv.getProperty(name) ?: ""
-
-// A build without these ships with Telegram switched off: it installs fine and then quietly can't use Telegram.
-// Packaging and installing therefore fail unless that is asked for with -PALLOW_NO_TELEGRAM=true. Tests and
-// compiling are not affected.
-val requireTelegramCredentials by tasks.registering {
-    doLast {
-        val missing = telegramSetting("TELEGRAM_API_ID").let { it.isBlank() || it == "0" } || telegramSetting("TELEGRAM_API_HASH").isBlank()
-        if (missing && project.findProperty("ALLOW_NO_TELEGRAM") != "true") {
-            throw GradleException(
-                "TELEGRAM_API_ID / TELEGRAM_API_HASH are not set, so this build would have Telegram switched off. " +
-                    "Set them in local.properties or with -PTELEGRAM_API_ID / -PTELEGRAM_API_HASH, " +
-                    "or build without Telegram on purpose with -PALLOW_NO_TELEGRAM=true.",
-            )
-        }
-    }
-}
-tasks.matching { it.name.matches(Regex("(assemble|bundle|install)(Debug|Release)?")) }
-    .configureEach { dependsOn(requireTelegramCredentials) }
+fun localSetting(name: String): String =
+    (project.findProperty(name) as String?) ?: localSettings.getProperty(name) ?: ""
 
 android {
     namespace = "app.cablegram"
     compileSdk = 36
     defaultConfig {
         applicationId = "app.cablegram"
+        // Optional, e.g. -PCABLEGRAM_APP_ID_SUFFIX=.test: installs next to the real app, so a test build never replaces
+        // its pairing or data.
         (project.findProperty("CABLEGRAM_APP_ID_SUFFIX") as String?)?.let { applicationIdSuffix = it }
         minSdk = 26
         targetSdk = 36
@@ -51,8 +33,13 @@ android {
             ?: "https://api.cablegram.app/"
         buildConfigField("String", "API_BASE", "\"$apiBase\"")
         buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
-        buildConfigField("int", "TELEGRAM_API_ID", telegramSetting("TELEGRAM_API_ID").ifBlank { "0" })
-        buildConfigField("String", "TELEGRAM_API_HASH", "\"${telegramSetting("TELEGRAM_API_HASH")}\"")
+        // Optional Cast console receiver ID; an empty value keeps Cast disabled.
+        val castAppId = localSetting("CABLEGRAM_CAST_APP_ID").trim()
+            .replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "CABLEGRAM_CAST_APP_ID", "\"$castAppId\"")
+        // LibVLC logs every stream URL, and a URL from the phone carries its LAN credential (`?token=`). Its own log
+        // stays off unless a developer asks for it with -PCABLEGRAM_VLC_VERBOSE=true; never in a build given to others.
+        buildConfigField("boolean", "VLC_VERBOSE", (project.findProperty("CABLEGRAM_VLC_VERBOSE") == "true").toString())
         // Optional, e.g. -PCABLEGRAM_ABIS=armeabi-v7a: the universal APK is ~210 MB because of
         // LibVLC, which does not fit on low-storage TV sticks (Chromecast has ~4 GB /data).
         (project.findProperty("CABLEGRAM_ABIS") as String?)?.let { abis ->
@@ -100,6 +87,10 @@ kotlin {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-cast-tv:21.1.1")
+    implementation("com.google.android.gms:play-services-cast:22.3.1")
+    implementation("androidx.media:media:1.7.1")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation(platform("androidx.compose:compose-bom:2025.03.00"))
     implementation("androidx.activity:activity-compose:1.10.1")
@@ -126,6 +117,7 @@ dependencies {
     androidTestImplementation("androidx.test:core-ktx:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
 

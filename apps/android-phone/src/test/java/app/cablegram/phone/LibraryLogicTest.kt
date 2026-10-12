@@ -88,6 +88,28 @@ class LibraryLogicTest {
     }
 
     @Test
+    fun `free up space needs a verified R2 copy, the badge follows it, and it stops counting after a disconnect`() {
+        val saved = item().copy(ownCloudCopy = true, copied = true)
+        assertTrue(canRemoveLocalCopy(saved))
+        assertEquals(StorageBadge.Both, storageBadge(saved))
+        assertEquals(StorageBadge.Cloud, storageBadge(saved.copy(copied = false, sourceAvailable = false)))
+        assertFalse("already saved there", canSaveToCloud(saved))
+        assertTrue(saved in cloudFiles(listOf(saved)))
+        // The catalog clears the flag when the bucket is disconnected: the phone file is then the only copy.
+        val disconnected = saved.copy(ownCloudCopy = false)
+        assertFalse(canRemoveLocalCopy(disconnected))
+        assertTrue(canSaveToCloud(disconnected))
+        // Copies in the household's own storage are what the Storage screen counts as cloud media.
+        assertEquals(saved.fileSizeBytes ?: 0L, cloudMediaBytes(listOf(saved)))
+    }
+
+    @Test
+    fun `web titles are not offered a cloud save`() {
+        val web = item().copy(sourceKind = "web", copied = false, sourceAvailable = true)
+        assertFalse(canSaveToCloud(web))
+    }
+
+    @Test
     fun `telegram titles show a cloud badge and cannot be saved to cloud again`() {
         val telegram = item().copy(sourceKind = "telegram", copied = false, sourceAvailable = true)
         assertEquals(StorageBadge.Telegram, storageBadge(telegram))
@@ -156,9 +178,11 @@ class LibraryLogicTest {
     }
 
     @Test
-    fun `cannot remove local copy until a cloud object exists`() {
+    fun `cannot remove local copy until a copy exists off the phone`() {
         assertFalse(canRemoveLocalCopy(item(copied = true, cloud = false)))
-        assertTrue(canRemoveLocalCopy(item(copied = true, cloud = true)))
+        assertFalse("an in-app copy on the same phone is not enough", canRemoveLocalCopy(item(copied = true, cloud = true)))
+        assertTrue(canRemoveLocalCopy(item(copied = true).copy(ownCloudCopy = true)))
+        assertTrue(canRemoveLocalCopy(item(copied = true).copy(telegramCopy = true)))
     }
 
     @Test
@@ -183,18 +207,18 @@ class LibraryLogicTest {
     }
 
     @Test
-    fun `cablegram cloud quota rejects files that do not fit`() {
-        val used = item(title = "Big", cloud = true, copied = false, size = 4L * 1024 * 1024 * 1024)
-        val next = item(title = "Next", size = 2L * 1024 * 1024 * 1024)
-        val available = cloudAvailableBytes(listOf(used))
-        assertFalse(fitsInCloud(next, available))
-        assertTrue(fitsInCloud(item(size = 100), available))
+    fun `a copy kept inside the app on this phone is not a cloud copy`() {
+        // CAB-38: the old "Cablegram Cloud" copy lived in the app's own folder on the phone.
+        val phoneOnly = item(title = "Local", cloud = true, copied = true, size = 50)
+        assertFalse(canRemoveLocalCopy(phoneOnly))
+        assertTrue(cloudFiles(listOf(phoneOnly)).isEmpty())
+        assertEquals(0L, cloudMediaBytes(listOf(phoneOnly)))
     }
 
     @Test
-    fun `free up only offers titles already in the cloud`() {
+    fun `free up only offers titles already in the household's own storage`() {
         val local = item()
-        val both = item(title = "Keep", copied = true, cloud = true, size = 50)
+        val both = item(title = "Keep", copied = true, size = 50).copy(ownCloudCopy = true)
         assertEquals(50L, freeUpBytes(listOf(local, both)))
         assertEquals(listOf(both), freeUpCandidates(listOf(local, both)))
     }

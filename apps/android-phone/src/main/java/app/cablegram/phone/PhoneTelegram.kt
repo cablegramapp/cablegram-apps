@@ -22,15 +22,15 @@ object PhoneTelegram {
     /** How this phone appears in Telegram → Settings → Devices. */
     val deviceModel: String get() = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
 
-    /** False in builds without Telegram API credentials: the Telegram entry is hidden. */
-    val configured: Boolean get() = BuildConfig.TELEGRAM_API_ID != 0
+    /** Telegram identity is loaded only after Cablegram sign-in. */
+    val configured: Boolean get() = true
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var current: TelegramSession? = null
 
     /** The session, creating (and starting) it on first use or after a sign-out closed the old one. */
     fun session(context: Context): TelegramSession = synchronized(this) {
-        current?.takeUnless { it.state.value == TelegramState.SignedOut } ?: create(context.applicationContext).also { current = it }
+        current?.takeUnless { it.state.value == TelegramState.SignedOut }?.also { it.retryStartup() } ?: create(context.applicationContext).also { current = it }
     }
 
     /** The running session if there is one; never starts TDLib. */
@@ -55,12 +55,15 @@ object PhoneTelegram {
             api = TdlibTelegramApi(),
             role = TelegramRole.Phone,
             parameters = {
+                val store = PairingStore(context)
+                val token = store.accountToken ?: throw app.cablegram.telegram.TelegramClientUnavailable()
+                val credentials = CatalogClient(store.apiBaseUrl, store).telegramClientCredentials(token)
                 TgParameters(
                     databaseDirectory = keys.databaseDirectory.path,
                     filesDirectory = keys.filesDirectory.path,
                     databaseKey = keys.databaseKey(),
-                    apiId = BuildConfig.TELEGRAM_API_ID,
-                    apiHash = BuildConfig.TELEGRAM_API_HASH,
+                    apiId = credentials.apiId,
+                    apiHash = credentials.apiHash,
                     deviceModel = deviceModel,
                     systemVersion = "Android ${Build.VERSION.RELEASE}",
                     applicationVersion = "Cablegram ${BuildConfig.VERSION_NAME}",

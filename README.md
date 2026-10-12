@@ -21,9 +21,8 @@ the same model Telegram uses for its own apps.
 - **Nothing is logged that shouldn't be.** `TelegramLogAuditTest` covers log output.
 - **Cablegram does not store the videos on your phone or in your Telegram channel.** The phone serves them over
   your local network, or through a relay that forwards bytes without keeping them
-  ([contracts/relay-protocol.md](contracts/relay-protocol.md)). The one exception is a video from a web
-  address that you choose to save to Cablegram storage: that copy is kept on Cablegram's server (at most 5 GiB
-  per file) until you delete your account, which deletes it.
+  ([contracts/relay-protocol.md](contracts/relay-protocol.md)). See the
+  [privacy policy](https://cablegram.app/privacy.html) for service data handling.
 
 ## Layout
 
@@ -32,7 +31,8 @@ the same model Telegram uses for its own apps.
 | `apps/android-phone` | Phone app (Kotlin, Jetpack Compose). Package `app.cablegram.phone`. |
 | `apps/android-tv` | TV app (Kotlin, Compose for TV, LibVLC). Package `app.cablegram`. |
 | `apps/web-remote` | Web remote for iPhone and other phones without the app: a Home Screen web app, no App Store. |
-| `contracts/` | The API and protocols the apps speak: [control API](contracts/control-api.yaml), [pairing](contracts/pairing.md), [LAN media](contracts/lan-media.md), [remote commands](contracts/remote-and-lan.md), [relay](contracts/relay-protocol.md), [Telegram link](contracts/telegram-link.md). |
+| `docs/` | [User guide](docs/README.md): pairing, selected files and folders, subtitles, privacy, and troubleshooting. |
+| `contracts/` | The API and protocols the apps speak: [control API](contracts/control-api.yaml), [pairing](contracts/pairing.md), [LAN media](contracts/lan-media.md), [remote commands](contracts/remote-and-lan.md), [relay](contracts/relay-protocol.md), [Telegram link](contracts/telegram-link.md), [your own R2 storage](contracts/r2-storage.md). |
 | `scripts/check-telegram-sync.mjs` | Fails when the phone and TV copies of the Telegram package differ. |
 
 The Telegram package is copied into both apps on purpose, until a shared module exists. Keep both copies
@@ -48,11 +48,12 @@ cd apps/android-phone   # or apps/android-tv
 ./gradlew assembleDebug
 ```
 
-Telegram features need your own API credentials. Register an application at <https://my.telegram.org>, then
-pass them as `-PTELEGRAM_API_ID=... -PTELEGRAM_API_HASH=...` or put `TELEGRAM_API_ID` and `TELEGRAM_API_HASH`
-in the app's git-ignored `local.properties`. Without them `assemble`, `bundle` and `install` stop with an error, because the
-app would build with Telegram switched off; add `-PALLOW_NO_TELEGRAM=true` to build that way on purpose. Tests and
-compiling don't need them.
+Telegram application credentials are fetched after Cablegram sign-in from the authenticated
+`GET /api/telegram/client-config` endpoint over HTTPS. They are held in memory and never embedded
+in BuildConfig, stored in app preferences, or supplied to release CI. A new process needs the server
+before TDLib can start; a running session keeps working without fetching them again. The backend must
+be deployed before distributing these builds. Remote delivery raises the effort to extract the
+application identity; someone inspecting a running client can still recover it.
 
 By default the apps talk to `https://api.cablegram.app/`. Override it with `-PCABLEGRAM_API_BASE=https://...`.
 The backend is not part of this repository, so a build pointed at your own host needs a server that implements

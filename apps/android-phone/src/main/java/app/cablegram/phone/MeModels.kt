@@ -34,6 +34,8 @@ data class MeDevice(
     @kotlinx.serialization.SerialName("trust_level") val trustLevel: String = "home",
     @kotlinx.serialization.SerialName("trust_expires_at") val trustExpiresAt: String? = null,
     @kotlinx.serialization.SerialName("telegram_direct_allowed") val telegramDirectAllowed: Boolean = false,
+    /** A TV with Cablegram open that takes remote commands now; null from a control plane that doesn't say. */
+    val online: Boolean? = null,
 )
 
 fun MeDevice.toTrust() = TvTrust(

@@ -9,10 +9,9 @@ import org.json.JSONObject
  * One paired TV from the phone's point of view.
  *
  * [capability] is the per-device LAN secret minted by the control plane at
- * claim time (R-1). [pin] is the 6-digit pairing code the phone typed/claimed;
- * it is retained ONLY so older TV builds that still authenticate with the PIN
- * keep working during the transition (double-accept rollout). It is never sent
- * as the star LAN credential once the TV supplies a capability.
+ * claim time (R-1) and the only credential the LAN server accepts. [pin] is the
+ * 6-digit pairing code the phone typed/claimed; it identifies the TV locally
+ * and is never a LAN credential.
  */
 data class PairedTv(
     val pin: String,
@@ -20,6 +19,7 @@ data class PairedTv(
     val capability: String? = null,
     val deviceId: String? = null,
     val trust: TvTrust = TvTrust.Home,
+    val castDeviceId: String? = null,
 )
 
 class PairingStore(context: Context) : AccountTokens {
@@ -38,22 +38,8 @@ class PairingStore(context: Context) : AccountTokens {
             if (secrets.phoneDeviceId == null) secrets.phoneDeviceId = it
         }
         prefs.edit().remove("phone_device_id").apply()
+        synchronized(pairingLock) { migratePairedTvs() }
     }
-
-    /**
-     * Legacy accessor kept for transition compatibility: the most recently paired
-     * TV's capability, or its PIN when no capability was issued (very old server).
-     */
-    var lanToken: String?
-        get() = tvs.lastOrNull()?.capability ?: tvs.lastOrNull()?.pin
-        set(value) {
-            if (value.isNullOrBlank()) return
-            // Legacy writers used this setter to register a TV by token. Capability
-            // values are usually longer than PINs; try the most recent TV first.
-            val current = tvs.lastOrNull()
-            if (current != null && (current.capability == value || current.pin == value)) return
-            addTv(value, tvName, capability = if (value.length != 6) value else null)
-        }
 
     var tvName: String
         get() = tvs.lastOrNull()?.name ?: prefs.getString("tv_name", "TV") ?: "TV"
@@ -75,51 +61,77 @@ class PairingStore(context: Context) : AccountTokens {
         get() = prefs.getString("display_name", "") ?: ""
         set(value) { prefs.edit().putString("display_name", value).apply() }
 
+    /** The whole pairing record is encrypted: no LAN capability or pairing PIN is stored in plain preferences. */
     var tvs: List<PairedTv>
-        get() {
-            val raw = prefs.getString("tvs_json", null)
-            if (raw.isNullOrBlank()) {
-                val pin = prefs.getString("lan_token", null) ?: return emptyList()
-                return listOf(PairedTv(pin, prefs.getString("tv_name", "TV") ?: "TV"))
-            }
-            return runCatching {
-                val array = JSONArray(raw)
-                (0 until array.length()).map { index ->
-                    val obj = array.getJSONObject(index)
-                    PairedTv(
-                        pin = obj.getString("pin"),
-                        name = obj.optString("name", "TV"),
-                        capability = obj.optString("capability", "").takeIf { it.isNotBlank() },
-                        deviceId = obj.optString("device_id", "").takeIf { it.isNotBlank() },
-                        trust = TvTrust(
-                            temporary = obj.optBoolean("temporary", false),
-                            expiresAt = obj.optString("expires_at", "").takeIf { it.isNotBlank() }?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() },
-                            telegramDirect = obj.optBoolean("telegram_direct", false),
-                        ),
-                    )
-                }
-            }.getOrDefault(emptyList())
+        get() = synchronized(pairingLock) {
+            // No fallback to legacy credentials when the key is missing or ciphertext is damaged.
+            val raw = secrets.readPairedTvs() ?: return@synchronized emptyList()
+            decodeTvs(raw)
         }
-        set(value) {
-            val array = JSONArray()
-            value.forEach { tv ->
-                array.put(
-                    JSONObject()
-                        .put("pin", tv.pin)
-                        .put("name", tv.name)
-                        .put("capability", tv.capability.orEmpty())
-                        .put("device_id", tv.deviceId.orEmpty())
-                        .put("temporary", tv.trust.temporary)
-                        .put("expires_at", tv.trust.expiresAt?.toString().orEmpty())
-                        .put("telegram_direct", tv.trust.telegramDirect),
-                )
-            }
-            prefs.edit()
-                .putString("tvs_json", array.toString())
-                .putString("lan_token", value.lastOrNull()?.capability ?: value.lastOrNull()?.pin)
+        set(value) = synchronized(pairingLock) {
+            secrets.savePairedTvs(encodeTvs(value))
+            check(prefs.edit()
+                .remove("tvs_json")
+                .remove("lan_token")
                 .putString("tv_name", value.lastOrNull()?.name ?: "TV")
-                .apply()
+                .commit()) { "Couldn't finish saving paired TVs." }
         }
+
+    /** Idempotent, crash-safe migration: ciphertext is durable before either plaintext copy is removed. */
+    private fun migratePairedTvs() {
+        if (!secrets.hasPairedTvs) {
+            val legacy = prefs.getString("tvs_json", null)?.takeIf { it.isNotBlank() }
+                ?: prefs.getString("lan_token", null)?.takeIf { it.isNotBlank() }?.let { pin ->
+                    // Old PIN-only records remain unprivileged; the LAN server never authorizes a PIN.
+                    encodeTvs(listOf(PairedTv(pin, prefs.getString("tv_name", "TV") ?: "TV")))
+                }
+            if (legacy != null) secrets.savePairedTvs(encodeTvs(decodeTvs(legacy)))
+        }
+        if (prefs.contains("tvs_json") || prefs.contains("lan_token")) {
+            if (secrets.hasPairedTvs) secrets.confirmPairedTvsSaved()
+            check(prefs.edit().remove("tvs_json").remove("lan_token").commit()) {
+                "Couldn't remove legacy pairing credentials."
+            }
+        }
+    }
+
+    private fun decodeTvs(raw: String): List<PairedTv> = runCatching {
+        val array = JSONArray(raw)
+        (0 until array.length()).map { index ->
+            val obj = array.getJSONObject(index)
+            PairedTv(
+                pin = obj.getString("pin"),
+                name = obj.optString("name", "TV"),
+                capability = obj.optString("capability", "").takeIf { it.isNotBlank() },
+                deviceId = obj.optString("device_id", "").takeIf { it.isNotBlank() },
+                castDeviceId = obj.optString("cast_device_id", "").takeIf { it.isNotBlank() },
+                trust = TvTrust(
+                    temporary = obj.optBoolean("temporary", false),
+                    expiresAt = obj.optString("expires_at", "").takeIf { it.isNotBlank() }
+                        ?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() },
+                    telegramDirect = obj.optBoolean("telegram_direct", false),
+                ),
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    private fun encodeTvs(value: List<PairedTv>): String = JSONArray().apply {
+        value.forEach { tv ->
+            put(JSONObject()
+                .put("pin", tv.pin)
+                .put("name", tv.name)
+                .put("capability", tv.capability.orEmpty())
+                .put("device_id", tv.deviceId.orEmpty())
+                .put("cast_device_id", tv.castDeviceId.orEmpty())
+                .put("temporary", tv.trust.temporary)
+                .put("expires_at", tv.trust.expiresAt?.toString().orEmpty())
+                .put("telegram_direct", tv.trust.telegramDirect))
+        }
+    }.toString()
+
+    private companion object {
+        val pairingLock = Any()
+    }
 
     fun addTv(pin: String, name: String, capability: String? = null, deviceId: String? = null, trust: TvTrust = TvTrust.Home) {
         tvs = tvs.filterNot { it.pin == pin } + PairedTv(pin, name, capability, deviceId, trust)
@@ -134,6 +146,24 @@ class PairingStore(context: Context) : AccountTokens {
     fun attachDeviceId(pin: String, deviceId: String) {
         tvs = tvs.map { if (it.pin == pin) it.copy(deviceId = deviceId) else it }
     }
+
+    /** A Cast status may associate a route with an existing pairing, never create one. */
+    fun attachCastDeviceId(deviceId: String, castDeviceId: String) {
+        if (tvs.none { it.deviceId == deviceId }) return
+        tvs = tvs.map { when {
+            it.deviceId == deviceId -> it.copy(castDeviceId = castDeviceId)
+            it.castDeviceId == castDeviceId -> it.copy(castDeviceId = null)
+            else -> it
+        } }
+    }
+
+    var castConnect: Boolean
+        get() = prefs.getBoolean("cast_connect", false)
+        set(value) { prefs.edit().putBoolean("cast_connect", value).apply() }
+
+    var legacyRemote: Boolean
+        get() = prefs.getBoolean("legacy_remote", true)
+        set(value) { prefs.edit().putBoolean("legacy_remote", value).apply() }
 
     fun removeTv(pin: String) {
         tvs = tvs.filterNot { it.pin == pin }
@@ -182,7 +212,4 @@ class PairingStore(context: Context) : AccountTokens {
         get() = prefs.getLong("relay_mobile_allowed_until", 0L)
         set(value) { prefs.edit().putLong("relay_mobile_allowed_until", value).apply() }
 
-    var cablegramCloudReady: Boolean
-        get() = prefs.getBoolean("cablegram_cloud_ready", false)
-        set(value) { prefs.edit().putBoolean("cablegram_cloud_ready", value).apply() }
 }

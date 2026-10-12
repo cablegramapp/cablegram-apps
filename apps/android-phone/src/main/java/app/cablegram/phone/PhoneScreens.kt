@@ -108,6 +108,9 @@ fun LibraryShell(viewModel: PhoneViewModel) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         viewModel.addPickedFiles(uris)
     }
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        uri?.let { viewModel.openBrowseFolder(it) }
+    }
     BackHandler(enabled = viewModel.selected != null || viewModel.openSeriesKey != null || viewModel.tab != PhoneTab.Library) {
         if (viewModel.selected != null) viewModel.closeItem()
         else if (viewModel.openSeriesKey != null) viewModel.closeSeries()
@@ -121,7 +124,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 // A single measured stack reserves space instead of covering content.
                 if (viewModel.prepareStep != null) PrepareCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 TransferCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                if ((viewModel.nowPlaying != null || viewModel.startingTitle != null) && viewModel.cloudSheet == CloudSheet.None) {
+                if (viewModel.legacyRemote && (viewModel.nowPlaying != null || viewModel.startingTitle != null) && viewModel.cloudSheet == CloudSheet.None) {
                     RemoteBar(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
                 LibraryNav(viewModel)
@@ -135,16 +138,29 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 Box(Modifier.weight(1f)) {
                     when (viewModel.tab) {
                         PhoneTab.Library -> LibraryHome(viewModel)
-                        PhoneTab.Browse -> BrowseScreen(viewModel, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) })
-                        PhoneTab.Remote -> RemoteScreen(viewModel)
+                        PhoneTab.Browse -> BrowseScreen(viewModel, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) }, onChooseFolder = { pickFolder.launch(null) })
+                        PhoneTab.Remote -> if (viewModel.legacyRemote) RemoteScreen(viewModel) else LibraryHome(viewModel)
                         PhoneTab.Storage -> StorageScreen(viewModel)
                         PhoneTab.Settings -> SettingsScreen(viewModel)
                     }
                 }
             }
             viewModel.shownSeries?.let { SeriesOverlay(viewModel, it) }
-            viewModel.selected?.let { DetailOverlay(viewModel, it) }
+            viewModel.selected?.let { if (viewModel.subtitleFlowOpen) SubtitleFlow(viewModel, it) { viewModel.subtitleFlowOpen = false } else DetailOverlay(viewModel, it) }
             viewModel.deleteTarget?.let { DeleteDialog(viewModel, it) }
+            viewModel.removeCloudCopyTarget?.let { RemoveCloudCopyDialog(viewModel, it) }
+            if (viewModel.castPickerOpen) AlertDialog(
+                onDismissRequest = viewModel::dismissCastPicker,
+                title = { Text("Play on TV") },
+                text = { Column {
+                    viewModel.castRoutes.forEach { route ->
+                        TextButton(onClick = { viewModel.chooseCastRoute(route) }) { Text(route.name) }
+                    }
+                    if (viewModel.castRoutes.isEmpty()) Text("Looking for TVs…")
+                } },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = viewModel::dismissCastPicker) { Text("Cancel") } },
+            )
             CloudFlow(viewModel)
             if (viewModel.telegramSheetOpen) TelegramConnectSheet(viewModel)
         }
@@ -159,11 +175,13 @@ private fun LibraryNav(viewModel: PhoneViewModel) {
         Triple(PhoneTab.Remote, Icons.Default.Tv, "Remote"),
         Triple(PhoneTab.Settings, Icons.Default.Settings, "Settings"),
     )
+    val visibleItems = items.filter { viewModel.legacyRemote || it.first != PhoneTab.Remote }
     NavigationBar(containerColor = VlcBlack, tonalElevation = 0.dp) {
-        items.forEach { (tab, icon, label) ->
+        visibleItems.forEach { (tab, icon, label) ->
             NavigationBarItem(
                 selected = viewModel.tab == tab || (tab == PhoneTab.Settings && viewModel.tab == PhoneTab.Storage),
-                onClick = { viewModel.tab = tab; viewModel.closeItem() },
+                // A cloud sheet, a title page and a series page are full-screen overlays: leaving for another tab must not leave them covering it.
+                onClick = { viewModel.dismissCloudSheet(); viewModel.tab = tab; viewModel.closeItem(); viewModel.closeSeries() },
                 icon = { Icon(icon, contentDescription = label) },
                 label = { Text(label, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 modifier = Modifier.maestro(
@@ -246,7 +264,7 @@ private fun LibraryHome(viewModel: PhoneViewModel) {
                     Text(if (viewModel.paired) viewModel.tvName else "Made for your big screen", color = Color.White, style = MaterialTheme.typography.titleSmall)
                     Text(if (viewModel.paired) "Keep your phone on the same Wi-Fi" else "Connect a TV when you're ready to watch", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 }
-                TextButton(onClick = if (viewModel.paired) ({ viewModel.tab = PhoneTab.Remote }) else viewModel::startAddTv) {
+                if (!viewModel.paired || viewModel.legacyRemote) TextButton(onClick = if (viewModel.paired) ({ viewModel.tab = PhoneTab.Remote }) else viewModel::startAddTv) {
                     Text(if (viewModel.paired) "Remote" else "Connect")
                 }
             }
@@ -438,7 +456,7 @@ private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series
                     }
                     TextButton(
                         onClick = { viewModel.playOnTv(episode) },
-                        enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.sourceKind == "telegram",
+                        enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.ownCloudCopy || episode.sourceKind == "telegram",
                     ) { Text("Play") }
                     ItemActionMenu(viewModel, episode, viewModel.actionMenuId == rowKey)
                 }
@@ -517,7 +535,7 @@ private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: Phon
 @Composable
 private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expanded: Boolean) {
     DropdownMenu(expanded = expanded, onDismissRequest = { viewModel.actionMenuId = null }) {
-        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.sourceKind == "telegram") {
+        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy || item.sourceKind == "telegram") {
             viewModel.actionMenuId = null
             viewModel.playOnTv(item)
         }
@@ -527,11 +545,14 @@ private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expande
         if (canSaveToTelegram(item) && viewModel.telegramLink?.linked == true && PhoneTelegram.configured) {
             CompactMenuItem("Save to Telegram") { viewModel.actionMenuId = null; viewModel.saveToTelegram(item) }
         }
-        if (item.cloudObjectPresent && !item.copied) {
+        if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) {
             CompactMenuItem("Download from Cloud") { viewModel.actionMenuId = null; viewModel.downloadFromCloud(item) }
         }
         if (canRemoveLocalCopy(item)) {
             CompactMenuItem("Free up phone space") { viewModel.actionMenuId = null; viewModel.askFreeUp(item) }
+        }
+        if (canRemoveOwnCloudCopy(item)) {
+            CompactMenuItem("Remove cloud copy") { viewModel.actionMenuId = null; viewModel.askRemoveCloudCopy(item) }
         }
         viewModel.collections.forEach { collection ->
             CompactMenuItem("Move to ${collection.name}") {
@@ -565,10 +586,23 @@ private fun CompactMenuItem(label: String, enabled: Boolean = true, onClick: () 
 private fun BrowseScreen(
     viewModel: PhoneViewModel,
     onOpenLocalRoot: () -> Unit,
+    onChooseFolder: () -> Unit,
 ) {
     var webUrl by rememberSaveable { mutableStateOf("") }
+    var folderToRemove by remember { mutableStateOf<IndexedFolder?>(null) }
+    folderToRemove?.let { folder ->
+        AlertDialog(
+            onDismissRequest = { folderToRemove = null },
+            title = { Text("Remove ${folder.name}?") },
+            text = { Text("Cablegram will stop remembering access to this folder. Imported videos stay in your library, but videos that rely on this folder may need it selected again to play.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.removeBrowseFolder(folder); folderToRemove = null }) { Text("Remove folder") }
+            },
+            dismissButton = { TextButton(onClick = { folderToRemove = null }) { Text("Cancel") } },
+        )
+    }
     LaunchedEffect(Unit) {
-        if (viewModel.browseSource == BrowseSource.None || viewModel.browseRoots.isEmpty()) {
+        if (viewModel.browseSource == BrowseSource.None) {
             viewModel.ensureBrowseRoot()
         }
     }
@@ -601,6 +635,7 @@ private fun BrowseScreen(
                     color = VlcOrange,
                     fontSize = 13.sp,
                 )
+                TextButton(onClick = onChooseFolder) { Text("Add or reselect folder", color = VlcOrange) }
                 val fileCount = entries.count { !it.isDirectory }
                 TextButton(onClick = viewModel::selectAllBrowseFiles, enabled = fileCount > 0) {
                     Text(
@@ -644,9 +679,25 @@ private fun BrowseScreen(
                     SectionCard("From your phone") {
                         Icon(Icons.Default.FolderOpen, null, Modifier.size(36.dp), tint = VlcOrange)
                         Text("Make it a movie night", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                        Text("Choose videos from your phone or connected storage. Select several to add them together.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                        Text("Choose videos or add folders with Android's picker, one folder at a time. Your selected folders stay available here until you remove them.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
                         Button(onClick = onOpenLocalRoot, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.BROWSE_PHONE)) {
                             Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Choose videos")
+                        }
+                        OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.BROWSE_OPEN_FOLDER)) {
+                            Text("Add folder")
+                        }
+                        if (viewModel.folders.isNotEmpty()) {
+                            Text("Selected folders", color = Color.White, style = MaterialTheme.typography.titleSmall)
+                        }
+                        viewModel.folders.forEach { folder ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { viewModel.openBrowseFolder(Uri.parse(folder.uri), folder.name) }, modifier = Modifier.weight(1f)) {
+                                    Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(folder.name)
+                                }
+                                IconButton(onClick = { folderToRemove = folder }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Remove folder ${folder.name}", tint = VlcMuted)
+                                }
+                            }
                         }
                     }
                 }
@@ -806,7 +857,8 @@ private fun StorageScreen(viewModel: PhoneViewModel) {
         }
         SectionCard("Cloud storage") {
             StorageMetric("Media saved", formatBytes(cloudMediaBytes(viewModel.items)))
-            StorageMetric("Available", if (viewModel.cloudUnlimited) "Your storage" else formatBytes(viewModel.cloudAvailable))
+            StorageMetric("Available", if (viewModel.cloudConnected) destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable) else "Connect your own storage")
+            if (viewModel.cloudConnected) Text("Connected: ${viewModel.storage?.connection?.displayLabel ?: "your own storage"}", color = Color(0xFF79D6B0))
             OutlinedButton(onClick = { viewModel.cloudSheet = CloudSheet.Manage }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.STORAGE_MANAGE)) { Text("Manage cloud storage") }
         }
         SectionCard("Saved in the cloud") {
@@ -836,6 +888,15 @@ private fun StorageMetric(label: String, value: String) {
 
 @Composable
 private fun SettingsScreen(viewModel: PhoneViewModel) {
+    var subtitleAccounts by remember { mutableStateOf(false) }
+    if (subtitleAccounts) {
+        BackHandler { subtitleAccounts = false }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TextButton(onClick = { subtitleAccounts = false }) { Text("Back to Settings") }
+            SubtitleProviderSetup(viewModel, onDone = { subtitleAccounts = false }, doneLabel = "Done")
+        }
+        return
+    }
     var advanced by rememberSaveable { mutableStateOf(false) }
     var apiDraft by remember(viewModel.apiBaseUrl) { mutableStateOf(viewModel.apiBaseUrl) }
     var tunnelDraft by remember(viewModel.tunnelUrl) { mutableStateOf(viewModel.tunnelUrl) }
@@ -871,6 +932,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 OutlinedButton(onClick = viewModel::startEmailVerification, modifier = Modifier.fillMaxWidth().maestro("settings_confirm_email")) { Text("Confirm email") }
             }
         }
+        OutlinedButton(onClick = { subtitleAccounts = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle provider accounts") }
         SectionCard("Your TVs") {
             if (!viewModel.paired) Text("Connect a TV to enjoy your library on a bigger screen.", color = VlcMuted)
             viewModel.tvs.forEach { tv ->
@@ -933,6 +995,8 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             }
         }
         SectionCard("Transfers & privacy") {
+            PrefSwitch("Open TV with Cast", viewModel.castConnect, viewModel::updateCastConnect, MaestroIds.SETTINGS_CAST_CONNECT)
+            PrefSwitch("Show Remote controls", viewModel.legacyRemote, viewModel::updateLegacyRemote, MaestroIds.SETTINGS_LEGACY_REMOTE)
             PrefSwitch("Transfer on Wi-Fi only", viewModel.wifiOnlyTransfers, viewModel::setWifiOnly)
             PrefSwitch("Transfer only while charging", viewModel.transferWhileCharging, viewModel::updateChargingOnly)
             HorizontalDivider(color = PhoneOutline)
@@ -1028,16 +1092,47 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
 }
 
 @Composable
-private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit, maestroId: String? = null) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = Color.White, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
+        Switch(checked = checked, onCheckedChange = onChange,
+            modifier = maestroId?.let { Modifier.maestro(it) } ?: Modifier)
     }
+}
+
+/** CAB-29: a cover made on this phone stays here unless the user saves it to the household. */
+@Composable
+private fun HouseholdArtworkRow(viewModel: PhoneViewModel, item: LibraryItem) {
+    if (!canSaveArtworkToHousehold(item)) return
+    val saved = artworkSavedToHousehold(item)
+    var confirm by remember(item.id) { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            if (saved) "Cover saved to your household" else "Cover kept on this phone. TVs show it while this phone is on the same Wi-Fi.",
+            color = VlcMuted, style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f).maestro("detail_artwork_household_status"),
+        )
+        if (saved) TextButton(onClick = { viewModel.keepArtworkOnPhone(item) }, modifier = Modifier.maestro("detail_artwork_remove_household")) { Text("Remove") }
+        else TextButton(onClick = { confirm = true }, modifier = Modifier.maestro("detail_artwork_save_household")) { Text("Save artwork to household") }
+    }
+    if (confirm) AlertDialog(
+        modifier = Modifier.maestroRoot(),
+        onDismissRequest = { confirm = false },
+        title = { Text("Save artwork to household?") },
+        text = {
+            Text("This cover was made on this phone from your video or your own image. Saving uploads it to Cablegram's server " +
+                "with your household library. Everyone in your household can then see it on their TVs, phones and the web remote, " +
+                "even when this phone is away, and anyone given its link can open it.\n\n" +
+                "It stays on the server until you tap Remove here, change the cover, or make the video private.")
+        },
+        confirmButton = { TextButton(onClick = { confirm = false; viewModel.saveArtworkToHousehold(item) }, modifier = Modifier.maestro("artwork_household_confirm")) { Text("Save to household") } },
+        dismissButton = { TextButton(onClick = { confirm = false }) { Text("Keep on phone") } },
+    )
 }
 
 @Composable
 private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
-    val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent
+    val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent && !item.ownCloudCopy
     val draftBase = remember(item.id, viewModel.editingMetadata) { item }
     var title by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.title) }
     var year by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.year?.toString().orEmpty()) }
@@ -1067,6 +1162,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 }
             }
         }
+        if (!viewModel.editingMetadata) HouseholdArtworkRow(viewModel, item)
         if (item.metadataConflict) Text("Details changed on another device. Your edits are kept on this phone. Review them and save again to use your version.", color = VlcOrange)
         else if (item.pendingMetadataFields.isNotEmpty()) Text("Details saved on this phone · Waiting to sync", color = VlcMuted)
         if (viewModel.editingMetadata) {
@@ -1092,6 +1188,8 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
                 Text(if (sourceUnavailable) "Source unavailable" else if (viewModel.paired) "Play on TV" else "Connect a TV to play")
             }
+            // What the TV did with the tap ("Starting on…", "Done on…", or why not), right where it was made.
+            viewModel.remoteStatus?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodySmall) }
             if (sourceUnavailable) {
                 Text(
                     if (item.householdOnly) "This title is in your household library, but its file isn't on this phone. Import the same file here to play it from this phone."
@@ -1101,18 +1199,25 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                 OutlinedButton(onClick = viewModel::syncNow, enabled = viewModel.librarySyncState != LibrarySyncState.Running) { Text("Check source again") }
             }
             item.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodyLarge) }
+            LaunchedEffect(item.id) { viewModel.refreshSubtitleStatus(item) }
+            if (viewModel.savedSubtitle != null) TextButton(onClick = { viewModel.removeSavedSubtitle(item) }, modifier = Modifier.fillMaxWidth()) { Text("Remove saved subtitle") }
+            OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
+                Text(viewModel.savedSubtitle?.let { "Subtitles: $it · Find another" } ?: "Find Subtitles")
+            }
+            LocalSubtitleAttachmentButton(viewModel, item, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null)
             SectionCard("Your copy") {
                 StorageMetric("Location", storageStatusLine(item))
                 item.fileSizeBytes?.let { StorageMetric("File size", formatBytes(it)) }
                 if (item.transferStatus == TRANSFER_FAILED && item.webTransferError == TELEGRAM_SAVE_FAILED && !sourceUnavailable) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Retry saving to Telegram") }
-                } else if (item.transferStatus == TRANSFER_FAILED && !sourceUnavailable) OutlinedButton(onClick = { viewModel.retrySave(item) }, modifier = Modifier.fillMaxWidth()) { Text("Retry cloud save") }
+                } else if (item.transferStatus == TRANSFER_FAILED && !sourceUnavailable && item.sourceKind != "web") OutlinedButton(onClick = { viewModel.retrySave(item) }, modifier = Modifier.fillMaxWidth()) { Text("Retry cloud save") }
                 else if (canSaveToCloud(item)) OutlinedButton(onClick = { viewModel.beginSaveToCloud(item) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.DETAIL_SAVE_CLOUD)) { Text("Save a cloud copy") }
                 if (viewModel.telegramLink?.linked == true && PhoneTelegram.configured && canSaveToTelegram(item) && item.webTransferError != TELEGRAM_SAVE_FAILED) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Save to Telegram") }
                 }
-                if (item.cloudObjectPresent && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
+                if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
                 if (canRemoveLocalCopy(item)) TextButton(onClick = { viewModel.askFreeUp(item) }) { Text("Free up phone space") }
+                if (canRemoveOwnCloudCopy(item)) TextButton(onClick = { viewModel.askRemoveCloudCopy(item) }) { Text("Remove cloud copy") }
             }
             if (viewModel.collections.isNotEmpty()) SectionCard("Collections") {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1124,6 +1229,20 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             TextButton(onClick = { viewModel.askDelete(item) }) { Text("Remove title…", color = MaterialTheme.colorScheme.error) }
         }
     }
+}
+
+@Composable
+private fun RemoveCloudCopyDialog(viewModel: PhoneViewModel, item: LibraryItem) {
+    AlertDialog(
+        modifier = Modifier.maestroRoot(),
+        onDismissRequest = { viewModel.removeCloudCopyTarget = null },
+        title = { Text("Remove the cloud copy?") },
+        text = { Text(removeCopyQuestion(item.title, viewModel.saveDestinationName)) },
+        confirmButton = {
+            TextButton(onClick = { viewModel.removeCloudCopy(item) }) { Text("Remove copy", color = Color(0xFFFF8A80)) }
+        },
+        dismissButton = { TextButton(onClick = { viewModel.removeCloudCopyTarget = null }) { Text("Keep it") } },
+    )
 }
 
 @Composable

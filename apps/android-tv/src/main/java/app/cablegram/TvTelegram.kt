@@ -23,6 +23,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** What the TV shows about Telegram in Settings (spec 004 US2). */
+/** This TV has started signing in to the household's Telegram but can't stream from it yet. */
+fun TvTelegramStatus.isSigningIn(): Boolean =
+    this is TvTelegramStatus.Connecting || this is TvTelegramStatus.WaitingForPhone || this is TvTelegramStatus.NeedsPassword
+
 sealed interface TvTelegramStatus {
     /** The household hasn't connected Telegram (or this build has no Telegram credentials). */
     data object Off : TvTelegramStatus
@@ -42,7 +46,7 @@ sealed interface TvTelegramStatus {
      * The phone approved this TV, but the account has two-step verification: Telegram wants the password
      * on the new device too (as Telegram Desktop does after a QR scan). [error] explains a rejected try.
      */
-    data class NeedsPassword(val hint: String, val busy: Boolean = false, val error: String? = null) : TvTelegramStatus
+    data class NeedsPassword(val hint: String, val busy: Boolean = false, val error: String? = null, val phoneRequestError: String? = null) : TvTelegramStatus
     data class Problem(val message: String) : TvTelegramStatus
     /** A temporary TV: Telegram titles play through the owner's phone; nothing Telegram is stored here. */
     data object ThroughPhone : TvTelegramStatus
@@ -99,12 +103,16 @@ class TvTelegram(
     /** The phone that can stream Telegram titles to this TV when it holds no session of its own. */
     fun phoneDeviceId(): String? = linkedPhoneId
 
-    val configured: Boolean get() = BuildConfig.TELEGRAM_API_ID != 0
+    val configured: Boolean get() = true
 
-    /** Called after the library loads (and on refreshes): follows the household link. */
-    fun sync(currentToken: String) {
+    /** The TV account whose household this TV signs in to Telegram for; [ensureSession] records it. */
+    @Volatile private var account: String? = null
+
+    /** Called after the library loads (and on refreshes): follows the household link of [accountId]. */
+    fun sync(currentToken: String, accountId: String?) {
         if (!configured) return
         token = currentToken
+        account = accountId
         scope.launch {
             val link = runCatching { api.telegramLink(currentToken) }
                 .onFailure { PairLog.e("Telegram link check failed", it) }
@@ -114,6 +122,7 @@ class TvTelegram(
                 .putLong(PREF_ACTIVE, System.currentTimeMillis())
                 .apply()
             linkedPhoneId = link.phoneDeviceId
+            if (link.telegramDirect && !link.logoutRequired) session?.retryStartup()
             when {
                 link.logoutRequired -> {
                     signOutAndWipe()
@@ -161,6 +170,14 @@ class TvTelegram(
     private var passwordJob: Job? = null
     private var passwordRequestedAt = 0L
 
+    /** Withdraw the phone prompt when the viewer changes keyboard or leaves the password screen. */
+    fun cancelPhonePasswordRequest() {
+        passwordJob?.cancel()
+        passwordJob = null
+        passwordRequestedAt = 0L
+        (_status.value as? TvTelegramStatus.NeedsPassword)?.let { _status.value = it.copy(phoneRequestError = null) }
+    }
+
     /**
      * Asks the household phone to type the Telegram password (a notification with a text field). The phone seals it to a
      * one-time key made here, so the control plane relays bytes it cannot read; the password reaches Telegram only.
@@ -168,8 +185,12 @@ class TvTelegram(
      */
     fun askPhoneForPassword() {
         val waiting = _status.value as? TvTelegramStatus.NeedsPassword ?: return
-        val currentToken = token ?: return
+        val currentToken = token ?: run {
+            _status.value = waiting.copy(phoneRequestError = "Pair your phone with this TV to use its keyboard, or choose the TV keyboard.")
+            return
+        }
         if (passwordJob?.isActive == true && System.currentTimeMillis() - passwordRequestedAt < PASSWORD_REQUEST_MS) return
+        _status.value = waiting.copy(phoneRequestError = null)
         passwordJob?.cancel()
         passwordRequestedAt = System.currentTimeMillis()
         passwordJob = scope.launch {
@@ -179,6 +200,18 @@ class TvTelegram(
             } catch (e: ApiException) {
                 // 409 not linked, 403 temporary TV: this TV is asked in Settings only.
                 PairLog.i("Telegram password not asked from the phone: ${e.error ?: e.statusCode}")
+                (_status.value as? TvTelegramStatus.NeedsPassword)?.let {
+                    _status.value = it.copy(phoneRequestError = if (e.statusCode == 403 || e.statusCode == 409)
+                        "The phone keyboard isn't available for this TV. Choose the TV keyboard instead."
+                    else "Couldn't send the phone prompt. Check your connection, send it again, or choose the TV keyboard.")
+                }
+                return@launch
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                (_status.value as? TvTelegramStatus.NeedsPassword)?.let {
+                    _status.value = it.copy(phoneRequestError = "Couldn't send the phone prompt. Check your connection, send it again, or choose the TV keyboard.")
+                }
                 return@launch
             }
             // Collected: the sealed bytes are gone from the control plane. Otherwise the request is withdrawn when this
@@ -219,8 +252,22 @@ class TvTelegram(
         }
     }
 
+    /**
+     * One account was revoked or removed from a TV that holds others (CAB-37). The Telegram session goes only if it is
+     * that account's, or if this TV can't tell whose it is (signed in before owners were recorded): another
+     * household's session is kept, and a wrongly dropped one only needs approving again from that household's phone.
+     */
+    fun signOutIfOwnedBy(accountId: String) {
+        val owner = prefs.getString(PREF_OWNER, null)
+        if (owner == accountId || (owner == null && (session != null || TelegramDatabaseKey(context).hasLocalData()))) {
+            PairLog.i("Telegram on TV belonged to a removed account: signing out and wiping")
+            signOutAndWipe()
+        }
+    }
+
     /** Unpair, revocation, household disconnect: log out and delete everything Telegram left here. */
     fun signOutAndWipe() {
+        prefs.edit().remove(PREF_OWNER).apply()
         val current = session
         session = null
         standalone = false
@@ -253,19 +300,25 @@ class TvTelegram(
     }
 
     private fun ensureSession() {
-        if (session != null) return
+        session?.let { it.retryStartup(); return }
         _status.value = TvTelegramStatus.Connecting
         val keys = TelegramDatabaseKey(context)
+        // A database already on disk was signed in for its recorded owner; only a fresh one takes this account's.
+        if (prefs.getString(PREF_OWNER, null) == null || !keys.hasLocalData()) {
+            account?.let { prefs.edit().putString(PREF_OWNER, it).apply() }
+        }
         val created = TelegramSession(
             api = TdlibTelegramApi(),
             role = TelegramRole.Tv,
             parameters = {
+                val currentToken = token ?: throw app.cablegram.telegram.TelegramClientUnavailable()
+                val credentials = api.telegramClientCredentials(currentToken)
                 TgParameters(
                     databaseDirectory = keys.databaseDirectory.path,
                     filesDirectory = keys.filesDirectory.path,
                     databaseKey = keys.databaseKey(),
-                    apiId = BuildConfig.TELEGRAM_API_ID,
-                    apiHash = BuildConfig.TELEGRAM_API_HASH,
+                    apiId = credentials.apiId,
+                    apiHash = credentials.apiHash,
                     deviceModel = "${Build.MANUFACTURER} ${Build.MODEL}".trim(),
                     systemVersion = "Android TV ${Build.VERSION.RELEASE}",
                     applicationVersion = "Cablegram ${BuildConfig.VERSION_NAME}",
@@ -326,8 +379,7 @@ class TvTelegram(
             }
             is TelegramState.NeedsPassword -> {
                 _status.value = TvTelegramStatus.NeedsPassword(state.hint)
-                // Someone who chose the phone isn't nagged with a notification; Settings and the play prompt still ask.
-                if (!_viaPhone.value) askPhoneForPassword()
+                // The password UI asks the viewer which keyboard to use before requesting the phone.
             }
             is TelegramState.Failed -> _status.value = TvTelegramStatus.Problem(state.message)
             TelegramState.SignedOut -> _status.value = TvTelegramStatus.Off
@@ -424,7 +476,7 @@ class TvTelegram(
                             runCatching { api.postPhoneLoginResult(currentToken, request.requestId, "failed", "TV_NOT_HOME") }
                             continue
                         }
-                        val outcome = current.approvePhoneLogin(request.loginLink, BuildConfig.TELEGRAM_API_ID)
+                        val outcome = current.approvePhoneLogin(request.loginLink, current.clientApiId)
                         val error = (outcome.exceptionOrNull() as? app.cablegram.telegram.TgException)?.name
                             ?.uppercase()?.replace(Regex("[^A-Z0-9_ ]"), " ")?.trim()?.take(80)?.ifBlank { "UNKNOWN" }
                         runCatching { api.postPhoneLoginResult(currentToken, request.requestId, if (outcome.isSuccess) "approved" else "failed", error) }
@@ -464,6 +516,8 @@ class TvTelegram(
         const val PREF_TEMPORARY = "temporary"
         const val PREF_ACTIVE = "last_active"
         const val PREF_VIA_PHONE = "telegram_via_phone"
+        /** The TV account (pairing session) whose household this TV's Telegram session belongs to (CAB-37). */
+        const val PREF_OWNER = "telegram_owner_account"
         const val PHONE_LOGIN_POLL_MS = 4_000L
         const val PASSWORD_POLL_MS = 2_000L
         /** How long an accepted password may take to move Telegram past the password step. */
@@ -475,4 +529,3 @@ class TvTelegram(
         const val NANOHTTPD_SOCKET_READ_TIMEOUT = 5 * 60 * 1000
     }
 }
-

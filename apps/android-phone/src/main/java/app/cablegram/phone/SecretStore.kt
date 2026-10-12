@@ -48,15 +48,33 @@ class SecretStore(context: Context) {
             }.apply()
         }
 
-    private fun encrypt(plaintext: String): String {
+    /** Presence is checked separately from decryption so a damaged record never falls back to plaintext. */
+    internal val hasPairedTvs: Boolean get() = prefs.contains(KEY_PAIRED_TVS)
+
+    internal fun readPairedTvs(): String? = decrypt(prefs.getString(KEY_PAIRED_TVS, null), KEY_PAIRED_TVS)
+
+    /** Persist ciphertext before the caller deletes any legacy plaintext. */
+    internal fun savePairedTvs(json: String) {
+        val encrypted = encrypt(json, KEY_PAIRED_TVS)
+        check(prefs.edit().putString(KEY_PAIRED_TVS, encrypted).commit()) { "Couldn't save paired TVs securely." }
+    }
+
+    /** A previous failed commit can leave ciphertext in memory: confirm durability before cleanup on retry. */
+    internal fun confirmPairedTvsSaved() {
+        val encrypted = prefs.getString(KEY_PAIRED_TVS, null) ?: error("Missing encrypted pairing record.")
+        check(prefs.edit().putString(KEY_PAIRED_TVS, encrypted).commit()) { "Couldn't save paired TVs securely." }
+    }
+
+    private fun encrypt(plaintext: String, associatedData: String? = null): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key())
+        associatedData?.let { cipher.updateAAD(it.toByteArray(Charsets.UTF_8)) }
         val iv = Base64.encodeToString(cipher.iv, Base64.NO_WRAP)
         val encrypted = Base64.encodeToString(cipher.doFinal(plaintext.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
         return "$iv:$encrypted"
     }
 
-    private fun decrypt(encoded: String?): String? {
+    private fun decrypt(encoded: String?, associatedData: String? = null): String? {
         if (encoded.isNullOrBlank()) return null
         return runCatching {
             val parts = encoded.split(":", limit = 2)
@@ -67,6 +85,7 @@ class SecretStore(context: Context) {
                 key(),
                 GCMParameterSpec(128, Base64.decode(parts[0], Base64.NO_WRAP)),
             )
+            associatedData?.let { cipher.updateAAD(it.toByteArray(Charsets.UTF_8)) }
             String(cipher.doFinal(Base64.decode(parts[1], Base64.NO_WRAP)), Charsets.UTF_8)
         }.getOrNull()
     }
@@ -93,6 +112,7 @@ class SecretStore(context: Context) {
         const val KEY_ACCOUNT = "account_token_enc"
         const val KEY_DEVICE = "phone_device_id_enc"
         const val KEY_REFRESH = "refresh_token_enc"
+        const val KEY_PAIRED_TVS = "paired_tvs_enc"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
     }
 }

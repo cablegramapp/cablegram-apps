@@ -28,3 +28,4 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
+-keep class app.cablegram.phone.cast.CastOptionsProvider { *; }

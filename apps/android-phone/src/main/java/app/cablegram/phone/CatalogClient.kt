@@ -45,7 +45,7 @@ class CatalogClient(
         val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/subtitles/$path")
             .header("Authorization", "Bearer $token")
             .method(method, body?.toRequestBody("application/json".toMediaType())).build()
-        val longClient = client.newBuilder().callTimeout(100, TimeUnit.SECONDS).readTimeout(100, TimeUnit.SECONDS).build()
+        val longClient = client.newBuilder().callTimeout(20, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).build()
         longClient.newCall(request).await().use { response ->
             val text = response.body?.string().orEmpty()
             check(response.isSuccessful) { runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull() ?: "network_unavailable" }
@@ -71,34 +71,6 @@ class CatalogClient(
                     ?: "Could not analyze that link (${response.code})"
             }
             json.decodeFromString<WebImportResponse>(text)
-        }
-    }
-
-    suspend fun saveWebToStorage(itemId: String, token: String): WebStorageResponse = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/library/items/$itemId/storage-transfers")
-            .header("Authorization", "Bearer $token")
-            .post("{\"destination\":\"cablegram_managed\"}".toRequestBody("application/json".toMediaType()))
-            .build()
-        client.newCall(request).execute().use { response ->
-            val text = response.body?.string().orEmpty()
-            check(response.isSuccessful) {
-                runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
-                    ?: "Could not save that video (${response.code})"
-            }
-            json.decodeFromString<WebStorageResponse>(text)
-        }
-    }
-
-    suspend fun libraryJob(jobId: String, token: String): LibraryJobResponse = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/library/jobs/$jobId")
-            .header("Authorization", "Bearer $token")
-            .get().build()
-        client.newCall(request).execute().use { response ->
-            val text = response.body?.string().orEmpty()
-            check(response.isSuccessful) { runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull() ?: "Could not check transfer (${response.code})" }
-            json.decodeFromString<LibraryJobResponse>(text)
         }
     }
 
@@ -155,8 +127,15 @@ class CatalogClient(
         }
     }
 
-    suspend fun resolveTitle(query: String, token: String?, strict: Boolean = false): TitleResolveResponse = withContext(Dispatchers.IO) {
-        val body = json.encodeToString(buildJsonObject { put("query", query) })
+    /**
+     * [itemId] is the household item the search is for: the server then keeps a title still taken from a Telegram
+     * caption or file name away from the AI (CAB-42).
+     */
+    suspend fun resolveTitle(query: String, token: String?, strict: Boolean = false, itemId: String? = null): TitleResolveResponse = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject {
+            put("query", query)
+            itemId?.let { put("item_id", it) }
+        })
         val builder = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/library/resolve-title")
             .post(body.toRequestBody("application/json".toMediaType()))
@@ -190,43 +169,6 @@ class CatalogClient(
             .getOrElse { it.message ?: "unreachable" }
     }
 
-    suspend fun identifyStills(images: List<Pair<String, String>>, token: String?): IdentifyStillsResult = withContext(Dispatchers.IO) {
-        if (images.isEmpty()) return@withContext IdentifyStillsResult(error = "no stills")
-        val body = json.encodeToString(buildJsonObject {
-            put("images", buildJsonArray {
-                images.forEach { (mime, data) ->
-                    add(buildJsonObject {
-                        put("mimeType", mime)
-                        put("data", data)
-                    })
-                }
-            })
-        })
-        val url = "${baseUrl.trimEnd('/')}/api/library/identify-stills"
-        PairLog.i("POST identify-stills $url frames=${images.size} payloadKb=${body.length / 1024}")
-        val builder = Request.Builder()
-            .url(url)
-            .post(body.toRequestBody("application/json".toMediaType()))
-        if (!token.isNullOrBlank()) builder.header("Authorization", "Bearer $token")
-        val longClient = client.newBuilder()
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(90, TimeUnit.SECONDS)
-            .callTimeout(95, TimeUnit.SECONDS)
-            .build()
-        runCatching {
-            longClient.newCall(builder.build()).execute().use { response ->
-                val text = response.body?.string().orEmpty()
-                PairLog.i("POST identify-stills HTTP ${response.code} body=${text.take(180)}")
-                if (!response.isSuccessful) {
-                    return@use IdentifyStillsResult(error = "HTTP ${response.code}")
-                }
-                IdentifyStillsResult(metadata = json.decodeFromString<MatchResponse>(text).metadata)
-            }
-        }.onFailure { PairLog.e("identify-stills request failed api=$baseUrl", it) }
-            .getOrElse { IdentifyStillsResult(error = it.message ?: "network error") }
-    }
-
     suspend fun downloadBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
         if (!url.startsWith("https://")) return@withContext null
         runCatching {
@@ -251,11 +193,17 @@ class CatalogClient(
         }.getOrNull()
     }
 
-    suspend fun announce(pin: String, host: String, port: Int, publicBaseUrl: String? = null, deviceId: String? = null, token: String? = null, hardwareId: String? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun announce(
+        pin: String, host: String, port: Int, publicBaseUrl: String? = null, deviceId: String? = null, token: String? = null,
+        hardwareId: String? = null,
+        /** CAB-48: the SHA-256 of the LAN server's certificate, which TVs pin. */
+        certSha256: String? = null,
+    ): Boolean = withContext(Dispatchers.IO) {
         if (deviceId.isNullOrBlank() || token.isNullOrBlank()) return@withContext false
         val body = json.encodeToString(buildJsonObject {
             put("lan_host", host)
             put("lan_port", port)
+            certSha256?.let { put("lan_cert_sha256", it) }
             hardwareId?.let { put("hardware_id", it) }
         })
         val request = Request.Builder()
@@ -411,6 +359,9 @@ class CatalogClient(
             .build()
         runCatching { client.newCall(request).execute().use { it.code } }.getOrNull()
     }
+
+    suspend fun telegramClientCredentials(token: String) =
+        app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, BuildConfig.DEBUG)
 
     // ---- Telegram as cloud storage (spec 004, contracts/telegram-link.md) ----
 
@@ -1075,11 +1026,10 @@ class CatalogClient(
         token: String,
         items: List<LibraryItem>,
         deviceId: String? = null,
-        posterProvider: suspend (LibraryItem) -> ByteArray? = { null },
     ): Boolean {
         var all = true
         for (item in items) {
-            if (!pushLibraryItem(token, item, deviceId, posterProvider = posterProvider)) all = false
+            if (!pushLibraryItem(token, item, deviceId)) all = false
         }
         return all
     }
@@ -1090,13 +1040,13 @@ class CatalogClient(
         item: LibraryItem,
         deviceId: String? = null,
         onImported: (String) -> Unit = {},
-        posterProvider: suspend (LibraryItem) -> ByteArray? = { null },
     ): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("origin_filename", item.filename.ifBlank { item.title })
             put("origin_identity", item.id)
             if ("title" !in item.pendingMetadataFields && !isWeakLocalTitle(item)) put("title", item.title)
-            item.posterUrl?.let { put("poster_url", it) }
+            // Echoing the server's own upload URL back would clear the uploaded image.
+            item.posterUrl?.takeUnless(::isHouseholdPosterUrl)?.let { put("poster_url", it) }
             if (item.mediaType == "tv" && item.catalogIdentityUserSelected) {
                 item.tmdbId?.let { put("series_identity", "tmdb:$it") }
                 // Existing API accepts positive seasons; special season 0 remains a local choice.
@@ -1126,14 +1076,11 @@ class CatalogClient(
             }
         }.getOrNull() ?: return@withContext false
         onImported(imported.id)
-        if (item.posterUrl.isNullOrBlank() && !item.isPrivate) {
-            val poster = posterProvider(item)
-            if (poster != null && !uploadPoster(token, imported.id, poster)) return@withContext false
-        }
         true
     }
 
-    private suspend fun uploadPoster(token: String, itemId: String, bytes: ByteArray): Boolean = withContext(Dispatchers.IO) {
+    /** CAB-29: called only for a cover the user chose to save to the household. */
+    suspend fun uploadPoster(token: String, itemId: String, bytes: ByteArray): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("poster_data", Base64.encodeToString(bytes, Base64.NO_WRAP))
         })
@@ -1141,6 +1088,15 @@ class CatalogClient(
             .url("${baseUrl.trimEnd('/')}/api/catalog/items/$itemId/poster")
             .header("Authorization", "Bearer $token")
             .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
+    suspend fun removePoster(token: String, itemId: String): Boolean = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/catalog/items/$itemId/poster")
+            .header("Authorization", "Bearer $token")
+            .delete()
             .build()
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
     }
@@ -1212,18 +1168,141 @@ class CatalogClient(
         }.getOrNull()
     }
 
-    suspend fun connectCloudflare(token: String): StorageConnectResponse? = withContext(Dispatchers.IO) {
+    /**
+     * Connects the household's own R2 bucket (spec 005). The control plane checks the keys with a real write before it
+     * keeps them. [secret] is sent once, over TLS, and is not kept by this class.
+     */
+    suspend fun connectR2(token: String, accountId: String, bucket: String, accessKeyId: String, secret: String): R2ConnectResult = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject {
+            put("account_id", accountId)
+            put("bucket", bucket)
+            put("access_key_id", accessKeyId)
+            put("secret_access_key", secret)
+        })
         val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/storage/connect/cloudflare?returnTo=phone")
+            .url("${baseUrl.trimEnd('/')}/api/storage/connect/r2")
             .header("Authorization", "Bearer $token")
-            .get()
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) return@use R2ConnectResult(null)
+                val text = response.body?.string().orEmpty()
+                // Only a stable error string is kept; a 400 means a field the server did not accept.
+                val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
+                R2ConnectResult(code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: if (response.code == 400) "invalid_request" else "http_${response.code}")
+            }
+        } catch (_: java.io.IOException) {
+            R2ConnectResult("offline")
+        }
+    }
+
+    /**
+     * Starts the Google Drive sign-in (spec 006): the server makes the state and PKCE and answers with the Google URL to
+     * open in a Custom Tab. [GoogleConnectStart.error] is the server's stable error string when it could not.
+     */
+    suspend fun connectGoogle(token: String): GoogleConnectStart = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/connect/google")
+            .header("Authorization", "Bearer $token")
+            .post("{}".toRequestBody("application/json".toMediaType()))
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (response.isSuccessful) {
+                    val url = runCatching { json.parseToJsonElement(text).jsonObject["authorize_url"]?.jsonPrimitive?.contentOrNull }.getOrNull()
+                    return@use if (url != null && url.startsWith("https://")) GoogleConnectStart(url, null) else GoogleConnectStart(null, "invalid_response")
+                }
+                val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
+                GoogleConnectStart(null, code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: "http_${response.code}")
+            }
+        } catch (_: java.io.IOException) {
+            GoogleConnectStart(null, "offline")
+        }
+    }
+
+    /** Save to Cloud against the household's own storage (specs 005, 006); [token] is the phone's account token. */
+    fun ownCloudApi(token: String): OwnCloudApi = object : OwnCloudApi {
+        private suspend fun call(path: String, method: String, body: String? = null): String = withContext(Dispatchers.IO) {
+            val builder = Request.Builder().url("${baseUrl.trimEnd('/')}$path").header("Authorization", "Bearer $token")
+            when (method) {
+                "GET" -> builder.get()
+                "DELETE" -> builder.delete()
+                else -> builder.method(method, (body ?: "{}").toRequestBody("application/json".toMediaType()))
+            }
+            client.newCall(builder.build()).execute().use { response ->
+                val text = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    // Only the stable error string is kept; nothing the server echoed is shown or logged.
+                    val code = runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()?.takeIf { it.matches(Regex("[a-z_]{1,40}")) }
+                    throw R2ApiException(response.code, code ?: "http_${response.code}")
+                }
+                text
+            }
+        }
+
+        override suspend fun start(originIdentity: String, sizeBytes: Long, contentType: String, fileName: String): R2UploadStart =
+            json.decodeFromString(call("/api/storage/uploads", "POST", json.encodeToString(buildJsonObject {
+                put("attach_to_origin_identity", originIdentity)
+                put("size_bytes", sizeBytes)
+                put("content_type", contentType)
+                put("file_name", fileName)
+            })))
+
+        override suspend fun parts(uploadId: String, from: Int, count: Int): R2Parts =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/parts?from=$from&count=$count", "GET"))
+
+        override suspend fun complete(uploadId: String, parts: List<R2PartRef>): R2Done =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/complete", "POST", json.encodeToString(buildJsonObject {
+                put("parts", buildJsonArray { parts.forEach { add(buildJsonObject { put("part", it.part); put("etag", it.etag) }) } })
+            })))
+
+        override suspend fun session(uploadId: String): DriveSession =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/session", "GET"))
+
+        override suspend fun complete(uploadId: String): R2Done =
+            json.decodeFromString(call("/api/storage/uploads/$uploadId/complete", "POST", "{}"))
+
+        override suspend fun abort(uploadId: String) {
+            call("/api/storage/uploads/$uploadId", "DELETE")
+        }
+    }
+
+    /**
+     * Where to read this phone title's copy in the household's own storage back from, with the headers that request needs
+     * (a presigned R2 URL needs none; Google Drive needs a short-lived bearer token). Null if it has no copy.
+     */
+    suspend fun ownCloudReadUrl(token: String, originIdentity: String): ReadUrl? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/read-url")
+            .header("Authorization", "Bearer $token")
+            .post(json.encodeToString(buildJsonObject { put("origin_identity", originIdentity) }).toRequestBody("application/json".toMediaType()))
             .build()
         runCatching {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return@use null
-                json.decodeFromString<StorageConnectResponse>(response.body?.string().orEmpty())
+                parseReadUrl(response.body?.string().orEmpty())
             }
         }.getOrNull()
+    }
+
+    /** Deletes one copy in the household's own storage: the control plane removes the file, and the title keeps its other sources. */
+    suspend fun removeOwnCloudSource(token: String, sourceId: String): RemoveCopyResult = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/storage/sources/$sourceId")
+            .header("Authorization", "Bearer $token")
+            .delete()
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) return@use RemoveCopyResult(null)
+                val code = runCatching { json.decodeFromString<ApiError>(response.body?.string().orEmpty()).error }.getOrNull()
+                RemoveCopyResult(code?.takeIf { it.matches(Regex("[a-z_]{1,40}")) } ?: "http_${response.code}")
+            }
+        } catch (_: java.io.IOException) {
+            RemoveCopyResult("offline")
+        }
     }
 
     suspend fun disconnectStorage(token: String): Boolean = withContext(Dispatchers.IO) {

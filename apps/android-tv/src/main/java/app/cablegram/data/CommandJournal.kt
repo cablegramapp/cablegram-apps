@@ -61,6 +61,17 @@ internal class CommandJournal(
         persist()
     }
 
+    /** An account was revoked or removed from this TV (CAB-37): nothing of its commands stays on disk. */
+    fun forgetAccount(accountId: String) {
+        records.entries.removeAll { (_, r) -> r.accountId == accountId }
+        persist()
+    }
+
+    fun forgetAll() {
+        records.clear()
+        persist()
+    }
+
     fun prune() {
         // No count-based eviction: every unexpired ID remains protected even
         // during bursts. Keep results for a day beyond expiry for receipt retries.

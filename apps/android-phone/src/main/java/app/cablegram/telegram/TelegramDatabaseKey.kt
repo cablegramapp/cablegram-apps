@@ -39,6 +39,9 @@ class TelegramDatabaseKey(private val context: Context) {
         return key
     }
 
+    /** Whether a Telegram database (and so possibly a signed-in session) is stored on this device. */
+    fun hasLocalData(): Boolean = databaseDirectory.list()?.isNotEmpty() == true
+
     /** Deletes the Telegram database, downloaded pieces and the wrapped key (sign-out, unpair, expiry). */
     fun wipe() {
         File(context.filesDir, "telegram").deleteRecursively()

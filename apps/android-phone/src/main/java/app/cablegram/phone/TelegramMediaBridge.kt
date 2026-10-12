@@ -23,6 +23,8 @@ interface TelegramMedia {
     fun resolve(uniqueId: String): TelegramFileRef?
     /** Up to [want] bytes at [position], or null if Telegram delivered nothing in time. */
     fun read(fileId: Int, position: Long, want: Int): ByteArray?
+    /** Nothing more will be read from [fileId] for now: stop its download and drop what is stored. */
+    fun release(fileId: Int) {}
 }
 
 /**
@@ -37,11 +39,14 @@ class PhoneTelegramMedia(
      * even to a TV that still holds a capability for this phone (review fix 6).
      */
     private val isRemoved: suspend (stableSourceKey: String) -> Boolean,
+    /** How far ahead Telegram downloads per request; streaming to a TV wants a large window, analysis a small one. */
+    private val window: Long = 48L * TelegramFileReader.MB,
+    private val refillAt: Long = 16L * TelegramFileReader.MB,
     private val chatId: suspend () -> Long?,
 ) : TelegramMedia {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val known = ConcurrentHashMap<String, TelegramFileRef>()
-    private val reader by lazy { TelegramFileReader(PhoneTelegram.session(context).api) }
+    private val reader by lazy { TelegramFileReader(PhoneTelegram.session(context).api, window = window, refillAt = refillAt) }
     /** Last read per file: several TVs can stream different titles at once (review fix 7). */
     private val lastUsed = ConcurrentHashMap<Int, Long>()
     @Volatile private var releaseJobRunning = false
@@ -63,6 +68,11 @@ class PhoneTelegramMedia(
     override fun read(fileId: Int, position: Long, want: Int): ByteArray? = runBlocking {
         touch(fileId)
         reader.read(fileId, position, want)
+    }
+
+    override fun release(fileId: Int) {
+        lastUsed.remove(fileId)
+        scope.launch { runCatching { reader.release(fileId) } }
     }
 
     /** Each file's window is dropped a minute after its own last read, not when another file is read. */

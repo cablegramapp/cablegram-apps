@@ -1,5 +1,7 @@
 package app.cablegram.phone
 
+import app.cablegram.phone.cast.*
+import kotlinx.coroutines.CancellationException
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -17,8 +19,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -33,7 +38,75 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     private fun catalog() = CatalogClient(pairing.apiBaseUrl, pairing)
     private val pairing = PairingStore(application)
     private val commands = CommandQueue(application)
-    private val webTransferPolls = mutableSetOf<String>()
+
+    var castConnect by mutableStateOf(pairing.castConnect)
+        private set
+    var legacyRemote by mutableStateOf(pairing.legacyRemote)
+        private set
+    var castRoutes by mutableStateOf<List<CastRoute>>(emptyList())
+        private set
+    var castPickerOpen by mutableStateOf(false)
+        private set
+    private var castSender: CastConnectSender? = null
+    private var castRoutesJob: Job? = null
+    private var castVisible = false
+    private var pickerTitle: LibraryItem? = null
+    private var pickerDiscoveryJob: Job? = null
+    private var castPlaybackOwned = false
+    private var lastCastDeviceStatus: CastDeviceStatus? = null
+
+    fun setCastVisible(visible: Boolean) {
+        castVisible = visible
+        if (castConnect && castSender == null) {
+            castSender = CastConnectSender(getApplication()).also { sender ->
+                sender.onDevice = { status, routeId ->
+                    lastCastDeviceStatus = status
+                    // The server's household list and existing pairing bound this untrusted hint.
+                    if (householdTvsCache?.any { it.id == status.deviceId } == true) {
+                        pairing.attachCastDeviceId(status.deviceId, routeId)
+                        tvs = pairing.tvs
+                    }
+                }
+                sender.onPlayback = { isPaused, terminal ->
+                    if (castPlaybackOwned) {
+                        if (terminal) { nowPlaying = null; paused = false; castPlaybackOwned = false }
+                        else isPaused?.let { paused = it }
+                    }
+                }
+                castRoutesJob = viewModelScope.launch { sender.routes.collect { castRoutes = it } }
+            }
+        }
+        castSender?.setVisible(visible)
+        if (!visible) dismissCastPicker()
+    }
+
+    fun updateCastConnect(value: Boolean) {
+        pairing.castConnect = value
+        castConnect = value
+        if (!value) {
+            dismissCastPicker(); castRoutesJob?.cancel(); castSender?.release()
+            castSender = null; castRoutes = emptyList(); castPlaybackOwned = false
+        } else setCastVisible(castVisible)
+    }
+
+    fun updateLegacyRemote(value: Boolean) {
+        pairing.legacyRemote = value
+        legacyRemote = value
+        if (!value && tab == PhoneTab.Remote) tab = PhoneTab.Library
+    }
+
+    fun dismissCastPicker() {
+        pickerDiscoveryJob?.cancel(); pickerDiscoveryJob = null
+        castPickerOpen = false; pickerTitle = null
+        castSender?.setVisible(castVisible)
+    }
+
+    fun chooseCastRoute(route: CastRoute) {
+        if (route !in castRoutes) return
+        val title = pickerTitle ?: return
+        dismissCastPicker()
+        startTitleOnTv(title, route)
+    }
 
     val artworkEditor = ArtworkEditorController(store, { catalog() }, { pairing.accountToken }, viewModelScope) { saved ->
         refresh()
@@ -80,8 +153,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var scanProgress by mutableStateOf<String?>(null)
         private set
     var browseSource by mutableStateOf(BrowseSource.None)
-        private set
-    var browseVolumeName by mutableStateOf<String?>(null)
         private set
     var browseRoots by mutableStateOf<List<StorageRoot>>(emptyList())
         private set
@@ -146,7 +217,91 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var searchQuery by mutableStateOf("")
     var editingMetadata by mutableStateOf(false)
+    // Smart subtitles: the saved subtitle (if any) for the open title, and whether the Find Subtitles flow is showing.
+    var subtitleFlowOpen by mutableStateOf(false)
+    var savedSubtitle by mutableStateOf<String?>(null)
+        private set
+    private val subtitleCredentialStore = SubtitleCredentialStore(getApplication())
+    private val subtitleSessions = mutableSetOf<LocalSubtitleDiscovery>()
+    var subtitleCredentialRevision by mutableStateOf(0)
+        private set
+    private fun subtitleUser(): String? = pairing.accountToken?.let { token -> runCatching {
+        val payload = android.util.Base64.decode(token.split('.')[1], android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+        org.json.JSONObject(payload.toString(Charsets.UTF_8)).getString("sub").takeIf { it.isNotBlank() }
+    }.getOrNull() }
+    fun subtitleProviderConfigured(provider: String): Boolean = subtitleUser()?.let { subtitleCredentialStore.read(it, provider) != null } ?: false
+    private fun cancelSubtitleSessions() {
+        subtitleSessions.toList().forEach { it.close() }; subtitleSessions.clear()
+        subtitleCredentialRevision++
+    }
+    fun saveSubtitleProvider(provider: String, credentials: PersonalSubtitleCredentials) {
+        val user = subtitleUser() ?: throw LocalSubtitleError("sign_in_required")
+        cancelSubtitleSessions(); subtitleCredentialStore.save(user, provider, credentials)
+        subtitleCredentialRevision++
+    }
+    fun removeSubtitleProvider(provider: String) {
+        val user = subtitleUser() ?: return
+        cancelSubtitleSessions(); subtitleCredentialStore.remove(user, provider)
+        subtitleCredentialRevision++
+    }
+    fun newSubtitleSession(): LocalSubtitleDiscovery {
+        val user = subtitleUser() ?: return LocalSubtitleDiscovery(emptyMap())
+        val configured = listOf("subdl", "opensubtitles").mapNotNull { provider -> subtitleCredentialStore.read(user, provider)?.let { provider to it } }.toMap()
+        lateinit var session: LocalSubtitleDiscovery
+        session = LocalSubtitleDiscovery(configured, onClose = { subtitleSessions.remove(session) })
+        subtitleSessions += session
+        return session
+    }
+    fun removeSavedSubtitle(item: LibraryItem) {
+        val token = accountTokenOrNull() ?: return
+        viewModelScope.launch {
+            try {
+                val tracks = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<SavedSubtitleList>(subtitleRequest("playback/item/${item.id}", token)).subtitles
+                tracks.forEach { if (it.trackId.isNotEmpty()) subtitleRequest(it.trackId, token, "DELETE") }
+                refreshSubtitleStatus(item)
+            } catch (_: Exception) { status = "Subtitle couldn't be removed. Try again." }
+        }
+    }
+    fun accountTokenOrNull(): String? = pairing.accountToken?.takeIf { it.isNotBlank() }
+    suspend fun subtitleRequest(path: String, token: String, method: String = "GET", body: String? = null): String = catalog().subtitleRequest(path, token, method, body)
+    // Analysis reads short sections far apart: a small download window keeps what Telegram fetches close to what the
+    // analysis budget counts (the default 48 MB window would pull far more than the cap at every section).
+    private val telegramMedia by lazy {
+        PhoneTelegramMedia(
+            getApplication(),
+            isRemoved = RemovedTelegramSources(catalog(), pairing)::contains,
+            chatId = { pairing.accountToken?.let { catalog().telegramLink(it)?.chatId } },
+            window = 4L * app.cablegram.telegram.TelegramFileReader.MB,
+            refillAt = 1L * app.cablegram.telegram.TelegramFileReader.MB,
+        )
+    }
+    /** The title's bytes for analysis and preview: the local file, or the Telegram channel copy. Blocking; call off the main thread. */
+    fun openVideo(item: LibraryItem): SubtitleMediaInput {
+        store.openPfd(item)?.let { return FileMediaInput(it) }
+        if (item.sourceKind != "telegram") throw VideoUnavailable("This video isn't stored on this phone, so it can't be checked or previewed here.")
+        val key = item.telegramFileKey?.removePrefix("tgfile:")
+            ?: throw VideoUnavailable("Pull to refresh your library once so this Telegram video can be linked, then try again.")
+        if (!PhoneTelegram.configured) throw VideoUnavailable("Telegram isn't set up in this version of the app.")
+        val file = runCatching { telegramMedia.resolve(key) }.getOrNull()
+            ?: throw VideoUnavailable("Telegram didn't provide this video. Check that Telegram is connected in Settings, then try again.")
+        return TelegramMediaInput(telegramMedia, file)
+    }
+    /** Reads what the TV will use for this title, so the detail screen can say which subtitle is saved. */
+    fun refreshSubtitleStatus(item: LibraryItem) {
+        val token = accountTokenOrNull() ?: return
+        viewModelScope.launch {
+            val label = runCatching {
+                val tracks = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    .decodeFromString<SavedSubtitleList>(catalog().subtitleRequest("playback/item/${item.id}", token)).subtitles
+                tracks.firstOrNull()?.let { languageName(it.language) }
+            }.getOrNull()
+            // A late answer for a title that was closed meanwhile must not label the next one.
+            if (selectedId == item.id) savedSubtitle = label
+        }
+    }
     var deleteTarget by mutableStateOf<LibraryItem?>(null)
+    /** The title whose copy in the household's own storage the owner is being asked to remove (spec 006). */
+    var removeCloudCopyTarget by mutableStateOf<LibraryItem?>(null)
     // Declared before `init`, which starts the queued Telegram deletions.
     private val PHONE_LOGIN_WAIT_MS = 120_000L
     private val telegramDeletions by lazy { TelegramDeletionQueue.forContext(getApplication()) }
@@ -162,7 +317,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var freeUpTargetId by mutableStateOf<String?>(null)
     var actionMenuId by mutableStateOf<String?>(null)
     var transferCardDismissed by mutableStateOf(false)
-    var cablegramCloudReady by mutableStateOf(pairing.cablegramCloudReady)
     private val librarySyncMutex = kotlinx.coroutines.sync.Mutex()
 
     val selected: LibraryItem? get() = selectedId?.let { id -> items.firstOrNull { it.id == id } }
@@ -203,7 +357,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         pairing.tunnelUrl = value.trim()
         tunnelUrl = pairing.tunnelUrl
-        if (paired) viewModelScope.launch { pairing.lanToken?.let { publishLanAddress(it) } }
+        if (paired) viewModelScope.launch { pairing.tvs.lastOrNull()?.let { publishLanAddress(it.pin) } }
     }
 
     /** Spec 003: relay streams over mobile data (Ask / Always / Never). */
@@ -242,12 +396,20 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         refreshPendingApprovals()
         // One poller serves the notification and this list: ApprovalWatcher, in LanLibraryService.
         viewModelScope.launch { PrivateApprovals.pending.collect { pendingApprovals = it } }
+        // CAB-51: redraw when anything writes the library, e.g. a background save that started and finished between
+        // two polls. collectLatest with a short pause folds the progress writes of a running save into one redraw.
+        viewModelScope.launch {
+            store.revision.drop(1).collectLatest {
+                delay(250)
+                refresh()
+            }
+        }
         refreshPhoneIps()
         viewModelScope.launch { ads = catalog().ads() }
         refreshStorage()
         recoverSharedImports()
         resumePendingWebImports()
-        resumeWebTransfers()
+        clearRetiredWebSaves()
         if (paired) {
             // Also watches for TV private-playback approvals while paired (T075 / R-5).
             LanLibraryService.start(application)
@@ -292,7 +454,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 delay(PENDING_APPROVAL_POLL_MS)
                 val saving = runCatching { store.list().any { it.transferStatus == TRANSFER_SAVING } }.getOrDefault(false)
-                if (saving) withContext(Dispatchers.Main) { runCatching { refresh() } }
+                // One more refresh when a save has just ended: its last state (saved, or failed) is written by the
+                // service, and without this the screen stays on the last progress it drew.
+                if (saving || wasSaving) withContext(Dispatchers.Main) { runCatching { refresh() } }
+                wasSaving = saving
                 delay(800)
             }
         }
@@ -312,6 +477,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    private var wasSaving = false
 
     private companion object {
         // T075: in-app approval card refresh cadence (needs to be snappy;
@@ -367,43 +534,109 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { storage = catalog().storageStatus(token) }
     }
 
-    fun markStorageReturned() {
-        status = "Cloudflare storage updated."
-        refreshStorage()
+    /** Why the last "Connect your own storage" attempt failed; null while untried or after it worked. */
+    var r2ConnectError by mutableStateOf<String?>(null)
+        private set
+
+    fun beginConnectR2() {
+        r2ConnectError = null
+        cloudSheet = CloudSheet.ConnectR2
+        tab = PhoneTab.Storage
     }
 
-    fun connectCloudflareStorage(openUrl: (String) -> Unit) {
+    /** Sends the owner's R2 account ID, bucket and keys once; the server verifies them with a real write. */
+    fun connectR2Storage(accountId: String, bucket: String, accessKeyId: String, secret: String) {
         val token = pairing.accountToken ?: run {
-            status = "Pair a TV first so Cablegram can attach storage to this household."
+            r2ConnectError = "Pair a TV first so Cablegram can attach storage to this household."
             return
         }
         viewModelScope.launch {
             busy = true
+            r2ConnectError = null
             try {
-                val connect = catalog().connectCloudflare(token)
-                if (connect?.authUrl.isNullOrBlank()) {
-                    status = if (storage?.configured == false) {
-                        "Cloudflare connect is not enabled on this API yet."
-                    } else {
-                        "Could not start Cloudflare sign-in."
-                    }
-                    return@launch
+                val result = catalog().connectR2(token, r2AccountIdFrom(accountId) ?: accountId.trim().lowercase(), bucket.trim(), accessKeyId.trim(), secret.trim())
+                if (result.error == null) {
+                    status = "Connected to your R2 storage."
+                    // Back to the Storage page, which now shows the bucket; the guide does not stay on top.
+                    cloudSheet = CloudSheet.None
+                    tab = PhoneTab.Storage
+                    refreshStorage()
+                } else {
+                    r2ConnectError = r2ConnectMessage(result.error)
                 }
-                status = "Sign in to Cloudflare, then come back here."
-                openUrl(connect.authUrl)
             } finally {
                 busy = false
             }
         }
     }
 
+    /** Why the last "Sign in with Google" could not start; null while untried or after it worked. */
+    var googleConnectError by mutableStateOf<String?>(null)
+        private set
+
+    /** Where a save goes, in the words on every save sheet: the connected provider (saves need one, CAB-38). */
+    val saveDestinationName: String get() = saveDestination(storage)
+
+    /** True while the "tick the box" note is on screen, before Google's sign-in opens. */
+    var googleSignInNoteOpen by mutableStateOf(false)
+
+    /** Asks the server for Google's sign-in URL and hands it to [open] (a Custom Tab); the link back lands in [applyStorageReturn]. */
+    fun connectGoogle(open: (String) -> Unit) {
+        val token = pairing.accountToken ?: run {
+            googleConnectError = "Pair a TV first so Cablegram can attach storage to this household."
+            return
+        }
+        viewModelScope.launch {
+            busy = true
+            googleConnectError = null
+            try {
+                val start = catalog().connectGoogle(token)
+                val url = start.authorizeUrl
+                if (url != null) {
+                    status = "Finish signing in with Google, then come back."
+                    open(url)
+                } else {
+                    googleConnectError = googleStartMessage(start.error ?: "failed")
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    /** The Google sign-in ended and the browser sent the owner back with `cablegram://storage?provider=…&result=…`. */
+    fun applyStorageReturn(uri: String) {
+        val ret = parseStorageReturn(uri) ?: return
+        tab = PhoneTab.Storage
+        cloudSheet = CloudSheet.Manage
+        // Any app or page can open this link, so "connected" is said only once the server confirms it.
+        if (ret.result != "connected") {
+            val message = storageReturnMessage(ret, storage)
+            status = message
+            // A missed permission box is shown on the sheet itself, beside the button to try again.
+            googleConnectError = if (signInNeedsAnotherTry(ret)) message else null
+            refreshStorage()
+            return
+        }
+        googleConnectError = null
+        val token = pairing.accountToken ?: return
+        viewModelScope.launch {
+            val confirmed = catalog().storageStatus(token)
+            storage = confirmed
+            val connection = confirmed?.connection
+            if (connection?.provider == ret.provider && connection.status == "active") status = storageReturnMessage(ret, confirmed)
+        }
+    }
+
     fun disconnectStorage() {
         val token = pairing.accountToken ?: return
+        val provider = storage?.connection?.provider
+        val named = storage
         viewModelScope.launch {
             busy = true
             try {
                 if (catalog().disconnectStorage(token)) {
-                    status = "Storage disconnected. New videos stay on this phone."
+                    status = disconnectMessage(provider, named)
                     refreshStorage()
                 } else {
                     status = "Could not disconnect storage."
@@ -466,7 +699,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 householdName = result.displayName.orEmpty()
                 pairing.displayName = householdName
                 resumePendingWebImports()
-                resumeWebTransfers()
+                clearRetiredWebSaves()
                 needsAccount = false
                 needsName = result.needsName
                 // Another account's library is set aside (and restored if it signs in again), never
@@ -548,8 +781,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 // result.token is the token this call was sent with; the store may
                 // already hold a renewed one, so it is not written back here.
                 pairing.addTv(parsed.first, result.tvName.ifBlank { parsed.second }, trust = trust)
-                // Attach the per-device LAN capability (R-1). Older servers return
-                // none; the PIN stays as a transition fallback in that case.
+                // Attach the per-device LAN capability (R-1), the TV's only LAN credential.
                 result.lanCapability?.let { pairing.attachCapability(parsed.first, it) }
                 result.tvDeviceId?.let { pairing.attachDeviceId(parsed.first, it) }
                 tvs = pairing.tvs
@@ -682,12 +914,18 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         } else if (!paired && wasPaired) {
             LanLibraryService.stop(getApplication())
             nowPlaying = null
+        } else if (paired && kept.size < local.size) {
+            // A TV removed from another phone: the running LAN service refuses it now, not after a restart (CAB-37).
+            LanLibraryService.start(getApplication())
         }
     }
 
     /** Everything a signed-in phone holds in memory and in its stores, back to a fresh install's sign-in screen. */
     private fun clearSignedInState() {
         LanLibraryService.stop(getApplication())
+        subtitleFlowOpen = false
+        subtitleUser()?.let { subtitleCredentialStore.clear(it) }
+        cancelSubtitleSessions()
         pairing.accountToken = null
         pairing.refreshToken = null
         pairing.phoneDeviceId = null
@@ -710,6 +948,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun signOut() {
         if (busy) return
+        cancelSubtitleSessions()
         viewModelScope.launch {
             busy = true
             try {
@@ -1232,6 +1471,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             LanLibraryService.stop(getApplication())
             status = "TV removed. Scan a PIN when you want one again."
         } else {
+            // The LAN service keeps serving the other TVs; this makes it refuse the removed one now (CAB-37).
+            LanLibraryService.start(getApplication())
             tvName = pairing.tvName
             status = "Removed this TV. ${pairing.tvs.size} still paired."
         }
@@ -1294,9 +1535,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     prepareProgress = (index + 1f) / items.size
                     prepareStep = "Syncing ${item.title}"
                     val ok = runCatching {
-                        client.pushLibraryItem(token, item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) { _ ->
-                            store.posterFile(item)?.readBytes()
-                        }
+                        client.pushLibraryItem(token, item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) &&
+                            syncHouseholdArtwork(client, token, item.id)
                     }.getOrDefault(false)
                     if (!ok) {
                         error("Could not sync ${item.title}. Try again when connected")
@@ -1314,8 +1554,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 val remotes = client.fetchCatalog(token, failOnError = true)
                 // Restore household titles this phone doesn't list (reinstall, new phone): re-link the
-                // ones whose file is still here by fingerprint, keep the rest as "not on this phone".
-                val deviceVideos by lazy { store.deviceVideosByFingerprint() }
+                // files the user selected again by fingerprint; keep the rest as "not on this phone".
+                val deviceVideos by lazy { store.selectedVideosByFingerprint() }
                 val dismissed = store.dismissedRemoteIds()
                 val relinked = mutableListOf<LibraryItem>()
                 // New Telegram titles the server could not match by itself: ask the owner once (T008).
@@ -1335,7 +1575,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     // appear a second time as a Telegram title, nor after its phone copy was freed up.
                     val phoneCopy = store.get(remote.id)?.takeIf { it.sourceKind != "telegram" }
                         ?: remote.sources.firstNotNullOfOrNull { s ->
-                            if (s.kind == "telegram") null else s.originIdentity?.let(store::get)?.takeIf { it.sourceKind != "telegram" }
+                            if (s.kind == "telegram" || s.kind == "own_cloud") null else s.originIdentity?.let(store::get)?.takeIf { it.sourceKind != "telegram" }
                         }
                     val livePhoneSource = remote.sources.any { it.kind == "phone_local" && it.archiveState != "archived" }
                     if (phoneCopy == null && !livePhoneSource) {
@@ -1346,7 +1586,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     val hasCloudObject = remote.sources.any { it.kind == "cloud_object" && it.archiveState != "archived" }
                     // A Telegram copy's identity (`tg:…`) is not a phone file id.
-                    val source = remote.sources.firstOrNull { it.kind != "telegram" && !it.originIdentity.isNullOrBlank() }
+                    val source = remote.sources.firstOrNull { it.kind != "telegram" && it.kind != "own_cloud" && !it.originIdentity.isNullOrBlank() }
+                    // A verified copy in the user's own R2 bucket. Dynamic: it clears when the bucket is disconnected.
+                    val hasOwnCloudCopy = remote.sources.any { it.kind == "own_cloud" && it.archiveState != "archived" && it.availability != "unavailable" }
                     val hasTelegramCopy = remote.sources.any { it.kind == "telegram" && it.archiveState != "archived" && it.availability != "unavailable" }
                     val local = source?.originIdentity?.let(store::get)
                         ?: remote.sources.firstNotNullOfOrNull { remoteSource ->
@@ -1371,10 +1613,13 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             tmdbId = if (current.catalogIdentityUserSelected) current.tmdbId else remote.tmdbId ?: remote.seriesIdentity?.removePrefix("tmdb:")?.toIntOrNull() ?: current.tmdbId,
                             seasonNumber = if (current.catalogIdentityUserSelected) current.seasonNumber else remote.seasonNumber ?: current.seasonNumber,
                             episodeNumber = if (current.catalogIdentityUserSelected) current.episodeNumber else remote.episodeNumber ?: current.episodeNumber,
-                            posterUrl = if (catalogMayReplaceArtwork(local)) remote.posterUrl ?: local.posterUrl else local.posterUrl,
+                            // A household-saved cover comes back as the server's copy; this phone keeps its own file.
+                            posterUrl = if (catalogMayReplaceArtwork(local)) remote.posterUrl?.takeUnless(::isHouseholdPosterUrl) ?: local.posterUrl else local.posterUrl,
                             cloudObjectPresent = hasCloudObject || local.cloudObjectPresent,
                             // Saved to Telegram (here or on another phone): the server knows the verified copy.
                             telegramCopy = hasTelegramCopy && local.sourceKind == "phone_local",
+                            ownCloudCopy = hasOwnCloudCopy && local.sourceKind == "phone_local",
+                            ownCloudSourceId = if (hasOwnCloudCopy && local.sourceKind == "phone_local") ownCloudSourceIdOf(remote.sources) else null,
                             storageState = if (hasCloudObject) STORAGE_CLOUD else local.storageState,
                             transferStatus = if (hasCloudObject) TRANSFER_IDLE else local.transferStatus,
                         ), remote) }
@@ -1421,7 +1666,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 relinked.forEach { item ->
                     store.updateItem(item.id) { it.copy(fingerprint = item.fingerprint) }
                     runCatching {
-                        client.pushLibraryItem(token, store.get(item.id) ?: item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) }) { _ -> store.posterFile(item)?.readBytes() }
+                        client.pushLibraryItem(token, store.get(item.id) ?: item, pairing.phoneDeviceId, onImported = { store.setCatalogIdentity(item.id, it) })
+                        syncHouseholdArtwork(client, token, item.id)
                     }
                 }
                 check(!metadataFailed) { "Your detail edits are saved on this phone. Review any conflicting edits, or retry sync when connected." }
@@ -1460,6 +1706,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             pairing.phoneDeviceId,
             pairing.accountToken,
             hardwareId(),
+            // CAB-48: TVs accept this phone's LAN server only with this certificate.
+            certSha256 = withContext(Dispatchers.IO) {
+                runCatching { LanTlsIdentity.load().fingerprint }.onFailure { PairLog.e("LAN TLS identity unavailable", it) }.getOrNull()
+            },
         )
         PairLog.i("Phone announce ok=$announced ${PairLog.pinTail(pin)} $host:${LanLibraryServer.PORT} api=${pairing.apiBaseUrl}")
         connectionDetail = when {
@@ -1478,7 +1728,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 persistRead(uri)
                 val item = withContext(Dispatchers.IO) { store.importUri(uri, displayName, null) }
                 refresh()
-                if (importDestination == STORAGE_BOTH && (cablegramCloudReady || cloudConnected)) {
+                if (importDestination == STORAGE_BOTH && cloudConnected) {
                     beginSaveToCloud(item)
                 }
                 recentlyAddedIds = listOf(item.id)
@@ -1565,35 +1815,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun ensureBrowseRoot() {
         browseSource = BrowseSource.Roots
         browseTreeUri = null
-        browseVolumeName = null
         browseCrumbs = emptyList()
         browseEntries = emptyList()
         selectedBrowseIds = emptySet()
         refreshStorage()
-        viewModelScope.launch {
-            browseLoading = true
-            try {
-                val volumes = withContext(Dispatchers.IO) { indexer.listStorageVolumes() }
-                    .ifEmpty {
-                        listOf(
-                            StorageRoot(
-                                id = "vol:primary",
-                                name = "Internal storage",
-                                kind = StorageRootKind.Internal,
-                                detail = "This phone",
-                                volumeName = if (android.os.Build.VERSION.SDK_INT >= 29) {
-                                    android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY
-                                } else {
-                                    null
-                                },
-                            ),
-                        )
-                    }
-                browseRoots = volumes + cloudStorageRoots()
-            } finally {
-                browseLoading = false
-            }
-        }
+        browseRoots = cloudStorageRoots()
     }
 
     fun openStorageRoot(root: StorageRoot) {
@@ -1614,21 +1840,50 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun applyBrowseFilter(videosOnly: Boolean) {
         browseVideosOnly = videosOnly
-        if (browseSource == BrowseSource.Phone || browseSource == BrowseSource.Folder) reloadBrowse()
+        if (browseSource == BrowseSource.Folder) reloadBrowse()
     }
 
-    fun openBrowseFolder(treeUri: Uri, folderName: String) {
-        persistRead(treeUri)
-        store.rememberFolder(treeUri.toString(), folderName)
-        refresh()
-        browseSource = BrowseSource.Folder
-        browseTreeUri = treeUri
-        browseCrumbs = listOf(BrowseCrumb(folderName, documentId = DocumentsContract.getTreeDocumentId(treeUri)))
-        reloadBrowse()
+    fun openBrowseFolder(treeUri: Uri, folderName: String? = null) {
+        if (!persistRead(treeUri)) {
+            status = "Folder access could not be saved. Choose the folder again."
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val name = folderName ?: withContext(Dispatchers.IO) {
+                    indexer.displayName(DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri)))
+                }
+                store.rememberFolder(treeUri.toString(), name)
+                refresh()
+                browseSource = BrowseSource.Folder
+                browseTreeUri = treeUri
+                browseCrumbs = listOf(BrowseCrumb(name, documentId = DocumentsContract.getTreeDocumentId(treeUri)))
+                status = null
+                reloadBrowse()
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                status = "Could not open that folder. Choose it again."
+            }
+        }
     }
 
-    fun openBrowsePhone() {
-        ensureBrowseRoot()
+    fun removeBrowseFolder(folder: IndexedFolder) {
+        val uri = Uri.parse(folder.uri)
+        val resolver = getApplication<Application>().contentResolver
+        val grant = resolver.persistedUriPermissions.firstOrNull { it.uri == uri }
+        try {
+            if (grant != null) {
+                val flags = (if (grant.isReadPermission) Intent.FLAG_GRANT_READ_URI_PERMISSION else 0) or
+                    (if (grant.isWritePermission) Intent.FLAG_GRANT_WRITE_URI_PERMISSION else 0)
+                resolver.releasePersistableUriPermission(uri, flags)
+            }
+            store.forgetFolder(folder.uri)
+            refresh()
+            if (browseTreeUri == uri) ensureBrowseRoot()
+            status = "Removed ${folder.name} from selected folders."
+        } catch (error: SecurityException) {
+            status = "Could not release folder access. Try again."
+        }
     }
 
     fun openBrowseEntry(entry: BrowseEntry) {
@@ -1646,9 +1901,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 reloadBrowse()
                 return
             }
-            browseSource = BrowseSource.Phone
-            browseCrumbs = browseCrumbs + BrowseCrumb(entry.name, mediaPath = entry.mediaPath)
-            reloadBrowse()
+            status = "Choose this folder with the system picker."
             return
         }
         toggleBrowseFile(entry)
@@ -1671,19 +1924,25 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun addPickedFiles(uris: List<Uri>) {
         if (uris.isEmpty()) return
         viewModelScope.launch {
-            val files = withContext(Dispatchers.IO) {
-                uris.map { uri ->
-                    persistRead(uri)
-                    val name = indexer.displayName(uri)
-                    BrowseEntry(
-                        id = uri.toString(),
-                        name = name,
-                        isDirectory = false,
-                        isVideo = MediaIndexer.isVideoFile(name, ""),
-                        sizeBytes = indexer.sizeBytes(uri),
-                        uri = uri,
-                    )
+            val files = try {
+                withContext(Dispatchers.IO) {
+                    uris.map { uri ->
+                        check(persistRead(uri)) { "File access could not be saved. Choose the video again." }
+                        val name = indexer.displayName(uri)
+                        BrowseEntry(
+                            id = uri.toString(),
+                            name = name,
+                            isDirectory = false,
+                            isVideo = MediaIndexer.isVideoFile(name, ""),
+                            sizeBytes = indexer.sizeBytes(uri),
+                            uri = uri,
+                        )
+                    }
                 }
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                status = "Could not save access to these videos. Choose them again."
+                return@launch
             }
             addBrowseFileEntries(files.filter { it.isVideo })
         }
@@ -1740,7 +1999,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val updated = item.copy(isPrivate = isPrivate)
         store.update(updated)
         refresh()
-        if (importDestination == STORAGE_BOTH && (cablegramCloudReady || cloudConnected)) {
+        if (importDestination == STORAGE_BOTH && cloudConnected) {
             beginSaveToCloud(updated)
         }
         viewModelScope.launch { syncLibrary() }
@@ -1760,15 +2019,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun cloudStorageRoots(): List<StorageRoot> {
         val roots = mutableListOf<StorageRoot>()
-        if (cablegramCloudReady) {
-            roots += StorageRoot(
-                id = "cloud:cablegram",
-                name = "Cablegram Cloud",
-                kind = StorageRootKind.Cloud,
-                detail = "${formatBytes(cloudAvailable)} available",
-                cloudKey = "cablegram",
-            )
-        }
         val connections = buildList {
             addAll(storage?.connections.orEmpty())
             storage?.connection?.let(::add)
@@ -1801,18 +2051,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                             if (tree == null || doc == null) emptyList()
                             else indexer.listSafChildren(tree, doc)
                         }
-                        BrowseSource.Phone -> {
-                            indexer.listMediaStoreBrowse(
-                                crumb?.mediaPath.orEmpty(),
-                                browseVideosOnly,
-                                browseVolumeName,
-                            )
-                        }
                         BrowseSource.Cloud, BrowseSource.Roots, BrowseSource.None -> emptyList()
                     }
                 }
             } catch (error: Exception) {
-                status = error.message ?: "Could not open that folder"
+                status = "Folder access is unavailable. Choose the folder again."
                 browseEntries = emptyList()
             } finally {
                 browseLoading = false
@@ -1840,6 +2083,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeItem() {
         selectedId = null
+        subtitleFlowOpen = false
+        savedSubtitle = null
         editingMetadata = false
         deleteTarget = null
     }
@@ -1855,6 +2100,52 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Optional editing never blocks import or playback. */
     fun findDetailsAndArtwork(item: LibraryItem) {
         artworkEditor.open(item)
+    }
+
+    /**
+     * CAB-29: brings the household's copy of a cover in line with the user's choice. Frames stay on this
+     * phone unless the user saved that exact cover; a changed or withdrawn cover is removed from the server.
+     */
+    private suspend fun syncHouseholdArtwork(client: CatalogClient, token: String, id: String): Boolean {
+        val item = store.get(id) ?: return true
+        val catalogId = item.catalogItemId ?: return true
+        return when (householdArtworkStep(item)) {
+            HouseholdArtworkStep.None -> true
+            HouseholdArtworkStep.Upload -> {
+                val bytes = withContext(Dispatchers.IO) { store.posterFile(item)?.readBytes() } ?: return true
+                client.uploadPoster(token, catalogId, bytes).also { uploaded ->
+                    if (uploaded) store.updateItem(id) { it.copy(householdArtworkUploadedVersion = item.posterVersion) }
+                }
+            }
+            HouseholdArtworkStep.Remove -> client.removePoster(token, catalogId).also { removed ->
+                if (removed) store.updateItem(id) { it.copy(householdArtworkUploadedVersion = null) }
+            }
+        }
+    }
+
+    /** "Save artwork to household", after the user confirmed the explanation. */
+    fun saveArtworkToHousehold(item: LibraryItem) {
+        val current = store.get(item.id) ?: return
+        if (!canSaveArtworkToHousehold(current)) return
+        store.updateItem(item.id) { it.copy(householdArtworkVersion = it.posterVersion) }
+        refresh()
+        applyHouseholdArtwork(item.id, done = "Cover saved to your household", pending = "The cover will be saved to your household on the next sync")
+    }
+
+    fun keepArtworkOnPhone(item: LibraryItem) {
+        store.updateItem(item.id) { it.copy(householdArtworkVersion = null) }
+        refresh()
+        applyHouseholdArtwork(item.id, done = "Cover removed from your household", pending = "The cover will be removed from your household on the next sync")
+    }
+
+    private fun applyHouseholdArtwork(id: String, done: String, pending: String) {
+        val token = pairing.accountToken
+        viewModelScope.launch {
+            val ok = token != null && store.get(id)?.catalogItemId != null &&
+                runCatching { syncHouseholdArtwork(catalog(), token, id) }.getOrDefault(false)
+            status = if (ok) done else pending
+            refresh()
+        }
     }
 
     fun createCollection() {
@@ -2026,6 +2317,27 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun playOnTv(item: LibraryItem) {
+        pickerDiscoveryJob?.cancel()
+        val sender = castSender?.takeIf { castConnect && it.available }
+        if (!paired || sender == null) { startTitleOnTv(item, null); return }
+        matchingCastRoute(pairing.tvs.lastOrNull(), castRoutes)?.let { startTitleOnTv(item, it); return }
+        pickerDiscoveryJob = viewModelScope.launch {
+            sender.scanForPicker()
+            // Give discovery a bounded chance; no route keeps the existing relay behavior.
+            val routes = sender.routes.value.takeIf { it.isNotEmpty() }
+                ?: withTimeoutOrNull(3_000) { sender.routes.first { it.isNotEmpty() } }
+            if (!useCastForTitle(castConnect, sender.available, !routes.isNullOrEmpty())) {
+                sender.setVisible(castVisible)
+                startTitleOnTv(item, null)
+            } else {
+                val matching = matchingCastRoute(pairing.tvs.lastOrNull(), routes.orEmpty())
+                if (matching != null) { sender.setVisible(castVisible); startTitleOnTv(item, matching) }
+                else { pickerTitle = item; castPickerOpen = true }
+            }
+        }
+    }
+
+    private fun startTitleOnTv(item: LibraryItem, route: CastRoute?) {
         if (!paired) {
             selectedId = item.id
             startAddTv()
@@ -2034,10 +2346,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             val ready = ensurePlayable(item) ?: return@launch
+            val effectiveRoute = route?.takeIf { castConnect && castSender?.available == true }
             // Only show "now playing" once the TV confirmed that playback started.
             val token = ++titleStartToken
+            castPlaybackOwned = false
             val sent = try {
-                sendCommand("play", ready.id, wait = ConfirmationWait.TitleStart, onAccepted = { tv ->
+                sendCommand("play", ready.id, castRoute = effectiveRoute, castTitle = ready, wait = ConfirmationWait.TitleStart, onAccepted = { tv ->
                     startingTitle = ready.title
                     status = "Starting ${ready.title} on $tv…"
                 })
@@ -2050,9 +2364,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             }
             // A later command owns the status line; this one only applies what the TV confirmed.
             if (sent.latest) status = remoteStatus
-            if (!sent.outcome.applies()) return@launch
+            if (!sent.latest || titleStartToken != token || !sent.outcome.applies()) return@launch
+            if (effectiveRoute != null && castSender?.playbackTerminated != false) return@launch
+            castPlaybackOwned = effectiveRoute != null
             nowPlaying = ready
-            paused = false
+            paused = effectiveRoute != null && castSender?.playbackPaused == true
             store.setWatchProgress(ready.id, ready.positionSeconds.coerceAtLeast(1))
             refresh()
             if (sent.latest) status = if (sent.outcome == Outcome.Confirmed) "Playing ${ready.title} on ${sent.tvName}"
@@ -2065,6 +2381,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             ensurePlayable(item)
             status = "Ready on this phone. Use Play on TV when a TV is nearby."
         }
+    }
+
+    /** Shifts the subtitle on the TV that is playing this title, relative to the timing it loaded (positive shows it later). */
+    fun nudgeSubtitleOnTv(delayMs: Long) {
+        // The TV takes at most ten minutes either way; a larger difference would be refused without a word.
+        enqueue("subtitle_delay", arguments = buildJsonObject { put("delay_ms", delayMs.coerceIn(-600_000L, 600_000L)) })
     }
 
     fun skipSeconds(delta: Int) {
@@ -2152,9 +2474,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             busy = true
             status = "Downloading ${item.title}…"
             try {
+                // A title freed up from the phone comes back from the user's own storage (R2, or Google Drive with its header).
+                val remote = if (item.ownCloudCopy && !store.hasSource(item)) {
+                    pairing.accountToken?.let { catalog().ownCloudReadUrl(it, item.id) }
+                        ?: throw IllegalStateException("Couldn't reach your cloud storage. Check that it is still connected in Storage.")
+                } else null
                 val ready = withContext(Dispatchers.IO) {
                     store.update(item.copy(downloadBytes = 0, downloadTotal = item.fileSizeBytes ?: 0))
-                    store.materialize(item) { copied, total ->
+                    store.materialize(item, remote) { copied, total ->
                         store.update(item.copy(downloadBytes = copied, downloadTotal = total))
                     }
                 }
@@ -2243,22 +2570,12 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         runCatching {
             saveTargetId = item.id
             transferCardDismissed = false
-            cloudSheet = when {
-                !cablegramCloudReady && !cloudConnected -> CloudSheet.Setup
-                !fitsInCloud(item, cloudAvailable) && !cloudUnlimited -> CloudSheet.Oversize
-                else -> CloudSheet.Confirm
-            }
+            // Saves go only to the household's own storage (CAB-38): without one, the sheet leads to connecting it.
+            cloudSheet = if (cloudConnected) CloudSheet.Confirm else CloudSheet.Setup
         }.onFailure {
             PairLog.e("Save to Cloud screen failed", it)
             status = it.message ?: "Could not open Save to Cloud"
         }
-    }
-
-    fun acceptCablegramCloud() {
-        pairing.cablegramCloudReady = true
-        cablegramCloudReady = true
-        val item = saveTarget ?: return
-        cloudSheet = if (!fitsInCloud(item, cloudAvailable)) CloudSheet.Oversize else CloudSheet.Confirm
     }
 
     fun openOwnCloudSetup() {
@@ -2297,75 +2614,55 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         )
         refresh()
         if (item.sourceKind == "web") {
-            pollWebTransfer(item.id)
+            // Not offered (see canSaveToCloud); kept as a guard so a stale screen can't start one.
+            store.update(item.copy(transferStatus = TRANSFER_IDLE))
+            refresh()
             return
         }
-        runCatching { CloudTransferService.start(getApplication(), item.id) }
+        runCatching { CloudTransferService.start(getApplication(), item.id, ownR2 = cloudConnected, destination = saveDestinationName) }
             .onFailure {
                 PairLog.e("Could not start cloud save service", it)
                 status = it.message ?: "Could not start cloud save"
             }
     }
 
-    private fun resumeWebTransfers() {
-        store.list().filter { it.sourceKind == "web" && it.transferStatus == TRANSFER_SAVING }
-            .forEach { pollWebTransfer(it.id) }
-    }
-
-    private fun pollWebTransfer(itemId: String) {
-        if (!webTransferPolls.add(itemId)) return
-        viewModelScope.launch {
-            try {
-                while (isActive) {
-                    val item = store.get(itemId) ?: return@launch
-                    if (item.transferStatus != TRANSFER_SAVING) return@launch
-                    val token = pairing.accountToken ?: return@launch
-                    try {
-                        var jobId = item.webTransferJobId
-                        if (jobId == null) {
-                            check(cablegramCloudReady) { "Cablegram managed storage is not configured." }
-                            jobId = catalog().saveWebToStorage(itemId, token).jobId
-                            store.updateItem(itemId) { it.copy(webTransferJobId = jobId, webTransferError = null) }
-                        }
-                        val job = catalog().libraryJob(jobId, token)
-                        if (job.status == "completed") {
-                            store.updateItem(itemId) { it.copy(
-                                transferStatus = TRANSFER_IDLE, webTransferError = null,
-                                cloudObjectPresent = true, storageState = STORAGE_CLOUD,
-                            ) }
-                            refresh()
-                            return@launch
-                        }
-                        if (job.status == "failed") {
-                            store.updateItem(itemId) { it.copy(transferStatus = TRANSFER_FAILED, webTransferError = job.errorCode) }
-                            status = job.errorCode ?: "Could not save that video"
-                            refresh()
-                            return@launch
-                        }
-                    } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                        throw cancelled
-                    } catch (_: java.io.IOException) {
-                        // The server keeps working; keep the job so polling resumes after reconnect or restart.
-                        delay(8_000)
-                    } catch (error: Exception) {
-                        if (store.get(itemId)?.webTransferJobId == null) {
-                            store.updateItem(itemId) { it.copy(transferStatus = TRANSFER_FAILED, webTransferError = error.message) }
-                            status = error.message
-                            refresh()
-                            return@launch
-                        }
-                        delay(8_000)
-                    }
-                    delay(2_000)
-                }
-            } finally {
-                webTransferPolls.remove(itemId)
-            }
-        }
+    /**
+     * Cablegram no longer saves web videos on its server (CAB-27): a web title left "saving" or "failed" by that retired
+     * path goes back to idle, so it shows no progress and offers no retry.
+     */
+    private fun clearRetiredWebSaves() {
+        store.list().filter { it.sourceKind == "web" && (it.transferStatus == TRANSFER_SAVING || it.transferStatus == TRANSFER_FAILED) }
+            .forEach { item -> store.updateItem(item.id) { it.copy(transferStatus = TRANSFER_IDLE, webTransferJobId = null, webTransferError = null) } }
     }
 
     fun runSaveInBackground() {
         transferCardDismissed = true
+    }
+
+    fun askRemoveCloudCopy(item: LibraryItem) {
+        if (canRemoveOwnCloudCopy(item)) removeCloudCopyTarget = item
+    }
+
+    /** Deletes just the cloud copy; the video stays on the phone and the title keeps its other sources. */
+    fun removeCloudCopy(item: LibraryItem) {
+        removeCloudCopyTarget = null
+        val sourceId = item.ownCloudSourceId ?: return
+        val token = pairing.accountToken ?: return
+        val destination = saveDestinationName
+        viewModelScope.launch {
+            busy = true
+            try {
+                val result = catalog().removeOwnCloudSource(token, sourceId)
+                if (result.error == null || result.error == "not_found") {
+                    store.updateItem(item.id) { it.copy(ownCloudCopy = false, ownCloudSourceId = null) }
+                    refresh()
+                    refreshStorage()
+                }
+                status = removeCopyMessage(result, destination)
+            } finally {
+                busy = false
+            }
+        }
     }
 
     fun openFreeUp() {
@@ -2393,11 +2690,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         store.removeLocalCopy(item.id)
-        // Only in Telegram now: the phone file is gone, so this phone no longer serves it.
-        if (item.telegramCopy && !item.cloudObjectPresent) store.updateItem(item.id) { it.copy(sourceAvailable = false) }
+        // Only off the phone now (Telegram or own storage): the phone file is gone, so this phone no longer serves it.
+        store.updateItem(item.id) { it.copy(sourceAvailable = false) }
         refresh()
-        status = if (item.telegramCopy && !item.cloudObjectPresent) "Removed the phone copy. ${item.title} stays in Telegram."
-        else "Removed the phone copy. ${item.title} stays in the cloud."
+        status = if (item.ownCloudCopy) "Removed the phone copy. ${item.title} stays in $saveDestinationName."
+        else "Removed the phone copy. ${item.title} stays in Telegram."
     }
 
     fun keepOnPhone(item: LibraryItem) {
@@ -2473,6 +2770,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         arguments: JsonObject = buildJsonObject {},
         wait: ConfirmationWait = ConfirmationWait.Control(),
         onAccepted: ((tvName: String) -> Unit)? = null,
+        castRoute: CastRoute? = null,
+        castTitle: LibraryItem? = null,
     ): SentCommand? {
         val generation = ++commandGeneration
         fun report(text: String) { if (generation == commandGeneration) remoteStatus = text }
@@ -2486,13 +2785,62 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
         report("Sending…")
         val client = catalog()
-        val sent = when (val result = CastSession.send(pairing, client, command, videoId, arguments, householdTvsCache)) {
+        val castTarget = if (castRoute != null) pairing.tvs.lastOrNull()?.deviceId else null
+        if (castRoute != null && castTarget == null) return null.also { reportFinal("Choose a paired TV in Settings.") }
+        val payload = if (castRoute != null && castTitle != null) buildJsonObject {
+            arguments.forEach { (key, value) -> put(key, value) }
+            put("castLaunch", true)
+            put("title", castTitle.title.take(160))
+            put("senderName", pairing.displayName.take(80).ifBlank { "Your phone" })
+        } else arguments
+        var sent = when (val result = CastSession.send(pairing, client, command, videoId, payload, householdTvsCache, castTarget)) {
             is CastSession.Result.Sent -> result
             is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
         }
-        report(if (command == "play" && videoId != null) "Starting on ${sent.tvName}…" else "Sent to ${sent.tvName}…")
+        if (sent.switchedFrom != null) {
+            // The command went to the TV that is on, which is now the current TV.
+            tvs = pairing.tvs
+            tvName = pairing.tvName
+        }
+        report(when {
+            sent.switchedFrom != null -> "${sent.switchedFrom} isn't on, so ${if (command == "play" && videoId != null) "starting" else "sending"} on ${sent.tvName}…"
+            command == "play" && videoId != null -> "Starting on ${sent.tvName}…"
+            else -> "Sent to ${sent.tvName}…"
+        })
         // Only the newest command may touch what the screens show.
         if (generation == commandGeneration) onAccepted?.invoke(sent.tvName)
+        if (castRoute != null && castTitle != null && castTarget != null) {
+            try {
+                lastCastDeviceStatus = null
+                val status = castSender?.load(castRoute.deviceId, sent.commandId, castTarget,
+                    castTitle.id, castTitle.title, castTitle.posterUrl) ?: lastCastDeviceStatus
+                val household = client.householdTvs(sent.token)
+                if (household != null) householdTvsCache = household
+                // A normal first LOAD must also persist its route mapping when discovery began
+                // before the household cache was populated. Fresh membership still bounds the hint.
+                if (status != null && household?.any { it.id == status.deviceId } == true) {
+                    pairing.attachCastDeviceId(status.deviceId, castRoute.deviceId)
+                    tvs = pairing.tvs
+                }
+                val retry = wrongTvRetry(status, pairing.tvs, household.orEmpty().map { it.id }.toSet(), false)
+                if (status?.wrongTv == true) {
+                    if (retry == null) return null.also { reportFinal("That Cast device isn't your selected TV. Choose a paired TV.") }
+                    sent = when (val result = CastSession.send(pairing, client, command, videoId, payload, household, retry.deviceId)) {
+                        is CastSession.Result.Sent -> result
+                        is CastSession.Result.Failed -> return null.also { reportFinal(result.message) }
+                    }
+                    val retried = castSender?.load(castRoute.deviceId, sent.commandId, retry.deviceId!!,
+                        castTitle.id, castTitle.title, castTitle.posterUrl)
+                    if (retried?.wrongTv == true) return null.also { reportFinal("TV changed. Choose a TV and try again.") }
+                    selectTv(retry)
+                    pairing.attachCastDeviceId(retry.deviceId!!, castRoute.deviceId)
+                    tvs = pairing.tvs
+                }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) {
+                return null.also { reportFinal(error.message ?: "Could not open the TV. Try again.") }
+            }
+        }
         val outcome = CastSession.confirm(client, sent, wait)
         reportFinal(when (outcome) {
             Outcome.Confirmed -> "Done on ${sent.tvName}"
@@ -2507,21 +2855,27 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         CastSession.update(nowPlayingState?.let { Cast(it.id, it.title, tvName, pausedState) })
     }
 
-    private fun persistRead(uri: Uri) {
-        runCatching {
-            getApplication<Application>().contentResolver.takePersistableUriPermission(
-                uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION,
-            )
-        }
+    override fun onCleared() {
+        cancelSubtitleSessions()
+        castRoutesJob?.cancel()
+        castSender?.release()
+        super.onCleared()
     }
+
+    private fun persistRead(uri: Uri): Boolean = runCatching {
+        getApplication<Application>().contentResolver.takePersistableUriPermission(
+            uri, Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        )
+        true
+    }.getOrDefault(false)
+
 }
 
 enum class PhoneTab { Library, Browse, Remote, Storage, Settings }
 
 enum class TelegramHealth { Unknown, Ok, ChannelLost, SignedOut }
 
-enum class CloudSheet { None, Setup, Confirm, Oversize, Manage, FreeUp, FreeUpConfirm }
+enum class CloudSheet { None, Setup, Confirm, Oversize, Manage, ConnectR2, FreeUp, FreeUpConfirm }
 
 private typealias File = java.io.File
 

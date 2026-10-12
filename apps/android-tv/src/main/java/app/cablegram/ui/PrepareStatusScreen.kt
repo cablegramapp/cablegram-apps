@@ -1,9 +1,6 @@
 package app.cablegram.ui
 
-import android.net.Uri
-import android.widget.VideoView
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.foundation.background
@@ -26,13 +23,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,23 +38,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import app.cablegram.ScreenState
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private val PrepareBg = InkDeep
 private val DarkSlate = PanelRaised
 private val SkyBlue = Cyan
 
 @Composable
-fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit) {
+fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onSignatureFinished: () -> Unit = {}) {
     BackHandler(onBack = onCancel)
-    if (screen.prepareStage == app.cablegram.data.PHONE_OFFLINE_STAGE && !screen.awaitingApproval) {
-        WaitingForPhoneScreen(screen)
+    if (screen.awaitingApproval || screen.signatureAttemptId != null || screen.prepareStage == app.cablegram.data.PHONE_OFFLINE_STAGE) {
+        SignaturePreparingScreen(screen, onSignatureFinished)
         return
     }
     val progress = screen.prepareProgress?.coerceIn(0, 100) ?: 0
@@ -133,18 +121,7 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             PreparePercentBar(progress)
             Spacer(Modifier.height(10.dp))
-            // T075 / R-5: during an approval wait the frozen "Finding" steps
-            // converse nothing — swap them for the big permit-callout here.
-            // The timeline stays for every other occasion.
-            if (screen.awaitingApproval) {
-                ApprovalPermitPanel(
-                    title = screen.video.displayTitle(),
-                    posterUrl = screen.video.posterUrl,
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                PrepareTimelineList(statuses, Modifier.weight(1f))
-            }
+            PrepareTimelineList(statuses, Modifier.weight(1f))
             Text("Press Back to browse library", color = Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
         }
         Column(
@@ -160,145 +137,70 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit) {
 }
 }
 
-/**
- * Phone-hosted titles stream straight from the phone; there is nothing to
- * download or convert, so a step timeline would sit at 0% forever. Say what is
- * actually missing and how to fix it while playback keeps retrying.
- */
+/** Keep the signature video in view while the phone asks for this one-time approval. */
 @Composable
-private fun WaitingForPhoneScreen(screen: ScreenState.Resolving) {
-    val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "phone-wait")
-    val alpha by pulse.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 1f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(900),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
-        ),
-        label = "phone-wait-alpha",
-    )
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Ink, InkDeep)))
-            .padding(horizontal = 72.dp, vertical = 48.dp),
-    ) {
-        BrandMark()
-        Row(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalArrangement = Arrangement.spacedBy(48.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .width(168.dp)
-                    .height(252.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Brush.linearGradient(placeholderGradient(screen.video.showTitle()))),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(monogram(screen.video.showTitle()), color = Color.White.copy(alpha = 0.9f), fontSize = 44.sp, fontWeight = FontWeight.Bold)
-                screen.video.posterUrl?.let { url ->
-                    AsyncImage(model = url, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                }
-            }
-            Column(Modifier.width(520.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).clip(CircleShape).background(Cyan.copy(alpha = alpha)))
-                    Text("Looking for your phone", color = Cyan, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 10.dp))
-                }
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    screen.video.displayTitle(),
-                    color = Paper,
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "This video lives on your phone. Playback starts by itself as soon as the phone is reachable.",
-                    color = Muted,
-                    fontSize = 16.sp,
-                    lineHeight = 23.sp,
-                )
-                Spacer(Modifier.height(22.dp))
-                listOf(
-                    "Open Cablegram on the phone that has this video",
-                    "Connect the phone to the same Wi‑Fi as this TV",
-                    "Keep the phone awake until playback starts",
-                ).forEachIndexed { index, step ->
-                    Row(Modifier.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(26.dp).clip(CircleShape).background(PanelRaised),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text("${index + 1}", color = Paper, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Text(step, color = Paper.copy(alpha = 0.88f), fontSize = 16.sp, modifier = Modifier.padding(start = 12.dp))
-                    }
-                }
-                Spacer(Modifier.height(24.dp))
-                Text("Press Back to return to your library", color = Muted, fontSize = 13.sp)
-            }
-        }
+private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onSignatureFinished: () -> Unit) {
+    val offline = screen.prepareStage == app.cablegram.data.PHONE_OFFLINE_STAGE
+    val clipUrl = remember(screen.signatureAttemptId, offline, screen.loadingVideoUrl) {
+        if (offline) app.cablegram.data.getRandomErrorVideoUrl() else screen.loadingVideoUrl
     }
-}
-
-/**
- * T075 / R-5: during an approval wait the playback steps are meaningless
- * ("Finding the movie" would sit frozen). Show a large, unmistakable panel
- * telling the viewer a phone must permit this play.
- */
-@Composable
-private fun ApprovalPermitPanel(
-    title: String,
-    posterUrl: String?,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(18.dp)
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(PrepareBg.copy(alpha = 0.88f))
-            .border(2.dp, SkyBlue, shape)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PrepareBg)
+            .padding(horizontal = 28.dp, vertical = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        posterUrl?.takeIf { it.isNotBlank() }?.let { poster ->
-            AsyncImage(
-                model = poster,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .height(120.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(DarkSlate),
-            )
+        Box(
+            Modifier
+                .weight(0.6f)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(18.dp))
+                .background(DarkSlate),
+        ) {
+            androidx.compose.runtime.key(screen.signatureAttemptId ?: screen.video.id) {
+                SignatureVideo(clipUrl, onFirstCycleFinished = onSignatureFinished, onUnavailable = onSignatureFinished)
+            }
         }
-        Text(
-            "ALMOST THERE",
-            color = SkyBlue,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
-        )
-        Text(
-            "Permit this play on your phone",
-            color = Paper,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 26.sp,
-        )
-        Text(
-            "This title is private. Open the Cablegram notification on your phone and tap “Allow once”.",
-            color = Muted,
-            fontSize = 13.sp,
-            lineHeight = 17.sp,
-        )
+        Column(
+            modifier = Modifier.weight(0.4f).fillMaxHeight(),
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text("CABLEGRAM", color = Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
+            Spacer(Modifier.height(20.dp))
+            Text(when { screen.awaitingApproval -> "Waiting for approval"; offline -> "Looking for your phone"; else -> "Preparing your video" }, color = Paper, fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
+            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                screen.video.posterUrl?.takeIf { it.isNotBlank() }?.let { poster ->
+                    AsyncImage(
+                        model = poster,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.width(40.dp).height(60.dp).clip(RoundedCornerShape(4.dp)).background(DarkSlate),
+                    )
+                }
+                Text(screen.video.displayTitle(), color = Paper, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.height(20.dp))
+            Text(
+                when { screen.awaitingApproval -> "Allow this play on your phone"; offline -> "Open Cablegram on your phone"; else -> "Getting your video ready" },
+                color = Cyan, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp,
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                when {
+                    screen.awaitingApproval -> "This title is private. Open Cablegram or its notification on your phone and tap “Allow once”."
+                    offline -> "Connect the phone that has this video to the same Wi-Fi as this TV and keep Cablegram open."
+                    else -> screen.prepareLabel?.takeIf { it.isNotBlank() } ?: "Enjoy a little Cablegram while we prepare your video."
+                },
+                color = Paper.copy(alpha = 0.88f), fontSize = 16.sp, lineHeight = 23.sp,
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(if (screen.awaitingApproval) "Your title starts automatically after approval." else "Playback starts automatically when your video is ready.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Spacer(Modifier.height(24.dp))
+            Text("Press Back to cancel and return to your library", color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
+        }
     }
 }
 
@@ -468,55 +370,7 @@ private fun LoopingPrepareVideoFrame(loadingVideoUrl: String?) {
 
 @Composable
 internal fun LoopingPrepareVideo(loadingVideoUrl: String?) {
-    val scope = rememberCoroutineScope()
-    var restartJob by remember { mutableStateOf<Job?>(null) }
-    var videoError by remember(loadingVideoUrl) { mutableStateOf(false) }
-    var videoViewRef by remember { mutableStateOf<VideoView?>(null) }
-
-    DisposableEffect(loadingVideoUrl) {
-        onDispose {
-            restartJob?.cancel()
-            restartJob = null
-            videoViewRef?.stopPlayback()
-            videoViewRef = null
-        }
-    }
-
-    if (loadingVideoUrl != null && !videoError) {
-        key(loadingVideoUrl) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { context ->
-                    VideoView(context).apply {
-                        videoViewRef = this
-                        setVideoURI(Uri.parse(loadingVideoUrl))
-                        setOnPreparedListener { start() }
-                        setOnCompletionListener {
-                            restartJob?.cancel()
-                            restartJob = scope.launch {
-                                delay(10_000L)
-                                videoViewRef?.let { view ->
-                                    try {
-                                        view.seekTo(0)
-                                        view.start()
-                                    } catch (_: Exception) {
-                                    }
-                                }
-                            }
-                        }
-                        setOnErrorListener { _, _, _ ->
-                            videoError = true
-                            true
-                        }
-                    }
-                },
-            )
-        }
-    } else {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("CABLEGRAM", color = Cyan.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
-        }
-    }
+    SignatureVideo(loadingVideoUrl)
 }
 
 @Composable

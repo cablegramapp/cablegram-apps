@@ -15,11 +15,18 @@ import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okhttp3.Response
+
+/** Whether [url] is the control plane at [baseUrl] (same host and port), the only source of server time. */
+internal fun isControlPlane(url: okhttp3.HttpUrl, baseUrl: String): Boolean {
+    val base = baseUrl.toHttpUrlOrNull() ?: return false
+    return url.host == base.host && url.port == base.port
+}
 
 class CablegramApi(
     private val baseUrl: String = BuildConfig.API_BASE_URL,
@@ -32,10 +39,26 @@ class CablegramApi(
         .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .callTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
         .pingInterval(20, java.util.concurrent.TimeUnit.SECONDS)
+        // Learn how far this TV's clock is from the server's, so progress queued offline is stamped in server time.
+        // Only the control plane's answers count: the same client also asks a phone on the LAN whether it answers,
+        // and a phone's clock must not become the TV's idea of server time.
+        .addInterceptor { chain ->
+            chain.proceed(chain.request()).also { response ->
+                if (isControlPlane(response.request.url, baseUrl)) ServerClock.shared.observe(response.headers.getDate("Date"))
+            }
+        }
         .build(),
+    /**
+     * CAB-48: a URL LibVLC can play for a phone's HTTPS stream. LibVLC cannot pin the phone's certificate, so the app
+     * hands it a 127.0.0.1 URL served by a proxy that does; null when there is none.
+     */
+    private val lanStream: (String) -> String? = { it },
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val jsonMediaType = "application/json".toMediaType()
+
+    suspend fun telegramClientCredentials(token: String) =
+        app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, BuildConfig.DEBUG)
 
     suspend fun getLibraryAds(): LibraryAds = try {
         execute(Request.Builder().url(url("api/ads")).get().build())
@@ -120,12 +143,12 @@ class CablegramApi(
         }.getOrDefault(emptyList())
         return VideoLibrary(
             videos = catalog.items.map { item ->
-                val source = item.sources.firstOrNull { it.kind != "telegram" && !it.originIdentity.isNullOrBlank() }
-                    ?: item.sources.firstOrNull { !it.originIdentity.isNullOrBlank() }
+                val source = item.sources.firstOrNull { it.isPhoneSource() }
+                    ?: item.sources.firstOrNull { it.kind != OWN_CLOUD && !it.originIdentity.isNullOrBlank() }
                     ?: item.sources.firstOrNull()
                 val phone = servingPhone(devices, source)
                 val localPosterUrl = if (phone != null && !source?.originIdentity.isNullOrBlank()) {
-                    lanUrl(phone, "poster/${source?.originIdentity}", lanCapability)
+                    lanPosterUrl(phone, "poster/${source?.originIdentity}", lanCapability)
                 } else null
                 Video(
                     id = item.id,
@@ -278,6 +301,9 @@ class CablegramApi(
         executeNoContent(authenticatedRequest("api/telegram/logout-ack", token).post("{}".toRequestBody(jsonMediaType)).build())
     }
 
+    /** A cheap authenticated call: fails with 401 once this TV's session is revoked or its account deleted (CAB-37). */
+    suspend fun checkSession(token: String) = executeNoContent(authenticatedRequest("api/me", token).get().build())
+
     /** Revokes this TV's own device on the control plane (best effort on unpair). */
     suspend fun revokeSelf(token: String) {
         executeNoContent(authenticatedRequest("api/devices/self", token).delete().build())
@@ -372,7 +398,27 @@ class CablegramApi(
 
     suspend fun detachProfile(profileId: String, token: String) {}
 
+    /** A saved, already-synchronized subtitle travels with the playback whichever path carries the video. */
     suspend fun getPlayback(
+        videoId: String,
+        token: String,
+        lanPin: String? = null,
+        onStatus: (String) -> Unit = {},
+        onAwaitingApproval: () -> Unit = {},
+        telegramUrl: suspend (String) -> String? = { null },
+        telegramPhoneId: () -> String? = { null },
+        /** Spec 006: the local stream for a cloud copy that needs a header (Google Drive); see [resolvePlayback]. */
+        cloudStream: (url: String, headers: Map<String, String>) -> String? = { _, _ -> null },
+    ): PlaybackResponse {
+        val playback = resolvePlayback(videoId, token, lanPin, onStatus, onAwaitingApproval, telegramUrl, telegramPhoneId, cloudStream)
+        if (playback.status != "ready" || playback.subtitles.isNotEmpty()) return playback
+        val subtitles = runCatching {
+            execute<SubtitlePlaybackResponse>(authenticatedRequest("api/subtitles/playback/item/$videoId", token).get().build()).subtitles
+        }.getOrDefault(emptyList())
+        return if (subtitles.isEmpty()) playback else playback.copy(subtitles = subtitles)
+    }
+
+    private suspend fun resolvePlayback(
         videoId: String,
         token: String,
         lanPin: String? = null,
@@ -382,6 +428,11 @@ class CablegramApi(
         telegramUrl: suspend (String) -> String? = { null },
         /** The phone that can stream Telegram titles to this TV (spec 004 US8); null when unknown. */
         telegramPhoneId: () -> String? = { null },
+        /**
+         * Spec 006: a local URL that plays [url] with [headers] for a player that cannot send them (LibVLC), or null when
+         * there is none. Used only for a cloud copy that needs a header (Google Drive).
+         */
+        cloudStream: (url: String, headers: Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
         val catalog = execute<CatalogResponse>(authenticatedRequest("api/catalog/items", token).get().build())
         val item = catalog.items.firstOrNull { it.id == videoId }
@@ -391,7 +442,7 @@ class CablegramApi(
         // until the authorized phone approves this exact attempt. No approval →
         // no URL, regardless of LAN availability or cached media.
         if (item.sources.any { it.isPrivate }) {
-            return privatePlaybackFlow(videoId, item.title, item.posterUrl, token, lanPin, onStatus, onAwaitingApproval)
+            return privatePlaybackFlow(videoId, item.title, item.posterUrl, token, lanPin, onStatus, onAwaitingApproval, cloudStream)
         }
 
         if (item.sources.any { it.kind == "web" }) {
@@ -407,7 +458,43 @@ class CablegramApi(
         val telegram = telegramSource?.originIdentity?.let { telegramUrl(it) }
         // A phone copy that was freed up after Save to Telegram (archived, unavailable) is not a source to try.
         val source = item.sources.firstOrNull {
-            it.kind != "telegram" && !it.originIdentity.isNullOrBlank() && it.archiveState != "archived" && it.availability != "unavailable"
+            it.isPhoneSource() && it.archiveState != "archived" && it.availability != "unavailable"
+        }
+        // Spec 005: a copy in the household's own R2 bucket. The control plane turns it into a short-lived
+        // presigned URL, so playback needs neither the phone nor the relay.
+        val hasR2 = item.sources.any { it.kind == OWN_CLOUD && it.availability != "unavailable" && it.archiveState != "archived" }
+        // Spec 006: for Google Drive the answer also carries the bearer header and a short expiry, so the whole response is kept.
+        var ownCloudLooked = false
+        var ownCloudFound: PlaybackResponse? = null
+        var ownCloudLimited = false
+        val ownCloud: suspend () -> PlaybackResponse? = {
+            if (!ownCloudLooked) {
+                ownCloudLooked = true
+                ownCloudFound = try {
+                    resolveWebPlayback(videoId, token).takeIf { it.status == "ready" && it.url != null }
+                        ?.let { withLocalCloudStream(it, cloudStream) }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (failure: ApiException) {
+                    if (failure.statusCode == 429) ownCloudLimited = true
+                    null
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            ownCloudFound
+        }
+        val limitedNotice = {
+            PlaybackResponse(
+                status = "denied",
+                prepareLabel = "Your cloud storage is limiting downloads of this video. Try again in a little while.",
+                title = item.title,
+                posterUrl = item.posterUrl,
+            )
+        }
+        if (source == null && hasR2) {
+            ownCloud()?.let { return it.copy(title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram) }
+            if (ownCloudLimited && telegram == null) return limitedNotice()
         }
         if (source == null) {
             // No Telegram session on this TV (temporary TV, or not signed in yet): the phone streams it.
@@ -436,8 +523,15 @@ class CablegramApi(
         val host = phone?.lastLanHost
         if (phone != null && !identity.isNullOrBlank()) {
             // LAN first; the relay carries the same request when the phone isn't reachable here.
-            val lan = if (!host.isNullOrBlank()) lanUrl(phone, "media/$identity", lanPin) else null
+            val lan = if (!host.isNullOrBlank()) lanStreamUrl(phone, "media/$identity", lanPin) else null
             val relay = relayUrl(phone, "media/$identity", lanPin, null, token)
+            // Spec 005: LAN, then the user's R2 bucket, then the relay. R2 beats the relay because it
+            // costs the phone's mobile data and Cablegram's relay quota nothing.
+            if (lan == null && hasR2) {
+                ownCloud()?.let {
+                    return it.copy(title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram ?: relay)
+                }
+            }
             val primary = lan ?: relay
             if (primary != null) {
                 return PlaybackResponse(
@@ -445,9 +539,18 @@ class CablegramApi(
                     url = primary,
                     title = item.title,
                     posterUrl = item.posterUrl,
-                    fallbackUrl = if (lan != null) telegram ?: relay else telegram,
+                    fallbackUrl = if (lan != null) telegram ?: (if (hasR2) null else relay) else telegram,
+                    // Looked up only if the LAN stalls: the cloud copy first, the relay when it cannot be reached. A fallback is a
+                    // bare URL and must not carry a cloud token: Drive is used through the local CloudStreamServer URL, which holds
+                    // the token itself, and a copy that would still need a header is skipped.
+                    fallbackResolver = if (lan != null && telegram == null && hasR2) ({ ownCloud()?.takeIf { it.headers.isEmpty() }?.url ?: relay }) else null,
                 )
             }
+        }
+        // No phone to ask on this Wi‑Fi and no relay: the bucket still has it.
+        if (hasR2) {
+            ownCloud()?.let { return it.copy(title = item.title, posterUrl = item.posterUrl, fallbackUrl = telegram) }
+            if (ownCloudLimited && telegram == null) return limitedNotice()
         }
         if (telegram != null) {
             return PlaybackResponse(status = "ready", url = telegram, title = item.title, posterUrl = item.posterUrl)
@@ -474,6 +577,7 @@ class CablegramApi(
         lanPin: String?,
         onStatus: (String) -> Unit = {},
         onAwaitingApproval: () -> Unit = {},
+        cloudStream: (String, Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
         val request = runCatching {
             val body = json.encodeToString(buildJsonObject { put("media_item_id", videoId) })
@@ -492,7 +596,7 @@ class CablegramApi(
         onAwaitingApproval()
         var settled = false
         try {
-            return awaitApproval(attemptId, videoId, title, posterUrl, token, lanPin).also { settled = it.status == "ready" || it.prepareLabel == DENIED_LABEL }
+            return awaitApproval(attemptId, videoId, title, posterUrl, token, lanPin, cloudStream).also { settled = it.status == "ready" || it.prepareLabel == DENIED_LABEL }
         } finally {
             // Timed out or the viewer left: withdraw the request so phones stop
             // offering an approval nobody is waiting for.
@@ -514,6 +618,7 @@ class CablegramApi(
         posterUrl: String?,
         token: String,
         lanPin: String?,
+        cloudStream: (String, Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
         var waited = 0
         while (waited < GRANT_WAIT_SECONDS * 1000) {
@@ -531,10 +636,25 @@ class CablegramApi(
                     if (current?.sources?.any { it.kind == "web" || it.kind == "cloud_object" } == true) {
                         return resolveWebPlayback(videoId, token, attemptId)
                     }
-                    val source = current?.sources?.firstOrNull { !it.originIdentity.isNullOrBlank() }
+                    // Spec 006: as for any title, the phone over Wi-Fi comes before the household's own cloud (R2, Drive),
+                    // which costs internet bandwidth and the provider's download limits. One approval opens one path only,
+                    // so the phone is checked before the approval is spent: the cloud copy is used when it doesn't answer.
+                    val phoneSource = current?.sources?.firstOrNull {
+                        it.isPhoneSource() && it.archiveState != "archived" && it.availability != "unavailable"
+                    }
+                    val hasOwnCloud = current?.sources?.any {
+                        it.kind == OWN_CLOUD && it.availability != "unavailable" && it.archiveState != "archived"
+                    } == true
+                    var devices: List<DeviceHintDto>? = null
+                    suspend fun devices() = devices ?: execute<MeDto>(authenticatedRequest("api/me", token).get().build()).devices.also { devices = it }
+                    val phoneOnLan = phoneSource?.let { servingPhone(devices(), it) }
+                    if (hasOwnCloud && (phoneOnLan == null || !answersOnLan(phoneOnLan))) {
+                        // A private title in Google Drive needs the local stream too, or the player reaches Drive without its header.
+                        return withLocalCloudStream(resolveWebPlayback(videoId, token, attemptId), cloudStream)
+                    }
+                    val source = phoneSource ?: current?.sources?.firstOrNull { it.kind != OWN_CLOUD && !it.originIdentity.isNullOrBlank() }
                     val identity = source?.originIdentity ?: return deniedPlayback(title, posterUrl)
-                    val me = execute<MeDto>(authenticatedRequest("api/me", token).get().build())
-                    val phone = servingPhone(me.devices, source) ?: return deniedPlayback(title, posterUrl)
+                    val phone = phoneOnLan ?: servingPhone(devices(), source) ?: return deniedPlayback(title, posterUrl)
                     // Consume this approval once and get the pass the phone
                     // requires before it streams a private title.
                     val pass = runCatching {
@@ -548,7 +668,7 @@ class CablegramApi(
                         title = title,
                         posterUrl = posterUrl,
                     )
-                    val lan = phone.lastLanHost?.takeIf { it.isNotBlank() }?.let { lanUrl(phone, "media/$identity", lanPin, pass.lanPass) }
+                    val lan = phone.lastLanHost?.takeIf { it.isNotBlank() }?.let { lanStreamUrl(phone, "media/$identity", lanPin, pass.lanPass) }
                     val relay = relayUrl(phone, "media/$identity", lanPin, pass.lanPass, token)
                     return PlaybackResponse(
                         status = "ready",
@@ -592,6 +712,17 @@ class CablegramApi(
                 .post(body.toRequestBody(jsonMediaType))
                 .build(),
         )
+    }
+
+    /**
+     * A bearer header the player cannot send (LibVLC, Google Drive) is added by the TV's local stream instead, so the token
+     * stays out of the URL. Anything else, including a web title's Referer or User-Agent, is left as the server sent it.
+     */
+    private fun withLocalCloudStream(resolved: PlaybackResponse, cloudStream: (String, Map<String, String>) -> String?): PlaybackResponse {
+        val url = resolved.url ?: return resolved
+        if (resolved.headers.keys.none { it.equals("Authorization", ignoreCase = true) }) return resolved
+        val local = cloudStream(url, resolved.headers) ?: return resolved
+        return resolved.copy(url = local, headers = emptyMap())
     }
 
     private fun deniedPlayback(title: String?, posterUrl: String?) = PlaybackResponse(
@@ -674,7 +805,7 @@ class CablegramApi(
         val uniqueId = source.stableSourceKey?.removePrefix("tgfile:")?.takeIf { it.isNotBlank() } ?: return null
         val me = execute<MeDto>(authenticatedRequest("api/me", token).get().build())
         val phone = me.devices.firstOrNull { it.kind == "phone" && it.revokedAt.isNullOrBlank() && (phoneId == null || it.id == phoneId) } ?: return null
-        val lan = if (!phone.lastLanHost.isNullOrBlank()) lanUrl(phone, "telegram/$uniqueId", lanPin) else null
+        val lan = if (!phone.lastLanHost.isNullOrBlank()) lanStreamUrl(phone, "telegram/$uniqueId", lanPin) else null
         val relay = relayUrl(phone, "telegram/$uniqueId", lanPin, null, token)
         val primary = lan ?: relay ?: return null
         return PlaybackResponse(
@@ -707,15 +838,68 @@ class CablegramApi(
             .toString()
     }
 
-    private fun lanUrl(phone: DeviceHintDto, path: String, capability: String?, privatePass: String? = null): String {
-        val base = okhttp3.HttpUrl.Builder()
-            .scheme("http")
-            .host(requireNotNull(phone.lastLanHost))
-            .port(phone.lastLanPort ?: 8765)
-            .addPathSegments(path)
-        if (!capability.isNullOrBlank()) base.addQueryParameter("token", capability)
-        if (!privatePass.isNullOrBlank()) base.addQueryParameter("pass", privatePass)
-        return base.build().toString()
+    /** Whether the phone's library server answers on this Wi-Fi at all; any HTTP reply counts, nothing is fetched. */
+    private suspend fun answersOnLan(phone: DeviceHintDto): Boolean = withContext(Dispatchers.IO) {
+        val url = lanUrl(phone, "library")?.build() ?: return@withContext false
+        val quick = lanClient.newBuilder().readTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS).build()
+        runCatching { quick.newCall(Request.Builder().url(url).head().build()).execute().use { true } }.getOrDefault(false)
+    }
+
+    /**
+     * The phone's LAN server, over TLS with its pinned certificate (CAB-48). Null when the phone announced no address, or
+     * no certificate: there is no plain-HTTP LAN path any more.
+     */
+    private fun lanUrl(phone: DeviceHintDto, path: String): okhttp3.HttpUrl.Builder? {
+        val host = phone.lastLanHost?.takeIf { it.isNotBlank() } ?: return null
+        val pin = phone.lanCertSha256?.takeIf { it.matches(CERT_SHA256) } ?: return null
+        val port = phone.lastLanPort ?: 8765
+        LanTls.remember(host, port, pin)
+        return okhttp3.HttpUrl.Builder().scheme("https").host(host).port(port).addPathSegments(path)
+    }
+
+    /** A poster on the phone; the image loader adds [capability] as a header ([LanPosterAuth]), never the URL (CAB-44). */
+    private fun lanPosterUrl(phone: DeviceHintDto, path: String, capability: String?): String? {
+        val url = lanUrl(phone, path)?.build() ?: return null
+        if (!capability.isNullOrBlank()) LanPosterAuth.remember(url.host, url.port, capability)
+        return url.toString()
+    }
+
+    /**
+     * CAB-44: the player cannot send a header, so it gets a short-lived link the phone issues for this one title and this
+     * TV; the capability goes only in this request's header. Null when the phone doesn't answer on this Wi-Fi (quickly,
+     * so the relay or the cloud copy takes over) or refuses this TV.
+     */
+    private suspend fun lanStreamUrl(phone: DeviceHintDto, path: String, capability: String?, privatePass: String? = null): String? {
+        val media = lanUrl(phone, path) ?: return null
+        val linkUrl = lanUrl(phone, "links/$path") ?: return null
+        if (!privatePass.isNullOrBlank()) media.addQueryParameter("pass", privatePass)
+        // Without a capability the phone refuses the stream anyway; the player reports that as it always has.
+        if (capability.isNullOrBlank()) return lanStream(media.build().toString())
+        val request = Request.Builder()
+            .url(linkUrl.build())
+            .header("Authorization", "Bearer $capability")
+            .get()
+            .build()
+        val link = withContext(Dispatchers.IO) {
+            runCatching {
+                lanClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) null
+                    else json.decodeFromString<StreamLinkDto>(response.body?.string().orEmpty()).link.takeIf { it.isNotBlank() }
+                }
+            }.getOrNull()
+        } ?: return null
+        return lanStream(media.addQueryParameter(STREAM_LINK_PARAM, link).build().toString())
+    }
+
+    /** A phone that isn't on this Wi-Fi must not hold up playback for long; its certificate is pinned (CAB-48). */
+    private val lanClient by lazy {
+        LanTls.pinned(
+            client.newBuilder()
+                .connectTimeout(1_500, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .readTimeout(3_000, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .callTimeout(5_000, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .build(),
+        )
     }
 
     private suspend inline fun <reified T> execute(request: Request): T = withContext(Dispatchers.IO) {
@@ -735,6 +919,14 @@ class CablegramApi(
         }
     }
 }
+
+@Serializable
+private data class StreamLinkDto(val link: String)
+
+private val CERT_SHA256 = Regex("[0-9a-f]{64}")
+
+/** The query parameter a phone's stream link travels in (CAB-44). */
+internal const val STREAM_LINK_PARAM = "link"
 
 @Serializable
 private data class DeviceSessionDto(
@@ -812,6 +1004,8 @@ internal data class DeviceHintDto(
     @kotlinx.serialization.SerialName("revoked_at") val revokedAt: String? = null,
     @kotlinx.serialization.SerialName("last_lan_host") val lastLanHost: String? = null,
     @kotlinx.serialization.SerialName("last_lan_port") val lastLanPort: Int? = null,
+    /** CAB-48: the SHA-256 of the phone's LAN server certificate, which this TV pins. */
+    @kotlinx.serialization.SerialName("lan_cert_sha256") val lanCertSha256: String? = null,
 )
 
 /** Playback is waiting for the serving phone to come online on the LAN. */
@@ -832,6 +1026,11 @@ internal fun servingPhone(devices: List<DeviceHintDto>, servingDeviceId: String?
     // Legacy sources carry no serving device; a revoked/re-registered one is gone.
     return phones.firstOrNull { !it.lastLanHost.isNullOrBlank() }
 }
+
+/** `own_cloud` is a copy in the household's own cloud storage (specs 005, 006), not a phone to ask. */
+private const val OWN_CLOUD = "own_cloud"
+
+private fun CatalogSourceDto.isPhoneSource() = kind != "telegram" && kind != OWN_CLOUD && !originIdentity.isNullOrBlank()
 
 private fun servingPhone(devices: List<DeviceHintDto>, source: CatalogSourceDto?) =
     servingPhone(devices, source?.servingDeviceId)

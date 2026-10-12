@@ -74,6 +74,8 @@ import androidx.tv.material3.Text
 import app.cablegram.MainActivity
 import app.cablegram.R
 import app.cablegram.data.PlaybackResponse
+import app.cablegram.data.STREAM_LINK_PARAM
+import app.cablegram.data.playbackNeedsReload
 import app.cablegram.data.TvCommand
 import app.cablegram.data.validationError
 import app.cablegram.player.CableGramPlayer
@@ -94,6 +96,7 @@ import app.cablegram.player.SubtitlePreference
 import app.cablegram.player.matchSubtitleTrack
 import app.cablegram.player.PlayerEvent
 import app.cablegram.player.PlayerSource
+import app.cablegram.data.smartSubtitles
 import app.cablegram.player.VlcCableGramPlayer
 import app.cablegram.player.menuOptions
 import app.cablegram.player.reducePlaybackHud
@@ -103,6 +106,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
@@ -118,8 +123,10 @@ fun PlayerScreen(
     remoteTitleCommandId: String?,
     onRemoteCommandConsumed: (String, String?) -> Unit,
     onRemotePlaybackResult: (String?) -> Unit,
+    onPlayerEvent: (PlayerEvent, Long, Long?) -> Unit,
     onRenewPlayback: suspend () -> PlaybackResponse?,
     onBack: () -> Unit,
+    errorVideoUrl: String? = null,
 ) {
     val context = LocalContext.current
     val activity = context as? MainActivity
@@ -138,6 +145,13 @@ fun PlayerScreen(
     // Shown with the Cablegram loop from the moment a path is lost until the new one plays.
     var transition by remember(playback.url) { mutableStateOf<SourceTransition?>(null) }
     var lastSourceError by remember(playback.url) { mutableStateOf<String?>(null) }
+    // CAB-15: the source is opened (it passed its probe) and nothing has played yet; bounds the silent start.
+    var loaded by remember(playback.url) { mutableStateOf(false) }
+    var startupSwitched by remember(playback.url) { mutableStateOf(false) }
+    // Retry reopens the title; it resumes where playback last moved, not at a seek target that never played.
+    var retryCount by remember(playback.url) { mutableIntStateOf(0) }
+    var reachedMs by remember(playback.url) { mutableLongStateOf(0L) }
+    var recoveryChoice by remember(playback.url) { mutableStateOf(RecoveryChoice.RETRY) }
     LaunchedEffect(remoteTitleCommandId, hasStarted, isPlaying, error) {
         if (error != null) onRemotePlaybackResult("playback_failed")
         else if (hasStarted && isPlaying) onRemotePlaybackResult(null)
@@ -166,6 +180,8 @@ fun PlayerScreen(
         mutableStateOf<Long?>(if (resume <= 0) 0L else if (remoteTitleCommandId != null) resume else null)
     }
     val focus = remember { FocusRequester() }
+    /** The live shift the phone sends while lining subtitles up (`subtitle_delay`), added to the viewer's own delay. */
+    var phoneSubtitleShiftMs by remember { mutableStateOf(0L) }
 
     /** Re-open the title on the other path (LAN ↔ relay) at the current position. */
     suspend fun switchSource(resumeAtMs: Long? = null): Boolean {
@@ -177,15 +193,18 @@ fun PlayerScreen(
         transition = transitionTo(next)
         try {
             val current = activePlayback.url
-            val failure = reachableSource(playbackHttp, next, activePlayback.headers, quick = !isRelayUrl(next)) { transportNotice = it }
+            val failure = reachableSource(playbackHttp, next, activePlayback.fallbackHeaders, quick = !isRelayUrl(next)) { transportNotice = it }
             if (failure != null) {
                 lastSourceError = failure
                 transition = null
                 return false
             }
             val resumeAt = ((resumeAtMs ?: player.positionMs) - 2_000).coerceAtLeast(0)
-            activePlayback = activePlayback.copy(url = next, fallbackUrl = current)
-            player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers))
+            // The two paths swap places, each with its own headers: a cloud token never goes to the other path.
+            activePlayback = activePlayback.copy(
+                url = next, headers = activePlayback.fallbackHeaders, fallbackUrl = current, fallbackHeaders = activePlayback.headers,
+            )
+            player.load(PlayerSource(next, resumeAt, activePlayback.mimeType, activePlayback.headers, activePlayback.smartSubtitles()))
             transportNotice = transportNoticeFor(next)
             Log.i(PLAYBACK_LOG_TAG, "Switched source to ${if (isRelayUrl(next)) "relay" else "LAN"} at ${resumeAt / 1000}s")
             return true
@@ -195,8 +214,10 @@ fun PlayerScreen(
     }
 
     fun exit() {
-        if (player.positionMs > 0) {
-            val p = (player.positionMs / 1000).toInt()
+        // After a failure the player may sit on a seek target that never played; report where it really got to.
+        val exitMs = if (error != null) reachedMs else player.positionMs
+        if (exitMs > 0) {
+            val p = (exitMs / 1000).toInt()
             val totalD = currentDurationMs.takeIf { it > 0 }?.div(1000)?.toInt()
             // R-3: final state on exit so stop/completed is persisted, not just positions.
             onState(p, totalD, false, (player.volume * 100).toInt(), player.volume == 0f, "libvlc")
@@ -225,6 +246,17 @@ fun PlayerScreen(
     fun applySavedSubtitleIfNeeded() {
         if (subtitleChoiceApplied) return
         val saved = playbackPrefs.subtitle(videoId)
+        // A Cablegram subtitle the person just added or changed is the one to show, even over an older "Off" or
+        // another track remembered for this video. Once they choose again for that subtitle, that choice is kept.
+        val smart = activePlayback.smartSubtitles().firstOrNull()
+        if (smart != null && saved?.smartId != smart.id) {
+            val track = player.subtitleTracks.firstOrNull { it.label == smart.label } ?: return  // not listed yet: try on the next update
+            selectedSubtitleId = track.id.toString()
+            player.selectSubtitle(selectedSubtitleId)
+            playbackPrefs.saveSubtitle(videoId, SubtitlePreference(off = false, trackId = selectedSubtitleId, label = smart.label, smartId = smart.id))
+            subtitleChoiceApplied = true
+            return
+        }
         if (saved == null) {
             // VLC may automatically enable a default/forced embedded track. Reflect the
             // actual player selection so the subtitle menu does not incorrectly show Off.
@@ -272,7 +304,7 @@ fun PlayerScreen(
                     val label = player.subtitleTracks.firstOrNull { it.id.toString() == effect.trackId }?.label
                     playbackPrefs.saveSubtitle(
                         videoId,
-                        SubtitlePreference(off = effect.trackId == null, trackId = effect.trackId, label = label),
+                        SubtitlePreference(off = effect.trackId == null, trackId = effect.trackId, label = label, smartId = activePlayback.smartSubtitles().firstOrNull()?.id),
                     )
                 }
                 is HudEffect.SetPlaybackSpeed -> {
@@ -295,7 +327,7 @@ fun PlayerScreen(
                 }
                 is HudEffect.SetSubtitleDelay -> {
                     playerSettings = playerSettings.copy(subtitleDelayMs = effect.delayMs).also {
-                        player.setSubtitleDelayMs(it.subtitleDelayMs)
+                        player.setSubtitleDelayMs(it.subtitleDelayMs + phoneSubtitleShiftMs)
                         playbackPrefs.savePlayerSettings(it)
                     }
                 }
@@ -365,6 +397,21 @@ fun PlayerScreen(
         }
         val dpad = mapDpad(event.keyCode) ?: return false
         if (event.action != KeyEvent.ACTION_DOWN) return true
+        if (error != null) {
+            // The failure panel owns the remote: Retry or Back, nothing else.
+            when (dpad) {
+                DpadKey.LEFT, DpadKey.RIGHT, DpadKey.UP, DpadKey.DOWN -> recoveryChoice = recoveryChoice.toggled()
+                DpadKey.OK -> if (recoveryChoice == RecoveryChoice.RETRY) {
+                    val from = reachedMs
+                    error = null; lastSourceError = null
+                    hasStarted = false; isPlaying = false; settling = false; loaded = false; startupSwitched = false
+                    currentPositionMs = from
+                    retryCount++
+                } else exit()
+                DpadKey.BACK -> exit()
+            }
+            return true
+        }
         userInteractionCount++
         val (next, effects) = reducePlaybackHud(hud, dpad, event.repeatCount, hudContext())
         hud = next
@@ -381,8 +428,9 @@ fun PlayerScreen(
     }
     DisposableEffect(player) {
         onDispose {
-            if (player.positionMs > 0) {
-                val p = (player.positionMs / 1000).toInt()
+            val leftAtMs = if (error != null) reachedMs else player.positionMs
+            if (leftAtMs > 0) {
+                val p = (leftAtMs / 1000).toInt()
                 val totalD = currentDurationMs.takeIf { it > 0 }?.div(1000)?.toInt()
                 onState(p, totalD, false, 0, true, "libvlc")
             }
@@ -409,8 +457,9 @@ fun PlayerScreen(
             hud = hud.copy(controlsVisible = false, previewPositionMs = null, holdMultiplier = 1)
         }
     }
-    LaunchedEffect(player, start) {
-        val position = start ?: return@LaunchedEffect
+    LaunchedEffect(player, start, retryCount) {
+        val position = (if (retryCount > 0) reachedMs else start) ?: return@LaunchedEffect
+        if (retryCount == 0) reachedMs = position // a failure before anything played still resumes from here
         if (!isLive) {
             // LAN first with a short probe when a relay path exists; otherwise the full preflight.
             val primary = checkNotNull(activePlayback.url)
@@ -420,24 +469,32 @@ fun PlayerScreen(
                 val fallback = activePlayback.fallbackUrl ?: activePlayback.fallbackResolver?.invoke()
                 if (fallback != null) transition = transitionTo(fallback, atStart = true)
                 val fallbackError = fallback?.let {
-                    reachableSource(playbackHttp, it, activePlayback.headers, quick = false) { notice -> transportNotice = notice }
+                    reachableSource(playbackHttp, it, activePlayback.fallbackHeaders, quick = false) { notice -> transportNotice = notice }
                 }
                 if (fallback == null || fallbackError != null) {
                     transition = null
                     error = fallbackError ?: primaryError
                     return@LaunchedEffect
                 }
-                activePlayback = activePlayback.copy(url = fallback, fallbackUrl = primary)
+                // Swap headers with the URLs, as switchSource does: a cloud token never goes to the other path.
+                activePlayback = activePlayback.copy(
+                    url = fallback, headers = activePlayback.fallbackHeaders, fallbackUrl = primary, fallbackHeaders = activePlayback.headers,
+                    fallbackResolver = null,
+                )
                 transportNotice = transportNoticeFor(fallback)
             }
         }
         val url = checkNotNull(activePlayback.url)
-        player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers))
+        player.load(PlayerSource(url, position, activePlayback.mimeType, activePlayback.headers, activePlayback.smartSubtitles()))
+        loaded = true
         player.setPlaybackSpeed(playerSettings.playbackSpeed)
         player.setAspectRatio(playerSettings.aspectRatio)
         player.setAudioDelayMs(playerSettings.audioDelayMs)
-        player.setSubtitleDelayMs(playerSettings.subtitleDelayMs)
+        player.setSubtitleDelayMs(playerSettings.subtitleDelayMs + phoneSubtitleShiftMs)
         player.events().collect { event ->
+            // End/fatal can mean a recoverable source switch; publish them only when terminal below.
+            if (event !is PlayerEvent.Fatal && event != PlayerEvent.Ended)
+                onPlayerEvent(event, player.positionMs, player.durationMs)
             when (event) {
                 is PlayerEvent.IsPlayingChanged -> {
                     isPlaying = event.isPlaying
@@ -460,7 +517,10 @@ fun PlayerScreen(
                     selectedSubtitleId = player.activeSubtitleTrackId
                     trackGeneration++
                 }
-                is PlayerEvent.Fatal -> if (!switchSource()) error = lastSourceError ?: event.message
+                is PlayerEvent.Fatal -> if (!switchSource()) {
+                    error = lastSourceError ?: event.message
+                    onPlayerEvent(event, player.positionMs, player.durationMs)
+                }
                 PlayerEvent.Ended -> {
                     // A dropped connection also ends in EOF once VLC's read-ahead buffer drains (it
                     // does not stall). An "end" well before the duration is a lost stream: continue
@@ -480,6 +540,7 @@ fun PlayerScreen(
                     if (!isLive && totalD != null) {
                         onState(totalD, totalD, false, (player.volume * 100).toInt(), player.volume == 0f, "libvlc")
                     }
+                    onPlayerEvent(PlayerEvent.Ended, player.positionMs, player.durationMs)
                     onBack()
                 }
                 else -> Unit
@@ -487,27 +548,80 @@ fun PlayerScreen(
         }
     }
     // Spec 003: a stream that stops advancing while "playing" (Wi‑Fi gone, phone asleep) is re-opened
-    // on the other path at the current position.
+    // on the other path at the current position. CAB-15: this also covers a seek that never recovers (the hold
+    // ends on a frozen picture); no fallback or a failed one ends in the Retry / Back panel.
     LaunchedEffect(player, start) {
         if (start == null || isLive) return@LaunchedEffect
         var lastPosition = -1L
-        var stalledSeconds = 0
+        var timerLimit = stallSwitchSeconds(activePlayback.url)
+        var timer = NoProgressTimer(timerLimit)
+        val seekTimer = NoProgressTimer(SEEK_STALL_SECONDS)
+        var afterHold = false
         while (true) {
             delay(1_000)
+            val position = player.positionMs
             if (error != null || switchingSource || !hasStarted || settling) {
-                stalledSeconds = 0
+                timer.reset(); seekTimer.reset()
+                if (settling) afterHold = true
+                lastPosition = position // a seek target is not progress
                 continue
             }
-            val position = player.positionMs
-            stalledSeconds = if (player.isPlaying && position == lastPosition) stalledSeconds + 1 else 0
+            if (stallSwitchSeconds(activePlayback.url) != timerLimit) {
+                timerLimit = stallSwitchSeconds(activePlayback.url)
+                timer = NoProgressTimer(timerLimit)
+            }
+            val stalled = streamStalled(hasStarted, settling, isPlaying, error != null, switchingSource, position, lastPosition)
+            if (!stalled && position != lastPosition) { reachedMs = position; afterHold = false }
             lastPosition = position
-            if (stalledSeconds >= stallSwitchSeconds(activePlayback.url)) {
-                stalledSeconds = 0
-                if (!switchSource()) {
+            // After a seek the hold has already waited; a stream still frozen then gets the shorter limit.
+            val limitReached = if (afterHold) seekTimer.tick(stalled) else timer.tick(stalled)
+            if (limitReached) {
+                afterHold = false
+                if (!switchSource(resumeAtMs = reachedMs)) {
                     error = lastSourceError ?: lostSourceMessage(activePlayback.url)
                 }
             }
         }
+    }
+    // Back to the phone over Wi-Fi: on the relay, check now and then whether the phone answers on this Wi-Fi again and
+    // return to it at the current position. Otherwise a title that fell back to the relay (the phone left the Wi-Fi) stays
+    // there to the end, using the relay allowance and possibly the phone's mobile data although the phone is home again.
+    LaunchedEffect(player, start) {
+        if (start == null || isLive) return@LaunchedEffect
+        while (true) {
+            delay(LAN_RETURN_CHECK_MS)
+            val lan = lanReturnCandidate(activePlayback.url, activePlayback.fallbackUrl) ?: continue
+            if (error != null || switchingSource || !hasStarted || settling || !isPlaying) continue
+            val (code, _) = probeSource(playbackHttp, lan, activePlayback.fallbackHeaders, LAN_RETURN_PROBE_MS)
+            if (code == null || code !in 200..299) continue
+            // switchSource resumes two seconds early (made for a stalled stream); a healthy stream continues where it is.
+            if (lanReturnCandidate(activePlayback.url, activePlayback.fallbackUrl) == lan && !switchingSource) {
+                switchSource(resumeAtMs = player.positionMs + 2_000)
+            }
+        }
+    }
+    // CAB-15: nothing played within the startup deadline. Try the other path once, then stop and let the viewer decide.
+    LaunchedEffect(player, start) {
+        if (start == null || isLive) return@LaunchedEffect
+        val timer = NoProgressTimer(STARTUP_DEADLINE_SECONDS)
+        while (true) {
+            delay(1_000)
+            if (!timer.tick(startupWaiting(loaded, hasStarted, error != null, switchingSource))) continue
+            Log.w(PLAYBACK_LOG_TAG, "Nothing played within ${STARTUP_DEADLINE_SECONDS}s of opening the source")
+            if (!startupSwitched) {
+                startupSwitched = true
+                if (switchSource()) continue
+            }
+            error = lastSourceError ?: "Playback didn't start. Check that your phone is online with Cablegram open, then try again."
+        }
+    }
+    // CAB-15: a failed playback stops: no sound or picture left running, and the screen no longer reports "playing".
+    LaunchedEffect(error) {
+        if (error == null) return@LaunchedEffect
+        player.pause()
+        isPlaying = false
+        transition = null
+        recoveryChoice = RecoveryChoice.RETRY
     }
     LaunchedEffect(transition) {
         val shown = transition ?: return@LaunchedEffect
@@ -527,16 +641,36 @@ fun PlayerScreen(
             val expiresAt = activePlayback.expiresAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() } ?: continue
             if (expiresAt - System.currentTimeMillis() < 120_000) {
                 val renewed = onRenewPlayback() ?: continue
-                if (renewed.url != null && renewed.url != activePlayback.url) {
+                if (renewed.url != null && !playbackNeedsReload(activePlayback, renewed)) {
+                    // The same link and header, only a later expiry: no reload, just stop asking again every minute.
+                    Log.i(PLAYBACK_LOG_TAG, "Playback renewed without a reload, expires ${renewed.expiresAt}")
+                    activePlayback = activePlayback.copy(expiresAt = renewed.expiresAt)
+                } else if (renewed.url != null) {
                     val renewalError = preflightPlaybackUrl(playbackHttp, renewed.url, renewed.headers)
                     if (renewalError != null) {
                         error = renewalError
                         continue
                     }
+                    Log.i(PLAYBACK_LOG_TAG, "Playback renewed, reloading the player at ${player.positionMs / 1000}s")
                     val playing = player.isPlaying
                     activePlayback = renewed
-                    player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers))
+                    player.load(PlayerSource(renewed.url, player.positionMs, renewed.mimeType, renewed.headers, renewed.smartSubtitles()))
                     if (!playing) player.pause()
+                }
+            }
+        }
+    }
+    LaunchedEffect(player, start, activePlayback.url, activePlayback.fallbackUrl) {
+        // CAB-44: a phone's LAN link lapses 15 minutes after its last request, and one long read is a single request. A HEAD
+        // now and then keeps it (and the LAN fallback, while on the relay) usable for a seek after a long, uneventful stretch.
+        if (start == null) return@LaunchedEffect
+        val links = listOfNotNull(activePlayback.url, activePlayback.fallbackUrl).filter(::isLanStreamLink)
+        if (links.isEmpty()) return@LaunchedEffect
+        while (true) {
+            delay(LAN_LINK_KEEPALIVE_MS)
+            links.forEach { url ->
+                withContext(Dispatchers.IO) {
+                    runCatching { playbackHttp.newCall(Request.Builder().url(url).head().build()).execute().close() }
                 }
             }
         }
@@ -590,7 +724,8 @@ fun PlayerScreen(
                 "stop" -> exit()
                 "seek" -> {
                     val deltaMs = (c.payload["seconds"]?.jsonPrimitive?.intOrNull ?: c.payload["value"]?.jsonPrimitive?.intOrNull ?: 0) * 1000L
-                    player.seekTo(PlaybackHud.seekTargetMs(player.positionMs, deltaMs))
+                    player.seekTo(c.localSeekToMs?.coerceIn(0, player.durationMs ?: Long.MAX_VALUE)
+                        ?: PlaybackHud.seekTargetMs(player.positionMs, deltaMs))
                     // Same feedback as a D-pad seek.
                     if (deltaMs != 0L) {
                         hud = hud.copy(seekFlashDeltaMs = deltaMs, controlsVisible = false)
@@ -603,6 +738,13 @@ fun PlayerScreen(
                     player.volume = lastVolume
                     volumeFeedback = VolumeFeedback(level = level, muted = level == 0)
                     volumeFeedbackVersion++
+                }
+                "subtitle_delay" -> c.payload["delay_ms"]?.jsonPrimitive?.longOrNull?.let { ms ->
+                    // Applied to what is playing now only, on top of the viewer's own subtitle delay; the saved timing
+                    // is changed from the phone.
+                    phoneSubtitleShiftMs = ms
+                    player.setSubtitleDelayMs(playerSettings.subtitleDelayMs + ms)
+                    transportNotice = "Subtitles ${if (ms < 0) "−" else "+"}${"%.2f".format(kotlin.math.abs(ms) / 1000.0)} s"
                 }
                 "mute" -> c.payload["muted"]?.jsonPrimitive?.booleanOrNull?.let {
                     if (it) {
@@ -684,8 +826,14 @@ fun PlayerScreen(
                         alpha = 0.88f,
                     )
                     // Only once something plays: before that the URL is just the path being tried.
-                    if (hasStarted) TransportBadge(transport = classifyTransport(activePlayback.url, isLive))
-                    if (error == null && hasStarted) StreamHealthBadge(streamHealth)
+                    // While a switch is under way the badges would describe the path being left (it said "Local LAN" while
+                    // the TV waited for mobile-data consent on the relay); the switch overlay explains instead.
+                    if (hasStarted && !switchingSource) TransportBadge(transport = classifyTransport(activePlayback.url, isLive))
+                    if (error == null && hasStarted && !switchingSource) StreamHealthBadge(
+                        streamHealth,
+                        showSignature = transition == null && transportNotice != WAITING_FOR_PHONE_NOTICE &&
+                            !(isRelayUrl(activePlayback.url.orEmpty()) && transportNotice == transportNoticeFor(activePlayback.url.orEmpty())),
+                    )
                 }
             }
             AnimatedVisibility(
@@ -839,26 +987,38 @@ fun PlayerScreen(
                 }
             }
         }
-        error?.let {
-            Text(it, Modifier.align(Alignment.Center).background(Color(0xCC10120F)).padding(24.dp), color = Coral, fontSize = 18.sp)
+        error?.let { message ->
+            UnhappyScenarioFrame(eventKey = message, modifier = Modifier.align(Alignment.Center), videoUrl = errorVideoUrl) {
+                Text("Playback interrupted", color = Coral, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text(message, color = Paper, fontSize = 17.sp, lineHeight = 24.sp)
+                Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    TransportButton(label = "Retry", focused = recoveryChoice == RecoveryChoice.RETRY)
+                    TransportButton(label = "Back", focused = recoveryChoice == RecoveryChoice.BACK)
+                }
+            }
         }
         // Spec 003: while the phone is asked to allow mobile data, show the Cablegram loop and what
         // to do on the phone instead of a frozen frame.
         if (error == null && transportNotice == WAITING_FOR_PHONE_NOTICE) {
-            TransitionOverlay(PHONE_APPROVAL_TRANSITION, Modifier.align(Alignment.Center))
+            TransitionOverlay(PHONE_APPROVAL_TRANSITION, Modifier.align(Alignment.Center), videoUrl = errorVideoUrl)
         } else if (error == null) {
-            transition?.let { TransitionOverlay(it, Modifier.align(Alignment.Center)) }
+            transition?.let { TransitionOverlay(it, Modifier.align(Alignment.Center), videoUrl = if (it.warning) errorVideoUrl else null) }
         }
         // The short banner is for after the handover; the full screen covers the handover itself.
-        if (error == null && transition == null && transportNotice != WAITING_FOR_PHONE_NOTICE) transportNotice?.let {
-            Text(
-                it,
+        if (error == null && transition == null && transportNotice != WAITING_FOR_PHONE_NOTICE) transportNotice?.let { notice ->
+            Row(
                 Modifier.align(Alignment.TopCenter).padding(top = 28.dp)
                     .background(Color(0xE610120F), RoundedCornerShape(14.dp))
                     .padding(horizontal = 22.dp, vertical = 12.dp),
-                color = Paper,
-                fontSize = 16.sp,
-            )
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                val url = activePlayback.url
+                if (url != null && isRelayUrl(url) && notice == transportNoticeFor(url)) {
+                    UnhappyVideoPanel(notice, Modifier.width(128.dp).height(72.dp), muted = true)
+                }
+                Text(notice, color = Paper, fontSize = 16.sp)
+            }
         }
         if (start == null) {
             Column(
@@ -966,7 +1126,7 @@ private fun VolumeFeedbackOverlay(feedback: VolumeFeedback) {
 }
 
 @Composable
-private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifier) {
+private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifier, showSignature: Boolean = true) {
     val (label, tint) = when (health) {
         StreamHealth.GOOD -> "Stream quality: Good" to Color(0xFF4ADE80)
         StreamHealth.OK -> "Stream quality: OK" to Color(0xFFFBBF24)
@@ -981,6 +1141,9 @@ private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifie
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        if (showSignature && health != StreamHealth.GOOD) {
+            UnhappyVideoPanel(label, Modifier.width(64.dp).height(36.dp), muted = true)
+        }
         Text("●", color = tint, fontSize = 13.sp)
         Text(label, color = Paper.copy(alpha = 0.9f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
@@ -1027,7 +1190,7 @@ internal fun classifyTransport(url: String?, isLive: Boolean): Transport {
         isTelegramLocalUrl(url) -> Transport.TELEGRAM
         isRelayUrl(url) -> Transport.RELAY
         isPhoneTelegramUrl(url) -> Transport.TELEGRAM_VIA_PHONE
-        url.startsWith("http://") && !isPublicHost(url) -> Transport.LAN
+        (url.startsWith("http://") || url.startsWith("https://")) && !isPublicHost(url) -> Transport.LAN
         else -> Transport.CLOUD
     }
 }
@@ -1363,7 +1526,7 @@ internal fun playbackUrlForLog(url: String): String {
         ?.filter { it.isNotEmpty() }
         ?.joinToString("&") { part ->
             val name = part.substringBefore("=")
-            if (name in setOf("sig", "u", "token", "pass", "rt")) "$name=redacted" else part
+            if (name in setOf("sig", "u", "token", "pass", "rt", STREAM_LINK_PARAM)) "$name=redacted" else part
         }
         .orEmpty()
     return buildString {
@@ -1385,6 +1548,20 @@ internal fun playbackUrlForLog(url: String): String {
 private const val STALL_SWITCH_SECONDS = 10
 private const val TELEGRAM_STALL_SWITCH_SECONDS = 25
 private const val PREMATURE_END_MARGIN_MS = 5_000L
+/** How often a title playing through the relay checks whether the phone answers on this Wi-Fi again. */
+internal const val LAN_RETURN_CHECK_MS = 60_000L
+private const val LAN_RETURN_PROBE_MS = 3_000L
+
+/**
+ * The LAN path to return to: only while playing through the relay with the phone's address on this Wi-Fi as the other path
+ * (its own file, or a Telegram title the phone streams). Never a cloud URL, the TV's own Telegram, or another relay URL.
+ */
+internal fun lanReturnCandidate(current: String?, fallback: String?): String? =
+    fallback?.takeIf {
+        current != null && isRelayUrl(current) && !isRelayUrl(it) &&
+            classifyTransport(it, isLive = false).let { t -> t == Transport.LAN || t == Transport.TELEGRAM_VIA_PHONE }
+    }
+
 internal const val WAITING_FOR_PHONE_NOTICE = "Waiting for your phone to allow streaming over mobile data…"
 
 /** A rotating arc: the wait after a seek, while the decoder catches up. */
@@ -1408,8 +1585,29 @@ private fun PictureSpinner() {
 
 internal fun isRelayUrl(url: String): Boolean = url.contains("/relay/v1/")
 
+/**
+ * A phone's short-lived LAN stream link (CAB-44): as the phone serves it, or (CAB-48) through the TV's local proxy that
+ * pins the phone's certificate, `http://127.0.0.1:<port>/lan/<id>/...`.
+ */
+internal fun isLanStreamLink(url: String): Boolean =
+    isLanProxyUrl(url) || (!isRelayUrl(url) && url.toHttpUrlOrNull()?.queryParameter(STREAM_LINK_PARAM) != null)
+
+internal fun isLanProxyUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && LAN_PROXY_PATH.containsMatchIn(url)
+
+private val LAN_PROXY_PATH = Regex("^http://127\\.0\\.0\\.1:\\d+/lan/[0-9a-f]+/")
+
+/** Well inside the 15 minutes a phone keeps an unused link. */
+private const val LAN_LINK_KEEPALIVE_MS = 5 * 60_000L
+
 /** This TV's own Telegram session, served on 127.0.0.1 (spec 004 T009). */
 internal fun isTelegramLocalUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && url.contains("/tg/")
+
+/** The household's own cloud storage (Drive), served on 127.0.0.1 by CloudStreamServer, which adds the token (spec 006). */
+internal fun isCloudLocalUrl(url: String): Boolean = url.startsWith("http://127.0.0.1:") && url.contains("/cloud/")
+
+/** A request for the household's own cloud storage: it carries the bearer token, or the local stream adds it. */
+private fun isCloudSource(url: String, headers: Map<String, String>): Boolean =
+    isCloudLocalUrl(url) || headers.keys.any { it.equals("Authorization", ignoreCase = true) }
 
 /** A Telegram title streamed by the phone's session, over the LAN or the relay (spec 004 US8). */
 internal fun isPhoneTelegramUrl(url: String): Boolean {
@@ -1418,7 +1616,7 @@ internal fun isPhoneTelegramUrl(url: String): Boolean {
     return PHONE_TELEGRAM_PATH.matches(path)
 }
 
-private val PHONE_TELEGRAM_PATH = Regex("(/relay/v1/p/[^/]+)?/telegram/[A-Za-z0-9_-]+")
+private val PHONE_TELEGRAM_PATH = Regex("(/relay/v1/p/[^/]+|/lan/[0-9a-f]+)?/telegram/[A-Za-z0-9_-]+")
 
 /** Telegram delivers the first bytes in seconds and may pause while it fetches the next window. */
 internal fun stallSwitchSeconds(url: String?): Int = if (url != null && isTelegramLocalUrl(url)) TELEGRAM_STALL_SWITCH_SECONDS else STALL_SWITCH_SECONDS
@@ -1439,6 +1637,8 @@ internal fun transportNoticeFor(url: String): String = when {
 internal fun relayMessage(code: Int?, error: String?): String = when {
     // A 5xx without the relay's own error code comes from the proxy: the relay service is down.
     error == null && code != null && code >= 500 -> "Cablegram's relay isn't reachable right now. Put the phone and TV on the same Wi‑Fi, or try again in a few minutes."
+    // Connected to the relay, but no answer in time: the relay was waiting on the phone, so the TV's internet is fine.
+    code == null && error == NO_RESPONSE -> "Your phone didn't respond. Check that Cablegram is open on the phone."
     code == null -> "Can't reach Cablegram from this TV. Check the TV's internet connection."
     error == "phone_offline" -> "Your phone isn't reachable. Open Cablegram on the phone and check that it has internet."
     error == "mobile_data_not_allowed" -> "Your phone is on mobile data, and streaming over mobile data is turned off in Cablegram's settings on the phone."
@@ -1451,12 +1651,18 @@ internal fun relayMessage(code: Int?, error: String?): String = when {
 }
 
 /** Status and relay error code of a small Range request; status null when unreachable. */
-private suspend fun probeSource(client: OkHttpClient, url: String, headers: Map<String, String>, timeoutMs: Long): Pair<Int?, String?> =
+internal suspend fun probeSource(client: OkHttpClient, url: String, headers: Map<String, String>, timeoutMs: Long): Pair<Int?, String?> =
     withContext(Dispatchers.IO) {
+        // Whether the request reached the server: a timeout after that is the far side (the phone) not answering,
+        // not this TV being offline.
+        var connected = false
         try {
             val quick = client.newBuilder()
                 .connectTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
                 .callTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .eventListener(object : okhttp3.EventListener() {
+                    override fun connectionAcquired(call: okhttp3.Call, connection: okhttp3.Connection) { connected = true }
+                })
                 .build()
             val request = Request.Builder().url(url).header("Range", "bytes=0-1")
             headers.forEach { (name, value) ->
@@ -1468,14 +1674,17 @@ private suspend fun probeSource(client: OkHttpClient, url: String, headers: Map<
                     kotlinx.serialization.json.Json.parseToJsonElement(response.body?.string().orEmpty())
                         .let { (it as? kotlinx.serialization.json.JsonObject)?.get("error")?.jsonPrimitive?.content }
                 }.getOrNull()
-                Log.w(PLAYBACK_LOG_TAG, "Source probe HTTP ${response.code} ${code ?: ""} ${playbackUrlForLog(url)}")
+                runCatching { Log.w(PLAYBACK_LOG_TAG, "Source probe HTTP ${response.code} ${code ?: ""} ${playbackUrlForLog(url)}") }
                 response.code to code
             }
         } catch (error: Exception) {
-            Log.w(PLAYBACK_LOG_TAG, "Source probe failed ${playbackUrlForLog(url)}: ${error.javaClass.simpleName}")
-            null to null
+            runCatching { Log.w(PLAYBACK_LOG_TAG, "Source probe failed ${playbackUrlForLog(url)}: ${error.javaClass.simpleName}${if (connected) " after connecting" else ""}") }
+            null to if (connected && error is java.io.InterruptedIOException) NO_RESPONSE else null
         }
     }
+
+/** [probeSource]'s error when the server took the request but sent nothing back in time. */
+internal const val NO_RESPONSE = "no_response"
 
 /**
  * Null when [url] can be played now, else the message to show. LAN gets a single short probe when
@@ -1492,9 +1701,13 @@ internal suspend fun reachableSource(
     // player itself reports a failure, which switches to the next source.
     if (isTelegramLocalUrl(url)) return null
     if (!isRelayUrl(url)) {
-        if (!quick) return preflightPlaybackUrl(client, url, headers)
+        // Drive's first byte can take longer than the LAN probe allows; a slow answer is not an unreachable phone.
+        if (!quick || isCloudLocalUrl(url)) return preflightPlaybackUrl(client, url, headers)
         val (code, _) = probeSource(client, url, headers, 3_000)
-        return if (code != null && code in 200..299) null else "Can't reach your phone on this Wi‑Fi."
+        val cloud = isCloudSource(url, headers)
+        return if (code != null && code in 200..299) null
+        else if (cloud) preflightMessage(code ?: 0, cloud = true).takeIf { code != null } ?: "Can't reach your cloud storage right now."
+        else "Can't reach your phone on this Wi‑Fi."
     }
     repeat(40) {
         val (code, error) = probeSource(client, url, headers, 12_000)
@@ -1514,9 +1727,14 @@ internal suspend fun reachableSource(
 }
 
 /** What the viewer can do about a failed stream, instead of a bare "HTTP 404". */
-internal fun preflightMessage(code: Int): String = when (code) {
-    404 -> "This video isn't on your phone anymore. Import it again on the phone, or remove it from the library."
-    401, 403 -> "Your phone didn't allow this playback. Open Cablegram on the phone and try again."
+internal fun preflightMessage(code: Int, cloud: Boolean = false): String = when {
+    // A request that carries a bearer token is for the household's own cloud storage (Google Drive), not the phone.
+    cloud && code == 404 -> "This video is no longer in your cloud storage. Remove it from the library or save it again."
+    cloud && code == 401 -> "Your cloud storage needs you to sign in again. Open Storage on the phone."
+    cloud && (code == 403 || code == 429) -> "Your cloud storage is limiting downloads of this video. Try again in a little while."
+    cloud -> "Your cloud storage couldn't send this video (error $code). Try again in a moment."
+    code == 404 -> "This video isn't on your phone anymore. Import it again on the phone, or remove it from the library."
+    code == 401 || code == 403 -> "Your phone didn't allow this playback. Open Cablegram on the phone and try again."
     else -> "Your phone couldn't send this video (error $code). Try again in a moment."
 }
 
@@ -1538,7 +1756,7 @@ private suspend fun preflightPlaybackUrl(client: OkHttpClient, url: String, head
                         null
                     } else {
                         Log.e(PLAYBACK_LOG_TAG, "Playback preflight HTTP ${response.code} $safeUrl")
-                        preflightMessage(response.code)
+                        preflightMessage(response.code, cloud = isCloudSource(url, headers))
                     }
                 }
             } catch (error: Exception) {
@@ -1546,7 +1764,8 @@ private suspend fun preflightPlaybackUrl(client: OkHttpClient, url: String, head
                     PLAYBACK_LOG_TAG,
                     "Playback preflight failed ${playbackUrlForLog(url)}: ${error.message ?: error.javaClass.simpleName}",
                 )
-                "Can't reach your phone. Make sure it's on the same Wi-Fi with Cablegram open, then try again."
+                if (isCloudSource(url, headers)) "Can't reach your cloud storage right now."
+                else "Can't reach your phone. Make sure it's on the same Wi-Fi with Cablegram open, then try again."
             }
         }
         if (lastError == null) return null
@@ -1569,7 +1788,7 @@ private fun formatTime(ms: Long): String {
 }
 
 /** What the TV says while it moves a title between paths (spec 003). */
-internal data class SourceTransition(val eyebrow: String, val title: String, val body: String, val footnote: String? = null)
+internal data class SourceTransition(val eyebrow: String, val title: String, val body: String, val footnote: String? = null, val warning: Boolean = true)
 
 internal val PHONE_APPROVAL_TRANSITION = SourceTransition(
     eyebrow = "PHONE NOT ON THIS WI‑FI",
@@ -1583,6 +1802,7 @@ internal fun transitionTo(url: String, atStart: Boolean = false): SourceTransiti
         eyebrow = "SWITCHING SOURCE",
         title = "Continuing straight from Telegram",
         body = "Playback continues from where you were, using this TV's own Telegram connection.",
+        warning = false,
     )
     isPhoneTelegramUrl(url) -> SourceTransition(
         eyebrow = "SWITCHING SOURCE",
@@ -1603,13 +1823,14 @@ internal fun transitionTo(url: String, atStart: Boolean = false): SourceTransiti
         eyebrow = "BACK ON YOUR WI‑FI",
         title = "Switching back to your phone",
         body = "Your phone is on this Wi‑Fi again, so playback continues directly from it.",
+        warning = false,
     )
 }
 
 /** Full-screen handover: the Cablegram loop and what is happening, instead of a frozen frame. */
 @Composable
-private fun TransitionOverlay(transition: SourceTransition, modifier: Modifier = Modifier) {
-    val loopUrl = remember { DEFAULT_LOADING_VIDEOS.random() }
+internal fun TransitionOverlay(transition: SourceTransition, modifier: Modifier = Modifier, videoUrl: String? = null) {
+    val loopUrl = remember(transition, videoUrl) { videoUrl ?: if (transition.warning) app.cablegram.data.getRandomErrorVideoUrl() else DEFAULT_LOADING_VIDEOS.random() }
     Box(
         modifier.fillMaxSize().background(Color(0xFF0B0D10)),
         contentAlignment = Alignment.Center,
@@ -1623,7 +1844,7 @@ private fun TransitionOverlay(transition: SourceTransition, modifier: Modifier =
                 Modifier.weight(1f).aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color(0xFF15181D)),
-            ) { LoopingPrepareVideo(loopUrl) }
+            ) { SignatureVideo(loopUrl, muted = true) }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(transition.eyebrow, color = Color(0xFFF3B86A), fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Text(transition.title, color = Paper, fontSize = 30.sp, fontWeight = FontWeight.Bold)
