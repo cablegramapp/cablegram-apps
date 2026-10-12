@@ -18,6 +18,24 @@ expired or targeted at a revoked device. The LAN service exposes authenticated
 media, poster, command, health, and library-source endpoints. Discovery only
 announces reachability; it does not announce a browseable shelf.
 
+## Playback state (CAB-57)
+
+The TV reports what its player is doing, so the phone's remote follows a title that ends, is stopped or is
+paused on the TV instead of showing the last command it sent:
+
+- `PUT /api/control/playback` (TV token): `{"state": "playing|paused|stopped", "video_id"?, "origin_id"?,
+  "position_ms"?, "seq"}`. `seq` rises with every report from one TV; the server keeps only the newest.
+  The TV reports on every play/pause change and when the player closes, and refreshes a lasting state
+  every 15 s (a paused player does not refresh).
+- `GET /api/control/playback/{deviceId}` (phone token, same household, TV not removed):
+  `{"state", "video_id", "origin_id", "position_ms", "age_ms", "online"}`. `state` is `unknown` until
+  the TV has reported since the server started.
+
+The phone asks every 3 s while a title plays on that TV and the app is open (not for Cast Connect,
+which has its own session). It ignores a report older than its own last answered command, treats
+`stopped`, a TV offline for more than 20 s, or a `playing` report older than 45 s as nothing playing,
+and keeps what it shows for `unknown` or an older server (404).
+
 ## Cast launch (CAB-20)
 
 Cast Connect opens the Android TV app. The authenticated control-plane command remains the authority

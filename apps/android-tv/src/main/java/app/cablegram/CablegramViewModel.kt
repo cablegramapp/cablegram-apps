@@ -219,6 +219,13 @@ class CablegramViewModel @JvmOverloads constructor(
     val pendingNavCommand get() = navCommands.first
     private var sessionId: String? = null
     private val castHold = CastTitleHold()
+    private val playbackReporter = app.cablegram.data.PlaybackStateReporter(viewModelScope, { report ->
+        token?.let { api.reportPlayback(report, it) }
+    })
+
+    /** The title on screen, or null once the player has closed (late events from a closing player are ignored). */
+    private fun playingVideo(videoId: String) =
+        (screen as? ScreenState.Player)?.video?.takeIf { it.id == videoId && !isDemoMode && !isDemoVideoId(videoId) }
     private val castArrivals = mutableMapOf<String, Pair<TvCommand, AccountCredential>>()
     private val castArrivalJobs = mutableMapOf<String, Job>()
     private val castApp get() = getApplication<Application>() as? CablegramApplication
@@ -277,6 +284,14 @@ class CablegramViewModel @JvmOverloads constructor(
 
     fun castPlayerEvent(event: PlayerEvent, positionMs: Long, durationMs: Long?) {
         castApp?.mediaSession?.onPlayerEvent(event, positionMs, durationMs)
+        val video = (screen as? ScreenState.Player)?.video?.let { playingVideo(it.id) } ?: return
+        when (event) {
+            is PlayerEvent.IsPlayingChanged ->
+                if (event.isPlaying) playbackReporter.playing(video.id, video.originIdentity, positionMs)
+                else playbackReporter.paused(video.id, video.originIdentity, positionMs)
+            PlayerEvent.Ended, is PlayerEvent.Fatal -> playbackReporter.stopped()
+            else -> Unit
+        }
     }
 
     private fun resumeCastTitle() {
@@ -755,6 +770,7 @@ class CablegramViewModel @JvmOverloads constructor(
         releaseJob?.cancel(); readyPlayer = null
         signatureAttemptId = null
         castApp?.mediaSession?.stop()
+        playbackReporter.stopped()
         phoneRelayChoice = null
         telegram.releasePlayback()
         finishRemoteTitle("cancelled")
@@ -771,6 +787,10 @@ class CablegramViewModel @JvmOverloads constructor(
     fun reportPlaybackState(videoId: String, positionSeconds: Int, durationSeconds: Int?, isPlaying: Boolean, volume: Int, muted: Boolean, engine: String? = null) {
         lastPlayerPosition = videoId to positionSeconds
         castApp?.mediaSession?.progress(positionSeconds * 1000L, isPlaying)
+        playingVideo(videoId)?.let { video ->
+            if (isPlaying) playbackReporter.playing(video.id, video.originIdentity, positionSeconds * 1000L)
+            else playbackReporter.paused(video.id, video.originIdentity, positionSeconds * 1000L)
+        }
         if (isPlaying) remotePlaybackResult(videoId, null)
         if (isDemoMode || isDemoVideoId(videoId)) return
         val currentToken = token ?: return
