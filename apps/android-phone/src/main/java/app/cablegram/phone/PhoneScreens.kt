@@ -893,7 +893,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
         BackHandler { subtitleAccounts = false }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             TextButton(onClick = { subtitleAccounts = false }) { Text("Back to Settings") }
-            SubtitleProviderSetup(viewModel, onDone = { subtitleAccounts = false }, doneLabel = "Done")
+            SubtitleProviderSetup(viewModel, onDone = { subtitleAccounts = false }, doneLabel = "Done", requireAccount = false)
         }
         return
     }
@@ -932,7 +932,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 OutlinedButton(onClick = viewModel::startEmailVerification, modifier = Modifier.fillMaxWidth().maestro("settings_confirm_email")) { Text("Confirm email") }
             }
         }
-        OutlinedButton(onClick = { subtitleAccounts = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle provider accounts") }
+        OutlinedButton(onClick = { subtitleAccounts = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle accounts") }
         SectionCard("Your TVs") {
             if (!viewModel.paired) Text("Connect a TV to enjoy your library on a bigger screen.", color = VlcMuted)
             viewModel.tvs.forEach { tv ->

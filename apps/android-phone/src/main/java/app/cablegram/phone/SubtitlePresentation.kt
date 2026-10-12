@@ -36,7 +36,7 @@ fun headline(match: SubtitleMatch, canCheck: Boolean = true): SubtitleHeadline {
 }
 
 fun discoveryNotice(discovery: SubtitleDiscovery): String? = when (discovery.status) {
-    "providers_not_configured" -> "Add a personal subtitle provider account to search."
+    "providers_not_configured" -> "Connect a free SubDL or OpenSubtitles account to search."
     "provider_unavailable" -> providerFailure(discovery.errors) ?: "Subtitle sources couldn't be reached. Try again in a moment."
     "no_subtitles" -> "No subtitles were found for this title in your languages."
     "no_confident_match" -> "No subtitle could be confirmed against your video. Review the options below."
@@ -49,7 +49,7 @@ private fun providerFailure(errors: List<SubtitleProviderFailure>): String? {
 }
 
 fun errorMessage(code: String?): String = when (code) {
-    "invalid_credentials" -> "Your provider credentials were refused. Replace them in Subtitle provider accounts."
+    "invalid_credentials" -> "Your provider credentials were refused. Update them in Subtitle accounts."
     "provider_rate_limited", "quota_exhausted" -> "Your personal provider quota is exhausted or rate limited. Try later."
     "ambiguous_subtitle_archive" -> "That pack does not identify one exact episode. Choose another subtitle."
     "cancelled" -> "Search cancelled."

@@ -131,8 +131,9 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             val tech = runCatching { LocalSubtitleAnalysis.probe(it) }.getOrNull()
             val unsupported = LocalSubtitleAnalysis.unsupportedAudio(it)
             progress = "Listening for dialogue…"
+            var unseekable = false
             val print = if (unsupported != null || tech?.duration == null) null else coroutineScope {
-                val task = async { runCatching { LocalSubtitleAnalysis.fingerprint(it, tech.duration, onZone = { done, total -> progress = "Listening for dialogue… (${done + 1} of $total)" }) }.getOrNull() }
+                val task = async { runCatching { LocalSubtitleAnalysis.fingerprint(it, tech.duration, onZone = { done, total -> progress = "Listening for dialogue… (${done + 1} of $total)" }, onUnseekable = { unseekable = true }) }.getOrNull() }
                 listening = task
                 try { task.await() } catch (e: CancellationException) { if (skipped) null else throw e } finally { listening = null; activeInput = null }
             }
@@ -140,6 +141,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                 skipped -> "You skipped the audio check, so matches aren't verified. Use the preview to line the subtitles up by ear or by eye."
                 unsupported != null -> unsupportedAudioNote(unsupported)
                 tech?.duration == null -> "This video's format couldn't be read, so matches can't be checked against its audio."
+                print == null && unseekable -> "This video file can't jump to different points quickly, so matches can't be checked against its audio. Use the preview to line them up."
                 print == null && it.budgetHit -> "Stopped early to limit how much of this video is downloaded from Telegram, so matches aren't verified. Skip the check next time, or use the preview to line them up."
                 print == null -> "Not enough clear dialogue could be heard in your video, so matches can't be checked against its audio."
                 else -> null
@@ -209,7 +211,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             Text("Subtitles", color = Color.White, style = MaterialTheme.typography.headlineSmall)
             Text(item.title, color = VlcMuted)
         }
-        if (!adjusting && stage != SubtitleStage.Setup) TextButton(onClick = { cancelSearch(); stage = SubtitleStage.Setup }) { Text("Subtitle provider accounts") }
+        if (!adjusting && stage != SubtitleStage.Setup) TextButton(onClick = { cancelSearch(); stage = SubtitleStage.Setup }) { Text("Subtitle accounts") }
         when (val s = stage) {
             SubtitleStage.Setup -> SubtitleProviderSetup(viewModel, onDone = { search() })
             SubtitleStage.Searching -> {
