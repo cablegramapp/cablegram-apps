@@ -524,7 +524,8 @@ fun PlayerScreen(
                     // A dropped connection also ends in EOF once VLC's read-ahead buffer drains (it
                     // does not stall). An "end" well before the duration is a lost stream: continue
                     // on the other path instead of recording the title as watched.
-                    val lastPositionMs = maxOf(player.positionMs, currentPositionMs)
+                    // CAB-56: VLC's clock lags the last seconds of a file, so ask how far playback really got.
+                    val lastPositionMs = maxOf(player.playedThroughMs, currentPositionMs)
                     val durationMs = currentDurationMs
                     if (!isLive && durationMs > 0 && lastPositionMs < durationMs - PREMATURE_END_MARGIN_MS) {
                         Log.w(PLAYBACK_LOG_TAG, "Stream ended early at ${lastPositionMs / 1000}s of ${durationMs / 1000}s")

@@ -33,6 +33,8 @@ sealed interface PlayerEvent {
 interface CableGramPlayer {
     val positionMs: Long
     val durationMs: Long?
+    /** How far playback has really got; at the end this can be ahead of [positionMs] (CAB-56). */
+    val playedThroughMs: Long get() = positionMs
     val isPlaying: Boolean
     var volume: Float
     val audioTracks: List<PlayerTrack>

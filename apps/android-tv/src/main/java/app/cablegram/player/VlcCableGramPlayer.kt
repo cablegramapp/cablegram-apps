@@ -81,6 +81,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     private var playWhenAttached = false
     private var resumeAfterSeek = true
     private var playbackRate = 1.0f
+    private val playedClock = PlayedClock()
     private var aspectRatioMode = PlayerAspectRatio.FIT
     private var audioDelayMs = 0L
     private var subtitleDelayMs = 0L
@@ -106,12 +107,14 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
             when (event.type) {
                 MediaPlayer.Event.Buffering -> {
                     val percent = event.buffering.coerceIn(0f, 100f)
+                    if (percent < 100f) playedClock.onStall(SystemClock.elapsedRealtime())
                     if (settling && percent >= 100f) settleBuffered = true
                     eventFlow.tryEmit(PlayerEvent.Buffering(percent))
                 }
                 MediaPlayer.Event.Playing -> {
                     if (!startedOnce && currentSubtitles.isNotEmpty() && !smartAdded) handler.postDelayed(addSmartSubtitles, SMART_SUBTITLE_DELAY_MS)
                     startedOnce = true
+                    playedClock.onPlaying(mediaPlayer.time, SystemClock.elapsedRealtime())
                     restorePlaybackSettings()
                     restoreTrackSelections()
                     refreshTracks()
@@ -126,12 +129,20 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
                 MediaPlayer.Event.SeekableChanged -> flushPendingSeek()
                 MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted -> refreshTracks()
                 // While the player holds playback on purpose, the screen must not show a paused state.
-                MediaPlayer.Event.Paused -> if (!settling) eventFlow.tryEmit(PlayerEvent.IsPlayingChanged(false))
+                MediaPlayer.Event.TimeChanged -> playedClock.onTime(event.timeChanged, SystemClock.elapsedRealtime())
+                MediaPlayer.Event.Paused -> {
+                    playedClock.onHold()
+                    if (!settling) eventFlow.tryEmit(PlayerEvent.IsPlayingChanged(false))
+                }
                 MediaPlayer.Event.Stopped -> {
+                    playedClock.onHold()
                     endSettle()
                     eventFlow.tryEmit(PlayerEvent.IsPlayingChanged(false))
                 }
-                MediaPlayer.Event.EndReached -> eventFlow.tryEmit(PlayerEvent.Ended)
+                MediaPlayer.Event.EndReached -> {
+                    playedClock.onEnd(mediaPlayer.time, SystemClock.elapsedRealtime(), playbackRate)
+                    eventFlow.tryEmit(PlayerEvent.Ended)
+                }
                 MediaPlayer.Event.EncounteredError -> eventFlow.tryEmit(
                     PlayerEvent.Fatal("VLC could not open the stream. See logcat (tag: VLC) for details."),
                 )
@@ -151,6 +162,8 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
 
     override val positionMs get() = pendingSeekMs ?: mediaPlayer.time
     override val durationMs get() = mediaPlayer.length.takeIf { it > 0 }
+    override val playedThroughMs get() =
+        pendingSeekMs ?: playedClock.playedThroughMs(mediaPlayer.time, SystemClock.elapsedRealtime(), playbackRate)
     override val isPlaying get() = mediaPlayer.isPlaying
     override var volume: Float get() = mediaPlayer.volume / 100f; set(value) { mediaPlayer.setVolume((value.coerceIn(0f, 1f) * 100).toInt()) }
     override val audioTracks get() = availableAudioTracks
@@ -166,6 +179,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         pendingSeekMs = null
         startedOnce = false
         resumeAfterSeek = true
+        playedClock.reset()
         handler.removeCallbacks(settleTick)
         settling = false
         settleOnFirstPlaying = source.startPositionMs > 0
@@ -292,6 +306,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         if (!mediaPlayer.isSeekable) return false
         val length = mediaPlayer.length
         pendingSeekMs = null
+        playedClock.onSeek(target, SystemClock.elapsedRealtime())
         if (length > 0L) {
             mediaPlayer.position = (target.toFloat() / length.toFloat()).coerceIn(0f, 1f)
         } else {
