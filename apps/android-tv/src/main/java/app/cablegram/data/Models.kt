@@ -253,14 +253,6 @@ fun getRandomLoadingVideoUrl(): String = SignatureClips.pick(DEFAULT_LOADING_VID
 
 const val TELEGRAM_PASSWORD_VIDEO_URL = "$SIGNATURE_CLIP_BASE/custom/pass.mp4"
 
-val ERROR_SIGNATURE_VIDEOS = listOf(
-    "$SIGNATURE_CLIP_BASE/error/gemini_generated_video_1e5a5e12.mp4",
-    "$SIGNATURE_CLIP_BASE/error/gemini_generated_video_219a8857.mp4",
-    "$SIGNATURE_CLIP_BASE/error/gemini_generated_video_9abc993d.mp4",
-)
-
-fun getRandomErrorVideoUrl(): String = SignatureClips.pick(ERROR_SIGNATURE_VIDEOS)
-
 const val PRIVACY_POLICY_URL = "https://cablegram.app/privacy.html"
 const val DEMO_REVIEWER_PIN = "9999"
 const val DEMO_SELECT_CLICKS = 5

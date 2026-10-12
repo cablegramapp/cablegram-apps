@@ -13,19 +13,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import app.cablegram.data.getRandomErrorVideoUrl
 
-/** One error signature per visible warning/error; recompositions retain the chosen clip. */
+/** One error animation per visible warning/error; [videoUrl] plays a clip instead (test fixtures). */
 @Composable
 internal fun UnhappyVideoPanel(eventKey: String, modifier: Modifier = Modifier, muted: Boolean = true, videoUrl: String? = null) {
-    val url = remember(eventKey, videoUrl) { videoUrl ?: getRandomErrorVideoUrl() }
     Box(modifier.clip(RoundedCornerShape(18.dp)).background(PanelRaised)) {
-        SignatureVideo(url, muted = muted)
+        if (videoUrl != null) SignatureVideo(videoUrl, muted = muted) else ErrorAnimation(eventKey)
     }
 }
 
