@@ -1,0 +1,42 @@
+# Preconditions: authenticated main UI. Replays the welcome tour from Settings,
+# pages through every step and leaves it with Go to my library. Starts no setup.
+appId: app.cablegram.phone
+---
+- tapOn:
+    id: nav_settings
+- scrollUntilVisible:
+    element:
+      id: settings_welcome_tour
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: settings_welcome_tour
+- assertVisible:
+    id: tour_page_welcome
+- tapOn:
+    id: tour_next
+- assertVisible:
+    id: tour_page_tv
+- tapOn:
+    id: tour_next
+- assertVisible:
+    id: tour_page_telegram
+- assertVisible: "Recommended"
+- assertVisible: "Import › Connected storage › Telegram"
+- tapOn:
+    id: tour_next
+- assertVisible:
+    id: tour_page_drive
+- tapOn:
+    id: tour_next
+- assertVisible:
+    id: tour_page_subtitles
+- tapOn:
+    id: tour_next
+- assertVisible:
+    id: tour_page_ready
+- assertNotVisible:
+    id: tour_skip
+- tapOn: "Go to my library"
+- assertVisible:
+    id: nav_settings
