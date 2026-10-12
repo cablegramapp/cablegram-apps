@@ -16,6 +16,7 @@ class LibrarySyncSignatureTest {
             original.copy(mediaType = "tv"),
             original.copy(releaseYear = null),
             original.copy(overview = null),
+            original.copy(isPrivate = true),
         )) {
             assertNotEquals(previous, librarySyncSignature(listOf(correction)))
         }

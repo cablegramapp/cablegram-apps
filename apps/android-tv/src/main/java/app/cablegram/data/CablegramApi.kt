@@ -146,6 +146,7 @@ class CablegramApi(
                 val source = item.sources.firstOrNull { it.isPhoneSource() }
                     ?: item.sources.firstOrNull { it.kind != OWN_CLOUD && !it.originIdentity.isNullOrBlank() }
                     ?: item.sources.firstOrNull()
+                val isPrivate = item.sources.any { it.isPrivate }
                 val phone = servingPhone(devices, source)
                 val localPosterUrl = if (phone != null && !source?.originIdentity.isNullOrBlank()) {
                     lanPosterUrl(phone, "poster/${source?.originIdentity}", lanCapability)
@@ -156,10 +157,10 @@ class CablegramApi(
                     // The phone may not know a file's duration; the TV learns it
                     // while playing and reports it with progress.
                     durationSeconds = item.durationSeconds ?: item.progress?.durationSeconds,
-                    // Private posters deliberately are not published by the
-                    // control plane. Local posters also cover failed uploads.
-                    posterUrl = if (source?.isPrivate == true) localPosterUrl else item.posterUrl ?: localPosterUrl,
-                    backdropUrl = item.backdropUrl,
+                    // A private title's artwork (a frame from the phone, a web page's thumbnail) is
+                    // never shown on the TV. Local posters also cover failed uploads.
+                    posterUrl = if (isPrivate) null else item.posterUrl ?: localPosterUrl,
+                    backdropUrl = if (isPrivate) null else item.backdropUrl,
                     genres = item.genres,
                     director = item.director,
                     releaseYear = item.year ?: item.releaseYear,
@@ -179,6 +180,7 @@ class CablegramApi(
                     originIdentity = source?.originIdentity,
                     addedAtTimestamp = item.createdAt.orEmpty(),
                     inMyList = item.inMyList,
+                    isPrivate = isPrivate,
                 )
             },
         )
@@ -454,7 +456,7 @@ class CablegramApi(
         // until the authorized phone approves this exact attempt. No approval →
         // no URL, regardless of LAN availability or cached media.
         if (item.sources.any { it.isPrivate }) {
-            return privatePlaybackFlow(videoId, item.title, item.posterUrl, token, lanPin, onStatus, onAwaitingApproval, cloudStream)
+            return privatePlaybackFlow(videoId, item.title, null, token, lanPin, onStatus, onAwaitingApproval, cloudStream)
         }
 
         if (item.sources.any { it.kind == "web" }) {

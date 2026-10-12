@@ -236,15 +236,29 @@ class CablegramApiTest {
     }
 
     @Test
-    fun `private phone artwork leaves the capability out of the poster URL`() = runBlocking {
+    fun `a private title shows none of its own artwork`() = runBlocking {
         server.enqueue(MockResponse().setBody(
-            """{"items":[{"id":"item-1","title":"Clip","poster_url":"https://api.test/private-poster","sources":[{"kind":"phone_local","origin_identity":"phone-video","private":true}]}]}""",
+            """{"items":[{"id":"item-1","title":"Clip","poster_url":"https://api.test/private-poster","backdrop_url":"https://api.test/private-backdrop","sources":[{"kind":"phone_local","origin_identity":"phone-video","private":true}]}]}""",
         ))
         server.enqueue(MockResponse().setBody("""{"devices":[{"kind":"phone","last_lan_host":"192.168.1.20","last_lan_port":8765,"lan_cert_sha256":"${TestLanCert.sha256}"}]}"""))
 
         val video = api.getVideos("jwt", "capability+/=").videos.single()
 
-        assertEquals("https://192.168.1.20:8765/poster/phone-video", video.posterUrl)
+        assertTrue(video.isPrivate)
+        assertEquals(null, video.posterUrl)
+        assertEquals(null, video.backdropUrl)
+    }
+
+    @Test
+    fun `a private web import drops the page thumbnail`() = runBlocking {
+        server.enqueue(MockResponse().setBody(
+            """{"items":[{"id":"item-1","title":"Clip","poster_url":"https://cdn.example/og-image.jpg","sources":[{"kind":"web","private":true}]}]}""",
+        ))
+
+        val video = api.getVideos("jwt", null).videos.single()
+
+        assertTrue(video.isPrivate)
+        assertEquals(null, video.posterUrl)
     }
 
     @Test
