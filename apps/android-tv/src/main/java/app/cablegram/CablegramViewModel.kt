@@ -115,6 +115,12 @@ class CablegramViewModel @JvmOverloads constructor(
     private val authStore = AuthStore(application)
     /** Spec 004: this TV's Telegram session, approved by the household phone. */
     val telegram = TvTelegram(application, api, onLibraryChanged = { refreshLibrary() })
+
+    /** A phone just paired this TV: the library opens with a one-time "This TV is connected" card. */
+    var connectedWelcome by mutableStateOf(false)
+        private set
+
+    fun dismissConnectedWelcome() { connectedWelcome = false }
     init {
         // Spec 004 US8: at a temporary TV's end time, drop everything Telegram-related that was stored here.
         app.cablegram.data.onDeviceExpired = { telegram.wipeLocalData() }
@@ -1082,6 +1088,7 @@ class CablegramViewModel @JvmOverloads constructor(
                     )
                     authStore.saveAccount(account)
                     accountCredentials = authStore.getAccounts()
+                    connectedWelcome = true
                     token = pairedToken
                     sessionId = pairedSessionId
                     PairLog.i("LAN capability stored ${PairLog.pinTail(lanCapability)}")
@@ -1094,6 +1101,7 @@ class CablegramViewModel @JvmOverloads constructor(
                 }
                 if (result.status == "paired") {
                     pairingStatus = "Phone paired. Opening the library."
+                    connectedWelcome = true
                     continueWithPhoneLibrary()
                     return
                 }

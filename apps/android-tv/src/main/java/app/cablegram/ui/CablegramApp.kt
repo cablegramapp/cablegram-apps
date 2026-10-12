@@ -204,7 +204,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     Unit
                 }
                 is ScreenState.SessionActions -> SessionActionsScreen(screen.message, viewModel::showProfilePicker, viewModel::signOutProfile, viewModel::closeSessionActions)
-                is ScreenState.Library -> LibraryScreen(
+                is ScreenState.Library -> { LibraryScreen(
                     videos = viewModel.libraryVideos,
                     isRefreshing = viewModel.isLibraryRefreshing,
                     onRefresh = viewModel::refreshLibrary,
@@ -231,6 +231,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     onTelegramConnect = viewModel.telegram::connectStandalone,
                     onTelegramCancel = viewModel.telegram::cancelConnect,
                 )
+                ConnectedWelcomeDialog(viewModel.connectedWelcome, viewModel::dismissConnectedWelcome) }
                 is ScreenState.Resolving -> PrepareStatusScreen(
                     screen = screen,
                     onCancel = viewModel::cancelResolving,
@@ -663,7 +664,7 @@ private fun PairingScreen(
             Spacer(Modifier.height(28.dp))
             Text("Pair this TV", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
             Spacer(Modifier.height(8.dp))
-            Text("In the Cablegram phone app, choose Pair TV and scan the code, or type this PIN.", color = Muted, fontSize = 17.sp, lineHeight = 24.sp)
+            Text("In the Cablegram phone app, choose Connect a TV and scan the code, or type this PIN.", color = Muted, fontSize = 17.sp, lineHeight = 24.sp)
             Spacer(Modifier.height(26.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 session.pin.forEach { digit ->
@@ -742,6 +743,8 @@ private fun PairingScreen(
             }
             Spacer(Modifier.height(14.dp))
             Text("Scan with the Cablegram phone app", color = Muted, fontSize = 15.sp)
+            Spacer(Modifier.height(4.dp))
+            Text("No phone app yet? Get it at cablegram.app", color = Slate, fontSize = 13.sp)
         }
     }
 }
