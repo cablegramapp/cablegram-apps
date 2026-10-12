@@ -899,6 +899,65 @@ class CatalogClient(
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
     }
 
+    // ---- Profile lock: a TV opens a profile once a phone allows it ----
+
+    suspend fun fetchPendingProfileRequests(token: String): List<PendingApproval> = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/profiles/switch-requests/pending")
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use emptyList<PendingApproval>()
+                json.decodeFromString<PendingProfileRequests>(response.body?.string().orEmpty()).items.map { it.asApproval() }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    /** False when the request was already answered, expired, or the server could not be reached. */
+    suspend fun answerProfileRequest(token: String, requestId: String, allow: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/profiles/switch-requests/$requestId/${if (allow) "approve" else "deny"}")
+            .header("Authorization", "Bearer $token")
+            .post("{}".toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
+    /** Whether TVs must ask a phone before opening a profile; null when offline. */
+    suspend fun profileLock(token: String): Boolean? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/me")
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val household = json.decodeFromString<MeResponse>(response.body?.string().orEmpty()).household
+                ((household as? JsonObject)?.get("profile_lock") as? JsonPrimitive)?.booleanOrNull
+            }
+        }.getOrNull()
+    }
+
+    /** The lock as the server saved it; null when it could not be saved. */
+    suspend fun setProfileLock(token: String, on: Boolean): Boolean? = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject { put("profile_lock", on) })
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/household")
+            .header("Authorization", "Bearer $token")
+            .patch(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val household = json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["household"]
+                ((household as? JsonObject)?.get("profile_lock") as? JsonPrimitive)?.booleanOrNull
+            }
+        }.getOrNull()
+    }
+
     /** The TV device id owning [capability] in this household; null when unknown or offline. */
     suspend fun verifyLanCapability(token: String, capability: String): String? = withContext(Dispatchers.IO) {
         val request = Request.Builder()

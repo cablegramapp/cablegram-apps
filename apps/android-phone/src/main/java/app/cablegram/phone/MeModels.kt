@@ -57,7 +57,26 @@ data class PendingApproval(
     val title: String? = null,
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("tv_name") val tvName: String? = null,
+    /** Not sent by the server: [ApprovalKind.Profile] items are built from [PendingProfileRequest]. */
+    val kind: ApprovalKind = ApprovalKind.Playback,
 )
+
+/** What a TV is waiting for: a private title to play, or (profile lock) a profile to open. */
+enum class ApprovalKind { Playback, Profile }
+
+/** GET /api/profiles/switch-requests/pending: a TV waits for a phone to allow a profile. */
+@Serializable
+data class PendingProfileRequest(
+    @SerialName("request_id") val requestId: String,
+    @SerialName("profile_name") val profileName: String? = null,
+    @SerialName("tv_name") val tvName: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null,
+) {
+    fun asApproval() = PendingApproval(attemptId = requestId, title = profileName, expiresAt = expiresAt, tvName = tvName, kind = ApprovalKind.Profile)
+}
+
+@Serializable
+data class PendingProfileRequests(val items: List<PendingProfileRequest> = emptyList())
 
 @Serializable
 data class LanPassResponse(
