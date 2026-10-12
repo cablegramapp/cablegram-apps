@@ -165,6 +165,11 @@ class PairingStore(context: Context) : AccountTokens {
         get() = prefs.getBoolean("legacy_remote", true)
         set(value) { prefs.edit().putBoolean("legacy_remote", value).apply() }
 
+    /** The first-run welcome tour was finished or skipped on this install. */
+    var welcomeTourSeen: Boolean
+        get() = prefs.getBoolean("welcome_tour_seen", false)
+        set(value) { prefs.edit().putBoolean("welcome_tour_seen", value).apply() }
+
     fun removeTv(pin: String) {
         tvs = tvs.filterNot { it.pin == pin }
     }

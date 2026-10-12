@@ -66,4 +66,9 @@ object MaestroIds {
     const val CLOUD_CLOSE = "cloud_close"
     const val HOUSEHOLD_NAME = "household_name"
     const val HOUSEHOLD_CONTINUE = "household_continue"
+    const val SETTINGS_WELCOME_TOUR = "settings_welcome_tour"
+    const val TOUR_SKIP = "tour_skip"
+    const val TOUR_NEXT = "tour_next"
+    const val TOUR_ACTION = "tour_action"
+    const val TOUR_PAGE = "tour_page"
 }

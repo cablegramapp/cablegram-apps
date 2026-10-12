@@ -1220,9 +1220,15 @@ private fun EmptyLibrary(onRefresh: () -> Unit, modifier: Modifier = Modifier) {
             Text("Nothing here yet", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(Modifier.height(10.dp))
             Text(
-                "Add videos in the Cablegram phone app. They appear on this TV within a few seconds.",
+                "On your phone, open Cablegram and tap Import to add videos. They appear on this TV within a few seconds.",
                 color = Muted,
                 fontSize = 16.sp,
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Tip: connect Telegram in the phone app (Import › Connected storage) and this TV can play even when your phone is off.",
+                color = Slate,
+                fontSize = 14.sp,
             )
             Spacer(Modifier.height(22.dp))
             Button(onClick = onRefresh) { Text("Check again") }

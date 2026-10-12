@@ -97,6 +97,34 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         if (!value && tab == PhoneTab.Remote) tab = PhoneTab.Library
     }
 
+    /** The first-run welcome tour shows once per install, before the library; Settings can bring it back. */
+    var welcomeTourOpen by mutableStateOf(!pairing.welcomeTourSeen)
+        private set
+
+    /** Settings' "Subtitle accounts" page; hoisted so the welcome tour can open it. */
+    var subtitleAccountsOpen by mutableStateOf(false)
+
+    fun closeWelcomeTour() {
+        pairing.welcomeTourSeen = true
+        welcomeTourOpen = false
+    }
+
+    fun replayWelcomeTour() {
+        welcomeTourOpen = true
+    }
+
+    /** A tour page's setup button: leave the tour and land on the screen that does the setup. */
+    fun startFromTour(step: TourStep) {
+        closeWelcomeTour()
+        when (step) {
+            TourStep.Tv -> startAddTv()
+            TourStep.Telegram -> { tab = PhoneTab.Browse; openTelegramSheet() }
+            TourStep.Drive -> { tab = PhoneTab.Storage; cloudSheet = CloudSheet.Manage }
+            TourStep.Subtitles -> { tab = PhoneTab.Settings; subtitleAccountsOpen = true }
+            TourStep.Welcome, TourStep.Ready -> tab = PhoneTab.Browse
+        }
+    }
+
     fun dismissCastPicker() {
         pickerDiscoveryJob?.cancel(); pickerDiscoveryJob = null
         castPickerOpen = false; pickerTitle = null
