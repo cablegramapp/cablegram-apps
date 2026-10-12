@@ -194,7 +194,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             nowPlayingState = value
             publishCast()
             if (value != null) followTvPlayback()
+            // CAB-57: the "Playing … on TV" line belongs to the title; it goes when nothing plays any more.
+            else if (status != null && status == nowPlayingStatus) status = null
         }
+    /** The status line written when the current title started, so it can be cleared with the title. */
+    private var nowPlayingStatus: String? = null
     var remoteStatus by mutableStateOf<String?>(null)
         private set
     /** The title a TV was asked to start and has not answered for yet; null otherwise. */
@@ -2381,8 +2385,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             paused = effectiveRoute != null && castSender?.playbackPaused == true
             store.setWatchProgress(ready.id, ready.positionSeconds.coerceAtLeast(1))
             refresh()
-            if (sent.latest) status = if (sent.outcome == Outcome.Confirmed) "Playing ${ready.title} on ${sent.tvName}"
-                else "Sent ${ready.title} to ${sent.tvName} (not confirmed by TV)"
+            if (sent.latest) {
+                status = if (sent.outcome == Outcome.Confirmed) "Playing ${ready.title} on ${sent.tvName}"
+                    else "Sent ${ready.title} to ${sent.tvName} (not confirmed by TV)"
+                nowPlayingStatus = status
+            }
         }
     }
 
@@ -2424,7 +2431,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun stopCast() {
         viewModelScope.launch {
             val outcome = sendCommand("stop")?.outcome ?: return@launch
-            if (!outcome.applies()) return@launch
+            // "not_applicable": the TV had nothing to stop (the title already ended there), so nothing plays either way.
+            if (!outcome.applies() && (outcome as? Outcome.Rejected)?.reason != "not_applicable") return@launch
             nowPlaying = null
             paused = false
         }
