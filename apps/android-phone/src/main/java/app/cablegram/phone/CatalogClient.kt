@@ -988,6 +988,29 @@ class CatalogClient(
         } catch (_: Exception) { CommandSend.Failed }
     }
 
+    /** CAB-57: what the TV's player last reported; null when it could not be read (or the server is older). */
+    suspend fun tvPlayback(token: String, deviceId: String): TvPlayback? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/control/playback/$deviceId")
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+        runCatching {
+            client.newCall(request).await().use { response ->
+                if (!response.isSuccessful) return@use null
+                val body = json.parseToJsonElement(response.body?.string().orEmpty()) as JsonObject
+                TvPlayback(
+                    state = (body["state"] as? JsonPrimitive)?.contentOrNull ?: "unknown",
+                    videoId = (body["video_id"] as? JsonPrimitive)?.contentOrNull,
+                    originId = (body["origin_id"] as? JsonPrimitive)?.contentOrNull,
+                    positionMs = (body["position_ms"] as? JsonPrimitive)?.longOrNull,
+                    ageMs = (body["age_ms"] as? JsonPrimitive)?.longOrNull,
+                    online = (body["online"] as? JsonPrimitive)?.booleanOrNull ?: true,
+                )
+            }
+        }.getOrNull()
+    }
+
     /** What the TV did with a command; null when the status could not be read right now. */
     suspend fun commandStatus(token: String, id: String): CommandStatus? = withContext(Dispatchers.IO) {
         val request = Request.Builder()

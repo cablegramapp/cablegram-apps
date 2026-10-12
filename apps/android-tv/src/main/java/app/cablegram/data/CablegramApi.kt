@@ -312,6 +312,18 @@ class CablegramApi(
     suspend fun getCommands(token: String): TvCommandLibrary =
         execute(authenticatedRequest("api/control/commands?delivery=ack", token).get().build())
 
+    /** CAB-57: what the player is doing, for the phone's remote. */
+    suspend fun reportPlayback(report: PlaybackReport, token: String) {
+        val body = json.encodeToString(buildJsonObject {
+            put("state", report.state)
+            report.videoId?.let { put("video_id", it) }
+            report.originId?.let { put("origin_id", it) }
+            report.positionMs?.let { put("position_ms", it) }
+            put("seq", report.seq)
+        })
+        executeNoContent(authenticatedRequest("api/control/playback", token).put(body.toRequestBody(jsonMediaType)).build())
+    }
+
     suspend fun completeCommand(commandId: String, token: String) {
         executeNoContent(authenticatedRequest("api/control/commands/$commandId/complete", token).post("{}".toRequestBody(jsonMediaType)).build())
     }

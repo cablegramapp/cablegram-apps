@@ -1,5 +1,6 @@
 package app.cablegram.phone
 
+import android.os.SystemClock
 import app.cablegram.phone.cast.*
 import kotlinx.coroutines.CancellationException
 import android.app.Application
@@ -57,6 +58,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setCastVisible(visible: Boolean) {
         castVisible = visible
+        if (visible) followTvPlayback()
         if (castConnect && castSender == null) {
             castSender = CastConnectSender(getApplication()).also { sender ->
                 sender.onDevice = { status, routeId ->
@@ -191,6 +193,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set(value) {
             nowPlayingState = value
             publishCast()
+            if (value != null) followTvPlayback()
         }
     var remoteStatus by mutableStateOf<String?>(null)
         private set
@@ -2373,6 +2376,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             if (!sent.latest || titleStartToken != token || !sent.outcome.applies()) return@launch
             if (effectiveRoute != null && castSender?.playbackTerminated != false) return@launch
             castPlaybackOwned = effectiveRoute != null
+            playingTvDeviceId = sent.deviceId
             nowPlaying = ready
             paused = effectiveRoute != null && castSender?.playbackPaused == true
             store.setWatchProgress(ready.id, ready.positionSeconds.coerceAtLeast(1))
@@ -2760,7 +2764,41 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     private fun Outcome.applies() = this == Outcome.Confirmed || this == Outcome.Unconfirmable
 
     /** A command the control service accepted. [latest] is false once a newer command was sent. */
-    private data class SentCommand(val tvName: String, val outcome: Outcome, val latest: Boolean)
+    private data class SentCommand(val tvName: String, val outcome: Outcome, val latest: Boolean, val deviceId: String?)
+
+    /** The TV the current title was started on, and when this phone's last command was answered (CAB-57). */
+    private var playingTvDeviceId: String? = null
+    private var ownCommandAt = 0L
+    private var followJob: Job? = null
+
+    /**
+     * CAB-57: while a title plays on a TV and this screen is visible, follow what the TV reports, so a title that
+     * ends, is stopped or is paused on the TV shows that here too. Cast Connect playback reports through its own
+     * session instead.
+     */
+    private fun followTvPlayback() {
+        if (followJob?.isActive == true) return
+        followJob = viewModelScope.launch {
+            while (isActive && nowPlayingState != null && castVisible && !castPlaybackOwned) {
+                delay(TV_FOLLOW_POLL_MS)
+                val deviceId = playingTvDeviceId ?: pairing.tvs.lastOrNull()?.deviceId ?: break
+                val token = pairing.accountToken?.takeIf { it.isNotBlank() } ?: break
+                val report = catalog().tvPlayback(token, deviceId) ?: continue
+                val current = nowPlayingState ?: break
+                if (castPlaybackOwned) break
+                when (val follow = followTv(report, current.id, SystemClock.elapsedRealtime() - ownCommandAt)) {
+                    TvFollow.Keep -> Unit
+                    TvFollow.Stopped -> { nowPlaying = null; paused = false }
+                    is TvFollow.Playing -> if (paused != follow.paused) paused = follow.paused
+                    is TvFollow.Other -> {
+                        val other = items.firstOrNull { it.id == follow.videoId || it.id == follow.originId }
+                        nowPlaying = other
+                        paused = other != null && follow.paused
+                    }
+                }
+            }
+        }
+    }
 
     /** Counts sends, so only the newest command narrates [remoteStatus]. */
     private var commandGeneration = 0L
@@ -2854,7 +2892,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             Outcome.TimedOut -> "${sent.tvName} didn't confirm. Check the TV."
             Outcome.Unconfirmable -> "Sent (not confirmed by TV)"
         })
-        return SentCommand(sent.tvName, outcome, latest = generation == commandGeneration)
+        ownCommandAt = SystemClock.elapsedRealtime()
+        return SentCommand(sent.tvName, outcome, latest = generation == commandGeneration, deviceId = sent.deviceId)
     }
 
     private fun publishCast() {
