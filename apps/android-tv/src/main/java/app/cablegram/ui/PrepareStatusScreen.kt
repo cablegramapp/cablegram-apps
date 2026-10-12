@@ -3,6 +3,13 @@ package app.cablegram.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.tv.material3.Button
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -47,10 +54,10 @@ private val DarkSlate = PanelRaised
 private val SkyBlue = Cyan
 
 @Composable
-fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onSignatureFinished: () -> Unit = {}) {
+fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onClipStarted: () -> Unit = {}, onStartNow: () -> Unit = {}) {
     BackHandler(onBack = onCancel)
     if (screen.awaitingApproval || screen.signatureAttemptId != null || screen.prepareStage == app.cablegram.data.PHONE_OFFLINE_STAGE) {
-        SignaturePreparingScreen(screen, onSignatureFinished)
+        SignaturePreparingScreen(screen, onClipStarted, onStartNow)
         return
     }
     val progress = screen.prepareProgress?.coerceIn(0, 100) ?: 0
@@ -139,15 +146,17 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onS
 
 /** Keep the signature video in view while the phone asks for this one-time approval. */
 @Composable
-private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onSignatureFinished: () -> Unit) {
+private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onClipStarted: () -> Unit, onStartNow: () -> Unit) {
     val offline = screen.prepareStage == app.cablegram.data.PHONE_OFFLINE_STAGE
     val clipUrl = remember(screen.signatureAttemptId, offline, screen.loadingVideoUrl) {
         if (offline) app.cablegram.data.getRandomErrorVideoUrl() else screen.loadingVideoUrl
     }
+    val visibility by animateFloatAsState(if (screen.fadingOut) 0f else 1f, tween(400), label = "signature-fade")
     Row(
         modifier = Modifier
             .fillMaxSize()
             .background(PrepareBg)
+            .alpha(visibility)
             .padding(horizontal = 28.dp, vertical = 24.dp),
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -160,7 +169,7 @@ private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onSignatureF
                 .background(DarkSlate),
         ) {
             androidx.compose.runtime.key(screen.signatureAttemptId ?: screen.video.id) {
-                SignatureVideo(clipUrl, onFirstCycleFinished = onSignatureFinished, onUnavailable = onSignatureFinished)
+                SignatureVideo(clipUrl, onStarted = onClipStarted)
             }
         }
         Column(
@@ -197,7 +206,13 @@ private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onSignatureF
                 color = Paper.copy(alpha = 0.88f), fontSize = 16.sp, lineHeight = 23.sp,
             )
             Spacer(Modifier.height(14.dp))
-            Text(if (screen.awaitingApproval) "Your title starts automatically after approval." else "Playback starts automatically when your video is ready.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            if (screen.readyToStart) {
+                val startFocus = remember { FocusRequester() }
+                LaunchedEffect(Unit) { withFrameNanos { }; runCatching { startFocus.requestFocus() } }
+                Button(onClick = onStartNow, modifier = Modifier.focusRequester(startFocus)) { Text("Start now") }
+            } else {
+                Text(if (screen.awaitingApproval) "Your title starts automatically after approval." else "Playback starts automatically when your video is ready.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            }
             Spacer(Modifier.height(24.dp))
             Text("Press Back to cancel and return to your library", color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
         }

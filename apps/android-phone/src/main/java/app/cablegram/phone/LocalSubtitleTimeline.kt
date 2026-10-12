@@ -94,7 +94,8 @@ object LocalSubtitleTimeline {
         if (text.toByteArray().size > LIMIT || text.contains('\u0000')) invalid()
         val cues = mutableListOf<SubtitleCue>(); var skipped = 0
         fun add(start: Double?, end: Double?, body: String) {
-            val clean = body.replace(Regex("<[^>]*>"), "").trim()
+            // Tags go; control characters (a stray form feed in a provider file) would fail the whole save.
+            val clean = body.replace(Regex("<[^>]*>"), "").filter { it.code >= 32 || it in "\t\n" }.trim()
             if (start == null || end == null || end <= start || end > 86400 || end - start > 120 || clean.isEmpty() || clean.length > 4000) { skipped++; return }
             cues += SubtitleCue(start, end, clean); if (cues.size > 20000) invalid()
         }

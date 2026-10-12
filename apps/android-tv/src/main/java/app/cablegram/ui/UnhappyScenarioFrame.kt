@@ -22,7 +22,7 @@ import app.cablegram.data.getRandomErrorVideoUrl
 
 /** One error signature per visible warning/error; recompositions retain the chosen clip. */
 @Composable
-internal fun UnhappyVideoPanel(eventKey: String, modifier: Modifier = Modifier, muted: Boolean = false, videoUrl: String? = null) {
+internal fun UnhappyVideoPanel(eventKey: String, modifier: Modifier = Modifier, muted: Boolean = true, videoUrl: String? = null) {
     val url = remember(eventKey, videoUrl) { videoUrl ?: getRandomErrorVideoUrl() }
     Box(modifier.clip(RoundedCornerShape(18.dp)).background(PanelRaised)) {
         SignatureVideo(url, muted = muted)
@@ -34,7 +34,7 @@ internal fun UnhappyVideoPanel(eventKey: String, modifier: Modifier = Modifier, 
 internal fun UnhappyScenarioFrame(
     eventKey: String,
     modifier: Modifier = Modifier,
-    muted: Boolean = false,
+    muted: Boolean = true,
     videoUrl: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
