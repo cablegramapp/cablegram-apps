@@ -69,6 +69,8 @@ sealed interface ScreenState {
         val pinPromptFor: Profile? = null,
         val pinError: String? = null,
         val pinDigits: Int = 0,
+        /** Profile lock: this profile opens once a household phone allows it. */
+        val awaitingPhoneFor: Profile? = null,
     ) : ScreenState
     data class SessionActions(val profiles: List<Profile>, val message: String? = null) : ScreenState
     data object Library : ScreenState
@@ -137,6 +139,9 @@ class CablegramViewModel @JvmOverloads constructor(
     private var refreshJob: Job? = null
     private var librarySyncJob: Job? = null
     private var pinPrompt: String? = null
+    /** The profile request waiting for a phone (profile lock), and the token that made it. */
+    private var profileSwitchJob: Job? = null
+    private var waitingSwitch: Pair<String, String>? = null
     private val unlockedProfileIds = mutableMapOf<String, Boolean>()
     private var commandJob: Job? = null
     private val commandJournal = CommandJournal(
@@ -958,44 +963,67 @@ class CablegramViewModel @JvmOverloads constructor(
         val account = profileAccounts[profile.id]
         val currentToken = account?.token ?: token ?: return
         val currentSessionId = account?.sessionId ?: sessionId
+        val previousToken = token
+        val previousSessionId = sessionId
         token = currentToken
         sessionId = currentSessionId
-        activeProfileId = profile.id
-        viewModelScope.launch {
-            if (currentSessionId != null) {
-                authStore.setActiveSessionId(currentSessionId)
-            }
-        }
+        withdrawProfileSwitch()
         screen = ScreenState.ProfilePicker(profiles, pending = true, message = "Opening profile…")
-        viewModelScope.launch {
+        profileSwitchJob = viewModelScope.launch {
+            suspend fun open() {
+                waitingSwitch = null
+                activeProfileId = profile.id
+                if (currentSessionId != null) authStore.setActiveSessionId(currentSessionId)
+                api.attachProfile(profile.id, currentToken)
+                loadLibrary()
+            }
+            // Not opened: the TV stays with the account it was showing.
+            fun refuse(message: String) {
+                waitingSwitch = null
+                token = previousToken ?: currentToken
+                sessionId = previousSessionId ?: currentSessionId
+                screen = ScreenState.ProfilePicker(profiles, message = message)
+            }
             try {
                 val request = api.requestProfileSwitch(profile.id, deviceName(), currentToken)
-                if (request.status == "approved") {
-                    api.attachProfile(profile.id, currentToken)
-                    activeProfileId = profile.id
-                    loadLibrary()
-                    return@launch
-                }
-                repeat(150) {
+                if (request.status == "approved") return@launch open()
+                // Profile lock: a phone in the household has to allow it.
+                waitingSwitch = request.requestId to currentToken
+                screen = ScreenState.ProfilePicker(profiles, awaitingPhoneFor = profile)
+                while (true) {
                     delay(2_000)
-                    when (val result = api.getProfileSwitchRequest(request.requestId, currentToken).status) {
-                        "approved" -> {
-                            api.attachProfile(profile.id, currentToken)
-                            activeProfileId = profile.id
-                            loadLibrary()
-                            return@launch
-                        }
-                        "denied", "expired" -> {
-                            screen = ScreenState.ProfilePicker(profiles, message = "Profile change was not approved.")
-                            return@launch
-                        }
+                    // A missed poll (Wi-Fi blip) keeps waiting; the server expires the request.
+                    val status = try {
+                        api.getProfileSwitchRequest(request.requestId, currentToken).status
+                    } catch (_: java.io.IOException) {
+                        null
+                    }
+                    when (status) {
+                        "approved" -> return@launch open()
+                        "denied" -> return@launch refuse("Your phone didn't allow ${profile.name}.")
+                        "expired" -> return@launch refuse("Nobody allowed ${profile.name} on a phone in time. Try again.")
                     }
                 }
-                screen = ScreenState.ProfilePicker(profiles, message = "Approval request expired.")
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
-                screen = ScreenState.ProfilePicker(profiles, message = error.userMessage())
+                refuse(error.userMessage())
             }
         }
+    }
+
+    /** Back or Cancel while the TV waits for a phone: stop waiting and withdraw the request. */
+    fun cancelProfileApproval() {
+        withdrawProfileSwitch()
+        screen = ScreenState.ProfilePicker(profiles)
+    }
+
+    private fun withdrawProfileSwitch() {
+        profileSwitchJob?.cancel()
+        profileSwitchJob = null
+        val (requestId, requestToken) = waitingSwitch ?: return
+        waitingSwitch = null
+        viewModelScope.launch { runCatching { api.cancelProfileSwitch(requestId, requestToken) } }
     }
 
     fun addProfile(name: String) {

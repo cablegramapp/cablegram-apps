@@ -164,7 +164,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     // Back returns to the library after "switch profile"; at app start it asks before exiting.
                     val pickerContext = androidx.compose.ui.platform.LocalContext.current
                     var exitArmedAt by remember { mutableStateOf(0L) }
-                    BackHandler(enabled = screen.pinPromptFor == null) {
+                    BackHandler(enabled = screen.pinPromptFor == null && screen.awaitingPhoneFor == null) {
                         if (viewModel.returnToLibraryFromPicker()) return@BackHandler
                         val now = System.currentTimeMillis()
                         if (now - exitArmedAt < 2_500L) {
@@ -200,6 +200,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                             viewModel.cancelProfilePin()
                         },
                         pinBuffer = digits,
+                        onApprovalCancel = viewModel::cancelProfileApproval,
                     )
                     Unit
                 }
@@ -289,7 +290,12 @@ private fun ProfilePickerScreen(
     onPinDelete: () -> Unit,
     onPinCancel: () -> Unit,
     pinBuffer: String,
+    onApprovalCancel: () -> Unit,
 ) {
+    state.awaitingPhoneFor?.let { profile ->
+        PhoneApprovalPanel(profile, onApprovalCancel)
+        return
+    }
     // R-4 / FR-008: PIN entry overlay for a protected profile; a 4-8 digit code
     // on the D-pad/removable keypad unlocks the profile for this session.
     val pinProfile = state.pinPromptFor
@@ -402,6 +408,43 @@ private fun ProfilePickerScreen(
             UnpairConfirmDialog(unpair, onSignOut)
             Button(onClick = unpair::ask, colors = ButtonDefaults.colors(containerColor = Color.Transparent, contentColor = Muted)) {
                 Text("Unpair this TV")
+            }
+        }
+    }
+}
+
+/** Profile lock: the TV waits until a phone in the household allows this profile. */
+@Composable
+private fun PhoneApprovalPanel(profile: Profile, onCancel: () -> Unit) {
+    BackHandler(onBack = onCancel)
+    val cancelFocus = remember { FocusRequester() }
+    LaunchedEffect(profile.id) { runCatching { cancelFocus.requestFocus() } }
+    Box(Modifier.fillMaxSize().padding(40.dp), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier
+                .width(560.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(PanelSoft)
+                .border(1.dp, Outline, RoundedCornerShape(20.dp))
+                .padding(horizontal = 40.dp, vertical = 32.dp),
+        ) {
+            BrandMark()
+            Spacer(Modifier.height(24.dp))
+            Text("Allow on your phone", color = Muted, fontSize = 16.sp)
+            Text(profile.name, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "This account is locked. Open Cablegram on a phone signed in to it and tap Allow.",
+                color = Muted,
+                fontSize = 18.sp,
+            )
+            Spacer(Modifier.height(26.dp))
+            Button(
+                onClick = onCancel,
+                colors = ButtonDefaults.colors(containerColor = PanelRaised),
+                modifier = Modifier.focusRequester(cancelFocus),
+            ) {
+                Text("Cancel")
             }
         }
     }

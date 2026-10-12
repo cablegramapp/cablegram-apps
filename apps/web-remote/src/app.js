@@ -54,7 +54,7 @@ function icon(name) {
 }
 
 const state = {
-  tvs: [], tv: remembered(), library: [], loaded: false, libraryError: "", link: null, pending: [],
+  tvs: [], tv: remembered(), library: [], loaded: false, libraryError: "", link: null, pending: [], profileRequests: [], lock: null,
   tab: TABS[location.hash.slice(1)] ? location.hash.slice(1) : "library", query: "", muted: false, volume: 50,
 };
 let pollTimer = null;
@@ -144,6 +144,7 @@ async function start() {
     toast(message(e));
   }
   if (!state.tvs.some((tv) => tv.id === state.tv)) state.tv = state.tvs[0]?.id ?? null;
+  try { state.lock = await api.profileLock(); } catch { /* the toggle waits for the next start */ }
   render();
   refreshLibrary();
   refreshTelegram();
@@ -166,13 +167,14 @@ async function refreshLibrary() {
   if (first || JSON.stringify([state.library, state.libraryError]) !== before) render();
 }
 
-/** Updates only the Telegram parts of the page, and only when they changed: a full redraw would wipe a code being typed. */
+/** Updates only the TV requests and Telegram parts of the page, and only when they changed: a full redraw would wipe a code being typed. */
 async function refreshTelegram() {
-  const before = JSON.stringify([state.link, state.pending]);
+  const before = JSON.stringify([state.link, state.pending, state.profileRequests]);
   try { state.link = await api.telegramLink(); } catch { /* the banners stay as they were */ }
   try { state.pending = await api.pendingTvLogins(); } catch { /* same */ }
-  if (JSON.stringify([state.link, state.pending]) === before) return;
-  document.getElementById("banners")?.replaceChildren(...telegramBanners());
+  try { state.profileRequests = await api.pendingProfileRequests(); } catch { /* same */ }
+  if (JSON.stringify([state.link, state.pending, state.profileRequests]) === before) return;
+  document.getElementById("banners")?.replaceChildren(...banners());
   document.getElementById("telegram")?.replaceChildren(...telegramHelp());
 }
 
@@ -273,7 +275,7 @@ function render() {
   const views = { library: libraryView, remote: remoteView, tvs: tvsView };
   mount(
     h("header", { class: "top" }, h("h1", {}, TABS[state.tab]), tvPill()),
-    h("div", { id: "banners" }, telegramBanners()),
+    h("div", { id: "banners" }, banners()),
     h("section", { class: `view view-${state.tab}` }, views[state.tab]()),
     h("nav", { class: "tabs", "aria-label": "Sections" },
       Object.entries(TABS).map(([tab, label]) => h("button", {
@@ -500,7 +502,13 @@ function tvsView() {
     h("h2", {}, "Account"),
     h("div", { class: "list" }, h("div", { class: "list-row" },
       h("span", { class: "grow" }, api.householdName || "Cablegram"),
-      h("button", { class: "small", onclick: async () => { await api.logout(); renderSignIn(); } }, "Sign out"))),
+      h("button", { class: "small", onclick: async () => { await api.logout(); renderSignIn(); } }, "Sign out")),
+      state.lock != null && h("label", { class: "list-row" },
+        h("span", { class: "grow" }, "Lock account on TVs"),
+        h("input", { type: "checkbox", checked: state.lock, onchange: (e) => setLock(e.target.checked) }))),
+    state.lock != null && h("p", { class: "hint" }, state.lock
+      ? "A TV asks you before it opens any profile."
+      : "Any paired TV opens profiles without asking."),
     installHint(),
   ];
 }
@@ -523,6 +531,45 @@ function pairForm() {
   }, pin, h("button", { class: "primary", type: "submit" }, "Pair"));
 }
 
+// ---- TV requests ----
+
+function banners() {
+  return [...profileBanners(), ...telegramBanners()];
+}
+
+async function setLock(on) {
+  try {
+    state.lock = await api.setProfileLock(on);
+  } catch (e) {
+    if (signedOut(e)) return;
+    toast(message(e));
+  }
+  render();
+}
+
+/** Profile lock: "<TV> wants to open <profile>". The TV waits until someone answers here or on a phone. */
+function profileBanners() {
+  return state.profileRequests.map((request) => {
+    const answer = async (allow) => {
+      state.profileRequests = state.profileRequests.filter((r) => r.request_id !== request.request_id);
+      document.getElementById("banners")?.replaceChildren(...banners());
+      try {
+        await api.answerProfileRequest(request.request_id, allow);
+      } catch (e) {
+        if (!signedOut(e)) toast(e instanceof ApiError && e.status === 409 ? "That request already ended." : message(e));
+      }
+    };
+    return h("div", { class: "banner", role: "alert" },
+      h("p", {}, `${request.tv_name || "A TV"} wants to open ${request.profile_name || "a profile"}`),
+      h("p", { class: "hint" }, "Only allow this if you are at that TV."),
+      h("div", { class: "row" },
+        h("button", { class: "primary", onclick: () => answer(true) }, "Allow"),
+        h("button", { onclick: () => answer(false) }, "Don't allow"),
+      ),
+    );
+  });
+}
+
 // ---- Telegram ----
 
 /** "Let <TV> use your Telegram?": nothing is approved until the user taps Allow (as on the Android phone). */
@@ -530,7 +577,7 @@ function telegramBanners() {
   return state.pending.map((request) => {
     const answered = () => {
       state.pending = state.pending.filter((r) => r.request_id !== request.request_id);
-      document.getElementById("banners")?.replaceChildren(...telegramBanners());
+      document.getElementById("banners")?.replaceChildren(...banners());
     };
     return h("div", { class: "banner", role: "alert" },
       h("p", {}, `Let ${request.tv_name || "this TV"} use your Telegram?`),

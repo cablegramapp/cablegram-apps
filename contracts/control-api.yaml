@@ -176,6 +176,57 @@ paths:
       responses:
         "201":
           description: Created
+  /api/household:
+    patch:
+      summary: Rename the account and/or set the profile lock
+      description: >
+        `profile_lock` (phone only, off by default): TVs wait for a phone to allow a profile
+        before opening it. `GET /api/me` reports it as `household.profile_lock`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 80 }
+                profile_lock: { type: boolean }
+      responses:
+        "200":
+          description: '`{"household":{...,"profile_lock":bool}}`'
+        "403":
+          description: profile_lock sent with a TV token
+  /api/profiles/switch-requests:
+    post:
+      summary: TV asks to open a profile
+      description: >
+        Body `{"profileId","deviceName"}`. Answers 202 `{"requestId","status","profileName"}`. `status` is
+        `pending` when the lock is on and the profile has no PIN (a PIN has priority: the TV asks for it
+        instead), otherwise `approved`. A new request from the same TV ends its previous pending one.
+        A pending request expires after 2 minutes.
+  /api/profiles/switch-requests/pending:
+    get:
+      summary: Phone lists requests waiting for an answer
+      responses:
+        "200":
+          description: '`{"items":[{"request_id","profile_id","profile_name","tv_name","expires_at"}]}`'
+  /api/profiles/switch-requests/{requestId}:
+    get:
+      summary: TV polls its request
+      responses:
+        "200":
+          description: '`{"requestId","status","expiresAt","profileName"}`; status pending, approved, denied or expired'
+  /api/profiles/switch-requests/{requestId}/approve:
+    post:
+      summary: Phone allows the profile (also /deny to refuse)
+      responses:
+        "200":
+          description: Answered
+        "409":
+          description: '`switch_request_not_pending`: already answered, withdrawn or expired'
+  /api/profiles/switch-requests/{requestId}/cancel:
+    post:
+      summary: The TV that asked stops waiting
   /api/devices/{deviceId}:
     patch:
       summary: Phone updates LAN reachability hint (not catalog)

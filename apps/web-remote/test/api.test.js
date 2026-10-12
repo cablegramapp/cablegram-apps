@@ -104,3 +104,24 @@ test("commandStatus reads one command by id", async () => {
   assert.equal(fetch.calls[1].url, `${BASE}/api/control/commands/c1`);
   assert.equal(fetch.calls[1].method, "GET");
 });
+
+test("profile lock: list and answer TV profile requests, read and change the lock", async () => {
+  const fetch = fakeFetch(
+    [200, { access_token: "a1", refresh_token: "r1" }],
+    [200, { items: [{ request_id: "r-1", profile_name: "Kids", tv_name: "Den" }] }],
+    [200, { ok: true, status: "approved" }],
+    [200, { household: { profile_lock: true } }],
+    [200, { household: { profile_lock: false } }],
+  );
+  const api = createApi({ base: BASE, storage: memoryStorage(), fetch });
+  await api.login("a@b.co", "password1");
+  assert.deepEqual(await api.pendingProfileRequests(), [{ request_id: "r-1", profile_name: "Kids", tv_name: "Den" }]);
+  assert.equal(fetch.calls[1].url, `${BASE}/api/profiles/switch-requests/pending`);
+  await api.answerProfileRequest("r-1", true);
+  assert.equal(fetch.calls[2].url, `${BASE}/api/profiles/switch-requests/r-1/approve`);
+  assert.equal(fetch.calls[2].method, "POST");
+  assert.equal(await api.profileLock(), true);
+  assert.equal(await api.setProfileLock(false), false);
+  assert.equal(fetch.calls[4].method, "PATCH");
+  assert.deepEqual(fetch.calls[4].body, { profile_lock: false });
+});
