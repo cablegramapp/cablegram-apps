@@ -71,6 +71,7 @@ fun PhoneApp(viewModel: PhoneViewModel) {
         viewModel.verifyingEmail -> VerifyEmailForm(viewModel)
         viewModel.addingTv -> PairingForm(viewModel)
         viewModel.needsName -> NameForm(viewModel)
+        viewModel.welcomeTourOpen -> WelcomeTour(viewModel)
         else -> LibraryShell(viewModel)
     }
     if (viewModel.pendingPair != null) PairTrustDialog(viewModel)

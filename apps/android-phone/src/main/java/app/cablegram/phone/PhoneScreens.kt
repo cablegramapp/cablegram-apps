@@ -888,12 +888,11 @@ private fun StorageMetric(label: String, value: String) {
 
 @Composable
 private fun SettingsScreen(viewModel: PhoneViewModel) {
-    var subtitleAccounts by remember { mutableStateOf(false) }
-    if (subtitleAccounts) {
-        BackHandler { subtitleAccounts = false }
+    if (viewModel.subtitleAccountsOpen) {
+        BackHandler { viewModel.subtitleAccountsOpen = false }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            TextButton(onClick = { subtitleAccounts = false }) { Text("Back to Settings") }
-            SubtitleProviderSetup(viewModel, onDone = { subtitleAccounts = false }, doneLabel = "Done", requireAccount = false)
+            TextButton(onClick = { viewModel.subtitleAccountsOpen = false }) { Text("Back to Settings") }
+            SubtitleProviderSetup(viewModel, onDone = { viewModel.subtitleAccountsOpen = false }, doneLabel = "Done", requireAccount = false)
         }
         return
     }
@@ -932,7 +931,8 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 OutlinedButton(onClick = viewModel::startEmailVerification, modifier = Modifier.fillMaxWidth().maestro("settings_confirm_email")) { Text("Confirm email") }
             }
         }
-        OutlinedButton(onClick = { subtitleAccounts = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle accounts") }
+        OutlinedButton(onClick = { viewModel.subtitleAccountsOpen = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle accounts") }
+        OutlinedButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text("Show the welcome tour") }
         SectionCard("Your TVs") {
             if (!viewModel.paired) Text("Connect a TV to enjoy your library on a bigger screen.", color = VlcMuted)
             viewModel.tvs.forEach { tv ->
