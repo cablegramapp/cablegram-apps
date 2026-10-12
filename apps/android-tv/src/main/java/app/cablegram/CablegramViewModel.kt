@@ -55,6 +55,9 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+/** How long the waiting clip fades before the player replaces it. */
+private const val SIGNATURE_FADE_MS = 400L
+
 sealed interface ScreenState {
     data object Loading : ScreenState
     data class Pairing(val session: DeviceSession, val nameRequired: Boolean = false) : ScreenState
@@ -79,6 +82,10 @@ sealed interface ScreenState {
         /** T075: private playback is waiting for phone approval — show the permit panel. */
         val awaitingApproval: Boolean = false,
         val signatureAttemptId: String? = null,
+        /** The title is ready and starts within [SignaturePlaybackGate.MINIMUM_MS]; OK starts it now. */
+        val readyToStart: Boolean = false,
+        /** The clip is fading out just before the player replaces it. */
+        val fadingOut: Boolean = false,
     ) : ScreenState
     data class Player(val video: Video, val playback: PlaybackResponse) : ScreenState
     /** A Telegram title was opened while this TV still waits for the Telegram two-step password. */
@@ -134,8 +141,10 @@ class CablegramViewModel @JvmOverloads constructor(
     private var remoteTitleCommand by mutableStateOf<Pair<String, String>?>(null)
     val pendingRemoteTitleId: String? get() = remoteTitleCommand?.first
     private var playbackJob: Job? = null
-    private val signatureGate = SignaturePlaybackGate<ScreenState.Player>()
+    private val signatureGate = SignaturePlaybackGate()
     private var signatureAttemptId: String? = null
+    private var releaseJob: Job? = null
+    private var readyPlayer: Pair<String, ScreenState.Player>? = null
     private var lastPlayerPosition: Pair<String, Int>? = null
     data class OpeningSignature(val id: String, val url: String)
     var openingSignature by mutableStateOf<OpeningSignature?>(null)
@@ -154,28 +163,51 @@ class CablegramViewModel @JvmOverloads constructor(
         if (openingSignature?.id == id) openingSignature = null
     }
 
-    private fun beginSignature(video: Video, url: String, converting: Boolean = false): String {
+    private fun beginSignature(video: Video, url: String, converting: Boolean = false, holdForClip: Boolean = true): String {
         val id = java.util.UUID.randomUUID().toString()
+        releaseJob?.cancel(); readyPlayer = null
         signatureAttemptId = id
-        signatureGate.begin(id)
+        signatureGate.begin(id, holdForClip)
         screen = ScreenState.Resolving(video, converting = converting, loadingVideoUrl = url, signatureAttemptId = id)
         return id
     }
 
-    fun finishPlaybackSignature(id: String?) {
-        if (id == null || (screen as? ScreenState.Resolving)?.signatureAttemptId != id) return
-        signatureGate.complete(id)?.let { screen = it }
+    /** The waiting clip is on screen; from here a slow title gives it a short minimum, never a whole cycle. */
+    fun signatureClipStarted(id: String?) {
+        if (id != null) signatureGate.clipStarted(id)
+    }
+
+    /** OK on the ready screen: skip the rest of the clip. */
+    fun startReadyPlaybackNow(id: String?) {
+        val (readyId, player) = readyPlayer ?: return
+        if (readyId != id || !signatureGate.isCurrent(readyId)) return
+        releaseJob?.cancel(); readyPlayer = null
+        screen = player
     }
 
     private fun presentReadyPlayback(player: ScreenState.Player, id: String) {
-        signatureGate.ready(id, player)?.let { screen = it } ?: run {
-            if (signatureAttemptId == id) {
-                val resolving = screen as? ScreenState.Resolving ?: return
-                screen = resolving.copy(video = player.video, awaitingApproval = false,
-                    prepareLabel = "Your video is ready. Starting after this clip.")
+        val wait = signatureGate.delayFor(id) ?: return
+        readyPlayer = id to player
+        releaseJob?.cancel()
+        releaseJob = viewModelScope.launch {
+            val resolving = (screen as? ScreenState.Resolving)?.takeIf { it.signatureAttemptId == id }
+            if (resolving != null && wait > 0) {
+                screen = resolving.copy(video = player.video, awaitingApproval = false, readyToStart = true,
+                    prepareLabel = "Your video is ready.")
+                delay(wait)
             }
+            if (!signatureGate.isCurrent(id) || readyPlayer?.first != id) return@launch
+            // A short fade instead of a hard cut, only when the clip is what is on screen.
+            (screen as? ScreenState.Resolving)?.takeIf { it.signatureAttemptId == id }?.let {
+                screen = it.copy(fadingOut = true)
+                delay(SIGNATURE_FADE_MS)
+            }
+            if (!signatureGate.isCurrent(id) || readyPlayer?.first != id) return@launch
+            readyPlayer = null
+            screen = player
         }
     }
+
     private var cachedVideos: List<Video> = emptyList()
     private var profiles: List<Profile> = emptyList()
     private var activeProfileId: String? = null
@@ -405,7 +437,7 @@ class CablegramViewModel @JvmOverloads constructor(
     fun retry() {
         val video = failedPlaybackVideo
         if (video != null) {
-            play(video)
+            play(video, holdForClip = false)
             return
         }
         viewModelScope.launch {
@@ -539,7 +571,8 @@ class CablegramViewModel @JvmOverloads constructor(
         play(video)
     }
 
-    fun play(video: Video) {
+    /** [holdForClip] is false for casts, remote commands and retries: those start the moment the title is ready. */
+    fun play(video: Video, holdForClip: Boolean = true) {
         // The same title continuing (after the Telegram password prompt, say) keeps the phone's command open.
         if (remoteTitleCommand?.second != video.id) finishRemoteTitle("superseded")
         castApp?.mediaSession?.begin(video.id, video.title ?: "Cablegram", video.posterUrl, video.durationSeconds?.times(1000L))
@@ -552,7 +585,7 @@ class CablegramViewModel @JvmOverloads constructor(
             librarySyncJob?.cancel()
             failedPlaybackVideo = null
             playbackJob?.cancel()
-            val id = beginSignature(video, signatureUrl())
+            val id = beginSignature(video, signatureUrl(), holdForClip = holdForClip)
             presentReadyPlayback(ScreenState.Player(video, PlaybackResponse(status = "ready", url = url)), id)
             return
         }
@@ -568,7 +601,7 @@ class CablegramViewModel @JvmOverloads constructor(
         failedPlaybackVideo = null
         val loadingUrl = signatureUrl()
         playbackJob?.cancel()
-        val id = beginSignature(video, loadingUrl)
+        val id = beginSignature(video, loadingUrl, holdForClip = holdForClip)
         playbackJob = viewModelScope.launch { awaitPlayback(video, currentToken, loadingUrl, id) }
     }
 
@@ -719,6 +752,7 @@ class CablegramViewModel @JvmOverloads constructor(
 
     fun closePlayer() {
         signatureGate.cancel()
+        releaseJob?.cancel(); readyPlayer = null
         signatureAttemptId = null
         castApp?.mediaSession?.stop()
         phoneRelayChoice = null
@@ -1361,7 +1395,7 @@ class CablegramViewModel @JvmOverloads constructor(
 
     private fun startRemoteTitle(command: TvCommand, video: Video) {
         finishRemoteTitle("superseded")
-        play(video)
+        play(video, holdForClip = false)
         remoteTitleCommand = command.id to video.id
     }
 

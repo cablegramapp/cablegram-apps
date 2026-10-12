@@ -47,7 +47,8 @@ internal data class LocalSubtitleFile(val reference: String, val cues: List<Subt
                 .filterNot { Regex("^(NOTE(?:[ \\t]|$)|STYLE$|REGION$)").containsMatchIn(it.trimStart().lineSequence().first()) }
                 .joinToString("\n\n") else text
             val cues = LocalSubtitleTimeline.parse(content)
-            if (cues.any { cue -> cue.start < 0 || cue.text.any { (it.code < 32 && it !in "\t\n\r") || it in "<>" } }) {
+            // A stray "<" or ">" (">> NARRATOR:", "<3") is ordinary caption text; the server shows it safely.
+            if (cues.any { cue -> cue.start < 0 || cue.text.any { it.code < 32 && it !in "\t\n\r" } }) {
                 throw LocalSubtitleError("invalid_subtitle")
             }
             if (Json.encodeToString(cues).toByteArray(Charsets.UTF_8).size > MAX_BYTES) throw LocalSubtitleError("local_subtitle_too_large")

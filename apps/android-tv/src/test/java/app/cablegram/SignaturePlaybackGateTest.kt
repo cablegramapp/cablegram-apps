@@ -5,38 +5,43 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SignaturePlaybackGateTest {
-    @Test fun readyMovieWaitsForOneClip() {
-        val gate = SignaturePlaybackGate<String>()
+    private var time = 0L
+    private val gate = SignaturePlaybackGate(now = { time })
+
+    @Test fun quickTitleStartsAtOnce() {
         gate.begin("a")
-        assertNull(gate.ready("a", "movie"))
-        assertEquals("movie", gate.complete("a"))
-        assertNull(gate.complete("a"))
+        gate.clipStarted("a")
+        time = 1_200
+        assertEquals(0L, gate.delayFor("a"))
     }
 
-    @Test fun longerPreparationDoesNotRequireAnotherFullLoop() {
-        val gate = SignaturePlaybackGate<String>()
+    @Test fun slowerTitleGetsTheShortMinimumNotAWholeClip() {
         gate.begin("a")
-        assertNull(gate.complete("a"))
-        assertEquals("movie", gate.ready("a", "movie"))
+        time = 1_000; gate.clipStarted("a")
+        time = 2_000
+        assertEquals(1_000L, gate.delayFor("a"))
+        time = 30_000
+        assertEquals(0L, gate.delayFor("a"))
     }
 
-    @Test fun oldClipAndOldMovieCannotReleaseANewAttempt() {
-        val gate = SignaturePlaybackGate<String>()
+    @Test fun clipThatNeverAppearedHoldsNothing() {
         gate.begin("a")
-        gate.ready("a", "old")
-        gate.begin("b")
-        assertNull(gate.complete("a"))
-        assertNull(gate.ready("a", "old"))
-        assertNull(gate.ready("b", "new"))
-        assertEquals("new", gate.complete("b"))
+        time = 5_000
+        assertEquals(0L, gate.delayFor("a"))
     }
 
-    @Test fun cancellingDiscardsReadyMovieAndLateCompletion() {
-        val gate = SignaturePlaybackGate<String>()
-        gate.begin("a")
-        gate.ready("a", "movie")
+    @Test fun castsAndRetriesAreNeverHeld() {
+        gate.begin("a", holdForClip = false)
+        time = 1_600; gate.clipStarted("a")
+        time = 1_700
+        assertEquals(0L, gate.delayFor("a"))
+    }
+
+    @Test fun olderAttemptsCannotReleaseATitle() {
+        gate.begin("old")
+        gate.begin("new")
+        assertNull(gate.delayFor("old"))
         gate.cancel()
-        assertNull(gate.complete("a"))
-        assertNull(gate.ready("a", "movie"))
+        assertNull(gate.delayFor("new"))
     }
 }
