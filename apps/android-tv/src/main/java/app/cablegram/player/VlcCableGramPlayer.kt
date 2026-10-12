@@ -13,6 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.interfaces.IMedia
@@ -56,12 +59,23 @@ private const val SETTLE_SAMPLE_MS = 1_000L
 /** Pictures that must be displayed in a clean sample (about a third of a second of film). */
 private const val SETTLE_MIN_PICTURES = 8
 
+/** What the screen and media session tell apart: starved (under 50 %), filling, or full. */
+internal fun bufferingLevel(percent: Float): Int = when {
+    percent >= 100f -> 2
+    percent >= 50f -> 1
+    else -> 0
+}
+
 class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     private val appContext = context.applicationContext
     private val libVlc = VlcEngine.get(context)
     private val mediaPlayer = MediaPlayer(libVlc)
     private val videoLayout = VLCVideoLayout(context)
-    private val eventFlow = MutableSharedFlow<PlayerEvent>(extraBufferCapacity = 8)
+    private val eventFlow = MutableSharedFlow<PlayerEvent>(extraBufferCapacity = 64)
+    private val settlingState = MutableStateFlow(false)
+    override val isSettling: StateFlow<Boolean> = settlingState.asStateFlow()
+    /** The last buffering level reported (see [bufferingLevel]); VLC sends dozens of Buffering events per seek. */
+    private var reportedBufferingLevel = -1
     private var availableAudioTracks: List<PlayerTrack> = emptyList()
     private var availableSubtitleTracks: List<PlayerTrack> = emptyList()
     private var selectedAudioTrackId: Int? = null
@@ -109,7 +123,11 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
                     val percent = event.buffering.coerceIn(0f, 100f)
                     if (percent < 100f) playedClock.onStall(SystemClock.elapsedRealtime())
                     if (settling && percent >= 100f) settleBuffered = true
-                    eventFlow.tryEmit(PlayerEvent.Buffering(percent))
+                    val level = bufferingLevel(percent)
+                    if (level != reportedBufferingLevel) {
+                        reportedBufferingLevel = level
+                        eventFlow.tryEmit(PlayerEvent.Buffering(percent))
+                    }
                 }
                 MediaPlayer.Event.Playing -> {
                     if (!startedOnce && currentSubtitles.isNotEmpty() && !smartAdded) handler.postDelayed(addSmartSubtitles, SMART_SUBTITLE_DELAY_MS)
@@ -182,6 +200,8 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         playedClock.reset()
         handler.removeCallbacks(settleTick)
         settling = false
+        settlingState.value = false
+        reportedBufferingLevel = -1
         settleOnFirstPlaying = source.startPositionMs > 0
         attachMedia(source.url, source.startPositionMs, source.headers)
         if (viewsAttached) mediaPlayer.play() else playWhenAttached = true
@@ -253,6 +273,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         // Posted 1.2 s after Playing: it must not reach LibVLC once the player is released.
         handler.removeCallbacks(addSmartSubtitles)
         settling = false
+        settlingState.value = false
         playWhenAttached = false
         viewsAttached = false
         mediaPlayer.stop()
@@ -334,7 +355,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         settleBuffered = false
         settleSampleAt = 0L
         if (resumePlaying && mediaPlayer.isPlaying) mediaPlayer.pause()
-        eventFlow.tryEmit(PlayerEvent.Settling(true))
+        settlingState.value = true
         handler.postDelayed(settleTick, SETTLE_TICK_MS)
     }
 
@@ -376,7 +397,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         settling = false
         // Never leave the film paused by the hold itself.
         if (settleResume && !settleResumed) mediaPlayer.play()
-        eventFlow.tryEmit(PlayerEvent.Settling(false))
+        settlingState.value = false
     }
 
     /** Saved subtitles are plain files, so they work the same over LAN, relay, Telegram or cloud storage. */

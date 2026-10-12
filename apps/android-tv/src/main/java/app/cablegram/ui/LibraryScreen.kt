@@ -933,7 +933,7 @@ private fun LabeledPosterRow(
                     is MovieEntry -> PosterCard(
                         title = entry.title,
                         caption = entry.title,
-                        posterUrl = entry.video.posterUrl,
+                        poster = entry.video.posterModel(),
                         progress = entry.progress,
                         preparing = entry.video.tier == "ingesting",
                         prepareProgress = entry.video.ingestProgress,
@@ -948,7 +948,7 @@ private fun LabeledPosterRow(
                     is ShowEntry -> PosterCard(
                         title = entry.title,
                         caption = entry.title,
-                        posterUrl = entry.show.posterUrl,
+                        poster = entry.show.poster,
                         progress = entry.progress,
                         preparing = false,
                         prepareProgress = null,
@@ -1015,7 +1015,7 @@ private fun EpisodeRow(
             PosterCard(
                 title = item.showTitle(),
                 caption = item.episodeCaption(),
-                posterUrl = item.backdropUrl ?: item.posterUrl ?: show.posterUrl,
+                poster = if (item.isPrivate) privateThumbnail(item.id) else item.backdropUrl ?: item.posterUrl ?: show.poster,
                 progress = item.progressFraction(),
                 preparing = item.tier == "ingesting",
                 prepareProgress = item.ingestProgress,
@@ -1036,7 +1036,8 @@ private fun EpisodeRow(
 private fun PosterCard(
     title: String,
     caption: String?,
-    posterUrl: String?,
+    /** A URL, or a drawable for a private title's stand-in. */
+    poster: Any?,
     progress: Float,
     preparing: Boolean,
     prepareProgress: Int? = null,
@@ -1051,7 +1052,7 @@ private fun PosterCard(
     onLongClick: (() -> Unit)? = null,
 ) {
     var focused by remember { mutableStateOf(false) }
-    var imageFailed by remember(posterUrl) { mutableStateOf(false) }
+    var imageFailed by remember(poster) { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(requestFocus) {
         if (!requestFocus) return@LaunchedEffect
@@ -1107,8 +1108,8 @@ private fun PosterCard(
                 .border(if (focused) 3.dp else 1.dp, if (focused) Paper else Color.White.copy(alpha = 0.06f), shape),
         ) {
             when {
-                posterUrl != null && !imageFailed -> AsyncImage(
-                    model = posterUrl,
+                poster != null && !imageFailed -> AsyncImage(
+                    model = poster,
                     contentDescription = "$title poster",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
@@ -1374,6 +1375,8 @@ private data class ShowEntry(val show: TvShow) : LibraryEntry {
 private data class TvShow(val id: String, val episodes: List<Video>) {
     val title: String = episodes.first().showTitle()
     val posterUrl: String? = episodes.firstNotNullOfOrNull { it.posterUrl }
+    /** The show's card: an episode's poster, else the private stand-in when an episode is private. */
+    val poster: Any? = posterUrl ?: episodes.firstOrNull { it.isPrivate }?.let { privateThumbnail(id) }
     val addedAt: String = episodes.maxOf { it.addedAtTimestamp }
     fun heroEpisode(): Video = episodes.maxBy { it.resumePositionSeconds ?: 0 }
 

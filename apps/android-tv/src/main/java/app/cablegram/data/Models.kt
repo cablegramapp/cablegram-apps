@@ -157,6 +157,8 @@ data class Video(
     val availableOnCloud: Boolean = false,
     val availableOnRelay: Boolean = false,
     val originIdentity: String? = null,
+    /** A private title: the TV shows a branded stand-in, never its own poster or backdrop. */
+    val isPrivate: Boolean = false,
 )
 
 /**

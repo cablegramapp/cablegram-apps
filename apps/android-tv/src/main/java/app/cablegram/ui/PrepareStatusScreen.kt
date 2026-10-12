@@ -104,10 +104,10 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onC
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                val posterUrl = screen.video.posterUrl
-                if (!posterUrl.isNullOrBlank()) {
+                val poster = screen.video.posterModel()
+                if (poster != null) {
                     AsyncImage(
-                        model = posterUrl,
+                        model = poster,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -180,7 +180,7 @@ private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onClipStarte
             Text(when { screen.awaitingApproval -> "Waiting for approval"; offline -> "Looking for your phone"; else -> "Preparing your video" }, color = Paper, fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                screen.video.posterUrl?.takeIf { it.isNotBlank() }?.let { poster ->
+                screen.video.posterModel()?.let { poster ->
                     AsyncImage(
                         model = poster,
                         contentDescription = null,
