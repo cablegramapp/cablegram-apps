@@ -26,6 +26,8 @@ sealed interface Outcome {
     data object TimedOut : Outcome
     /** The server cannot report outcomes yet, so the TV's result is unknown. */
     data object Unconfirmable : Outcome
+    /** A title start the TV never picked up, and the TV has gone offline (CAB-58). */
+    data object Unreachable : Outcome
 }
 
 /** How long to wait: a control gives up quickly; a title start waits until the command expires. */
@@ -42,18 +44,28 @@ private const val FAST_POLL_WINDOW_MS = 2_000L
 private const val EXPIRY_GRACE_MS = 1_500L
 // Upper bound for a title start whatever the server reports (its TTL is 300 s).
 private const val TITLE_START_MAX_MS = 310_000L
+// CAB-58: a title start the TV has not picked up after this long is checked against the TV's presence.
+const val UNREACHABLE_GRACE_MS = 5_000L
+private const val PRESENCE_CHECK_MS = 3_000L
 
 /**
  * Polls the command's status until the TV confirms or rejects it, or the wait ends.
  * Free of Android dependencies: [fetch] and [clock] are injected for tests.
+ *
+ * CAB-58: a title start waits up to the command's 300 s life, which suits a TV that is busy, not one that is gone.
+ * The server counts a TV as on for about 15 s after it last polled, so a title can be sent to a TV that was just
+ * closed or lost its network, and nothing would ever pick it up. While the TV has not picked the title up,
+ * [tvOnline] is asked now and then; once it says the TV is offline, the wait ends as [Outcome.Unreachable].
  */
 suspend fun awaitOutcome(
     id: String,
     wait: ConfirmationWait,
     fetch: suspend (String) -> CommandStatus?,
     clock: () -> Long = System::currentTimeMillis,
+    tvOnline: (suspend () -> Boolean?)? = null,
 ): Outcome {
     val start = clock()
+    var presenceCheckedAt = Long.MIN_VALUE / 2
     var deadline = start + when (wait) {
         is ConfirmationWait.Control -> wait.capMs
         ConfirmationWait.TitleStart -> TITLE_START_MAX_MS
@@ -66,8 +78,16 @@ suspend fun awaitOutcome(
                 "rejected" -> return Outcome.Rejected(status.reason)
                 // Anchored on this phone's clock at the read: the server's absolute expiry would
                 // end the wait early on a phone whose clock runs ahead.
-                else -> if (wait == ConfirmationWait.TitleStart && status.expiresInMs != null) {
-                    deadline = minOf(clock() + status.expiresInMs + EXPIRY_GRACE_MS, start + TITLE_START_MAX_MS)
+                else -> {
+                    if (wait == ConfirmationWait.TitleStart && status.expiresInMs != null) {
+                        deadline = minOf(clock() + status.expiresInMs + EXPIRY_GRACE_MS, start + TITLE_START_MAX_MS)
+                    }
+                    val at = clock()
+                    if (wait == ConfirmationWait.TitleStart && status.state == "pending" && tvOnline != null &&
+                        at - start >= UNREACHABLE_GRACE_MS && at - presenceCheckedAt >= PRESENCE_CHECK_MS) {
+                        presenceCheckedAt = at
+                        if (tvOnline() == false) return Outcome.Unreachable
+                    }
                 }
             }
             null -> Unit // a transient read failure; keep polling until the deadline

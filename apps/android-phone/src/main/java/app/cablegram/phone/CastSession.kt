@@ -83,7 +83,8 @@ object CastSession {
 
     /** Waits for the TV to confirm a command the control plane accepted. */
     suspend fun confirm(client: CatalogClient, sent: Result.Sent, wait: ConfirmationWait): Outcome =
-        awaitOutcome(sent.commandId, wait, { client.commandStatus(sent.token, it) })
+        awaitOutcome(sent.commandId, wait, { client.commandStatus(sent.token, it) },
+            tvOnline = sent.deviceId?.let { deviceId -> { client.tvPlayback(sent.token, deviceId)?.online } })
 }
 
 /** The remote buttons on the ongoing notification while something plays on the TV. */
