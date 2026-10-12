@@ -313,14 +313,19 @@ fun ApprovalCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
             border = BorderStroke(2.dp, VlcOrange),
             modifier = modifier.fillMaxWidth(),
         ) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val profile = approval.kind == ApprovalKind.Profile
+            Column(Modifier.padding(14.dp).maestro(MaestroIds.APPROVAL_CARD), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    if (viewModel.pendingApprovals.size > 1) "TV approval · ${viewModel.pendingApprovals.size} requests" else "TV playback approval",
+                    when {
+                        viewModel.pendingApprovals.size > 1 -> "TV approval · ${viewModel.pendingApprovals.size} requests"
+                        profile -> "${approval.tvName?.takeIf { it.isNotBlank() } ?: "A TV"} wants to open a profile"
+                        else -> "TV playback approval"
+                    },
                     color = VlcOrange,
                     style = MaterialTheme.typography.labelMedium,
                 )
                 Text(
-                    approval.title?.takeIf { it.isNotBlank() } ?: "A private title wants to play on the TV",
+                    approval.title?.takeIf { it.isNotBlank() } ?: if (profile) "A profile" else "A private title wants to play on the TV",
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -328,10 +333,11 @@ fun ApprovalCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
                     Button(
                         onClick = { viewModel.respondToApproval(approval, approve = true) },
                         colors = ButtonDefaults.buttonColors(containerColor = VlcOrange),
+                        modifier = Modifier.maestro(MaestroIds.APPROVAL_ALLOW),
                     ) {
-                        Text("Allow once", color = VlcBlack)
+                        Text(if (profile) "Allow" else "Allow once", color = VlcBlack)
                     }
-                    OutlinedButton(onClick = { viewModel.respondToApproval(approval, approve = false) }) {
+                    OutlinedButton(onClick = { viewModel.respondToApproval(approval, approve = false) }, modifier = Modifier.maestro(MaestroIds.APPROVAL_DENY)) {
                         Text("Not now", color = Color.White)
                     }
                 }
@@ -906,6 +912,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
     var profileToDelete by remember { mutableStateOf<HouseholdProfile?>(null) }
     LaunchedEffect(Unit) {
         viewModel.loadProfiles()
+        viewModel.loadProfileLock()
         viewModel.loadRelayUsage()
         viewModel.refreshEmailStatus()
     }
@@ -930,6 +937,18 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 Text("Your email isn't confirmed yet. Free relay streaming needs a confirmed email.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
                 OutlinedButton(onClick = viewModel::startEmailVerification, modifier = Modifier.fillMaxWidth().maestro("settings_confirm_email")) { Text("Confirm email") }
             }
+            HorizontalDivider(color = PhoneOutline)
+            viewModel.profileLock?.let { locked ->
+                PrefSwitch("Lock account on TVs", locked, viewModel::updateProfileLock, MaestroIds.SETTINGS_PROFILE_LOCK)
+            }
+            Text(
+                when (viewModel.profileLock) {
+                    true -> "A TV asks this phone before it opens any profile."
+                    false -> "Any paired TV opens profiles without asking."
+                    null -> "Couldn't load the account lock. Check your connection."
+                },
+                color = VlcMuted, style = MaterialTheme.typography.bodySmall,
+            )
         }
         OutlinedButton(onClick = { viewModel.subtitleAccountsOpen = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle accounts") }
         OutlinedButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text("Show the welcome tour") }

@@ -540,7 +540,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         viewModelScope.launch {
-            PrivateApprovals.pending.value = runCatching { catalog().fetchPendingPrivateApprovals(token) }.getOrDefault(emptyList())
+            PrivateApprovals.pending.value = runCatching { catalog().fetchAllPendingApprovals(token) }.getOrDefault(emptyList())
         }
     }
 
@@ -551,14 +551,18 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         PrivateApprovals.cancelNotification(app, approval.attemptId)
         PrivateApprovals.pending.value = PrivateApprovals.pending.value.filterNot { it.attemptId == approval.attemptId }
         viewModelScope.launch {
+            val what = if (approval.kind == ApprovalKind.Profile) approval.title ?: "the profile" else "playback"
             runCatching {
-                val accepted = if (approve) catalog().approvePrivatePlayback(token, approval.attemptId) != null
-                else catalog().denyPrivatePlayback(token, approval.attemptId)
-                check(accepted) { "The request was not accepted. Refresh and try again" }
+                check(catalog().answerApproval(token, approval, approve)) { "The request was not accepted. Refresh and try again" }
             }.onSuccess {
-                status = if (approve) "Playback allowed for this attempt." else "Playback denied."
+                status = when {
+                    approval.kind == ApprovalKind.Profile && approve -> "${approval.tvName ?: "The TV"} can open $what."
+                    approval.kind == ApprovalKind.Profile -> "${approval.tvName ?: "The TV"} won't open $what."
+                    approve -> "Playback allowed for this attempt."
+                    else -> "Playback denied."
+                }
             }.onFailure {
-                status = "Couldn't ${if (approve) "allow" else "deny"} playback: ${it.message ?: "try again"}."
+                status = "Couldn't ${if (approve) "allow" else "deny"} $what: ${it.message ?: "try again"}."
                 refreshPendingApprovals()
             }
         }
@@ -1443,6 +1447,26 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun loadRelayUsage() {
         val token = pairing.accountToken ?: return
         viewModelScope.launch { catalog().relayUsage(token, pairing.phoneDeviceId)?.let { relayUsage = it } }
+    }
+
+    /** Profile lock: TVs ask a phone before opening a profile. Null until the server answers. */
+    var profileLock by mutableStateOf<Boolean?>(null)
+        private set
+
+    fun loadProfileLock() {
+        val token = pairing.accountToken ?: return
+        viewModelScope.launch { catalog().profileLock(token)?.let { profileLock = it } }
+    }
+
+    fun updateProfileLock(on: Boolean) {
+        val token = pairing.accountToken ?: return
+        val before = profileLock
+        profileLock = on
+        viewModelScope.launch {
+            val saved = catalog().setProfileLock(token, on)
+            profileLock = saved ?: before
+            if (saved == null) status = "Couldn't change the profile lock. Check your connection and try again."
+        }
     }
 
     fun loadProfiles() {

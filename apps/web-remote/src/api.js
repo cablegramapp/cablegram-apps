@@ -125,5 +125,11 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
     pendingTvLogins: async () => (await send("/api/telegram/tv-logins/pending")).requests || [],
     /** The web client may only answer "approved" or "denied"; the server refuses "failed". */
     answerTvLogin: (id, allow) => send(`/api/telegram/tv-logins/${id}/result`, { method: "POST", body: { outcome: allow ? "approved" : "denied" } }),
+    /** Profile lock: TVs waiting for a phone to allow a profile. */
+    pendingProfileRequests: async () => (await send("/api/profiles/switch-requests/pending")).items || [],
+    answerProfileRequest: (id, allow) => send(`/api/profiles/switch-requests/${encodeURIComponent(id)}/${allow ? "approve" : "deny"}`, { method: "POST", body: {} }),
+    /** Whether TVs must ask before opening a profile. */
+    profileLock: async () => (await send("/api/me")).household?.profile_lock === true,
+    setProfileLock: async (on) => (await send("/api/household", { method: "PATCH", body: { profile_lock: on } })).household?.profile_lock === true,
   };
 }

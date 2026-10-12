@@ -204,6 +204,10 @@ class CablegramApi(
     suspend fun getProfileSwitchRequest(requestId: String, token: String): ProfileSwitchRequest =
         execute(authenticatedRequest("api/profiles/switch-requests/$requestId", token).get().build())
 
+    /** The viewer stopped waiting for a phone to allow the profile. */
+    suspend fun cancelProfileSwitch(requestId: String, token: String) =
+        executeNoContent(authenticatedRequest("api/profiles/switch-requests/$requestId/cancel", token).post("{}".toRequestBody(jsonMediaType)).build())
+
     /** R-4 / FR-008: verify a profile PIN before the TV attaches to it. */
     /** Returns the HTTP status: 2xx unlocked, 403 wrong PIN, 429 locked out after too many tries. */
     suspend fun unlockProfile(profileId: String, pin: String, token: String): Int {
