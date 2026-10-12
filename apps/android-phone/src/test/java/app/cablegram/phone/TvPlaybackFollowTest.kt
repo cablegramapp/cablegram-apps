@@ -33,6 +33,15 @@ class TvPlaybackFollowTest {
     }
 
     @Test
+    fun `an older report wins once the command has settled`() {
+        // Seen on device: the title ended on the TV 2 s before a Stop the TV then rejected. A stopped TV never
+        // reports again, so the "stopped" must still win after the shield.
+        val stopped = report("stopped", ageMs = 2_000 + OWN_COMMAND_SHIELD_MS, videoId = null)
+        assertEquals(TvFollow.Keep, followTv(report("stopped", ageMs = 2_000, videoId = null), "v1", sinceOwnCommandMs = 0))
+        assertEquals(TvFollow.Stopped, followTv(stopped, "v1", sinceOwnCommandMs = OWN_COMMAND_SHIELD_MS))
+    }
+
+    @Test
     fun `nothing reported yet keeps what the phone shows`() {
         assertEquals(TvFollow.Keep, followTv(report("unknown", ageMs = null), "v1", longAgo))
     }
