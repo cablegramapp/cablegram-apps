@@ -71,4 +71,37 @@ class CommandConfirmationTest {
         assertEquals(Outcome.Unconfirmable, awaitOutcome("c", ConfirmationWait.Control(), { CommandStatus.Unsupported }, { currentTime }))
         assertEquals(0L, currentTime)
     }
+
+    @Test
+    fun `a title start to a TV that went offline ends early (CAB-58)`() = runTest {
+        var asked = 0
+        val outcome = awaitOutcome("c", ConfirmationWait.TitleStart, { known("pending", expiresInMs = 300_000L - currentTime) }, { currentTime },
+            tvOnline = { asked++; currentTime < 12_000L })
+        assertEquals(Outcome.Unreachable, outcome)
+        // Not before the grace, and soon after the TV is reported offline.
+        assertTrue(currentTime in 12_000L..16_000L)
+        assertTrue(asked >= 2)
+    }
+
+    @Test
+    fun `a title the TV already picked up is not cut short`() = runTest {
+        val states = ArrayDeque(List(20) { known("delivered", expiresInMs = 300_000L) } + known("completed"))
+        val outcome = awaitOutcome("c", ConfirmationWait.TitleStart, { states.removeFirst() }, { currentTime }, tvOnline = { false })
+        assertEquals(Outcome.Confirmed, outcome)
+    }
+
+    @Test
+    fun `an unknown presence keeps waiting`() = runTest {
+        val states = ArrayDeque(List(15) { known("pending", expiresInMs = 300_000L) } + known("completed"))
+        val outcome = awaitOutcome("c", ConfirmationWait.TitleStart, { states.removeFirst() }, { currentTime }, tvOnline = { null })
+        assertEquals(Outcome.Confirmed, outcome)
+    }
+
+    @Test
+    fun `controls never ask for presence`() = runTest {
+        var asked = 0
+        val outcome = awaitOutcome("c", ConfirmationWait.Control(), { known("pending") }, { currentTime }, tvOnline = { asked++; false })
+        assertEquals(Outcome.TimedOut, outcome)
+        assertEquals(0, asked)
+    }
 }

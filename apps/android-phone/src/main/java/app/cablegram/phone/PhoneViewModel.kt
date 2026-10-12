@@ -2899,6 +2899,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             is Outcome.Rejected -> rejectionMessage(outcome.reason, sent.tvName)
             Outcome.TimedOut -> "${sent.tvName} didn't confirm. Check the TV."
             Outcome.Unconfirmable -> "Sent (not confirmed by TV)"
+            Outcome.Unreachable -> "${sent.tvName} isn't responding. Open Cablegram on it, choose who's watching, then try again."
         })
         ownCommandAt = SystemClock.elapsedRealtime()
         return SentCommand(sent.tvName, outcome, latest = generation == commandGeneration, deviceId = sent.deviceId)
