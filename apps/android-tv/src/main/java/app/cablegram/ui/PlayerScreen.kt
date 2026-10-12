@@ -456,6 +456,7 @@ fun PlayerScreen(
             hud = hud.copy(controlsVisible = false, previewPositionMs = null, holdMultiplier = 1)
         }
     }
+    LaunchedEffect(player) { player.isSettling.collect { settling = it } }
     LaunchedEffect(player, start, retryCount) {
         val position = (if (retryCount > 0) reachedMs else start) ?: return@LaunchedEffect
         if (retryCount == 0) reachedMs = position // a failure before anything played still resumes from here
@@ -503,7 +504,6 @@ fun PlayerScreen(
                     }
                     applySavedSubtitleIfNeeded()
                 }
-                is PlayerEvent.Settling -> settling = event.active
                 is PlayerEvent.Buffering -> {
                     streamHealth = when {
                         event.percent >= 100f -> StreamHealth.GOOD
