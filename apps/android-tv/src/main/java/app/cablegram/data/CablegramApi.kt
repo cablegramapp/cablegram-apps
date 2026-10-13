@@ -181,6 +181,9 @@ class CablegramApi(
                     addedAtTimestamp = item.createdAt.orEmpty(),
                     inMyList = item.inMyList,
                     isPrivate = isPrivate,
+                    sourceKinds = item.sources
+                        .filter { it.archiveState != "archived" && it.availability != "unavailable" }
+                        .mapNotNull { it.kind }.distinct(),
                 )
             },
         )
