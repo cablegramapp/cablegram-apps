@@ -1085,6 +1085,8 @@ data class TelegramLinkDto(
     @kotlinx.serialization.SerialName("trust_level") val trustLevel: String = "home",
     /** The phone whose Telegram session can stream titles to this TV. */
     @kotlinx.serialization.SerialName("phone_device_id") val phoneDeviceId: String? = null,
+    /** Whether the account has two-step verification, as the household phone reported it; null when unknown. */
+    @kotlinx.serialization.SerialName("two_step") val twoStep: Boolean? = null,
 ) {
     val userId: Long? get() = telegramUserId?.content?.toLongOrNull()
     val chatId: Long? get() = libraryChatId?.content?.toLongOrNull()

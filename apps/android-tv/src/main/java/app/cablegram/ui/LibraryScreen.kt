@@ -110,6 +110,7 @@ internal fun LibraryScreen(
     telegramViaPhone: Boolean = false,
     onTelegramViaPhone: (Boolean) -> Unit = {},
     onTelegramConnect: () -> Unit = {},
+    onTelegramSignInWithoutPassword: () -> Unit = {},
     onTelegramCancel: () -> Unit = {},
 ) {
     var selectedGenre by remember { mutableStateOf<String?>(null) }
@@ -278,6 +279,7 @@ internal fun LibraryScreen(
                         telegramViaPhone = telegramViaPhone,
                         onTelegramViaPhone = onTelegramViaPhone,
                         onTelegramConnect = onTelegramConnect,
+                        onTelegramSignInWithoutPassword = onTelegramSignInWithoutPassword,
                         onTelegramCancel = onTelegramCancel,
                     )
                     return@Column

@@ -47,6 +47,9 @@ interface TelegramApi {
     suspend fun cancelDownload(fileId: Int)
     suspend fun deleteLocalFile(fileId: Int)
 
+    /** Whether the account has two-step verification, and its hint; never the password itself. */
+    suspend fun passwordState(): TgPasswordState
+
     suspend fun activeSessions(): List<TgSessionInfo>
     suspend fun terminateSession(sessionId: Long)
 }
@@ -83,6 +86,8 @@ sealed interface TgAuthState {
 }
 
 data class TgUser(val id: Long, val displayName: String)
+
+data class TgPasswordState(val hasPassword: Boolean, val hint: String)
 
 /** [isMember] is false after the owner left the channel (Telegram keeps a creator who left as a non-member). */
 data class TgChat(val id: Long, val title: String, val hasPhoto: Boolean, val isMember: Boolean = true)
