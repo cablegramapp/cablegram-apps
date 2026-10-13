@@ -10,6 +10,7 @@ class FakeTelegramApi : TelegramApi {
     override val fileUpdates = MutableSharedFlow<TgFile>(extraBufferCapacity = 64)
     override val newMessages = MutableSharedFlow<TgMessage>(extraBufferCapacity = 16)
     override val deletedMessages = MutableSharedFlow<TgDeletedMessages>(extraBufferCapacity = 16)
+    override val editedMessages = MutableSharedFlow<TgMessage>(extraBufferCapacity = 16)
 
     val calls = mutableListOf<String>()
     val files = mutableMapOf<Int, TgFile>()

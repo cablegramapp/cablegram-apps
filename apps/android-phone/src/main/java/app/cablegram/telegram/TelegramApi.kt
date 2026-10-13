@@ -14,6 +14,8 @@ interface TelegramApi {
     val fileUpdates: Flow<TgFile>
     val newMessages: Flow<TgMessage>
     val deletedMessages: Flow<TgDeletedMessages>
+    /** A message's text or caption was edited (a bot that posts a placeholder first, say); `date` is 0. */
+    val editedMessages: Flow<TgMessage>
 
     suspend fun start(parameters: TgParameters)
     suspend fun requestQrLogin()
@@ -119,11 +121,13 @@ data class TgVideo(
     val date: Long,
 )
 
-data class TgMessage(val chatId: Long, val messageId: Long, val video: TgVideo?)
+/** [text] is a text message's text or a media message's caption (photo, video, document, animation). */
+data class TgMessage(val chatId: Long, val messageId: Long, val video: TgVideo?, val text: String = "")
 
 data class TgDeletedMessages(val chatId: Long, val messageIds: LongArray)
 
-data class TgVideoPage(val videos: List<TgVideo>, val nextFromMessageId: Long)
+/** [notes] are the page's other messages that have text: a TMDB reference to one of the videos may be among them. */
+data class TgVideoPage(val videos: List<TgVideo>, val nextFromMessageId: Long, val notes: List<TgMessage> = emptyList())
 
 data class TgSessionInfo(
     val id: Long,

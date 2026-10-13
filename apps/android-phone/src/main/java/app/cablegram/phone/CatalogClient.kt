@@ -536,6 +536,26 @@ class CatalogClient(
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
     }
 
+    /** TMDB references found in the library channel for its videos (CAB-60). */
+    suspend fun postTelegramHints(token: String, hints: List<app.cablegram.telegram.TgTmdbHint>) = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject {
+            put("hints", kotlinx.serialization.json.JsonArray(hints.map { hint ->
+                buildJsonObject {
+                    put("stable_source_key", "tgfile:${hint.uniqueId}")
+                    put("tmdb_type", hint.tmdbType)
+                    put("tmdb_id", hint.tmdbId)
+                    if (hint.season != null && hint.episode != null) {
+                        put("season_number", hint.season)
+                        put("episode_number", hint.episode)
+                    }
+                }
+            }))
+        })
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/catalog/sources/telegram/hints")
+            .header("Authorization", "Bearer $token").post(body.toRequestBody("application/json".toMediaType())).build()
+        client.newCall(request).execute().use { check(it.isSuccessful) { "hints ${it.code}" } }
+    }
+
     /** After a full channel scan: sources not in [present] are marked unavailable. */
     suspend fun reconcileTelegramVideos(token: String, present: Set<String>) = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject { put("present", buildJsonArray { present.forEach { add(it) } }) })

@@ -122,6 +122,7 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
                     chatId = chatId,
                     register = { video -> store.accountToken?.let { client.registerTelegramVideo(it, video) } },
                     reconcile = { keys -> store.accountToken?.let { client.reconcileTelegramVideos(it, keys) } },
+                    hints = { found -> store.accountToken?.let { client.postTelegramHints(it, found) } },
                 )
                 runCatching { sync.fullScan() }
                     .onSuccess { PairLog.i("Telegram library scan on phone: $it video(s)") }

@@ -67,4 +67,42 @@ class TelegramLibrarySyncTest {
         assertEquals("tg:$chat:7", TelegramLibrarySync.originIdentity(video(7, "x")))
         assertEquals("tgfile:x", TelegramLibrarySync.stableKey(video(7, "x")))
     }
+
+    @Test
+    fun `a full scan sends the newest TMDB reference for each library video`() = runTest {
+        val api = FakeTelegramApi()
+        api.videoPages[0L] = TgVideoPage(
+            listOf(video(30, "cccccccc")), nextFromMessageId = 0,
+            notes = listOf(
+                TgMessage(chat, 33, null, "video_id: #cccccccc #movie_1313826"),
+                TgMessage(chat, 32, null, "video_id: #not_a_library_video #movie_7"), // never sent
+                TgMessage(chat, 31, null, "video_id: #cccccccc #movie_99"), // older: the newer one wins
+            ),
+        )
+        val sent = mutableListOf<TgTmdbHint>()
+        val sync = TelegramLibrarySync(api, chat, {}, {}, hints = { sent += it })
+        sync.fullScan()
+        assertEquals(listOf(TgTmdbHint("cccccccc", "movie", 1313826)), sent)
+    }
+
+    @Test
+    fun `a reference that comes later, or by an edit, is still picked up`() = runTest {
+        val api = FakeTelegramApi()
+        val sent = mutableListOf<TgTmdbHint>()
+        val sync = TelegramLibrarySync(api, chat, {}, {}, hints = { sent += it }, hintRetryDelaysMs = listOf(5_000L, 15_000L))
+        sync.watch(backgroundScope); runCurrent()
+        api.newMessages.emit(TgMessage(chat, 40, video(40, "dddddddd"))); runCurrent()
+        // The bot's placeholder, then its edit.
+        api.newMessages.emit(TgMessage(chat, 41, null, "⏳ Processing video… video_id: #dddddddd")); runCurrent()
+        assertEquals(emptyList<TgTmdbHint>(), sent)
+        api.editedMessages.emit(TgMessage(chat, 41, null, "✅ video_id: #dddddddd #movie_1313826")); runCurrent()
+        assertEquals(listOf(TgTmdbHint("dddddddd", "movie", 1313826)), sent)
+
+        // Another video whose reference only shows up when the channel is read again.
+        sent.clear()
+        api.newMessages.emit(TgMessage(chat, 50, video(50, "eeeeeeee"))); runCurrent()
+        api.videoPages[0L] = TgVideoPage(emptyList(), 0, notes = listOf(TgMessage(chat, 51, null, "#eeeeeeee #tv_42_s01e02")))
+        testScheduler.advanceTimeBy(5_001); runCurrent()
+        assertEquals(listOf(TgTmdbHint("eeeeeeee", "tv", 42, 1, 2)), sent)
+    }
 }
