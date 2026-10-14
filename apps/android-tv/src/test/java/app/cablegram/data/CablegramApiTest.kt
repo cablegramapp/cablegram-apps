@@ -250,6 +250,36 @@ class CablegramApiTest {
     }
 
     @Test
+    fun `a series episode named by hand takes its numbers from the file name`() = runBlocking {
+        server.enqueue(MockResponse().setBody(
+            """{"items":[
+              {"id":"e9","title":"Silo","media_type":"tv","sources":[{"kind":"telegram","origin_filename":"Silo.S01E09.1080p.SoftSub.WEB-DL.6CH-Pahe.mkv"}]},
+              {"id":"e5","title":"Silo","media_type":"tv","season_number":2,"episode_number":7,"sources":[{"kind":"telegram","origin_filename":"Silo.S01E05.720p.mkv"}]},
+              {"id":"m1","title":"Clip","media_type":"movie","sources":[{"kind":"telegram","origin_filename":"Clip.S01E01.mkv"}]}
+            ]}""",
+        ))
+
+        val videos = api.getVideos("jwt", null).videos.associateBy { it.id }
+
+        assertEquals(1, videos.getValue("e9").seasonNumber)
+        assertEquals(9, videos.getValue("e9").episodeNumber)
+        // The household's own numbers win over the file name.
+        assertEquals(2, videos.getValue("e5").seasonNumber)
+        assertEquals(7, videos.getValue("e5").episodeNumber)
+        assertEquals(null, videos.getValue("m1").episodeNumber)
+    }
+
+    @Test
+    fun `episode numbers are read from common file names only`() {
+        assertEquals(1 to 9, episodeFromFileName("Silo.S01E09.1080p.SoftSub.WEB-DL.mkv"))
+        assertEquals(2 to 5, episodeFromFileName("folder/Show 2x05 Title.mp4"))
+        assertEquals(3 to 12, episodeFromFileName("show_s3 e12.mkv"))
+        assertEquals(null, episodeFromFileName("Movie.2019.1920x1080.x264.mkv"))
+        assertEquals(null, episodeFromFileName("Silo.mkv"))
+        assertEquals(null, episodeFromFileName(null))
+    }
+
+    @Test
     fun `a private web import drops the page thumbnail`() = runBlocking {
         server.enqueue(MockResponse().setBody(
             """{"items":[{"id":"item-1","title":"Clip","poster_url":"https://cdn.example/og-image.jpg","sources":[{"kind":"web","private":true}]}]}""",

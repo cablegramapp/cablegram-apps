@@ -147,6 +147,10 @@ class CablegramApi(
                     ?: item.sources.firstOrNull { it.kind != OWN_CLOUD && !it.originIdentity.isNullOrBlank() }
                     ?: item.sources.firstOrNull()
                 val isPrivate = item.sources.any { it.isPrivate }
+                // A title named by hand (or not matched) can lack the numbers its file name carries: "Silo.S01E09.mkv".
+                val fromFile = if (item.mediaType == "tv" && (item.seasonNumber == null || item.episodeNumber == null)) {
+                    item.sources.firstNotNullOfOrNull { episodeFromFileName(it.originFilename) }
+                } else null
                 val phone = servingPhone(devices, source)
                 val localPosterUrl = if (phone != null && !source?.originIdentity.isNullOrBlank()) {
                     lanPosterUrl(phone, "poster/${source?.originIdentity}", lanCapability)
@@ -170,8 +174,8 @@ class CablegramApi(
                     // A finished title starts from the beginning and leaves Continue Watching.
                     resumePositionSeconds = item.progress?.takeIf { it.state != "completed" }?.positionSeconds,
                     mediaType = item.mediaType,
-                    seasonNumber = item.seasonNumber,
-                    episodeNumber = item.episodeNumber,
+                    seasonNumber = item.seasonNumber ?: fromFile?.first,
+                    episodeNumber = item.episodeNumber ?: fromFile?.second,
                     episodeTitle = item.episodeTitle,
                     tier = "hot",
                     ingestStage = "ready",
@@ -1013,6 +1017,7 @@ private data class CatalogItemDto(
 private data class CatalogSourceDto(
     val kind: String? = null,
     @kotlinx.serialization.SerialName("origin_identity") val originIdentity: String? = null,
+    @kotlinx.serialization.SerialName("origin_filename") val originFilename: String? = null,
     @kotlinx.serialization.SerialName("private") val isPrivate: Boolean = false,
     @kotlinx.serialization.SerialName("serving_device_id") val servingDeviceId: String? = null,
     val availability: String? = null,
@@ -1133,3 +1138,13 @@ data class TelegramPasswordRequestDto(val state: String, val sealed: String? = n
 @Serializable
 data class TelegramTvLoginStateDto(val state: String, val error: String? = null)
 
+private val episodeInFileName =
+    Regex("(?i)(?<![a-z0-9])s(\\d{1,2})[ ._-]*e(\\d{1,3})(?!\\d)|(?<![a-z0-9])(\\d{1,2})x(\\d{2,3})(?!\\d)")
+
+/** Season and episode from a file name such as "Silo.S01E09.1080p.mkv" or "Show 2x05.mp4"; null when it has none. */
+internal fun episodeFromFileName(name: String?): Pair<Int, Int>? {
+    val match = episodeInFileName.find(name?.substringAfterLast('/') ?: return null) ?: return null
+    val season = (match.groupValues[1].ifEmpty { match.groupValues[3] }).toIntOrNull() ?: return null
+    val episode = (match.groupValues[2].ifEmpty { match.groupValues[4] }).toIntOrNull() ?: return null
+    return season to episode
+}
