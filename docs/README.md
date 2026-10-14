@@ -36,8 +36,9 @@ Restart playback on the TV to load a newly attached track. Cancelling the picker
 invalid file keeps your existing track. This feature requires a phone and server version that
 support local subtitle attachment.
 
-Provider search is optional and uses your own OpenSubtitles or SubDL credentials on the phone.
-See the [subtitle contract](../contracts/subtitles.md) for storage and data-flow details.
+Searching OpenSubtitles or SubDL from the app (smart subtitles) is not in this version. It will
+return in a later version. See the [subtitle contract](../contracts/subtitles.md) for storage and
+data-flow details.
 
 ## Privacy and checking a release
 

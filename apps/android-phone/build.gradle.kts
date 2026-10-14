@@ -39,6 +39,10 @@ android {
         // server through the host and announces 10.0.2.2 instead of the phone's own IPv4.
         val lanHostOverride = (project.findProperty("CABLEGRAM_LAN_HOST_OVERRIDE") as String?).orEmpty()
         buildConfigField("String", "LAN_HOST_OVERRIDE", "\"$lanHostOverride\"")
+        // Smart subtitles (provider search with SubDL/OpenSubtitles) are off for the first release.
+        // -PCABLEGRAM_SMART_SUBTITLES=true turns them on for development and testing.
+        val smartSubtitles = (project.findProperty("CABLEGRAM_SMART_SUBTITLES") as String?).toBoolean()
+        buildConfigField("boolean", "SMART_SUBTITLES", "$smartSubtitles")
         // Optional, e.g. -PCABLEGRAM_ABIS=arm64-v8a: TDLib ships ~22 MB of native code per ABI,
         // so a universal debug APK is ~100 MB. Play delivers one ABI per device from the bundle.
         (project.findProperty("CABLEGRAM_ABIS") as String?)?.let { abis ->

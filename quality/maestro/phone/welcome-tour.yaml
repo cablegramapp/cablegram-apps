@@ -1,5 +1,6 @@
 # Preconditions: authenticated main UI. Replays the welcome tour from Settings,
 # pages through every step and leaves it with Go to my library. Starts no setup.
+# Smart subtitles are off unless built with -PCABLEGRAM_SMART_SUBTITLES=true, so there is no Subtitles page.
 appId: app.cablegram.phone
 ---
 - tapOn:
@@ -27,10 +28,6 @@ appId: app.cablegram.phone
     id: tour_next
 - assertVisible:
     id: tour_page_drive
-- tapOn:
-    id: tour_next
-- assertVisible:
-    id: tour_page_subtitles
 - tapOn:
     id: tour_next
 - assertVisible:
