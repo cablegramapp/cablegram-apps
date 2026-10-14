@@ -492,7 +492,10 @@ class TvTelegram(
             register = { video -> token?.let { api.registerTelegramVideo(it, video) } },
             reconcile = { keys -> token?.let { api.reconcileTelegramVideos(it, keys) } },
             onChanged = { onLibraryChanged() },
-            hints = { found -> token?.let { api.postTelegramHints(it, found) } },
+            hints = { found ->
+                token?.let { api.postTelegramHints(it, found) }
+                PairLog.i("Telegram channel: ${found.size} TMDB reference(s) sent")
+            },
         )
         syncJob = scope.launch {
             runCatching { sync.fullScan() }
