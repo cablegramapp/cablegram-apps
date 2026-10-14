@@ -22,6 +22,14 @@ class SubtitlePresentationTest {
         assertEquals("Likely match · not verified", headline(match("Likely Match", null)).trust)
     }
 
+    @Test fun withoutSpeechSyncTimingIsLeftToThePreview() {
+        listOf(null, SubtitleAlignment(reason = "audio_unavailable")).forEach { alignment ->
+            val h = headline(match("Likely Match", alignment), canCheck = false, speechSync = false)
+            assertFalse(h.verified); assertEquals("Likely match · not verified", h.trust)
+            assertEquals("Check the timing in the preview and adjust it if needed", h.timing)
+        }
+    }
+
     @Test fun differentCutIsExplained() {
         assertTrue(headline(match("Poor Match", SubtitleAlignment(reason = "different_cut"))).timing.contains("another cut"))
     }

@@ -129,15 +129,17 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
             // Reading a Telegram video is data the person pays for: cap the whole check and each section of it.
             it.limitAnalysis(totalBytes = 160L * 1024 * 1024, sectionBytes = 64L * 1024 * 1024)
             val tech = runCatching { LocalSubtitleAnalysis.probe(it) }.getOrNull()
-            val unsupported = LocalSubtitleAnalysis.unsupportedAudio(it)
-            progress = "Listening for dialogue…"
+            val speechSync = BuildConfig.SUBTITLE_SPEECH_SYNC
+            val unsupported = if (speechSync) LocalSubtitleAnalysis.unsupportedAudio(it) else null
+            if (speechSync) progress = "Listening for dialogue…"
             var unseekable = false
-            val print = if (unsupported != null || tech?.duration == null) null else coroutineScope {
+            val print = if (!speechSync || unsupported != null || tech?.duration == null) null else coroutineScope {
                 val task = async { runCatching { LocalSubtitleAnalysis.fingerprint(it, tech.duration, onZone = { done, total -> progress = "Listening for dialogue… (${done + 1} of $total)" }, onUnseekable = { unseekable = true }) }.getOrNull() }
                 listening = task
                 try { task.await() } catch (e: CancellationException) { if (skipped) null else throw e } finally { listening = null; activeInput = null }
             }
             analysisNote = when {
+                !speechSync -> null
                 skipped -> "You skipped the audio check, so matches aren't verified. Use the preview to line the subtitles up by ear or by eye."
                 unsupported != null -> unsupportedAudioNote(unsupported)
                 tech?.duration == null -> "This video's format couldn't be read, so matches can't be checked against its audio."
@@ -220,7 +222,7 @@ internal fun SubtitleFlow(viewModel: PhoneViewModel, item: LibraryItem, onClose:
                 }
                 if (fetchedMb > 0) Text("Fetched ${"%.1f".format(fetchedMb)} MB from Telegram so far", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 Text("Video and timing patterns stay on this phone. Searches go directly to your providers using your personal quota.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-                if (analysing) OutlinedButton(onClick = { skipped = true; activeInput?.close(); listening?.cancel() }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SKIP)) { Text("Skip — I'll line it up myself") }
+                if (analysing && BuildConfig.SUBTITLE_SPEECH_SYNC) OutlinedButton(onClick = { skipped = true; activeInput?.close(); listening?.cancel() }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SKIP)) { Text("Skip — I'll line it up myself") }
                 OutlinedButton(onClick = { cancelSearch(); stage = SubtitleStage.Failed(errorMessage("cancelled")) }) { Text("Cancel") }
             }
             is SubtitleStage.Failed -> {
@@ -283,12 +285,12 @@ private fun ResultsContent(
     if (language == null) discovery.selected?.let { StatusNote("${languageName(it.language)} subtitles were selected automatically.") }
     val (best, others) = splitOptions(usable, more)
     if (best != null) {
-        OptionCard(best, primary = true, busy = busyId == best.id, enabled = busyId == null, details = details, canCheck = analysisNote == null, onUse = { choose(best) })
+        OptionCard(best, primary = true, busy = busyId == best.id, enabled = busyId == null, details = details, canCheck = BuildConfig.SUBTITLE_SPEECH_SYNC && analysisNote == null, onUse = { choose(best) })
         TextButton(onClick = { details = !details }) { Text(if (details) "Hide details" else "Details") }
     }
     if (others.isNotEmpty()) {
         TextButton(onClick = { showOthers = !showOthers }, modifier = Modifier.maestro(MaestroIds.SUBTITLES_OTHERS)) { Text("Other matches (${others.size})") }
-        if (showOthers) others.forEach { OptionCard(it, primary = false, busy = busyId == it.id, enabled = busyId == null, details = details, canCheck = analysisNote == null, onUse = { choose(it) }) }
+        if (showOthers) others.forEach { OptionCard(it, primary = false, busy = busyId == it.id, enabled = busyId == null, details = details, canCheck = BuildConfig.SUBTITLE_SPEECH_SYNC && analysisNote == null, onUse = { choose(it) }) }
     }
     SectionCard("Another language") {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -304,7 +306,7 @@ private fun ResultsContent(
 
 @Composable
 private fun OptionCard(match: SubtitleMatch, primary: Boolean, busy: Boolean, enabled: Boolean = true, details: Boolean, canCheck: Boolean, onUse: () -> Unit) {
-    val h = headline(match, canCheck)
+    val h = headline(match, canCheck, speechSync = BuildConfig.SUBTITLE_SPEECH_SYNC)
     Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, if (h.verified) VlcOrange else PhoneOutline.copy(alpha = 0.55f))) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(h.language, color = Color.White, style = MaterialTheme.typography.titleLarge)

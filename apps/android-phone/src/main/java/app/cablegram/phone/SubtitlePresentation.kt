@@ -10,8 +10,8 @@ fun languageName(code: String): String = Locale.forLanguageTag(code).getDisplayL
 
 fun formatSyncOffset(seconds: Double): String = "%+.2f sec".format(Locale.US, seconds)
 
-/** Verification is only claimed when the speech check actually succeeded locally. */
-fun headline(match: SubtitleMatch, canCheck: Boolean = true): SubtitleHeadline {
+/** Verification is only claimed when the speech check actually succeeded locally. [speechSync] off: no speech check exists. */
+fun headline(match: SubtitleMatch, canCheck: Boolean = true, speechSync: Boolean = true): SubtitleHeadline {
     val alignment = match.alignment
     val verified = alignment?.verified == true && match.confidence in setOf("Local Activity Match", "Perfect Match", "Verified Match")
     val partial = !verified && alignment?.reason == "partial_match"
@@ -23,6 +23,7 @@ fun headline(match: SubtitleMatch, canCheck: Boolean = true): SubtitleHeadline {
         else -> "Not verified"
     }
     val timing = when {
+        !speechSync -> "Check the timing in the preview and adjust it if needed"
         partial -> "Adjusted from the little dialogue we could hear · ${formatSyncOffset(alignment!!.offset)}"
         verified && abs(alignment!!.offset) >= 0.05 -> "Automatically synchronized · ${formatSyncOffset(alignment.offset)}"
         verified -> "Timing already matches"
