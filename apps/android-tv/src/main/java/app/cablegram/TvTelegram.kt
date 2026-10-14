@@ -574,13 +574,19 @@ class TvTelegram(
         val server = synchronized(this) {
             streamServer ?: TelegramStreamServer(current.api).also { it.start(NANOHTTPD_SOCKET_READ_TIMEOUT, true); streamServer = it }
         }
-        return server.urlFor(video.file.id)
+        return server.register(video.file.id)
     }
 
-    /** The player closed: free what the stream stored (FR-007). */
+    /**
+     * The player closed: free what the stream stored (FR-007) and stop the server, so nothing listens on loopback
+     * between plays. The next play starts a new one, on a new port with new stream ids.
+     */
     fun releasePlayback() {
-        val server = streamServer ?: return
-        scope.launch { server.releaseCurrent() }
+        val server = synchronized(this) { streamServer.also { streamServer = null } } ?: return
+        scope.launch {
+            server.releaseCurrent()
+            server.stop()
+        }
     }
 
     private companion object {

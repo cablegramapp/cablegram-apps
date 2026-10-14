@@ -7,17 +7,30 @@ import app.cablegram.telegram.TelegramFileReader
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.runBlocking
 import java.io.InputStream
+import java.security.SecureRandom
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Serves Telegram files to LibVLC on 127.0.0.1 with HTTP Range (spec 004 FR-007):
- * `GET /tg/<fileId>`. Bytes come from [TelegramFileReader], which keeps only a window of the file
+ * `GET /tg/<stream id>`. Bytes come from [TelegramFileReader], which keeps only a window of the file
  * ahead of the player on the TV's small storage. Not reachable from the network.
+ *
+ * Other apps on the TV can reach loopback, and TDLib knows files from every chat, not only the library
+ * channel. So nothing is served by TDLib file id: only files [register]ed for playback (library videos),
+ * each under an unguessable 128-bit id, as in [CloudStreamServer].
  */
 class TelegramStreamServer(private val api: TelegramApi) : NanoHTTPD("127.0.0.1", 0) {
     val reader = TelegramFileReader(api)
     @Volatile private var currentFileId: Int? = null
+    private val fileByStream = ConcurrentHashMap<String, Int>()
+    private val random = SecureRandom()
 
-    fun urlFor(fileId: Int): String = "http://127.0.0.1:$listeningPort/tg/$fileId"
+    /** A local URL for one library video's file, valid while this server runs. */
+    fun register(fileId: Int): String {
+        val stream = ByteArray(16).also(random::nextBytes).joinToString("") { "%02x".format(it) }
+        fileByStream[stream] = fileId
+        return "http://127.0.0.1:$listeningPort/tg/$stream"
+    }
 
     /** Playback stopped: delete what is stored of the file being played. */
     fun releaseCurrent() {
@@ -27,8 +40,11 @@ class TelegramStreamServer(private val api: TelegramApi) : NanoHTTPD("127.0.0.1"
     }
 
     override fun serve(session: IHTTPSession): Response {
-        val fileId = session.uri.removePrefix("/tg/").toIntOrNull()
+        val fileId = session.uri.takeIf { it.startsWith("/tg/") }?.removePrefix("/tg/")?.let { fileByStream[it] }
             ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "not found")
+        if (session.method != Method.GET && session.method != Method.HEAD) {
+            return newFixedLengthResponse(Response.Status.METHOD_NOT_ALLOWED, MIME_PLAINTEXT, "")
+        }
         val previous = currentFileId
         if (previous != null && previous != fileId) runBlocking { reader.release(previous) }
         currentFileId = fileId
