@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -74,6 +75,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import app.cablegram.data.Video
+import app.cablegram.data.sourceBadge
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -110,6 +112,7 @@ internal fun LibraryScreen(
     telegramViaPhone: Boolean = false,
     onTelegramViaPhone: (Boolean) -> Unit = {},
     onTelegramConnect: () -> Unit = {},
+    onTelegramSignInWithoutPassword: () -> Unit = {},
     onTelegramCancel: () -> Unit = {},
 ) {
     var selectedGenre by remember { mutableStateOf<String?>(null) }
@@ -278,6 +281,7 @@ internal fun LibraryScreen(
                         telegramViaPhone = telegramViaPhone,
                         onTelegramViaPhone = onTelegramViaPhone,
                         onTelegramConnect = onTelegramConnect,
+                        onTelegramSignInWithoutPassword = onTelegramSignInWithoutPassword,
                         onTelegramCancel = onTelegramCancel,
                     )
                     return@Column
@@ -938,6 +942,7 @@ private fun LabeledPosterRow(
                         preparing = entry.video.tier == "ingesting",
                         prepareProgress = entry.video.ingestProgress,
                         inMyList = entry.inMyList,
+                        sourceBadge = sourceBadge(entry.video.sourceKinds),
                         requestFocus = entry.id == focusId,
                         menuFocus = menuFocus,
                         rowIndex = index,
@@ -954,6 +959,7 @@ private fun LabeledPosterRow(
                         prepareProgress = null,
                         inMyList = entry.inMyList,
                         badge = entry.show.episodes.singleOrNull()?.episodeBadge() ?: "${entry.show.episodes.size} EP",
+                        sourceBadge = sourceBadge(entry.show.episodes.flatMap { it.sourceKinds }.toSet()),
                         requestFocus = entry.id == focusId,
                         menuFocus = menuFocus,
                         rowIndex = index,
@@ -1021,6 +1027,7 @@ private fun EpisodeRow(
                 prepareProgress = item.ingestProgress,
                 landscape = true,
                 badge = item.episodeBadge(),
+                sourceBadge = sourceBadge(item.sourceKinds),
                 requestFocus = item.id == targetId,
                 menuFocus = menuFocus,
                 rowIndex = index,
@@ -1043,6 +1050,8 @@ private fun PosterCard(
     prepareProgress: Int? = null,
     landscape: Boolean = false,
     badge: String? = null,
+    /** Where the title plays from, top left under any episode badge. */
+    sourceBadge: String? = null,
     inMyList: Boolean = false,
     requestFocus: Boolean = false,
     menuFocus: FocusRequester? = null,
@@ -1117,8 +1126,12 @@ private fun PosterCard(
                 )
                 else -> PlaceholderArt(title, landscape)
             }
-            if (badge != null) {
-                CardBadge(badge, Ink.copy(alpha = 0.78f), Paper, Modifier.align(Alignment.TopStart))
+            // Top left, where poster art rarely puts its title: the episode badge, then where the title plays from.
+            if (badge != null || sourceBadge != null) {
+                Column(Modifier.align(Alignment.TopStart)) {
+                    badge?.let { CardBadge(it, Ink.copy(alpha = 0.78f), Paper) }
+                    sourceBadge?.let { CardBadge(it, Ink.copy(alpha = 0.78f), Paper, if (badge != null) Modifier.offset(y = (-8).dp) else Modifier) }
+                }
             }
             if (inMyList) {
                 CardBadge("✓", Acid, Ink, Modifier.align(Alignment.TopEnd))

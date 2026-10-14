@@ -100,6 +100,17 @@ fun ArtworkEditorScreen(controller: ArtworkEditorController) {
                         }
                     }
                 }
+                draft.base.channelTmdb?.let { suggestion ->
+                    SectionCard("Suggested by your Telegram channel") {
+                        val what = if (suggestion.type == "tv") {
+                            "Series" + if (suggestion.season != null && suggestion.episode != null) " · S%02dE%02d".format(suggestion.season, suggestion.episode) else ""
+                        } else "Movie"
+                        Text("A message in your library channel names a TMDB entry for this video ($what, TMDB ${suggestion.id}). Nothing is looked up until you choose it.", color = VlcMuted)
+                        OutlinedButton(onClick = controller::useChannelSuggestion, enabled = !draft.searching && !draft.saving, modifier = Modifier.fillMaxWidth().maestro("artwork_use_channel_suggestion")) {
+                            Text(if (draft.searching) "Loading…" else "Show this suggestion")
+                        }
+                    }
+                }
                 SectionCard("Find movie or series") {
                     Text("Preview a cover and details from the catalog. Your current cover and details stay until you choose replacements.", color = VlcMuted)
                     OutlinedTextField(draft.query, controller::updateQuery, Modifier.fillMaxWidth().maestro("artwork_query"), label = { Text("Search title") }, singleLine = true, enabled = !draft.saving)

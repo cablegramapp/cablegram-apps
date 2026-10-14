@@ -6,6 +6,7 @@ import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PasswordSealTest {
@@ -37,6 +38,15 @@ class PasswordSealTest {
     }
 
     /** Made by the control plane's Node test implementation: the two ends must agree on the format. */
+    @Test
+    fun `both screens derive the same check code from the TV key, and another key gives another code`() {
+        val tv = PasswordSeal.newTvKeys()
+        val code = PasswordSeal.checkCode(tv.publicKey)
+        assertTrue(code, Regex("""\d{4} \d{4}""").matches(code))
+        assertEquals(code, PasswordSeal.checkCode(tv.publicKey))
+        assertNotEquals(code, PasswordSeal.checkCode(PasswordSeal.newTvKeys().publicKey))
+    }
+
     @Test
     fun `it opens a password sealed by the other implementation`() {
         val privateKey = KeyFactory.getInstance("EC").generatePrivate(

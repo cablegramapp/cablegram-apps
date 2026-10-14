@@ -10,6 +10,7 @@ class FakeTelegramApi : TelegramApi {
     override val fileUpdates = MutableSharedFlow<TgFile>(extraBufferCapacity = 64)
     override val newMessages = MutableSharedFlow<TgMessage>(extraBufferCapacity = 16)
     override val deletedMessages = MutableSharedFlow<TgDeletedMessages>(extraBufferCapacity = 16)
+    override val editedMessages = MutableSharedFlow<TgMessage>(extraBufferCapacity = 16)
 
     val calls = mutableListOf<String>()
     val files = mutableMapOf<Int, TgFile>()
@@ -97,6 +98,7 @@ class FakeTelegramApi : TelegramApi {
     }
     val sessions = mutableListOf(TgSessionInfo(1, isCurrent = true, apiId = 100, applicationName = "Cablegram", deviceModel = "Pixel", logInDate = 1))
     var failSessions = false
+    override suspend fun passwordState() = TgPasswordState(hasPassword = false, hint = "")
     override suspend fun activeSessions(): List<TgSessionInfo> {
         if (failSessions) throw TgException(500, "INTERNAL")
         return sessions.toList()

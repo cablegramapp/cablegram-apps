@@ -22,9 +22,9 @@ class TelegramApiSurfaceTest {
         // Files of those videos.
         "file", "download", "readPart", "cancelDownload", "deleteLocalFile",
         // Ending Cablegram's own TV sessions (spec 004 US8).
-        "activeSessions", "terminateSession",
+        "passwordState", "activeSessions", "terminateSession",
         // Updates.
-        "getAuthStates", "getFileUpdates", "getNewMessages", "getDeletedMessages",
+        "getAuthStates", "getFileUpdates", "getNewMessages", "getDeletedMessages", "getEditedMessages",
     )
 
     @Test

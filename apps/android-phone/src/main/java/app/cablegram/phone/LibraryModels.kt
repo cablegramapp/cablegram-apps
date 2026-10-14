@@ -60,6 +60,8 @@ data class LibraryItem(
     val ownCloudSourceId: String? = null,
     /** TMDB id and episode position, so the library can group a series' episodes under one poster. */
     val tmdbId: Int? = null,
+    /** A TMDB title the Telegram channel suggests for this video (CAB-60); offered in Edit artwork, never applied by itself. */
+    val channelTmdb: ChannelTmdb? = null,
     /** Exact identity explicitly reviewed in the editor; background lookup must not replace it. */
     val catalogIdentityUserSelected: Boolean = false,
     val seasonNumber: Int? = null,
@@ -215,6 +217,16 @@ data class RemoteCatalogItem(
     @SerialName("match_status") val matchStatus: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     val sources: List<RemoteCatalogSource> = emptyList(),
+    @SerialName("channel_tmdb") val channelTmdb: ChannelTmdb? = null,
+)
+
+/** A TMDB reference found in the Telegram library channel for one video, e.g. a bot's `#movie_1313826`. */
+@Serializable
+data class ChannelTmdb(
+    @SerialName("tmdb_type") val type: String,
+    @SerialName("tmdb_id") val id: Int,
+    @SerialName("season_number") val season: Int? = null,
+    @SerialName("episode_number") val episode: Int? = null,
 )
 
 @Serializable

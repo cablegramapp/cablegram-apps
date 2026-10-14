@@ -230,6 +230,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     telegramViaPhone = viewModel.telegram.viaPhone.collectAsState().value,
                     onTelegramViaPhone = viewModel.telegram::setViaPhone,
                     onTelegramConnect = viewModel.telegram::connectStandalone,
+                    onTelegramSignInWithoutPassword = viewModel.telegram::signInWithoutPassword,
                     onTelegramCancel = viewModel.telegram::cancelConnect,
                 )
                 ConnectedWelcomeDialog(viewModel.connectedWelcome, viewModel::dismissConnectedWelcome) }
@@ -259,6 +260,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     onPassword = viewModel.telegram::submitPassword,
                     onAskPhone = viewModel.telegram::askPhoneForPassword,
                     onCancelPasswordRequest = viewModel.telegram::cancelPhonePasswordRequest,
+                    onSignInWithoutPassword = viewModel.telegram::signInWithoutPassword,
                     onSignedIn = { viewModel.play(screen.video) },
                     onPlayThroughPhone = { always -> viewModel.playThroughPhone(screen.video, always) },
                     onBack = viewModel::closePlayer,

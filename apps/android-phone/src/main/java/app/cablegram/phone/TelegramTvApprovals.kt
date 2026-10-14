@@ -40,9 +40,13 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
         job = scope.launch {
             val asked = mutableSetOf<String>()
             val askedPassword = mutableSetOf<String>()
+            var twoStepReportedAt = 0L
             while (isActive) {
                 val token = store.accountToken
                 if (!token.isNullOrBlank() && PhoneTelegram.wasLinked(context)) {
+                    if (System.currentTimeMillis() - twoStepReportedAt > TWO_STEP_REPORT_MS && reportTwoStep(token)) {
+                        twoStepReportedAt = System.currentTimeMillis()
+                    }
                     val pending = client.pendingTvLogins(token).orEmpty()
                     for (request in pending) {
                         if (PhoneTelegram.autoApproveTvs(context)) {
@@ -60,6 +64,14 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
                 delay(POLL_MS)
             }
         }
+    }
+
+    /** TVs collect the password before signing in when the account has one (no "incomplete login attempt"). */
+    private suspend fun reportTwoStep(token: String): Boolean {
+        val session = PhoneTelegram.session(context)
+        if (session.state.value !is TelegramState.Ready) return false
+        val twoStep = runCatching { session.api.passwordState().hasPassword }.getOrNull() ?: return false
+        return client.putTelegramTwoStep(token, twoStep)
     }
 
     fun stop() {
@@ -110,6 +122,10 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
                     chatId = chatId,
                     register = { video -> store.accountToken?.let { client.registerTelegramVideo(it, video) } },
                     reconcile = { keys -> store.accountToken?.let { client.reconcileTelegramVideos(it, keys) } },
+                    hints = { found ->
+                        store.accountToken?.let { client.postTelegramHints(it, found) }
+                        PairLog.i("Telegram channel: ${found.size} TMDB reference(s) sent")
+                    },
                 )
                 runCatching { sync.fullScan() }
                     .onSuccess { PairLog.i("Telegram library scan on phone: $it video(s)") }
@@ -121,6 +137,8 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
 
     companion object {
         private const val POLL_MS = 5_000L
+        /** Two-step verification rarely changes; checked again every 10 minutes. */
+        private const val TWO_STEP_REPORT_MS = 10 * 60_000L
         private const val RETRY_MS = 30_000L
         private const val TRUST_POLL_MS = 60_000L
 

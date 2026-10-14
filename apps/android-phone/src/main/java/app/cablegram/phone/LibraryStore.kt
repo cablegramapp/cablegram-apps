@@ -239,6 +239,7 @@ class LibraryStore private constructor(private val context: Context) {
             durationSeconds = remote.durationSeconds ?: existing?.durationSeconds,
             genres = remote.genres,
             tmdbId = remote.tmdbId, seasonNumber = remote.seasonNumber, episodeNumber = remote.episodeNumber,
+            channelTmdb = remote.channelTmdb,
             posterUrl = remote.posterUrl ?: existing?.posterUrl,
             sourceAvailable = source.availability != "unavailable",
             telegramFileKey = source.stableSourceKey?.takeIf { it.startsWith("tgfile:") } ?: existing?.telegramFileKey,

@@ -185,6 +185,9 @@ class CablegramApi(
                     addedAtTimestamp = item.createdAt.orEmpty(),
                     inMyList = item.inMyList,
                     isPrivate = isPrivate,
+                    sourceKinds = item.sources
+                        .filter { it.archiveState != "archived" && it.availability != "unavailable" }
+                        .mapNotNull { it.kind }.distinct(),
                 )
             },
         )
@@ -305,6 +308,24 @@ class CablegramApi(
             put("present", kotlinx.serialization.json.JsonArray(present.map { kotlinx.serialization.json.JsonPrimitive(it) }))
         })
         executeNoContent(authenticatedRequest("api/catalog/sources/telegram/reconcile", token).post(body.toRequestBody(jsonMediaType)).build())
+    }
+
+    /** TMDB references found in the library channel for its videos (CAB-60). */
+    suspend fun postTelegramHints(token: String, hints: List<app.cablegram.telegram.TgTmdbHint>) {
+        val body = json.encodeToString(buildJsonObject {
+            put("hints", kotlinx.serialization.json.JsonArray(hints.map { hint ->
+                buildJsonObject {
+                    put("stable_source_key", "tgfile:${hint.uniqueId}")
+                    put("tmdb_type", hint.tmdbType)
+                    put("tmdb_id", hint.tmdbId)
+                    if (hint.season != null && hint.episode != null) {
+                        put("season_number", hint.season)
+                        put("episode_number", hint.episode)
+                    }
+                }
+            }))
+        })
+        executeNoContent(authenticatedRequest("api/catalog/sources/telegram/hints", token).post(body.toRequestBody(jsonMediaType)).build())
     }
 
     suspend fun telegramLogoutAck(token: String) {
@@ -1090,6 +1111,8 @@ data class TelegramLinkDto(
     @kotlinx.serialization.SerialName("trust_level") val trustLevel: String = "home",
     /** The phone whose Telegram session can stream titles to this TV. */
     @kotlinx.serialization.SerialName("phone_device_id") val phoneDeviceId: String? = null,
+    /** Whether the account has two-step verification, as the household phone reported it; null when unknown. */
+    @kotlinx.serialization.SerialName("two_step") val twoStep: Boolean? = null,
 ) {
     val userId: Long? get() = telegramUserId?.content?.toLongOrNull()
     val chatId: Long? get() = libraryChatId?.content?.toLongOrNull()

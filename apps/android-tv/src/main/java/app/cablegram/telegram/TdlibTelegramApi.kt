@@ -25,6 +25,10 @@ import dev.g000sha256.tdl.dto.InputFileLocal
 import dev.g000sha256.tdl.dto.Message
 import dev.g000sha256.tdl.dto.MessageDocument
 import dev.g000sha256.tdl.dto.MessageVideo
+import dev.g000sha256.tdl.dto.MessageAnimation
+import dev.g000sha256.tdl.dto.MessageContent
+import dev.g000sha256.tdl.dto.MessagePhoto
+import dev.g000sha256.tdl.dto.MessageText
 import dev.g000sha256.tdl.dto.FormattedText
 import dev.g000sha256.tdl.dto.InputMessageVideo
 import dev.g000sha256.tdl.dto.InputVideo
@@ -56,6 +60,7 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
     }.distinctUntilChanged()
     override val fileUpdates: Flow<TgFile> = client.fileUpdates.map { toFile(it.file) }
     override val newMessages: Flow<TgMessage> = client.newMessageUpdates.map { toMessage(it.message) }
+    override val editedMessages: Flow<TgMessage> = client.messageContentUpdates.map { toMessage(it.chatId, it.messageId, 0, it.newContent) }
     override val deletedMessages: Flow<TgDeletedMessages> = client.deleteMessagesUpdates
         // Messages evicted from TDLib's cache are not deletions in the channel.
         .filter { it.isPermanent && !it.fromCache }
@@ -122,9 +127,11 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
 
     override suspend fun videos(chatId: Long, fromMessageId: Long, limit: Int): TgVideoPage {
         val messages = client.getChatHistory(chatId, fromMessageId, 0, limit, false).ok().messages.filterNotNull()
+        val mapped = messages.map { toMessage(it) }
         return TgVideoPage(
-            videos = messages.mapNotNull { toMessage(it).video },
+            videos = mapped.mapNotNull { it.video },
             nextFromMessageId = messages.lastOrNull()?.id ?: 0,
+            notes = mapped.filter { it.video == null && it.text.isNotBlank() },
         )
     }
 
@@ -184,41 +191,53 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
     override suspend fun cancelDownload(fileId: Int) { client.cancelDownloadFile(fileId, false).ok() }
     override suspend fun deleteLocalFile(fileId: Int) { client.deleteFile(fileId).ok() }
 
+    override suspend fun passwordState(): TgPasswordState = client.getPasswordState().ok().let { TgPasswordState(it.hasPassword, it.passwordHint) }
+
     override suspend fun activeSessions(): List<TgSessionInfo> = client.getActiveSessions().ok().sessions.map {
         TgSessionInfo(it.id, it.isCurrent, it.apiId, it.applicationName, it.deviceModel, it.logInDate.toLong())
     }
 
     override suspend fun terminateSession(sessionId: Long) { client.terminateSession(sessionId).ok() }
 
-    private fun toMessage(message: Message): TgMessage {
-        val video = when (val content = message.content) {
+    private fun toMessage(message: Message): TgMessage = toMessage(message.chatId, message.id, message.date.toLong(), message.content)
+
+    private fun toMessage(chatId: Long, messageId: Long, date: Long, content: MessageContent): TgMessage {
+        val video = when (content) {
             is MessageVideo -> TgVideo(
-                chatId = message.chatId,
-                messageId = message.id,
+                chatId = chatId,
+                messageId = messageId,
                 file = toFile(content.video.video),
                 fileName = content.video.fileName,
                 caption = content.caption.text,
                 mimeType = content.video.mimeType,
                 durationSeconds = content.video.duration,
                 supportsStreaming = content.video.supportsStreaming,
-                date = message.date.toLong(),
+                date = date,
             )
             is MessageDocument -> content.document.takeIf { it.mimeType.startsWith("video/") }?.let { doc ->
                 TgVideo(
-                    chatId = message.chatId,
-                    messageId = message.id,
+                    chatId = chatId,
+                    messageId = messageId,
                     file = toFile(doc.document),
                     fileName = doc.fileName,
                     caption = content.caption.text,
                     mimeType = doc.mimeType,
                     durationSeconds = 0,
                     supportsStreaming = false,
-                    date = message.date.toLong(),
+                    date = date,
                 )
             }
             else -> null
         }
-        return TgMessage(message.chatId, message.id, video)
+        val text = when (content) {
+            is MessageText -> content.text.text
+            is MessageVideo -> content.caption.text
+            is MessageDocument -> content.caption.text
+            is MessagePhoto -> content.caption.text
+            is MessageAnimation -> content.caption.text
+            else -> ""
+        }
+        return TgMessage(chatId, messageId, video, text)
     }
 
     private companion object {
