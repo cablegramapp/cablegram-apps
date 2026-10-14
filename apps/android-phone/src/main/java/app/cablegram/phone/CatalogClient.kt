@@ -99,6 +99,8 @@ class CatalogClient(
         year: Int? = null,
         imdbId: String? = null,
         strict: Boolean = false,
+        /** Look this TMDB entry up by id (with [mediaType]); no search. */
+        tmdbId: Int? = null,
     ): CatalogMetadata? = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("query", query)
@@ -108,6 +110,7 @@ class CatalogClient(
             if (episodeNumber != null) put("episodeNumber", episodeNumber)
             if (year != null) put("year", year)
             if (!imdbId.isNullOrBlank()) put("imdbId", imdbId)
+            if (tmdbId != null) put("tmdbId", tmdbId)
         })
         val builder = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/library/enrich")
