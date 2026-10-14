@@ -184,6 +184,8 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
     override suspend fun cancelDownload(fileId: Int) { client.cancelDownloadFile(fileId, false).ok() }
     override suspend fun deleteLocalFile(fileId: Int) { client.deleteFile(fileId).ok() }
 
+    override suspend fun passwordState(): TgPasswordState = client.getPasswordState().ok().let { TgPasswordState(it.hasPassword, it.passwordHint) }
+
     override suspend fun activeSessions(): List<TgSessionInfo> = client.getActiveSessions().ok().sessions.map {
         TgSessionInfo(it.id, it.isCurrent, it.apiId, it.applicationName, it.deviceModel, it.logInDate.toLong())
     }

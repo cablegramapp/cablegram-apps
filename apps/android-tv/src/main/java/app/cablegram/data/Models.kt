@@ -159,7 +159,19 @@ data class Video(
     val originIdentity: String? = null,
     /** A private title: the TV shows a branded stand-in, never its own poster or backdrop. */
     val isPrivate: Boolean = false,
+    /** Where the title can play from (catalog source kinds), for the poster's source badge. */
+    val sourceKinds: List<String> = emptyList(),
 )
+
+/** The poster badge naming where titles play from, e.g. "Phone · Telegram"; null when no source is available. */
+fun sourceBadge(kinds: Collection<String>): String? =
+    listOf(
+        "telegram" to "Telegram",
+        "own_cloud" to "Cloud",
+        "cloud_object" to "Cloud",
+        "phone_local" to "Phone",
+        "web" to "Web",
+    ).filter { (kind, _) -> kind in kinds }.map { it.second }.distinct().joinToString(" · ").ifEmpty { null }
 
 /**
  * Phones identify titles by their own local id (the catalog's origin

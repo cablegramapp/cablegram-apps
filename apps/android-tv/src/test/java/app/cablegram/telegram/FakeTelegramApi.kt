@@ -97,6 +97,7 @@ class FakeTelegramApi : TelegramApi {
     }
     val sessions = mutableListOf(TgSessionInfo(1, isCurrent = true, apiId = 100, applicationName = "Cablegram", deviceModel = "Pixel", logInDate = 1))
     var failSessions = false
+    override suspend fun passwordState() = TgPasswordState(hasPassword = false, hint = "")
     override suspend fun activeSessions(): List<TgSessionInfo> {
         if (failSessions) throw TgException(500, "INTERNAL")
         return sessions.toList()

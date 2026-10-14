@@ -444,6 +444,17 @@ class CatalogClient(
         }.getOrNull()
     }
 
+    /** Tells TVs whether the linked Telegram account has two-step verification, so they ask for it before signing in. */
+    suspend fun putTelegramTwoStep(token: String, twoStep: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject { put("two_step", twoStep) })
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/telegram/link/two-step")
+            .header("Authorization", "Bearer $token")
+            .put(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
     /** Sends the password, already sealed to the TV's key ([app.cablegram.telegram.PasswordSeal]); true when stored. */
     suspend fun sealTvPassword(token: String, requestId: String, sealed: String): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject { put("sealed", sealed) })

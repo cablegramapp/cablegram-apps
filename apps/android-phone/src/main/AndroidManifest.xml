@@ -58,6 +58,13 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".TelegramPasswordActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.CablegramPhone"
+            android:windowSoftInputMode="adjustResize|stateVisible" />
+        <activity
             android:name=".QrScanActivity"
             android:exported="false"
             android:stateNotNeeded="true" />
