@@ -45,9 +45,8 @@ fun storageStatusLine(item: LibraryItem): String = when (storageBadge(item)) {
 }
 
 /**
- * A new Telegram title the server could not match on its own (spec 004 T008) is offered to the owner
- * once. The server tries automatically right after registration, so a title is only offered after
- * [graceMs] has passed, and never again once asked.
+ * A new, unmatched Telegram title (spec 004 T008) is marked for the owner once, after [graceMs], and never again.
+ * Nothing is looked up automatically: details come from Edit artwork.
  */
 fun needsTelegramMatchPrompt(matchStatus: String?, createdAt: java.time.Instant?, now: java.time.Instant, alreadyPrompted: Boolean, graceMs: Long = 90_000): Boolean =
     !alreadyPrompted && matchStatus == "unmatched" && createdAt != null &&

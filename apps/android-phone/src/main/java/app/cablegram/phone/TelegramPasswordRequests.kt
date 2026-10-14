@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import app.cablegram.telegram.TelegramState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 
 import app.cablegram.telegram.PasswordSeal
 import kotlinx.coroutines.CoroutineScope
@@ -157,9 +158,19 @@ class TelegramPasswordActivity : ComponentActivity() {
         var hint by remember { mutableStateOf("") }
         var sending by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
+        var code by remember { mutableStateOf<String?>(null) }
         val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) {
             focus.requestFocus()
+            // The check code of the key this password will be sealed to; the TV shows the same code for its own key.
+            code = withContext(Dispatchers.IO) {
+                runCatching {
+                    val store = PairingStore(context)
+                    val token = store.accountToken ?: return@runCatching null
+                    TelegramPasswordRequests.requestFor(CatalogClient(store.apiBaseUrl, store).pendingTvPasswordRequests(token), requestId)
+                        ?.let { PasswordSeal.checkCode(it.tvPublicKey) }
+                }.getOrNull()
+            }
             // The hint from this phone's own Telegram session; the TV may not know it before it signs in.
             hint = withTimeoutOrNull(5_000) {
                 val session = PhoneTelegram.session(context)
@@ -218,6 +229,11 @@ class TelegramPasswordActivity : ComponentActivity() {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Send, autoCorrectEnabled = false),
                 keyboardActions = KeyboardActions(onSend = { send() }),
             )
+            code?.let {
+                Text("Check code", color = VlcMuted, fontSize = 13.sp)
+                Text(it, color = VlcOrange, fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
+                Text("$tvName shows a code too. Send your password only if both codes are the same.", color = VlcMuted, fontSize = 13.sp, lineHeight = 18.sp)
+            }
             hint.takeIf { it.isNotBlank() }?.let { Text("Hint: $it", color = VlcMuted, fontSize = 14.sp) }
             error?.let { Text(it, color = androidx.compose.ui.graphics.Color(0xFFFF8A80), fontSize = 14.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

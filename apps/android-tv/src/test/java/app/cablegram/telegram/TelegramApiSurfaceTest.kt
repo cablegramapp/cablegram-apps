@@ -24,7 +24,7 @@ class TelegramApiSurfaceTest {
         // Ending Cablegram's own TV sessions (spec 004 US8).
         "passwordState", "activeSessions", "terminateSession",
         // Updates.
-        "getAuthStates", "getFileUpdates", "getNewMessages", "getDeletedMessages",
+        "getAuthStates", "getFileUpdates", "getNewMessages", "getDeletedMessages", "getEditedMessages",
     )
 
     @Test

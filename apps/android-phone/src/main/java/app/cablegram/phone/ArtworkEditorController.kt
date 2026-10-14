@@ -90,16 +90,7 @@ class ArtworkEditorController(
                 }
                 val preview = api.enrich(match.title, token(), null, mediaType = match.mediaType,
                     year = match.year, imdbId = match.imdbId, strict = true)
-                if (!active()) return@launch
-                if (preview == null || preview.matchStatus != "matched") {
-                    update { it.copy(searching = false, message = "No catalog details found for that match. Try another title.") }
-                    return@launch
-                }
-                val image = preview.posterUrl?.let { api.downloadBytes(it) }
-                val path = if (image != null) withContext(Dispatchers.IO) { store.stageArtwork(session, revision, image) } else null
-                if (!active()) return@launch
-                update { it.copy(searching = false, candidate = preview, catalogPath = path,
-                    message = if (path == null) "The cover couldn't be loaded. Search again to retry, or keep your current cover." else null) }
+                showCandidate(api, preview, session, revision, ::active)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -114,6 +105,48 @@ class ArtworkEditorController(
         }.also { sessionJobs.add(it) }
     }
 
+    /** Shows a looked-up title as the candidate, with its cover staged for "Use this cover". */
+    private suspend fun showCandidate(api: CatalogClient, preview: CatalogMetadata?, session: Long, revision: Long, active: () -> Boolean) {
+        if (!active()) return
+        if (preview == null || preview.matchStatus != "matched") {
+            update { it.copy(searching = false, message = "No catalog details found for that match. Try another title.") }
+            return
+        }
+        val image = preview.posterUrl?.let { api.downloadBytes(it) }
+        val path = if (image != null) withContext(Dispatchers.IO) { store.stageArtwork(session, revision, image) } else null
+        if (!active()) return
+        update { it.copy(searching = false, candidate = preview, catalogPath = path,
+            message = if (path == null) "The cover couldn't be loaded. Search again to retry, or keep your current cover." else null) }
+    }
+
+    /**
+     * The TMDB title the Telegram channel suggests (CAB-60), looked up by its id only now that the user asked for it.
+     * It then shows like a search result: the user still chooses "Use these details" and "Use this cover", and saves.
+     */
+    fun useChannelSuggestion() {
+        val current = draft ?: return
+        val suggestion = current.base.channelTmdb ?: return
+        if (current.saving) return
+        searchJob?.cancel()
+        val revision = ++lookupRevision
+        val session = current.session
+        fun active() = draft?.session == session && lookupRevision == revision
+        update { it.copy(searching = true, message = null, candidate = null, catalogPath = null) }
+        searchJob = scope.launch {
+            try {
+                val api = catalog()
+                val preview = api.enrich(current.base.title, token(), null, mediaType = suggestion.type,
+                    seasonNumber = suggestion.season, episodeNumber = suggestion.episode, strict = true, tmdbId = suggestion.id)
+                showCandidate(api, preview, session, revision, ::active)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                if (!active()) return@launch
+                update { it.copy(searching = false, message = if (error is java.io.IOException) "Couldn't connect. Try again." else "Couldn't load the suggestion right now. Try again.") }
+            }
+        }.also { sessionJobs.add(it) }
+    }
+
     fun useDetails() {
         val current = draft ?: return
         val match = current.candidate ?: return
@@ -124,8 +157,8 @@ class ArtworkEditorController(
         val fromFile = Regex("(?i)S(\\d{1,2})E(\\d{1,3})").find(current.base.filename)
         update { it.copy(title = match.title, year = match.year?.toString().orEmpty(),
             mediaType = match.mediaType, overview = match.overview.orEmpty(), useCatalogDetails = true, acceptedMatch = match,
-            season = fromFile?.groupValues?.get(1)?.toIntOrNull()?.toString() ?: current.base.seasonNumber?.toString() ?: last?.seasonNumber?.toString().orEmpty(),
-            episode = fromFile?.groupValues?.get(2)?.toIntOrNull()?.toString() ?: current.base.episodeNumber?.toString() ?: last?.episodeNumber?.plus(1)?.toString().orEmpty(),
+            season = fromFile?.groupValues?.get(1)?.toIntOrNull()?.toString() ?: match.seasonNumber?.toString() ?: current.base.seasonNumber?.toString() ?: last?.seasonNumber?.toString().orEmpty(),
+            episode = fromFile?.groupValues?.get(2)?.toIntOrNull()?.toString() ?: match.episodeNumber?.toString() ?: current.base.episodeNumber?.toString() ?: last?.episodeNumber?.plus(1)?.toString().orEmpty(),
             message = if (match.mediaType == "tv") "Check season and episode before saving. Season 0 is for specials." else "Catalog details are in your draft. Your cover stays unchanged until you choose one.") }
     }
 

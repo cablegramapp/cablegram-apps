@@ -62,6 +62,24 @@ object PasswordSeal {
         String(cipher.doFinal(raw, SPKI_LENGTH + IV_LENGTH, raw.size - SPKI_LENGTH - IV_LENGTH), Charsets.UTF_8)
     }.getOrNull()
 
+    /**
+     * The code both screens show for one TV key, so the owner can see that the phone seals to the key the TV made, not
+     * to one a compromised server put in its place. 8 digits behind a slow hash: finding another key with the same
+     * code means about 10^8 key pairs times [CHECK_ITERATIONS] hashes, far beyond the 5 minutes a request lives.
+     * Shown as "1234 5678". About a tenth of a second on a TV: compute it off the main thread.
+     */
+    fun checkCode(tvPublicKey: String): String {
+        val spki = Base64.getDecoder().decode(tvPublicKey)
+        val spec = javax.crypto.spec.PBEKeySpec(
+            Base64.getEncoder().encodeToString(spki).toCharArray(), "cablegram-tg-key-check-v1".toByteArray(), CHECK_ITERATIONS, 64,
+        )
+        val bytes = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+        val number = java.math.BigInteger(1, bytes).mod(java.math.BigInteger.valueOf(100_000_000L)).toLong()
+        return "%08d".format(number).let { "${it.substring(0, 4)} ${it.substring(4)}" }
+    }
+
+    private const val CHECK_ITERATIONS = 100_000
+
     private fun newPair(): KeyPair =
         KeyPairGenerator.getInstance("EC").apply { initialize(ECGenParameterSpec("secp256r1")) }.generateKeyPair()
 

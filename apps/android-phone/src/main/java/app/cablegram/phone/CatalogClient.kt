@@ -99,6 +99,8 @@ class CatalogClient(
         year: Int? = null,
         imdbId: String? = null,
         strict: Boolean = false,
+        /** Look this TMDB entry up by id (with [mediaType]); no search. */
+        tmdbId: Int? = null,
     ): CatalogMetadata? = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("query", query)
@@ -108,6 +110,7 @@ class CatalogClient(
             if (episodeNumber != null) put("episodeNumber", episodeNumber)
             if (year != null) put("year", year)
             if (!imdbId.isNullOrBlank()) put("imdbId", imdbId)
+            if (tmdbId != null) put("tmdbId", tmdbId)
         })
         val builder = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/library/enrich")
@@ -534,6 +537,26 @@ class CatalogClient(
         val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/catalog/items")
             .header("Authorization", "Bearer $token").post(body.toRequestBody("application/json".toMediaType())).build()
         runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
+    /** TMDB references found in the library channel for its videos (CAB-60). */
+    suspend fun postTelegramHints(token: String, hints: List<app.cablegram.telegram.TgTmdbHint>) = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject {
+            put("hints", kotlinx.serialization.json.JsonArray(hints.map { hint ->
+                buildJsonObject {
+                    put("stable_source_key", "tgfile:${hint.uniqueId}")
+                    put("tmdb_type", hint.tmdbType)
+                    put("tmdb_id", hint.tmdbId)
+                    if (hint.season != null && hint.episode != null) {
+                        put("season_number", hint.season)
+                        put("episode_number", hint.episode)
+                    }
+                }
+            }))
+        })
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/catalog/sources/telegram/hints")
+            .header("Authorization", "Bearer $token").post(body.toRequestBody("application/json".toMediaType())).build()
+        client.newCall(request).execute().use { check(it.isSuccessful) { "hints ${it.code}" } }
     }
 
     /** After a full channel scan: sources not in [present] are marked unavailable. */
