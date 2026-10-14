@@ -134,7 +134,7 @@ private val TOUR_PAGES = listOf(
         emptyList(),
         action = "Import videos",
     ),
-).filter { it.step != TourStep.Subtitles || BuildConfig.SMART_SUBTITLES }
+)
 
 /** Already set up: the page shows that instead of its setup button. */
 private fun connectedLabel(viewModel: PhoneViewModel, step: TourStep, subtitlesConnected: Boolean): String? = when (step) {

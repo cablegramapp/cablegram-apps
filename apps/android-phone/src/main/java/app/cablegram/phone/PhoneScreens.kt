@@ -146,7 +146,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 }
             }
             viewModel.shownSeries?.let { SeriesOverlay(viewModel, it) }
-            viewModel.selected?.let { if (BuildConfig.SMART_SUBTITLES && viewModel.subtitleFlowOpen) SubtitleFlow(viewModel, it) { viewModel.subtitleFlowOpen = false } else DetailOverlay(viewModel, it) }
+            viewModel.selected?.let { if (viewModel.subtitleFlowOpen) SubtitleFlow(viewModel, it) { viewModel.subtitleFlowOpen = false } else DetailOverlay(viewModel, it) }
             viewModel.deleteTarget?.let { DeleteDialog(viewModel, it) }
             viewModel.removeCloudCopyTarget?.let { RemoveCloudCopyDialog(viewModel, it) }
             if (viewModel.castPickerOpen) AlertDialog(
@@ -894,7 +894,7 @@ private fun StorageMetric(label: String, value: String) {
 
 @Composable
 private fun SettingsScreen(viewModel: PhoneViewModel) {
-    if (BuildConfig.SMART_SUBTITLES && viewModel.subtitleAccountsOpen) {
+    if (viewModel.subtitleAccountsOpen) {
         BackHandler { viewModel.subtitleAccountsOpen = false }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             TextButton(onClick = { viewModel.subtitleAccountsOpen = false }) { Text("Back to Settings") }
@@ -950,7 +950,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 color = VlcMuted, style = MaterialTheme.typography.bodySmall,
             )
         }
-        if (BuildConfig.SMART_SUBTITLES) OutlinedButton(onClick = { viewModel.subtitleAccountsOpen = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle accounts") }
+        OutlinedButton(onClick = { viewModel.subtitleAccountsOpen = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle accounts") }
         OutlinedButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text("Show the welcome tour") }
         SectionCard("Your TVs") {
             if (!viewModel.paired) Text("Connect a TV to enjoy your library on a bigger screen.", color = VlcMuted)
@@ -1220,11 +1220,9 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             item.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodyLarge) }
             LaunchedEffect(item.id) { viewModel.refreshSubtitleStatus(item) }
             if (viewModel.savedSubtitle != null) TextButton(onClick = { viewModel.removeSavedSubtitle(item) }, modifier = Modifier.fillMaxWidth()) { Text("Remove saved subtitle") }
-            if (BuildConfig.SMART_SUBTITLES) {
-                OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
-                    Text(viewModel.savedSubtitle?.let { "Subtitles: $it · Find another" } ?: "Find Subtitles")
-                }
-            } else viewModel.savedSubtitle?.let { Text("Subtitles: $it", color = VlcMuted, style = MaterialTheme.typography.bodyMedium) }
+            OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
+                Text(viewModel.savedSubtitle?.let { "Subtitles: $it · Find another" } ?: "Find Subtitles")
+            }
             LocalSubtitleAttachmentButton(viewModel, item, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null)
             SectionCard("Your copy") {
                 StorageMetric("Location", storageStatusLine(item))
