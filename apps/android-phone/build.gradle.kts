@@ -39,6 +39,11 @@ android {
         // server through the host and announces 10.0.2.2 instead of the phone's own IPv4.
         val lanHostOverride = (project.findProperty("CABLEGRAM_LAN_HOST_OVERRIDE") as String?).orEmpty()
         buildConfigField("String", "LAN_HOST_OVERRIDE", "\"$lanHostOverride\"")
+        // Matching subtitles to the video's speech (listen for dialogue, then shift the timing) is off for the
+        // first release. Search, local files and manual timing work without it. -PCABLEGRAM_SUBTITLE_SPEECH_SYNC=true
+        // turns it on for development and testing.
+        val subtitleSpeechSync = (project.findProperty("CABLEGRAM_SUBTITLE_SPEECH_SYNC") as String?).toBoolean()
+        buildConfigField("boolean", "SUBTITLE_SPEECH_SYNC", "$subtitleSpeechSync")
         // Optional, e.g. -PCABLEGRAM_ABIS=arm64-v8a: TDLib ships ~22 MB of native code per ABI,
         // so a universal debug APK is ~100 MB. Play delivers one ABI per device from the bundle.
         (project.findProperty("CABLEGRAM_ABIS") as String?)?.let { abis ->
