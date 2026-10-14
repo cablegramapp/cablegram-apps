@@ -33,11 +33,11 @@ import app.cablegram.data.TELEGRAM_PASSWORD_VIDEO_URL
 private enum class PasswordKeyboard { CHOOSE, TV, PHONE }
 
 /** What the password step shows, before signing in ([TvTelegramStatus.NotSignedIn]) or when Telegram asks. */
-private data class PasswordStepState(val hint: String, val busy: Boolean, val error: String?, val phoneRequestError: String?) {
+private data class PasswordStepState(val hint: String, val busy: Boolean, val error: String?, val phoneRequestError: String?, val phoneCode: String? = null) {
     companion object {
         fun of(status: TvTelegramStatus) = when (status) {
-            is TvTelegramStatus.NeedsPassword -> PasswordStepState(status.hint, status.busy, status.error, status.phoneRequestError)
-            is TvTelegramStatus.NotSignedIn -> PasswordStepState("", false, null, status.phoneRequestError)
+            is TvTelegramStatus.NeedsPassword -> PasswordStepState(status.hint, status.busy, status.error, status.phoneRequestError, status.phoneCode)
+            is TvTelegramStatus.NotSignedIn -> PasswordStepState("", false, null, status.phoneRequestError, status.phoneCode)
             // Signing in with the password already given: the phone's approval and Telegram's check are under way.
             else -> PasswordStepState("", true, null, null)
         }
@@ -105,6 +105,11 @@ internal fun TelegramPasswordStep(
             PasswordKeyboard.PHONE -> {
                 Text(if (step.busy) "Checking your password…" else "Type on your phone", color = Cyan, fontSize = 26.sp)
                 Text("Cablegram on your paired phone opens a password screen. If it isn't open, tap the Cablegram notification. Type the password there; this TV signs in as soon as Telegram accepts it.", color = Paper, fontSize = 18.sp, lineHeight = 25.sp)
+                step.phoneCode?.let { code ->
+                    Text("Your phone shows the code", color = Muted, fontSize = 16.sp)
+                    Text(code, color = Cyan, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+                    Text("Send your password only if the phone shows this same code.", color = Muted, fontSize = 16.sp, lineHeight = 22.sp)
+                }
                 step.hint.takeIf { it.isNotBlank() }?.let { Text("Hint: $it", color = Muted, fontSize = 16.sp) }
                 (step.phoneRequestError ?: step.error)?.let { Text(it, color = Coral, fontSize = 16.sp) }
                 val focus = remember { FocusRequester() }

@@ -41,7 +41,7 @@ sealed interface TvTelegramStatus {
      * Telegram's login until they do: with two-step verification ([twoStep] true, or null when unknown) the password is
      * collected first, so Telegram never reports an "incomplete login attempt" for a sign-in the viewer walked away from.
      */
-    data class NotSignedIn(val twoStep: Boolean?, val phoneRequestError: String? = null) : TvTelegramStatus
+    data class NotSignedIn(val twoStep: Boolean?, val phoneRequestError: String? = null, val phoneCode: String? = null) : TvTelegramStatus
     /**
      * Waiting for the household phone to approve [link]; [since] is when waiting began (QR fallback after 20 s).
      * [standalone]: the owner chose to connect from this TV, so no phone is asked and the QR code shows at once.
@@ -52,7 +52,14 @@ sealed interface TvTelegramStatus {
      * The phone approved this TV, but the account has two-step verification: Telegram wants the password
      * on the new device too (as Telegram Desktop does after a QR scan). [error] explains a rejected try.
      */
-    data class NeedsPassword(val hint: String, val busy: Boolean = false, val error: String? = null, val phoneRequestError: String? = null) : TvTelegramStatus
+    data class NeedsPassword(
+        val hint: String,
+        val busy: Boolean = false,
+        val error: String? = null,
+        val phoneRequestError: String? = null,
+        /** The check code of the key the phone should seal to ([app.cablegram.telegram.PasswordSeal.checkCode]). */
+        val phoneCode: String? = null,
+    ) : TvTelegramStatus
     data class Problem(val message: String) : TvTelegramStatus
     /** A temporary TV: Telegram titles play through the owner's phone; nothing Telegram is stored here. */
     data object ThroughPhone : TvTelegramStatus
@@ -212,6 +219,7 @@ class TvTelegram(
         passwordJob = null
         passwordRequestedAt = 0L
         setPhoneRequestError(null)
+        setPhoneCode(null)
     }
 
     /** The phone prompt's problem, shown on whichever password step is up. */
@@ -219,6 +227,15 @@ class TvTelegram(
         when (val current = _status.value) {
             is TvTelegramStatus.NeedsPassword -> _status.value = current.copy(phoneRequestError = message)
             is TvTelegramStatus.NotSignedIn -> _status.value = current.copy(phoneRequestError = message)
+            else -> Unit
+        }
+    }
+
+    /** Shows the check code of the key the phone is asked to seal to (null: no request open). */
+    private fun setPhoneCode(code: String?) {
+        when (val current = _status.value) {
+            is TvTelegramStatus.NeedsPassword -> _status.value = current.copy(phoneCode = code)
+            is TvTelegramStatus.NotSignedIn -> _status.value = current.copy(phoneCode = code)
             else -> Unit
         }
     }
@@ -244,6 +261,7 @@ class TvTelegram(
         passwordRequestedAt = System.currentTimeMillis()
         passwordJob = scope.launch {
             val keys = app.cablegram.telegram.PasswordSeal.newTvKeys()
+            setPhoneCode(app.cablegram.telegram.PasswordSeal.checkCode(keys.publicKey))
             val requestId = try {
                 api.postTelegramPasswordRequest(currentToken, keys.publicKey, hint)
             } catch (e: ApiException) {
@@ -414,7 +432,7 @@ class TvTelegram(
                 if (!standalone && !armed) {
                     unpostedLink = state.link
                     val asked = _status.value as? TvTelegramStatus.NotSignedIn
-                    _status.value = TvTelegramStatus.NotSignedIn(twoStep, asked?.phoneRequestError)
+                    _status.value = TvTelegramStatus.NotSignedIn(twoStep, asked?.phoneRequestError, asked?.phoneCode)
                     return
                 }
                 offerLink(state.link)
