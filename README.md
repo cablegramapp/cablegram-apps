@@ -7,6 +7,24 @@ already have on your TV, from your phone. Licensed under [GPL-3.0](LICENSE).
 contracts they follow. The account, pairing, catalog and relay services run separately and are closed source,
 the same model Telegram uses for its own apps.
 
+## Screenshots
+
+<p>
+  <img src="docs/screenshots/tv-01.jpg" width="49%" alt="TV library with the Continue Watching row">
+  <img src="docs/screenshots/tv-03.jpg" width="49%" alt="TV player showing an English subtitle">
+  <img src="docs/screenshots/tv-04.jpg" width="49%" alt="Who's watching? profile picker on the TV">
+  <img src="docs/screenshots/tv-05.jpg" width="49%" alt="Pair this TV screen with a PIN and QR code">
+</p>
+<p>
+  <img src="docs/screenshots/phone-01.jpg" width="24%" alt="Phone library">
+  <img src="docs/screenshots/phone-02.jpg" width="24%" alt="Title details with Play on TV and subtitles">
+  <img src="docs/screenshots/phone-03.jpg" width="24%" alt="Phone remote controlling the TV">
+  <img src="docs/screenshots/phone-04.jpg" width="24%" alt="Subtitle timing preview">
+</p>
+
+The videos shown are Blender Foundation open movies under CC BY licences; see
+[docs/screenshots/CREDITS.md](docs/screenshots/CREDITS.md). Cablegram doesn't provide films.
+
 ## What you can check here
 
 - **Telegram credentials go straight to Telegram.** Both apps use TDLib on the device. Your login code,
