@@ -6,14 +6,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.Image
@@ -65,105 +60,21 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun PhoneApp(viewModel: PhoneViewModel) {
     when {
-        viewModel.needsAccount && viewModel.resettingPassword -> ResetPasswordForm(viewModel)
-        viewModel.needsAccount -> AccountForm(viewModel)
+        viewModel.needsAccount -> SignInScreen(viewModel)
         viewModel.deletingAccount -> DeleteAccountScreen(viewModel)
+        viewModel.termsRequired -> TermsScreen(viewModel)
         viewModel.verifyingEmail -> VerifyEmailForm(viewModel)
         viewModel.addingTv -> PairingForm(viewModel)
         viewModel.needsName -> NameForm(viewModel)
         viewModel.welcomeTourOpen -> WelcomeTour(viewModel)
         else -> LibraryShell(viewModel)
     }
-    if (viewModel.pendingPair != null) PairTrustDialog(viewModel)
+    // A TV scanned before signing in waits here until there is an account to pair it to (CAB-62).
+    if (viewModel.pendingPair != null && !viewModel.needsAccount && !viewModel.termsRequired) PairTrustDialog(viewModel)
     if (viewModel.pendingPrivacyItem != null) {
         PrivacyPrompt(viewModel)
     }
     if (viewModel.artworkEditor.draft != null) ArtworkEditorScreen(viewModel.artworkEditor)
-}
-
-@Composable
-private fun AccountForm(viewModel: PhoneViewModel) {
-    var email by rememberSaveable { mutableStateOf("") }
-    // Passwords deliberately stay out of saved instance state.
-    var password by remember { mutableStateOf("") }
-    var accountName by rememberSaveable { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var creating by rememberSaveable { mutableStateOf(false) }
-    val canSubmit = (!creating || accountName.trim().isNotEmpty()) && email.trim().contains("@") &&
-        (if (creating) password.length >= 8 else password.isNotBlank()) && !viewModel.busy
-    val submit = {
-        if (canSubmit) {
-            if (creating) viewModel.registerAccount(email.trim(), password, accountName.trim())
-            else viewModel.loginAccount(email.trim(), password)
-        }
-    }
-    Box(Modifier.fillMaxSize().background(VlcBlack).safeDrawingPadding().imePadding(), contentAlignment = Alignment.Center) {
-        Column(
-            Modifier.widthIn(max = 480.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(28.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            BrandMark()
-            Spacer(Modifier.height(20.dp))
-            ScreenHeading(
-                if (creating) "Make room for\nyour favorites." else "Your library.\nYour big screen.",
-                if (creating) "Create a household for your films, shows, and the people you watch with."
-                else "Sign in to bring your own videos together, ready for your TV.",
-            )
-            if (creating) {
-                OutlinedTextField(
-                    value = accountName,
-                    onValueChange = { accountName = it.take(80) },
-                    modifier = Modifier.fillMaxWidth().maestro(MaestroIds.HOUSEHOLD_NAME),
-                    singleLine = true,
-                    label = { Text("Account name") },
-                    supportingText = { Text("Shown on your phones and TVs") },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                )
-            }
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                modifier = Modifier.fillMaxWidth().maestro("account_email"),
-                singleLine = true,
-                label = { Text("Email address") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-            )
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                modifier = Modifier.fillMaxWidth().maestro("account_password"),
-                singleLine = true,
-                label = { Text("Password") },
-                supportingText = if (creating) ({ Text("Use at least 8 characters") }) else null,
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            if (passwordVisible) "Hide password" else "Show password")
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { submit() }),
-            )
-            Button(onClick = submit, enabled = canSubmit, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro("account_submit")) {
-                if (viewModel.busy) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(10.dp))
-                }
-                Text(if (viewModel.busy) "Please wait…" else if (creating) "Create account" else "Sign in")
-            }
-            if (!creating) {
-                TextButton(onClick = viewModel::startPasswordReset, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth().maestro("account_forgot_password")) {
-                    Text("Forgot password?")
-                }
-            }
-            TextButton(onClick = { creating = !creating }, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth()) {
-                Text(if (creating) "Already have an account? Sign in" else "New to Cablegram? Create an account")
-            }
-            viewModel.status?.let { StatusNote(it) }
-            Text("Your videos stay yours. Stream from your phone to your TV on the same Wi-Fi.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-        }
-    }
 }
 
 @Composable
@@ -270,57 +181,6 @@ private fun VerifyEmailForm(viewModel: PhoneViewModel) {
             ) { Text(if (viewModel.busy) "Checking…" else "Confirm") }
             TextButton(onClick = viewModel::sendEmailCode, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Send a new code") }
             TextButton(onClick = viewModel::skipEmailVerification, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth().maestro("email_code_later")) { Text("Later") }
-            viewModel.status?.let { StatusNote(it) }
-        }
-    }
-}
-
-/** Forgot password: email → code + new password, then signs in. */
-@Composable
-private fun ResetPasswordForm(viewModel: PhoneViewModel) {
-    var email by rememberSaveable { mutableStateOf("") }
-    var code by rememberSaveable { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    val sent = viewModel.resetEmail
-    Box(Modifier.fillMaxSize().background(VlcBlack).safeDrawingPadding().imePadding(), contentAlignment = Alignment.Center) {
-        Column(
-            Modifier.widthIn(max = 480.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(28.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            BrandMark()
-            if (sent == null) {
-                ScreenHeading("Reset your password", "We'll email you a code to choose a new password.")
-                OutlinedTextField(
-                    value = email, onValueChange = { email = it }, modifier = Modifier.fillMaxWidth().maestro("reset_email"),
-                    singleLine = true, label = { Text("Email address") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done),
-                )
-                Button(
-                    onClick = { viewModel.requestPasswordReset(email) },
-                    enabled = email.contains("@") && !viewModel.busy,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro("reset_send"),
-                ) { Text("Send code") }
-            } else {
-                ScreenHeading("Choose a new password", "Enter the code we sent to $sent and a new password.")
-                OutlinedTextField(
-                    value = code, onValueChange = { code = it.filter(Char::isDigit).take(6) }, modifier = Modifier.fillMaxWidth().maestro("reset_code"),
-                    singleLine = true, label = { Text("Code") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Next),
-                )
-                OutlinedTextField(
-                    value = password, onValueChange = { password = it }, modifier = Modifier.fillMaxWidth().maestro("reset_password"),
-                    singleLine = true, label = { Text("New password") }, supportingText = { Text("Use at least 8 characters") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                )
-                Button(
-                    onClick = { viewModel.completePasswordReset(code, password) },
-                    enabled = code.length == 6 && password.length >= 8 && !viewModel.busy,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro("reset_submit"),
-                ) { Text("Set new password") }
-                TextButton(onClick = { viewModel.requestPasswordReset(sent) }, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Send a new code") }
-            }
-            TextButton(onClick = viewModel::cancelPasswordReset, modifier = Modifier.fillMaxWidth()) { Text("Back to sign in") }
             viewModel.status?.let { StatusNote(it) }
         }
     }

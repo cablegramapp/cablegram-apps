@@ -37,11 +37,11 @@ class AccountDeletionControllerTest {
     }
 
     @Test
-    fun `wrong password keeps the account and the session and allows a retry`() = runTest {
-        val controller = controller(result = AccountDeletionResult.WrongPassword)
+    fun `wrong code keeps the account and the session and allows a retry`() = runTest {
+        val controller = controller(result = AccountDeletionResult.WrongCode)
 
         assertFalse(controller.submit("nope"))
-        assertEquals(AccountDeletionError.WrongPassword, controller.error)
+        assertEquals(AccountDeletionError.WrongCode, controller.error)
         assertEquals(0, wipes)
         assertFalse(controller.running)
 
@@ -114,11 +114,11 @@ class AccountDeletionControllerTest {
 
     @Test
     fun `a new attempt clears the previous error`() = runTest {
-        var next = AccountDeletionResult.WrongPassword
+        var next = AccountDeletionResult.WrongCode
         val controller = AccountDeletionController({ "access-1" }, { _, _ -> next }, { wipes++ })
 
         controller.submit("bad")
-        assertEquals(AccountDeletionError.WrongPassword, controller.error)
+        assertEquals(AccountDeletionError.WrongCode, controller.error)
 
         next = AccountDeletionResult.Deleted
         assertTrue(controller.submit("good-pw"))

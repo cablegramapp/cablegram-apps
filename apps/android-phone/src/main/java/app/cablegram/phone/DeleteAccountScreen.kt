@@ -20,16 +20,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,24 +39,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
 /** The public page that deletes an account without the app; also the link given to Google Play. */
 internal const val DELETE_ACCOUNT_WEB_URL = "https://api.cablegram.app/delete-account"
 
 /**
- * Deleting the account, step by step: this screen says what goes, asks for the password, and a second dialog
- * asks for one more explicit tap before anything is sent. The password lives only in this composable's memory.
+ * Deleting the account, step by step: this screen says what goes, mails a code to the account's address (accounts
+ * have no password, spec 007), and a second dialog asks for one more explicit tap before anything is sent. The code
+ * lives only in this composable's memory.
  */
 @Composable
 internal fun DeleteAccountScreen(viewModel: PhoneViewModel) {
     val deletion = viewModel.accountDeletion
-    // Like the sign-in form, the password stays out of saved instance state.
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
+    var code by remember { mutableStateOf("") }
     var confirming by remember { mutableStateOf(false) }
+    val sentTo = viewModel.deletionCodeSentTo
     BackHandler(enabled = !deletion.running) { viewModel.closeDeleteAccount() }
     Box(Modifier.fillMaxSize().background(VlcBlack).safeDrawingPadding().imePadding(), contentAlignment = Alignment.TopCenter) {
         Column(
@@ -80,29 +74,38 @@ internal fun DeleteAccountScreen(viewModel: PhoneViewModel) {
                 Bullet(R.string.delete_account_kept_phone)
                 if (viewModel.telegramLink?.linked == true) Bullet(R.string.delete_account_tv_sessions)
             }
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                modifier = Modifier.fillMaxWidth().maestro("delete_account_password"),
-                singleLine = true,
-                enabled = !deletion.running,
-                label = { Text(stringResource(R.string.delete_account_password_label)) },
-                supportingText = { Text(stringResource(R.string.delete_account_password_hint)) },
-                isError = deletion.error == AccountDeletionError.WrongPassword,
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        val label = stringResource(if (passwordVisible) R.string.delete_account_hide_password else R.string.delete_account_show_password)
-                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, label)
-                    }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (password.isNotEmpty() && !deletion.running) confirming = true }),
-            )
-            deletion.error?.let { StatusNote(stringResource(it.messageRes())) }
+            if (sentTo == null) {
+                Text(stringResource(R.string.delete_account_send_code_hint), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                OutlinedButton(
+                    onClick = viewModel::requestDeletionCode,
+                    enabled = !viewModel.busy && !deletion.running,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro("delete_account_send_code"),
+                ) { Text(stringResource(R.string.delete_account_send_code)) }
+                if (viewModel.deletionCodeFailed) StatusNote(stringResource(R.string.delete_account_code_failed))
+            } else {
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { code = it.filter(Char::isDigit).take(6) },
+                    modifier = Modifier.fillMaxWidth().maestro("delete_account_code"),
+                    singleLine = true,
+                    enabled = !deletion.running,
+                    label = { Text(stringResource(R.string.delete_account_code_label)) },
+                    supportingText = { Text(stringResource(R.string.delete_account_code_hint, sentTo)) },
+                    isError = deletion.error == AccountDeletionError.WrongCode,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { if (code.length == 6 && !deletion.running) confirming = true }),
+                )
+                TextButton(
+                    onClick = viewModel::requestDeletionCode,
+                    enabled = !viewModel.busy && !deletion.running,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.delete_account_send_new_code)) }
+                if (viewModel.deletionCodeFailed) StatusNote(stringResource(R.string.delete_account_code_failed))
+            }
+    deletion.error?.let { StatusNote(stringResource(it.messageRes())) }
             Button(
                 onClick = { confirming = true },
-                enabled = password.isNotEmpty() && !deletion.running,
+                enabled = sentTo != null && code.length == 6 && !deletion.running,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro("delete_account_continue"),
             ) {
@@ -126,7 +129,7 @@ internal fun DeleteAccountScreen(viewModel: PhoneViewModel) {
         text = { Text(stringResource(R.string.delete_account_confirm_text)) },
         confirmButton = {
             TextButton(
-                onClick = { confirming = false; viewModel.deleteAccount(password) },
+                onClick = { confirming = false; viewModel.deleteAccount(code) },
                 modifier = Modifier.maestro("delete_account_confirm"),
             ) { Text(stringResource(R.string.delete_account_confirm_button), color = MaterialTheme.colorScheme.error) }
         },
@@ -143,7 +146,7 @@ private fun Bullet(text: Int) {
 }
 
 private fun AccountDeletionError.messageRes(): Int = when (this) {
-    AccountDeletionError.WrongPassword -> R.string.delete_account_error_wrong_password
+    AccountDeletionError.WrongCode -> R.string.delete_account_error_wrong_code
     AccountDeletionError.RateLimited -> R.string.delete_account_error_rate_limited
     AccountDeletionError.SessionExpired -> R.string.delete_account_error_session_expired
     AccountDeletionError.Offline -> R.string.delete_account_error_offline

@@ -28,36 +28,36 @@ class CatalogClientAccountDeletionTest {
 
     private fun client(tokens: AccountTokens? = null) = CatalogClient(server.url("/").toString(), tokens)
 
-    private fun delete(response: MockResponse, password: String = "hunter2-pass"): AccountDeletionResult {
+    private fun delete(response: MockResponse, code: String = "123456"): AccountDeletionResult {
         server.enqueue(response)
-        return runBlocking { client().deleteAccount("access-1", password) }
+        return runBlocking { client().deleteAccount("access-1", code) }
     }
 
     @Test
-    fun `204 deletes the account and sends the bearer token and password`() {
+    fun `204 deletes the account and sends the bearer token and code`() {
         assertEquals(AccountDeletionResult.Deleted, delete(MockResponse().setResponseCode(204)))
 
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertEquals("/api/account/delete", request.path)
         assertEquals("Bearer access-1", request.getHeader("Authorization"))
-        assertEquals("""{"password":"hunter2-pass"}""", request.body.readUtf8())
+        assertEquals("""{"code":"123456"}""", request.body.readUtf8())
     }
 
     @Test
-    fun `wrong password is reported and sent only once`() {
+    fun `wrong code is reported and sent only once`() {
         val result = delete(MockResponse().setResponseCode(401).setBody("""{"error":"invalid_credentials"}"""))
-        assertEquals(AccountDeletionResult.WrongPassword, result)
+        assertEquals(AccountDeletionResult.WrongCode, result)
         assertEquals(1, server.requestCount)
     }
 
     @Test
-    fun `a wrong password is not resent even when a renewing authenticator is installed`() {
+    fun `a wrong code is not resent even when a renewing authenticator is installed`() {
         server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"invalid_credentials"}"""))
         val tokens = Tokens("access-1", "refresh-1")
         val result = runBlocking { client(tokens).deleteAccount("access-1", "wrong") }
 
-        assertEquals(AccountDeletionResult.WrongPassword, result)
+        assertEquals(AccountDeletionResult.WrongCode, result)
         assertEquals(1, server.requestCount)
     }
 
@@ -82,7 +82,7 @@ class CatalogClientAccountDeletionTest {
         server.enqueue(MockResponse().setBody("{}"))
         server.enqueue(MockResponse().setResponseCode(204))
 
-        assertEquals(AccountDeletionResult.Deleted, runBlocking { client(tokens).deleteAccount("access-1", "pw-12345") })
+        assertEquals(AccountDeletionResult.Deleted, runBlocking { client(tokens).deleteAccount("access-1", "654321") })
 
         assertEquals("/api/account/delete", server.takeRequest().path)
         assertEquals("/api/me", server.takeRequest().path)
@@ -91,7 +91,7 @@ class CatalogClientAccountDeletionTest {
         val retry = server.takeRequest()
         assertEquals("/api/account/delete", retry.path)
         assertEquals("Bearer access-2", retry.getHeader("Authorization"))
-        assertEquals("""{"password":"pw-12345"}""", retry.body.readUtf8())
+        assertEquals("""{"code":"654321"}""", retry.body.readUtf8())
     }
 
     @Test
@@ -101,7 +101,7 @@ class CatalogClientAccountDeletionTest {
         server.enqueue(MockResponse().setResponseCode(401))
         server.enqueue(MockResponse().setResponseCode(401)) // the refresh token is rejected too
 
-        assertEquals(AccountDeletionResult.SessionExpired, runBlocking { client(tokens).deleteAccount("access-1", "pw-12345") })
+        assertEquals(AccountDeletionResult.SessionExpired, runBlocking { client(tokens).deleteAccount("access-1", "654321") })
         assertNull(tokens.accountToken)
     }
 
@@ -115,13 +115,13 @@ class CatalogClientAccountDeletionTest {
     @Test
     fun `network failure is reported as offline`() {
         server.shutdown()
-        assertEquals(AccountDeletionResult.Offline, runBlocking { client().deleteAccount("access-1", "pw-12345") })
+        assertEquals(AccountDeletionResult.Offline, runBlocking { client().deleteAccount("access-1", "654321") })
     }
 
     @Test
     fun `a dropped connection is offline too`() {
         server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AFTER_REQUEST))
-        assertEquals(AccountDeletionResult.Offline, runBlocking { client().deleteAccount("access-1", "pw-12345") })
+        assertEquals(AccountDeletionResult.Offline, runBlocking { client().deleteAccount("access-1", "654321") })
         server.takeRequest(1, TimeUnit.SECONDS)
     }
 }

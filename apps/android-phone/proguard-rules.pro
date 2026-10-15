@@ -29,3 +29,7 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.openjsse.**
 -keep class app.cablegram.phone.cast.CastOptionsProvider { *; }
+
+# Credential Manager (spec 007, Sign in with Google): its Play services provider is found by reflection.
+-if class androidx.credentials.CredentialManager
+-keep class androidx.credentials.playservices.** { *; }
