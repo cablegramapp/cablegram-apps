@@ -24,6 +24,8 @@ interface TelegramApi {
     suspend fun checkPassword(password: String)
     suspend fun confirmQrLogin(link: String)
     suspend fun logOut()
+    /** Closes the client and waits until its database is released, without signing out: another client may then open it. */
+    suspend fun close()
 
     suspend fun me(): TgUser
     suspend fun chat(chatId: Long): TgChat?

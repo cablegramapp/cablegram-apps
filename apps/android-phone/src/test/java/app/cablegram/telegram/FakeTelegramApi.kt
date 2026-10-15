@@ -40,6 +40,7 @@ class FakeTelegramApi : TelegramApi {
         onConfirm?.invoke()
     }
     override suspend fun logOut() = record("logOut")
+    override suspend fun close() = record("close")
     override suspend fun me(): TgUser = user
 
     override suspend fun chat(chatId: Long): TgChat? =

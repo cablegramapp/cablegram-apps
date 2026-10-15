@@ -16,6 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -372,6 +373,28 @@ class TvTelegram(
         }
     }
 
+    /**
+     * The TV screen went away (its ViewModel was cleared) but the process lives on. Stops everything and releases
+     * TDLib's database, keeping Telegram signed in: TDLib opens a database only once at a time, so the next
+     * [TvTelegram] in this process waits for this before it starts (see [ensureSession]).
+     */
+    fun close() {
+        val current = session
+        session = null
+        watchJob?.cancel()
+        syncJob?.cancel()
+        phoneLoginJob?.cancel()
+        passwordJob?.cancel()
+        streamServer?.stop()
+        streamServer = null
+        scope.cancel()
+        val previous = closing
+        closing = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            previous?.join()
+            current?.api?.close()
+        }
+    }
+
     /** Unpair, revocation, household disconnect: log out and delete everything Telegram left here. */
     fun signOutAndWipe() {
         prefs.edit().remove(PREF_OWNER).apply()
@@ -423,6 +446,7 @@ class TvTelegram(
             api = TdlibTelegramApi(),
             role = TelegramRole.Tv,
             parameters = {
+                closing?.join()
                 val currentToken = token ?: throw app.cablegram.telegram.TelegramClientUnavailable()
                 val credentials = api.telegramClientCredentials(currentToken)
                 TgParameters(
@@ -659,6 +683,8 @@ class TvTelegram(
     }
 
     private companion object {
+        /** The previous [TvTelegram] in this process releasing TDLib's database (see [close]). */
+        @Volatile private var closing: Job? = null
         const val PREF_TEMPORARY = "temporary"
         const val PREF_ACTIVE = "last_active"
         const val PREF_VIA_PHONE = "telegram_via_phone"
