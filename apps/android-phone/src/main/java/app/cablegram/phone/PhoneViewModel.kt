@@ -875,6 +875,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 paired = true
                 PairLog.i("Phone paired ${PairLog.pinTail(parsed.first)} tvs=${pairing.tvs.size}")
                 ensurePhoneDevice()
+                // Pairing the same TV again replaces its old record on the server; drop it here now, not a minute later.
+                syncHouseholdTvs()
                 LanLibraryService.start(getApplication())
                 // T075 / R-5: pairing may happen mid-session; start (or refresh) the
                 // private-playback approval watcher together with the LAN server.
