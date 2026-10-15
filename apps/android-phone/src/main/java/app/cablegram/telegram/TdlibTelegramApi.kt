@@ -35,13 +35,16 @@ import dev.g000sha256.tdl.dto.InputVideo
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 // Shared by apps/android-phone and apps/android-tv (spec 004). Keep both copies identical.
@@ -88,6 +91,17 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
     override suspend fun checkPassword(password: String) { client.checkAuthenticationPassword(password).ok() }
     override suspend fun confirmQrLogin(link: String) { client.confirmQrCodeAuthentication(link).ok() }
     override suspend fun logOut() { client.logOut().ok() }
+    override suspend fun close() {
+        withTimeoutOrNull(CLOSE_TIMEOUT_MS) {
+            coroutineScope {
+                // Subscribe before asking, so the Closed update can't be missed.
+                val closed = async(start = CoroutineStart.UNDISPATCHED) {
+                    client.authorizationStateUpdates.first { it.authorizationState is AuthorizationStateClosed }
+                }
+                if (client.close() is TdlResult.Success) closed.await() else closed.cancel()
+            }
+        }
+    }
 
     override suspend fun me(): TgUser {
         val user = client.getMe().ok()
@@ -244,6 +258,7 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
         const val DOWNLOAD_PRIORITY = 32
         const val UPLOAD_LIMIT = 2000L * 1024 * 1024
         const val PREMIUM_UPLOAD_LIMIT = 4000L * 1024 * 1024
+        const val CLOSE_TIMEOUT_MS = 10_000L
 
         fun toFile(file: File) = TgFile(
             id = file.id,

@@ -1459,6 +1459,8 @@ class CablegramViewModel @JvmOverloads constructor(
         cloudStreamServer?.stop()
         lanStreamServer?.stop()
         commandDelivery.stop()
+        // The process may outlive this screen: release Telegram's database for the next one (still signed in).
+        telegram.close()
         super.onCleared()
     }
 
