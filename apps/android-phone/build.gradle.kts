@@ -30,6 +30,9 @@ android {
             ?: (project.findProperty("CABLEGRAM_API_BASE_URL") as String?)
             ?: "https://api.cablegram.app/"
         buildConfigField("String", "API_BASE", "\"$apiBase\"")
+        // CAB-62: TVs' pairing QR codes open this web remote address; the app takes those links (see the manifest).
+        val webAppBase = (project.findProperty("CABLEGRAM_WEB_APP_BASE") as String?) ?: "https://app.cablegram.app"
+        buildConfigField("String", "WEB_APP_BASE", "\"${webAppBase.trimEnd('/')}\"")
         buildConfigField("String", "API_BASE_URL", "\"$apiBase\"")
         // Optional Cast console receiver ID; an empty value keeps Cast disabled.
         val castAppId = localSetting("CABLEGRAM_CAST_APP_ID").trim()

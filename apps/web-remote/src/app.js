@@ -1,11 +1,16 @@
 import { API_BASE } from "../config.js";
 import { createApi, REMOTE, ApiError } from "./api.js";
 import { trackCommand, OUTCOME } from "./outcome.js";
+import { capturePairLink, clearPendingPair, pendingPair } from "./pairlink.js";
 
 const api = createApi({ base: API_BASE });
 const root = document.getElementById("app");
 const TV_KEY = "cablegram.tv";
 const TABS = { library: "Library", remote: "Remote", tvs: "TVs" };
+/** This tab's storage for a TV scanned before signing in (CAB-62); a stand-in when the browser refuses storage. */
+const tabStore = (() => {
+  try { return window.sessionStorage; } catch { return { getItem: () => null, setItem() {}, removeItem() {} }; }
+})();
 
 /** Tiny DOM helper. Text always goes in as text, never as HTML: the server supplies titles and TV names. */
 function h(tag, attrs = {}, ...children) {
@@ -78,6 +83,8 @@ function message(error) {
     case "disposable_email": return "Use a permanent email address.";
     case "forbidden_for_web_client": return "This can't be done from the web app.";
     case "unknown_target_device": return "That TV isn't paired any more.";
+    case "pin_expired": return "That code expired. Scan the new code on the TV, or type the new PIN.";
+    case "invalid_pin": return "That code didn't match. Check the code on the TV and try again.";
     default: return error.status === 401 ? "Please sign in again." : `Something went wrong (${error.code || error.status}).`;
   }
 }
@@ -124,7 +131,12 @@ function signinPage(...children) {
   stopPolling();
   stopTracking();
   closeSheet();
-  mount(h("div", { class: "signin" }, h("img", { class: "logo", src: "icons/icon-192.png", alt: "" }), ...children));
+  const scanned = pendingPair(tabStore);
+  mount(h("div", { class: "signin" },
+    h("img", { class: "logo", src: "icons/icon-192.png", alt: "" }),
+    // CAB-62: the person scanned a TV's code; it waits here until they have an account.
+    scanned && h("div", { class: "banner", role: "status" }, h("p", {}, `Sign in or create an account to connect ${scanned.tv}.`)),
+    ...children));
 }
 
 /** First screen: Google (when the server offers it) or an email code. The privacy notice is shown before anything is sent. */
@@ -353,6 +365,7 @@ async function start() {
   }
   if (!state.tvs.some((tv) => tv.id === state.tv)) state.tv = state.tvs[0]?.id ?? null;
   render();
+  offerPendingPair();
   refreshLibrary();
   refreshTelegram();
   startPolling();
@@ -732,10 +745,42 @@ function pairForm() {
         toast("TV paired.");
         await start();
       } catch (e) {
-        if (!signedOut(e)) toast(e instanceof ApiError && e.status === 404 ? "That code didn't match. Check the TV and try again." : message(e));
+        if (!signedOut(e)) toast(message(e));
       }
     },
   }, pin, h("button", { class: "primary", type: "submit" }, "Pair"));
+}
+
+/** CAB-62: a TV scanned before signing in. Nothing is paired until the person taps Connect. */
+function offerPendingPair() {
+  const link = pendingPair(tabStore);
+  if (!link) return;
+  const errorLine = h("p", { class: "error", role: "alert" });
+  const connect = h("button", {
+    class: "primary wide",
+    onclick: async () => {
+      connect.disabled = true;
+      try {
+        await api.claimTv(link.pin, link.tv === "your TV" ? undefined : link.tv);
+        clearPendingPair(tabStore);
+        closeSheet();
+        toast(`${link.tv} is connected.`);
+        await start();
+      } catch (e) {
+        if (signedOut(e)) return;
+        if (e instanceof ApiError && (e.code === "pin_expired" || e.code === "invalid_pin")) clearPendingPair(tabStore);
+        errorLine.textContent = message(e);
+        connect.disabled = e instanceof ApiError && (e.code === "pin_expired" || e.code === "invalid_pin");
+      }
+    },
+  }, "Connect");
+  openSheet(
+    h("h3", { class: "sheet-title" }, `Connect ${link.tv}?`),
+    h("p", {}, `${link.tv} will show your library, and this phone can control it. Only connect a TV you can see in front of you.`),
+    connect,
+    errorLine,
+    h("button", { class: "wide", onclick: () => { clearPendingPair(tabStore); closeSheet(); } }, "Not now"),
+  );
 }
 
 // ---- TV requests ----
@@ -822,4 +867,7 @@ document.addEventListener("visibilitychange", () => {
   refreshTelegram();
   refreshLibrary();
 });
+// CAB-62: a TV's pairing link (/?pair=…&tv=…) is kept for after sign-in, and leaves the address bar at once.
+const withoutPairLink = capturePairLink(location, tabStore);
+if (withoutPairLink) history.replaceState(null, "", withoutPairLink);
 if (api.signedIn) start(); else renderSignIn();

@@ -851,9 +851,15 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         busy = true
         viewModelScope.launch {
             try {
-                val result = catalog().pairPhone(parsed.first, pairing.accountToken, trust)
+                val client = catalog()
+                val result = client.pairPhone(parsed.first, pairing.accountToken, trust)
                 if (result == null) {
-                    status = "That code didn't work. On the TV, tap Refresh code and scan the new QR — or type the new PIN."
+                    status = when (client.lastPairError) {
+                        // CAB-62: the code often runs out while a new person creates their account.
+                        "pin_expired" -> "That code expired. Scan the new code on the TV, or type the new PIN."
+                        "invalid_pin" -> "That code didn't match. Check the code on the TV and try again."
+                        else -> "Couldn't connect the TV. Check your connection and try again."
+                    }
                     return@launch
                 }
                 // result.token is the token this call was sent with; the store may
@@ -1092,7 +1098,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             busy = true
             try {
                 val email = catalog().accountEmail(token)
-                val failed = email?.let { catalog().requestSignInCode(it) }
+                val failed = email?.let { catalog().requestSignInCode(it, forDeletion = true) }
                 deletionCodeFailed = email == null || failed != null
                 if (!deletionCodeFailed) deletionCodeSentTo = email
             } finally {

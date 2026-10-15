@@ -362,7 +362,15 @@ fun parsePairCode(input: String): Pair<String, String>? {
     return parsePairUri(trimmed)
 }
 
-fun parsePairUri(uri: String): Pair<String, String>? {
+/** Where TVs' pairing QR codes point (CAB-62): the public web remote, and the one this build was made for. */
+val PAIR_WEB_ORIGINS: Set<String> = setOf("https://app.cablegram.app", BuildConfig.WEB_APP_BASE.trimEnd('/'))
+
+/**
+ * A TV's pairing link: `https://app.cablegram.app/?pair=<PIN>&tv=<name>` (CAB-62) from the QR code since spec 007, or
+ * the older `cablegram://pair?token=<PIN>&name=<name>`. Returns the PIN and the TV's name.
+ */
+fun parsePairUri(uri: String, webOrigins: Set<String> = PAIR_WEB_ORIGINS): Pair<String, String>? {
+    parsePairWebLink(uri, webOrigins)?.let { return it }
     return runCatching {
         val parsed = java.net.URI(uri.trim())
         if (parsed.scheme != "cablegram" || parsed.rawAuthority != "pair" ||
@@ -376,6 +384,19 @@ fun parsePairUri(uri: String): Pair<String, String>? {
         token to (params["name"]?.takeIf { it.isNotBlank() } ?: "TV")
     }.getOrNull()
 }
+
+private fun parsePairWebLink(uri: String, webOrigins: Set<String>): Pair<String, String>? = runCatching {
+    val parsed = java.net.URI(uri.trim())
+    val origin = "${parsed.scheme}://${parsed.rawAuthority}"
+    if (origin !in webOrigins || parsed.rawUserInfo != null || parsed.fragment != null) return null
+    if (!parsed.path.isNullOrEmpty() && parsed.path != "/") return null
+    val params = parsed.rawQuery.orEmpty().split('&').mapNotNull { part ->
+        val idx = part.indexOf('=')
+        if (idx <= 0) null else part.substring(0, idx) to java.net.URLDecoder.decode(part.substring(idx + 1), "UTF-8")
+    }.toMap()
+    val pin = params["pair"]?.takeIf { it.matches(Regex("\\d{6}")) } ?: return null
+    pin to (params["tv"]?.trim()?.take(80)?.takeIf { it.isNotEmpty() } ?: "TV")
+}.getOrNull()
 
 fun isValidServerUrl(value: String): Boolean = runCatching {
     val uri = java.net.URI(value.trim())

@@ -56,4 +56,29 @@ class PairUriTest {
         assertEquals("042891", parsed?.first)
         assertEquals("TV", parsed?.second)
     }
+
+    @Test
+    fun `parses the web pairing link from a TV's QR code`() {
+        val parsed = parsePairUri("https://app.cablegram.app/?pair=042891&tv=Living+room+TV")
+        assertEquals("042891", parsed?.first)
+        assertEquals("Living room TV", parsed?.second)
+        assertEquals("TV", parsePairUri("https://app.cablegram.app/?pair=042891")?.second)
+    }
+
+    @Test
+    fun `web pairing links need our origin, a six digit code and no extra path`() {
+        assertNull(parsePairUri("https://app.cablegram.app.evil.test/?pair=042891"))
+        assertNull(parsePairUri("http://app.cablegram.app/?pair=042891"))
+        assertNull(parsePairUri("https://user@app.cablegram.app/?pair=042891"))
+        assertNull(parsePairUri("https://app.cablegram.app/other?pair=042891"))
+        assertNull(parsePairUri("https://app.cablegram.app/?pair=4289"))
+        assertNull(parsePairUri("https://app.cablegram.app/?pair=abcdef"))
+        assertNull(parsePairUri("https://app.cablegram.app/"))
+    }
+
+    @Test
+    fun `a test build accepts its own web remote address`() {
+        assertEquals("123456", parsePairUri("http://localhost:8080/?pair=123456", setOf("http://localhost:8080"))?.first)
+        assertNull(parsePairUri("http://localhost:8080/?pair=123456", setOf("https://app.cablegram.app")))
+    }
 }
