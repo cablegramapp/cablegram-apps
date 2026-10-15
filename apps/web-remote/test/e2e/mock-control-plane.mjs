@@ -1,4 +1,5 @@
-// Mock control plane that also serves the web remote from this repo, same origin, for test/e2e/command-outcomes.yaml.
+// Mock control plane that also serves the web remote from this repo, same origin, for the flows in test/e2e/.
+// Sign-in (spec 007): the code is always 123456. new@b.co is a new person (Create your account); any other email signs in.
 // Run: node test/e2e/mock-control-plane.mjs   (then open http://localhost:8099)
 // The command picks the scenario: pause completes after a delay, stop is rejected by the TV, mute completes quickly,
 // anything else (play) is never confirmed and expires after 3 s.
@@ -14,13 +15,27 @@ createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   let raw = ""; req.on("data", (c) => raw += c); req.on("end", () => {
     const p = url.pathname;
-    if (p === "/api/auth/login") return json(res, 200, { access_token: "a", refresh_token: "r", display_name: "Home" });
-    if (p === "/api/me") return json(res, 200, { devices: [{ id: TV, kind: "tv", display_name: "Living room TV" }] });
+    const body = raw ? JSON.parse(raw) : {};
+    const tokens = { access_token: "a", refresh_token: "r", display_name: "Home" };
+    if (p === "/api/auth/methods") return json(res, 200, { google: null, email_code: true });
+    if (p === "/api/legal") return json(res, 200, { terms: { version: "2026-10-15", url: "https://cablegram.app/terms.html" }, privacy: { version: "2026-10-15", url: "https://cablegram.app/privacy.html" } });
+    if (p === "/api/auth/email-code/request") return json(res, 202, { sent: true });
+    if (p === "/api/auth/email-code/verify") {
+      if (body.code !== "123456") return json(res, 400, { error: "invalid_code" });
+      if (body.email === "new@b.co") return json(res, 200, { status: "signup_required", signup_ticket: "ticket", email: body.email });
+      return json(res, 200, tokens);
+    }
+    if (p === "/api/auth/signup") {
+      if (body.age_confirmed !== true || body.accepted?.terms_version !== "2026-10-15") return json(res, 400, { error: "terms_not_accepted" });
+      return json(res, 201, { ...tokens, display_name: body.name });
+    }
+    if (p === "/api/me") return json(res, 200, { legal: { acceptance_required: false }, devices: [{ id: TV, kind: "tv", display_name: "Living room TV" }] });
+    if (p === "/api/profiles/switch-requests/pending") return json(res, 200, { items: [] });
     if (p === "/api/catalog/items") return json(res, 200, { items: [] });
     if (p === "/api/telegram/link") return json(res, 200, { linked: false });
     if (p === "/api/telegram/tv-logins/pending") return json(res, 200, { requests: [] });
     if (p === "/api/control/commands" && req.method === "POST") {
-      const b = JSON.parse(raw); cmds.set(b.id, { ...b, polls: 0 }); console.log("POST", b.command, b.id); return json(res, 201, { id: b.id });
+      const b = body; cmds.set(b.id, { ...b, polls: 0 }); console.log("POST", b.command, b.id); return json(res, 201, { id: b.id });
     }
     const m = /^\/api\/control\/commands\/([^/]+)$/.exec(p);
     if (m) {
