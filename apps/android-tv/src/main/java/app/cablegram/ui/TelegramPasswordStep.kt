@@ -36,13 +36,15 @@ private enum class PasswordKeyboard { CHOOSE, TV, PHONE }
 /** What the password step shows, before signing in ([TvTelegramStatus.NotSignedIn]) or when Telegram asks. */
 private data class PasswordStepState(
     val hint: String, val busy: Boolean, val error: String?, val phoneRequestError: String?, val phoneCode: String? = null,
+    /** When the phone prompt reached the server; null while it is being sent. */
+    val phoneSentAt: Long? = null,
     /** Signing in is waiting for the household phone to let this TV in. */
     val approving: Boolean = false,
 ) {
     companion object {
         fun of(status: TvTelegramStatus) = when (status) {
-            is TvTelegramStatus.NeedsPassword -> PasswordStepState(status.hint, status.busy, status.error, status.phoneRequestError, status.phoneCode)
-            is TvTelegramStatus.NotSignedIn -> PasswordStepState("", false, null, status.phoneRequestError, status.phoneCode)
+            is TvTelegramStatus.NeedsPassword -> PasswordStepState(status.hint, status.busy, status.error, status.phoneRequestError, status.phoneCode, status.phoneSentAt)
+            is TvTelegramStatus.NotSignedIn -> PasswordStepState("", false, null, status.phoneRequestError, status.phoneCode, status.phoneSentAt)
             // Signing in with the password already given: the phone's approval and Telegram's check are under way.
             is TvTelegramStatus.WaitingForPhone -> PasswordStepState("", true, null, null, approving = true)
             else -> PasswordStepState("", true, null, null)
@@ -113,25 +115,56 @@ internal fun TelegramPasswordStep(
                 Text("Back on the remote closes the keyboard. Cancel picks another one.", color = Muted, fontSize = 16.sp)
                 TvPasswordField(step, onPassword, onCancel = ::chooseKeyboard)
             }
-            PasswordKeyboard.PHONE -> {
-                Text(if (step.busy) "Checking your password…" else "Type on your phone", color = Cyan, fontSize = 26.sp)
-                Text("Cablegram on your paired phone opens a password screen. If it isn't open, tap the Cablegram notification. Type the password there; this TV signs in as soon as Telegram accepts it.", color = Paper, fontSize = 18.sp, lineHeight = 25.sp)
-                step.phoneCode?.let { code ->
-                    Text("Your phone shows the code", color = Muted, fontSize = 16.sp)
-                    Text(code, color = Cyan, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
-                    Text("Send your password only if the phone shows this same code.", color = Muted, fontSize = 16.sp, lineHeight = 22.sp)
-                }
-                step.hint.takeIf { it.isNotBlank() }?.let { Text("Hint: $it", color = Muted, fontSize = 16.sp) }
-                (step.phoneRequestError ?: step.error)?.let { Text(it, color = Coral, fontSize = 16.sp) }
-                val focus = remember { FocusRequester() }
-                LaunchedEffect(Unit) { withFrameNanos { }; focus.requestFocus() }
-                Button(onClick = ::chooseKeyboard, modifier = Modifier.focusRequester(focus)) { Text("Choose keyboard") }
-                Button(onClick = onAskPhone, enabled = !step.busy, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Ask my phone again") }
-            }
+            PasswordKeyboard.PHONE -> PhoneKeyboard(step, onAskPhone, onTvKeyboard = { mode = PasswordKeyboard.TV })
         }
         Text("Your password goes only to Telegram, encrypted for this TV. Cablegram never sees it.", color = Slate, fontSize = 14.sp, lineHeight = 19.sp)
         extraActions()
     }
+}
+
+/**
+ * Waiting for the password from the phone. Says plainly whether the prompt is still being sent or already on its way,
+ * since the phone takes a few seconds to show it. Focus rests on that message, not on a button: a second press of OK
+ * while waiting must not cancel the prompt or send another (CAB-73). "Ask my phone again" appears only once a new
+ * prompt would actually be sent.
+ */
+@Composable
+private fun PhoneKeyboard(step: PasswordStepState, onAskPhone: () -> Unit, onTvKeyboard: () -> Unit) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(step.phoneSentAt) {
+        while (step.phoneSentAt != null) {
+            now = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
+    val sent = step.phoneSentAt != null
+    val failed = step.phoneRequestError != null
+    val canAskAgain = failed || (sent && now - step.phoneSentAt!! >= app.cablegram.PHONE_REASK_MS)
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { withFrameNanos { }; runCatching { focus.requestFocus() } }
+    Column(Modifier.focusRequester(focus).focusable(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(if (sent || failed) "Type on your phone" else "Sending to your phone…", color = Cyan, fontSize = 26.sp)
+        Text(
+            when {
+                failed -> "The password screen didn't reach your phone."
+                sent -> "It's on its way. Cablegram on your phone opens a password screen in a few seconds, or shows a notification to tap. Type the password there; this TV signs in as soon as Telegram accepts it."
+                else -> "Cablegram on your phone will open a password screen."
+            },
+            color = Paper, fontSize = 18.sp, lineHeight = 25.sp,
+        )
+        step.phoneCode?.let { code ->
+            Text("Your phone shows the code", color = Muted, fontSize = 16.sp)
+            Text(code, color = Cyan, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
+            Text("Send your password only if the phone shows this same code.", color = Muted, fontSize = 16.sp, lineHeight = 22.sp)
+        }
+        step.hint.takeIf { it.isNotBlank() }?.let { Text("Hint: $it", color = Muted, fontSize = 16.sp) }
+        (step.phoneRequestError ?: step.error)?.let { Text(it, color = Coral, fontSize = 16.sp) }
+    }
+    if (canAskAgain) {
+        if (!failed) Text("Nothing on your phone yet?", color = Muted, fontSize = 16.sp)
+        Button(onClick = onAskPhone, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Ask my phone again") }
+    }
+    Button(onClick = onTvKeyboard, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Use the TV keyboard instead") }
 }
 
 @Composable

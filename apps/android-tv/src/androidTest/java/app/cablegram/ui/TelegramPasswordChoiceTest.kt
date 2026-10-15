@@ -109,7 +109,7 @@ class TelegramPasswordChoiceTest {
         waitUntil { submissions.get() == "password-qa" }
         assertEquals(1, requests.get())
         // A missing decorative clip must leave both keyboard choices usable.
-        click("Choose keyboard")
+        click("Cancel")
         waitUntil { findText("Phone keyboard") != null }
         activityRule.scenario.onActivity { clip.value = "file:///missing-password-clip.mp4" }
         waitUntil { video() == null }

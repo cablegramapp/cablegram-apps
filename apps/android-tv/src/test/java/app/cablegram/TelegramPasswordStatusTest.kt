@@ -21,9 +21,10 @@ class TelegramPasswordStatusTest {
 
     @Test
     fun `an open phone prompt keeps its code and message`() {
-        val before = TvTelegramStatus.NotSignedIn(twoStep = true, phoneRequestError = "offline", phoneCode = "1234")
+        val before = TvTelegramStatus.NotSignedIn(twoStep = true, phoneRequestError = "offline", phoneCode = "1234", phoneSentAt = 42L)
         val after = passwordStatus("hint", before, checking = false)
         assertEquals("1234", after.phoneCode)
+        assertEquals(42L, after.phoneSentAt)
         assertEquals("offline", after.phoneRequestError)
         assertEquals("hint", after.hint)
         assertNull(passwordStatus("hint", TvTelegramStatus.Connecting, checking = false).phoneCode)

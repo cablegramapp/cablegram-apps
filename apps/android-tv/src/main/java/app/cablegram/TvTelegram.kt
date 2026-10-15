@@ -28,13 +28,15 @@ import kotlinx.coroutines.launch
  * flashing the keyboard choice (CAB-73). An open phone prompt's code and message carry over from [shown].
  */
 internal fun passwordStatus(hint: String, shown: TvTelegramStatus, checking: Boolean): TvTelegramStatus.NeedsPassword {
-    val (requestError, code) = when (shown) {
-        is TvTelegramStatus.NeedsPassword -> shown.phoneRequestError to shown.phoneCode
-        is TvTelegramStatus.NotSignedIn -> shown.phoneRequestError to shown.phoneCode
-        else -> null to null
+    return when (shown) {
+        is TvTelegramStatus.NeedsPassword -> TvTelegramStatus.NeedsPassword(hint, checking, null, shown.phoneRequestError, shown.phoneCode, shown.phoneSentAt)
+        is TvTelegramStatus.NotSignedIn -> TvTelegramStatus.NeedsPassword(hint, checking, null, shown.phoneRequestError, shown.phoneCode, shown.phoneSentAt)
+        else -> TvTelegramStatus.NeedsPassword(hint, busy = checking)
     }
-    return TvTelegramStatus.NeedsPassword(hint, busy = checking, phoneRequestError = requestError, phoneCode = code)
 }
+
+/** "Ask my phone again" sends a new prompt only after this; sooner it keeps the open one (CAB-73). */
+internal const val PHONE_REASK_MS = 30_000L
 
 /** What the TV shows about Telegram in Settings (spec 004 US2). */
 /** This TV has started signing in to the household's Telegram but can't stream from it yet. */
@@ -55,7 +57,13 @@ sealed interface TvTelegramStatus {
      * Telegram's login until they do: with two-step verification ([twoStep] true, or null when unknown) the password is
      * collected first, so Telegram never reports an "incomplete login attempt" for a sign-in the viewer walked away from.
      */
-    data class NotSignedIn(val twoStep: Boolean?, val phoneRequestError: String? = null, val phoneCode: String? = null) : TvTelegramStatus
+    data class NotSignedIn(
+        val twoStep: Boolean?,
+        val phoneRequestError: String? = null,
+        val phoneCode: String? = null,
+        /** When the phone prompt reached the server; null while it is still being sent (CAB-73). */
+        val phoneSentAt: Long? = null,
+    ) : TvTelegramStatus
     /**
      * Waiting for the household phone to approve [link]; [since] is when waiting began (QR fallback after 20 s).
      * [standalone]: the owner chose to connect from this TV, so no phone is asked and the QR code shows at once.
@@ -73,6 +81,8 @@ sealed interface TvTelegramStatus {
         val phoneRequestError: String? = null,
         /** The check code of the key the phone should seal to ([app.cablegram.telegram.PasswordSeal.checkCode]). */
         val phoneCode: String? = null,
+        /** When the phone prompt reached the server; null while it is still being sent (CAB-73). */
+        val phoneSentAt: Long? = null,
     ) : TvTelegramStatus
     data class Problem(val message: String) : TvTelegramStatus
     /** A temporary TV: Telegram titles play through the owner's phone; nothing Telegram is stored here. */
@@ -303,11 +313,14 @@ class TvTelegram(
         }
     }
 
-    /** Shows the check code of the key the phone is asked to seal to (null: no request open). */
-    private fun setPhoneCode(code: String?) {
+    /**
+     * Shows the check code of the key the phone is asked to seal to (null: no request open), and [sentAt], when the
+     * prompt reached the server (null: still being sent).
+     */
+    private fun setPhoneCode(code: String?, sentAt: Long? = null) {
         when (val current = _status.value) {
-            is TvTelegramStatus.NeedsPassword -> _status.value = current.copy(phoneCode = code)
-            is TvTelegramStatus.NotSignedIn -> _status.value = current.copy(phoneCode = code)
+            is TvTelegramStatus.NeedsPassword -> _status.value = current.copy(phoneCode = code, phoneSentAt = sentAt)
+            is TvTelegramStatus.NotSignedIn -> _status.value = current.copy(phoneCode = code, phoneSentAt = sentAt)
             else -> Unit
         }
     }
@@ -318,7 +331,8 @@ class TvTelegram(
     /**
      * Asks the household phone to type the Telegram password (a notification with a text field). The phone seals it to a
      * one-time key made here, so the control plane relays bytes it cannot read; the password reaches Telegram only.
-     * Safe to call again: an open request is kept, an expired or answered one is replaced by a fresh one.
+     * Safe to call again: a request younger than [PHONE_REASK_MS] is kept, so a double press doesn't ask twice; an older,
+     * expired or answered one is replaced by a fresh one, which the phone shows again.
      */
     fun askPhoneForPassword() {
         if (!waitingForPassword() || checkingPassword) return
@@ -327,13 +341,14 @@ class TvTelegram(
             setPhoneRequestError("Pair your phone with this TV to use its keyboard, or choose the TV keyboard.")
             return
         }
-        if (passwordJob?.isActive == true && System.currentTimeMillis() - passwordRequestedAt < PASSWORD_REQUEST_MS) return
+        if (passwordJob?.isActive == true && System.currentTimeMillis() - passwordRequestedAt < PHONE_REASK_MS) return
         setPhoneRequestError(null)
         passwordJob?.cancel()
         passwordRequestedAt = System.currentTimeMillis()
         passwordJob = scope.launch {
             val keys = app.cablegram.telegram.PasswordSeal.newTvKeys()
-            setPhoneCode(app.cablegram.telegram.PasswordSeal.checkCode(keys.publicKey))
+            val code = app.cablegram.telegram.PasswordSeal.checkCode(keys.publicKey)
+            setPhoneCode(code)
             val requestId = try {
                 api.postTelegramPasswordRequest(currentToken, keys.publicKey, hint)
             } catch (e: ApiException) {
@@ -349,6 +364,7 @@ class TvTelegram(
                 setPhoneRequestError("Couldn't send the phone prompt. Check your connection, send it again, or choose the TV keyboard.")
                 return@launch
             }
+            setPhoneCode(code, System.currentTimeMillis())
             PairLog.i("Telegram password asked from the phone")
             // Collected: the sealed bytes are gone from the control plane. Otherwise the request is withdrawn when this
             // stops waiting (signed in on the TV, timed out, replaced), so the phone doesn't keep asking.
@@ -538,7 +554,7 @@ class TvTelegram(
                     checkingPassword = false
                     unpostedLink = state.link
                     val asked = _status.value as? TvTelegramStatus.NotSignedIn
-                    _status.value = TvTelegramStatus.NotSignedIn(twoStep, asked?.phoneRequestError, asked?.phoneCode)
+                    _status.value = TvTelegramStatus.NotSignedIn(twoStep, asked?.phoneRequestError, asked?.phoneCode, asked?.phoneSentAt)
                     return
                 }
                 offerLink(state.link)
