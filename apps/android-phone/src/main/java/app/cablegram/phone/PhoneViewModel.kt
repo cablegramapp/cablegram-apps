@@ -1098,7 +1098,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             busy = true
             try {
                 val email = catalog().accountEmail(token)
-                val failed = email?.let { catalog().requestSignInCode(it) }
+                val failed = email?.let { catalog().requestSignInCode(it, forDeletion = true) }
                 deletionCodeFailed = email == null || failed != null
                 if (!deletionCodeFailed) deletionCodeSentTo = email
             } finally {

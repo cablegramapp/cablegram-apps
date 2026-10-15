@@ -790,9 +790,15 @@ class CatalogClient(
         }.getOrNull()
     }
 
-    /** Mails a sign-in code. The server answers the same whether or not the email has an account. Null: sent. */
-    suspend fun requestSignInCode(email: String): SignInResult.Failed? = withContext(Dispatchers.IO) {
-        val (status, body) = postJson("/api/auth/email-code/request", null, buildJsonObject { put("email", email) })
+    /**
+     * Mails a sign-in code. The server answers the same whether or not the email has an account. Null: sent.
+     * [forDeletion] makes the email say it confirms deleting the account instead of signing in (the code is the same).
+     */
+    suspend fun requestSignInCode(email: String, forDeletion: Boolean = false): SignInResult.Failed? = withContext(Dispatchers.IO) {
+        val (status, body) = postJson("/api/auth/email-code/request", null, buildJsonObject {
+            put("email", email)
+            if (forDeletion) put("purpose", "delete_account")
+        })
         if (status == 202) null else SignInResult.Failed(status, body.errorCode())
     }
 
