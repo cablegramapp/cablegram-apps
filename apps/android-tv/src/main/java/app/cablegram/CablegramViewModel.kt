@@ -546,7 +546,18 @@ class CablegramViewModel @JvmOverloads constructor(
     }
 
     /** Refresh only when the app returns to the foreground; never replace the active library screen. */
-    fun refreshLibraryOnResume() = refreshLibrary()
+    fun refreshLibraryOnResume() {
+        refreshLibrary()
+        resumePairingPoll()
+    }
+
+    /** A pairing code on screen is always being checked; if nothing asks the server about it, start asking again. */
+    private fun resumePairingPoll() {
+        val session = (screen as? ScreenState.Pairing)?.session ?: return
+        if (pairingJob?.isActive == true || isDemoMode) return
+        PairLog.w("Pairing code ${PairLog.pinTail(session.pin)} on screen without a check: polling again")
+        pairingJob = viewModelScope.launch { pollPairing(session) }
+    }
 
     // ---- Shared TV (CAB-65, CAB-67) ----
 
@@ -1121,12 +1132,12 @@ class CablegramViewModel @JvmOverloads constructor(
     }
 
     fun cancelProfilePairing() {
+        // Nothing to go back to: keep the code on screen, and keep asking the server whether a phone claimed it.
+        if (profiles.isEmpty()) return
         pairingJob?.cancel()
         pairingJob = null
-        if (profiles.isNotEmpty()) {
-            screen = ScreenState.ProfilePicker(profiles)
-            startCommandPolling()
-        }
+        screen = ScreenState.ProfilePicker(profiles)
+        startCommandPolling()
     }
 
     private suspend fun createPairingSession() {
