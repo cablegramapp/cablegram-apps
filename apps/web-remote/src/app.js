@@ -66,8 +66,15 @@ function remembered() {
 function message(error) {
   if (!(error instanceof ApiError)) return "Can't reach Cablegram. Check your connection.";
   switch (error.code) {
-    case "invalid_credentials": return "Wrong email or password.";
-    case "too_many_login_attempts": return "Too many tries. Wait a few minutes.";
+    case "invalid_code": return "That code isn't right. Check the email and try again.";
+    case "code_expired": return "That code expired. Ask for a new one.";
+    case "code_rate_limited": return "A code was sent a moment ago. Wait a minute before asking again.";
+    case "rate_limited": return "Too many tries. Wait a while and try again.";
+    case "mail_unavailable": return "We couldn't send the email. Try again in a few minutes.";
+    case "invalid_google_token": return "Google sign-in didn't work. Try again.";
+    case "google_email_unverified": return "Your Google account's email isn't verified. Sign in with an email code instead.";
+    case "google_account_mismatch": return "This email is already linked to another Google account.";
+    case "google_not_configured": return "Google sign-in isn't available on this server.";
     case "disposable_email": return "Use a permanent email address.";
     case "forbidden_for_web_client": return "This can't be done from the web app.";
     case "unknown_target_device": return "That TV isn't paired any more.";
@@ -93,38 +100,236 @@ function toast(text) {
   toastTimer = setTimeout(() => node.classList.remove("show"), 2600);
 }
 
-// ---- Sign in ----
+// ---- Sign in (spec 007: Google or an email code, no passwords) ----
 
-function renderSignIn(error = "", registering = false) {
+const FALLBACK_LEGAL = {
+  terms: { version: "", url: "https://cablegram.app/terms.html" },
+  privacy: { version: "", url: "https://cablegram.app/privacy.html" },
+};
+let legalDocs = null;
+
+/** The current Terms and privacy policy; the links work even when the server can't be reached. */
+async function legal() {
+  if (!legalDocs) {
+    try { legalDocs = await api.legal(); } catch { return FALLBACK_LEGAL; }
+  }
+  return legalDocs;
+}
+
+function link(href, text) {
+  return h("a", { href, target: "_blank", rel: "noopener" }, text);
+}
+
+function signinPage(...children) {
   stopPolling();
   stopTracking();
   closeSheet();
-  const email = h("input", { type: "email", autocomplete: "email", placeholder: "Email", required: true });
-  const password = h("input", { type: "password", autocomplete: registering ? "new-password" : "current-password", placeholder: "Password", required: true, minlength: registering ? 8 : null });
-  const submit = h("button", { class: "primary wide", type: "submit" }, registering ? "Create account" : "Sign in");
+  mount(h("div", { class: "signin" }, h("img", { class: "logo", src: "icons/icon-192.png", alt: "" }), ...children));
+}
+
+/** First screen: Google (when the server offers it) or an email code. The privacy notice is shown before anything is sent. */
+async function renderSignIn(error = "", email = "") {
+  const googleSlot = h("div", { class: "google" });
+  const input = h("input", { type: "email", autocomplete: "email", placeholder: "Email", required: true, "aria-label": "Email", value: email });
+  const submit = h("button", { class: "primary wide", type: "submit" }, "Email me a code");
+  const errorLine = h("p", { class: "error", role: "alert" }, error);
+  const form = h("form", {
+    onsubmit: async (event) => {
+      event.preventDefault();
+      submit.disabled = true;
+      const address = input.value.trim();
+      try {
+        await api.requestCode(address);
+        renderCode(address);
+      } catch (e) {
+        errorLine.textContent = message(e);
+        submit.disabled = false;
+      }
+    },
+  }, input, submit);
+  const docs = await legal();
+  signinPage(
+    h("h1", {}, "Cablegram Remote"),
+    h("p", {}, "Choose videos and control your TV from this phone."),
+    googleSlot,
+    form,
+    errorLine,
+    h("p", { class: "hint" }, "How Cablegram uses your data: ", link(docs.privacy.url, "Privacy Policy"), "."),
+    installHint(),
+  );
+  showGoogleButton(googleSlot, (text) => { errorLine.textContent = text; });
+}
+
+/** The code from the email signs a known person in, or leads a new person to Create your account. */
+function renderCode(email, error = "") {
+  const code = h("input", {
+    inputmode: "numeric", pattern: "[0-9]{6}", maxlength: "6", autocomplete: "one-time-code", required: true,
+    placeholder: "6-digit code", "aria-label": "6-digit code from the email",
+  });
+  const submit = h("button", { class: "primary wide", type: "submit" }, "Continue");
+  const errorLine = h("p", { class: "error", role: "alert" }, error);
   const form = h("form", {
     onsubmit: async (event) => {
       event.preventDefault();
       submit.disabled = true;
       try {
-        await (registering ? api.register : api.login)(email.value.trim(), password.value);
-        await start();
-      } catch (e) { renderSignIn(message(e), registering); }
+        signedIn(await api.verifyCode(email, code.value.trim()));
+      } catch (e) {
+        errorLine.textContent = message(e);
+        submit.disabled = false;
+      }
+    },
+  }, code, submit);
+  const resend = async (event) => {
+    event.preventDefault();
+    try {
+      await api.requestCode(email);
+      errorLine.textContent = "";
+      toast("A new code is on its way.");
+    } catch (e) { errorLine.textContent = message(e); }
+  };
+  signinPage(
+    h("h1", {}, "Check your email"),
+    h("p", {}, `Enter the 6-digit code we sent to ${email}. It expires in 15 minutes.`),
+    form,
+    errorLine,
+    h("p", { class: "center" },
+      h("a", { href: "#", onclick: resend }, "Send a new code"), " · ",
+      h("a", { href: "#", onclick: (e) => { e.preventDefault(); renderSignIn("", email); } }, "Use a different email")),
+  );
+  code.focus();
+}
+
+/** After Google or a code: tokens for a known person, or Create your account for a new one. */
+function signedIn(result) {
+  if (result?.status === "signup_required") renderCreateAccount(result);
+  else start();
+}
+
+/** Create your account: one unticked box for age and Terms; nothing is stored until it is ticked and sent. */
+async function renderCreateAccount(ticket, error = "") {
+  const docs = await legal();
+  const name = h("input", { autocomplete: "name", placeholder: "Your name", required: true, maxlength: "80", "aria-label": "Your name", value: ticket.name || "" });
+  const agree = h("input", { type: "checkbox", id: "agree" });
+  const submit = h("button", { class: "primary wide", type: "submit", disabled: true }, "Create account");
+  const errorLine = h("p", { class: "error", role: "alert" }, error);
+  const update = () => { submit.disabled = !(agree.checked && name.value.trim()); };
+  agree.addEventListener("change", update);
+  name.addEventListener("input", update);
+  const form = h("form", {
+    onsubmit: async (event) => {
+      event.preventDefault();
+      if (submit.disabled) return;
+      submit.disabled = true;
+      try {
+        await api.signUp(ticket.signup_ticket, name.value.trim(), docs);
+        start();
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "terms_outdated") {
+          legalDocs = null;
+          renderCreateAccount(ticket, "The Terms or Privacy Policy just changed. Please read them again.");
+        } else if (e instanceof ApiError && e.code === "invalid_signup_ticket") {
+          renderSignIn("That took too long. Start again.", ticket.email);
+        } else {
+          errorLine.textContent = message(e);
+          update();
+        }
+      }
     },
   },
-    email, password,
-    error && h("p", { class: "error", role: "alert" }, error),
+    name,
+    h("label", { class: "agree", for: "agree" }, agree,
+      h("span", {}, "I'm 18 or older and I accept the ", link(docs.terms.url, "Terms of Service"), ".")),
     submit,
   );
-  mount(h("div", { class: "signin" },
-    h("img", { class: "logo", src: "icons/icon-192.png", alt: "" }),
-    h("h1", {}, "Cablegram Remote"),
-    h("p", {}, "Choose videos and control your TV from this phone."),
+  signinPage(
+    h("h1", {}, "Create your account"),
+    h("p", {}, `For ${ticket.email}.`),
     form,
-    h("p", { class: "center" }, registering ? "Have an account? " : "New here? ",
-      h("a", { href: "#", onclick: (e) => { e.preventDefault(); renderSignIn("", !registering); } }, registering ? "Sign in" : "Create an account")),
-    installHint(),
-  ));
+    errorLine,
+    h("p", { class: "hint" }, "How Cablegram uses your data: ", link(docs.privacy.url, "Privacy Policy"), "."),
+  );
+  update();
+}
+
+/** New Terms: nothing else until they are accepted, except deleting the account or signing out (spec 007 US4). */
+async function renderTerms(error = "") {
+  legalDocs = null;
+  const docs = await legal();
+  const agree = h("input", { type: "checkbox", id: "agree" });
+  const submit = h("button", { class: "primary wide", type: "submit", disabled: true }, "Accept");
+  agree.addEventListener("change", () => { submit.disabled = !agree.checked; });
+  const errorLine = h("p", { class: "error", role: "alert" }, error);
+  const form = h("form", {
+    onsubmit: async (event) => {
+      event.preventDefault();
+      submit.disabled = true;
+      try {
+        await api.acceptTerms(docs);
+        start();
+      } catch (e) {
+        if (signedOut(e)) return;
+        if (e instanceof ApiError && e.code === "terms_outdated") renderTerms("The Terms just changed again. Please read them.");
+        else { errorLine.textContent = message(e); submit.disabled = false; }
+      }
+    },
+  }, h("label", { class: "agree", for: "agree" }, agree, h("span", {}, "I accept the ", link(docs.terms.url, "Terms of Service"), ".")), submit);
+  signinPage(
+    h("h1", {}, "Our Terms changed"),
+    h("p", {}, "Please read the new Terms of Service. You can keep using Cablegram once you accept them."),
+    form,
+    errorLine,
+    h("p", { class: "hint" }, "How Cablegram uses your data: ", link(docs.privacy.url, "Privacy Policy"), "."),
+    h("p", { class: "center" },
+      link(`${API_BASE}/delete-account`, "Delete my account"), " · ",
+      h("a", { href: "#", onclick: async (e) => { e.preventDefault(); await api.logout(); renderSignIn(); } }, "Sign out")),
+  );
+}
+
+// ---- Google (Google Identity Services, popup) ----
+
+let googleScript = null;
+
+function loadGoogle() {
+  googleScript ??= new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = () => resolve(window.google);
+    script.onerror = () => { googleScript = null; reject(new Error("google_script")); };
+    document.head.append(script);
+  });
+  return googleScript;
+}
+
+/** A fresh random nonce per sign-in: Google puts it in the ID token and the server checks it. */
+function nonce() {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** Shows Google's own button when the server offers Google; otherwise only the email code is shown. */
+async function showGoogleButton(slot, onError) {
+  let clientId;
+  try { clientId = (await api.methods()).google?.client_id; } catch { return; }
+  if (!clientId) return;
+  let google;
+  try { google = await loadGoogle(); } catch { return; }
+  if (!slot.isConnected) return;
+  const value = nonce();
+  google.accounts.id.initialize({
+    client_id: clientId,
+    nonce: value,
+    ux_mode: "popup",
+    auto_select: false,
+    callback: async ({ credential }) => {
+      try {
+        signedIn(await api.google(credential, value));
+      } catch (e) { onError(message(e)); }
+    },
+  });
+  google.accounts.id.renderButton(slot, { type: "standard", theme: "filled_black", size: "large", text: "continue_with", shape: "pill", width: 300 });
+  slot.after(h("p", { class: "or" }, "or"));
 }
 
 function installHint() {
@@ -138,13 +343,15 @@ function installHint() {
 
 async function start() {
   try {
-    state.tvs = await api.tvs();
+    const account = await api.account();
+    if (account.termsRequired) { renderTerms(); return; }
+    state.tvs = account.tvs;
+    state.lock = account.profileLock;
   } catch (e) {
     if (signedOut(e)) return;
     toast(message(e));
   }
   if (!state.tvs.some((tv) => tv.id === state.tv)) state.tv = state.tvs[0]?.id ?? null;
-  try { state.lock = await api.profileLock(); } catch { /* the toggle waits for the next start */ }
   render();
   refreshLibrary();
   refreshTelegram();

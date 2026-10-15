@@ -95,26 +95,50 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
     return refreshing;
   }
 
-  async function authenticate(path, credentials) {
-    const result = await send(path, { method: "POST", auth: false, body: { ...credentials, client: "web" } });
-    write({ access_token: result.access_token, refresh_token: result.refresh_token, household_name: result.display_name || "" });
+  /** Keeps the tokens when a sign-in step returned them; a new person gets `{ status: "signup_required", … }` instead. */
+  function keep(result) {
+    if (result?.access_token) {
+      write({ access_token: result.access_token, refresh_token: result.refresh_token, household_name: result.display_name || "" });
+    }
     return result;
   }
+
+  const post = (path, body) => send(path, { method: "POST", auth: false, body: { ...body, client: "web" } });
 
   return {
     get signedIn() { return !!memory?.refresh_token; },
     get householdName() { return memory?.household_name || ""; },
-    login: (email, password) => authenticate("/api/auth/login", { email, password }),
-    register: (email, password) => authenticate("/api/auth/register", { email, password }),
+    /** `{ google: { client_id } | null, email_code: true }`: the server offers Google only when it has a client. */
+    methods: () => send("/api/auth/methods", { auth: false }),
+    /** The current Terms and privacy policy: `{ terms: { version, url }, privacy: { version, url } }`. */
+    legal: () => send("/api/legal", { auth: false }),
+    /** Spec 007: the server answers the same whether or not the email has an account. */
+    requestCode: (email) => send("/api/auth/email-code/request", { method: "POST", auth: false, body: { email } }),
+    verifyCode: async (email, code) => keep(await post("/api/auth/email-code/verify", { email, code })),
+    google: async (idToken, nonce) => keep(await post("/api/auth/google", { id_token: idToken, nonce })),
+    /** Creates the account after the person accepted the Terms and confirmed they are 18 or older. */
+    signUp: async (ticket, name, legal) => keep(await post("/api/auth/signup", {
+      signup_ticket: ticket,
+      name,
+      accepted: { terms_version: legal.terms.version, privacy_version: legal.privacy.version },
+      age_confirmed: true,
+    })),
+    acceptTerms: (legal) => send("/api/auth/legal/accept", {
+      method: "POST", body: { terms_version: legal.terms.version, privacy_version: legal.privacy.version },
+    }),
     async logout() {
       const token = memory?.refresh_token;
       write(null);
       if (token) await send("/api/auth/logout", { method: "POST", auth: false, body: { refresh_token: token } }).catch(() => {});
     },
-    /** TVs of the household that haven't been revoked. */
-    async tvs() {
+    /** The account: its TVs that haven't been revoked, and whether new Terms must be accepted first. */
+    async account() {
       const me = await send("/api/me");
-      return (me.devices || []).filter((d) => d.kind === "tv" && !d.revoked_at);
+      return {
+        tvs: (me.devices || []).filter((d) => d.kind === "tv" && !d.revoked_at),
+        termsRequired: me.legal?.acceptance_required === true,
+        profileLock: me.household?.profile_lock === true,
+      };
     },
     claimTv: (pin, name) => send("/api/auth/device/claim", { method: "POST", body: { pin, ...(name ? { tv_display_name: name } : {}) } }),
     library: async () => (await send("/api/catalog/items")).items || [],
