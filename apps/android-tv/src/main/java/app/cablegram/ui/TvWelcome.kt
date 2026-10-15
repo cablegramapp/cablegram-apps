@@ -1,11 +1,14 @@
 package app.cablegram.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,10 +23,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 
@@ -44,9 +49,19 @@ private val WHAT_YOU_CAN_DO = listOf(
 @Composable
 internal fun ConnectedWelcomeDialog(visible: Boolean, onDismiss: () -> Unit) {
     if (!visible) return
-    Dialog(onDismissRequest = onDismiss) {
+    // The platform's default dialog width is far narrower than asked for (440 dp on a 960 dp Chromecast), which
+    // wrapped the text into a column taller than the screen and squashed the button. Capped to the screen, it
+    // scrolls with large fonts instead.
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
-            Modifier.width(640.dp).clip(RoundedCornerShape(22.dp)).background(Panel).padding(36.dp),
+            Modifier
+                .width(720.dp)
+                .heightIn(max = screenHeight - 48.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(Panel)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 36.dp, vertical = 28.dp),
         ) {
             BrandMark()
             Spacer(Modifier.height(20.dp))
@@ -62,7 +77,7 @@ internal fun ConnectedWelcomeDialog(visible: Boolean, onDismiss: () -> Unit) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 WHAT_YOU_CAN_DO.forEach { WelcomePoint(it, fontSize = 16.sp) }
             }
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
             val startFocus = remember { FocusRequester() }
             LaunchedEffect(Unit) {
                 // Let the Button start observing focus before focusing it.
