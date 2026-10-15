@@ -241,15 +241,16 @@ class CatalogClient(
      * answered before the password is looked at) is renewed here instead, once, and the request is repeated.
      * The password is only ever in the request body; nothing here logs it.
      */
-    suspend fun deleteAccount(token: String, password: String): AccountDeletionResult = withContext(Dispatchers.IO) {
-        val first = postDeleteAccount(token, password)
+    /** Deletes the account, confirmed with a sign-in code mailed to its address (spec 007 FR-015). */
+    suspend fun deleteAccount(token: String, code: String): AccountDeletionResult = withContext(Dispatchers.IO) {
+        val first = postDeleteAccount(token, code)
         if (first != AccountDeletionResult.SessionExpired || tokens == null) return@withContext first
         val fresh = renewedAccessToken(token) ?: return@withContext first
-        postDeleteAccount(fresh, password)
+        postDeleteAccount(fresh, code)
     }
 
-    private fun postDeleteAccount(token: String, password: String): AccountDeletionResult {
-        val body = json.encodeToString(buildJsonObject { put("password", password) })
+    private fun postDeleteAccount(token: String, code: String): AccountDeletionResult {
+        val body = json.encodeToString(buildJsonObject { put("code", code) })
         val request = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/account/delete")
             .header("Authorization", "Bearer $token")
@@ -263,7 +264,7 @@ class CatalogClient(
                 when {
                     response.code == 204 -> AccountDeletionResult.Deleted
                     response.code == 429 -> AccountDeletionResult.RateLimited
-                    response.code == 401 && error == "invalid_credentials" -> AccountDeletionResult.WrongPassword
+                    response.code == 401 && error == "invalid_credentials" -> AccountDeletionResult.WrongCode
                     response.code == 401 -> AccountDeletionResult.SessionExpired
                     else -> AccountDeletionResult.Failed
                 }
@@ -298,6 +299,17 @@ class CatalogClient(
         }.getOrDefault(null to null)
     }
 
+    /** The signed-in account's email address; null when offline. */
+    suspend fun accountEmail(token: String): String? = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/auth/email").header("Authorization", "Bearer $token").get().build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["email"]?.jsonPrimitive?.contentOrNull
+            }
+        }.getOrNull()
+    }
+
     /** Whether the signed-in account's email is confirmed; null when offline. */
     suspend fun emailVerified(token: String): Boolean? = withContext(Dispatchers.IO) {
         val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/auth/email").header("Authorization", "Bearer $token").get().build()
@@ -313,14 +325,6 @@ class CatalogClient(
 
     suspend fun verifyEmail(token: String, code: String) = withContext(Dispatchers.IO) {
         postJson("/api/auth/email/verify", token, buildJsonObject { put("code", code) })
-    }
-
-    suspend fun forgotPassword(email: String) = withContext(Dispatchers.IO) {
-        postJson("/api/auth/password/forgot", null, buildJsonObject { put("email", email) })
-    }
-
-    suspend fun resetPassword(email: String, code: String, password: String) = withContext(Dispatchers.IO) {
-        postJson("/api/auth/password/reset", null, buildJsonObject { put("email", email); put("code", code); put("password", password) })
     }
 
     /** This month's relay usage for the household and this phone; null when offline. */
@@ -759,54 +763,99 @@ class CatalogClient(
         }.onFailure { PairLog.e("phone pair failed", it) }.getOrNull()
     }
 
-    suspend fun registerAccount(email: String, password: String, accountName: String): PhonePairResponse? = withContext(Dispatchers.IO) {
-        authAccount("/api/auth/register", email, password, 201, accountName)
-    }
+    // ---- Sign-in (spec 007): Google or an email code, no passwords ----
 
-    suspend fun loginAccount(email: String, password: String): PhonePairResponse? = withContext(Dispatchers.IO) {
-        authAccount("/api/auth/login", email, password, 200)
-    }
+    /** How this server lets people in; null when it can't be reached. */
+    suspend fun signInMethods(): SignInMethods? = withContext(Dispatchers.IO) { getPublic("/api/auth/methods") }
 
-    /** HTTP status of the last failed sign-in/registration (null: no response, e.g. offline). */
-    var lastAuthFailureCode: Int? = null
-        private set
+    /** The current Terms and Privacy Policy; null when the server can't be reached. */
+    suspend fun legalDocuments(): LegalDocuments? = withContext(Dispatchers.IO) { getPublic("/api/legal") }
 
-    /** Error code of the last failed sign-in/registration, e.g. `disposable_email`. */
-    var lastAuthFailureError: String? = null
-        private set
-
-    private fun authAccount(path: String, email: String, password: String, ok: Int, accountName: String? = null): PhonePairResponse? {
-        lastAuthFailureCode = null
-        val body = json.encodeToString(buildJsonObject {
-            put("email", email)
-            put("password", password)
-            accountName?.trim()?.takeIf { it.isNotEmpty() }?.let { put("household_name", it) }
-        })
-        val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}$path")
-            .post(body.toRequestBody("application/json".toMediaType()))
-            .build()
+    private inline fun <reified T> getPublic(path: String): T? {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}$path").get().build()
         return runCatching {
             client.newCall(request).execute().use { response ->
-                if (response.code != ok && response.code !in 200..299) {
-                    lastAuthFailureCode = response.code
-                    lastAuthFailureError = runCatching {
-                        json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["error"]?.jsonPrimitive?.contentOrNull
-                    }.getOrNull()
-                    return@use null
-                }
-                val parsed = json.decodeFromString<AuthTokenResponse>(response.body?.string().orEmpty())
-                PhonePairResponse(
-                    token = parsed.access_token,
-                    refreshToken = parsed.refresh_token,
-                    userId = parsed.user_id,
-                    displayName = parsed.display_name,
-                    needsName = parsed.display_name.isNullOrBlank(),
-                    householdId = parsed.household_id,
-                )
+                if (!response.isSuccessful) return@use null
+                json.decodeFromString<T>(response.body?.string().orEmpty())
             }
         }.getOrNull()
     }
+
+    /** Mails a sign-in code. The server answers the same whether or not the email has an account. Null: sent. */
+    suspend fun requestSignInCode(email: String): SignInResult.Failed? = withContext(Dispatchers.IO) {
+        val (status, body) = postJson("/api/auth/email-code/request", null, buildJsonObject { put("email", email) })
+        if (status == 202) null else SignInResult.Failed(status, body.errorCode())
+    }
+
+    suspend fun verifySignInCode(email: String, code: String): SignInResult = withContext(Dispatchers.IO) {
+        signInStep("/api/auth/email-code/verify", buildJsonObject { put("email", email); put("code", code) })
+    }
+
+    /** Signs in with a Google ID token; [nonce] is the one this sign-in asked Google to put in it. */
+    suspend fun googleSignIn(idToken: String, nonce: String): SignInResult = withContext(Dispatchers.IO) {
+        signInStep("/api/auth/google", buildJsonObject { put("id_token", idToken); put("nonce", nonce) })
+    }
+
+    /** Create your account: the person accepted these Terms and Privacy Policy versions and is 18 or older. */
+    suspend fun signUp(ticket: String, name: String, legal: LegalDocuments): SignInResult = withContext(Dispatchers.IO) {
+        signInStep("/api/auth/signup", buildJsonObject {
+            put("signup_ticket", ticket)
+            put("name", name)
+            put("accepted", buildJsonObject {
+                put("terms_version", legal.terms.version)
+                put("privacy_version", legal.privacy.version)
+            })
+            put("age_confirmed", true)
+        })
+    }
+
+    /** Accepts new Terms (spec 007 US4); null on success, otherwise the failure. */
+    suspend fun acceptTerms(token: String, legal: LegalDocuments): SignInResult.Failed? = withContext(Dispatchers.IO) {
+        val (status, body) = postJson("/api/auth/legal/accept", token, buildJsonObject {
+            put("terms_version", legal.terms.version)
+            put("privacy_version", legal.privacy.version)
+        })
+        if (status == 204) null else SignInResult.Failed(status, body.errorCode())
+    }
+
+    /** Whether the account must accept new Terms before going on; null when offline or on error. */
+    suspend fun termsAcceptanceRequired(token: String): Boolean? = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/me").header("Authorization", "Bearer $token").get().build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val legal = json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["legal"]?.jsonObject
+                legal?.get("acceptance_required")?.jsonPrimitive?.booleanOrNull ?: false
+            }
+        }.getOrNull()
+    }
+
+    private fun signInStep(path: String, body: kotlinx.serialization.json.JsonObject): SignInResult {
+        val (status, reply) = postJson(path, null, body)
+        if (status == null || status !in 200..299 || reply == null) return SignInResult.Failed(status, reply.errorCode())
+        if (reply["status"]?.jsonPrimitive?.contentOrNull == "signup_required") {
+            val ticket = reply["signup_ticket"]?.jsonPrimitive?.contentOrNull ?: return SignInResult.Failed(status, "invalid_response")
+            return SignInResult.SignupRequired(
+                ticket = ticket,
+                email = reply["email"]?.jsonPrimitive?.contentOrNull.orEmpty(),
+                name = reply["name"]?.jsonPrimitive?.contentOrNull,
+            )
+        }
+        val parsed = runCatching { json.decodeFromJsonElement(AuthTokenResponse.serializer(), reply) }.getOrNull()
+            ?: return SignInResult.Failed(status, "invalid_response")
+        return SignInResult.SignedIn(
+            PhonePairResponse(
+                token = parsed.access_token,
+                refreshToken = parsed.refresh_token,
+                userId = parsed.user_id,
+                displayName = parsed.display_name,
+                needsName = parsed.display_name.isNullOrBlank(),
+                householdId = parsed.household_id,
+            ),
+        )
+    }
+
+    private fun kotlinx.serialization.json.JsonObject?.errorCode(): String? = this?.get("error")?.jsonPrimitive?.contentOrNull
 
     suspend fun registerPhoneDevice(token: String, hardwareId: String? = null): PhoneDeviceResponse? = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject { hardwareId?.let { put("hardware_id", it) } })
@@ -1447,7 +1496,7 @@ class CatalogClient(
 }
 
 /** How `POST /api/account/delete` ended, see [CatalogClient.deleteAccount]. */
-enum class AccountDeletionResult { Deleted, WrongPassword, RateLimited, SessionExpired, Offline, Failed }
+enum class AccountDeletionResult { Deleted, WrongCode, RateLimited, SessionExpired, Offline, Failed }
 
 enum class PhoneDeviceStatus { Registered, Missing, Unknown }
 

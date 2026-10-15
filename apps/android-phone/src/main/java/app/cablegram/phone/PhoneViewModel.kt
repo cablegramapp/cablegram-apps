@@ -176,6 +176,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var needsAccount by mutableStateOf(pairing.accountToken.isNullOrBlank())
         private set
+    // Declared before init, which loads the sign-in options when the app starts signed out.
+    val signIn = SignInController(client = ::catalog, signedIn = ::completeSignIn)
+    /** The account must accept new Terms before going on (spec 007 US4). */
+    var termsRequired by mutableStateOf(false)
+        private set
     var tvs by mutableStateOf(pairing.tvs)
         private set
     var busy by mutableStateOf(false)
@@ -428,6 +433,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         PairLog.i("Phone start api=${pairing.apiBaseUrl} ips=${localIpv4Addresses()} paired=$paired")
         refresh()
         restoreHouseholdName()
+        if (needsAccount) loadSignInOptions() else checkTerms()
         refreshPendingApprovals()
         // One poller serves the notification and this list: ApprovalWatcher, in LanLibraryService.
         viewModelScope.launch { PrivateApprovals.pending.collect { pendingApprovals = it } }
@@ -480,6 +486,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     withContext(Dispatchers.Main) {
                         needsAccount = true
                         status = "Your session expired. Sign in again to keep this TV connected."
+                        loadSignInOptions()
                     }
                 }
                 if (System.currentTimeMillis() - householdTvsCheckedAt > HOUSEHOLD_TVS_REFRESH_MS &&
@@ -693,79 +700,111 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun registerAccount(email: String, password: String, accountName: String) =
-        authenticateAccount(register = true, email, password, accountName)
+    // ---- Sign-in (spec 007): Google or an email code, Create your account with the Terms ----
 
-    fun loginAccount(email: String, password: String) = authenticateAccount(register = false, email, password)
+    fun loadSignInOptions() {
+        viewModelScope.launch { signIn.load() }
+    }
 
-    private fun authenticateAccount(register: Boolean, email: String, password: String, accountName: String? = null) {
+    fun requestSignInCode(email: String) {
+        viewModelScope.launch { signIn.requestCode(email) }
+    }
+
+    fun resendSignInCode() {
+        viewModelScope.launch { signIn.resendCode() }
+    }
+
+    fun verifySignInCode(code: String) {
+        viewModelScope.launch { signIn.verifyCode(code) }
+    }
+
+    fun createAccount(name: String) {
+        viewModelScope.launch { signIn.createAccount(name) }
+    }
+
+    /** Shows Google's sign-in sheet; [activity] must be the Activity, which Credential Manager needs. */
+    fun signInWithGoogle(activity: android.content.Context) {
+        val clientId = signIn.methods?.google?.clientId ?: return
+        viewModelScope.launch {
+            when (val result = googleIdToken(activity, clientId)) {
+                is GoogleIdResult.Token -> signIn.google(result.idToken, result.nonce)
+                is GoogleIdResult.Failed -> signIn.message = result.message
+                GoogleIdResult.Cancelled -> Unit
+            }
+        }
+    }
+
+    fun acceptTerms() {
+        val token = pairing.accountToken ?: return
         if (busy) return
         viewModelScope.launch {
             busy = true
-            status = "Signing in…"
             try {
-                val client = catalog()
-                val result = if (register) {
-                    client.registerAccount(email.trim(), password, accountName.orEmpty().trim())
-                } else {
-                    client.loginAccount(email.trim(), password)
-                }
-                if (result == null) {
-                    // Every failure used to read "Check email, password, and API URL", including
-                    // "email already registered" and a login lockout.
-                    status = if (client.lastAuthFailureError == "disposable_email") {
-                        "Temporary email addresses can't be used. Use an email address you keep."
-                    } else when (client.lastAuthFailureCode) {
-                        409 -> "An account with this email already exists. Sign in instead."
-                        429 -> "Too many sign-in attempts. Wait 15 minutes and try again."
-                        401 -> "That email and password don't match."
-                        400 -> if (register) "Check the email and use a password of at least 8 characters."
-                            else "Check the email and password."
-                        null -> "Can't reach Cablegram. Check your connection or the API server in Settings."
-                        else -> "Could not sign in right now. Try again in a moment."
-                    }
+                val docs = catalog().legalDocuments()
+                if (docs == null) {
+                    status = "Can't reach Cablegram. Check your connection."
                     return@launch
                 }
-                pairing.accountToken = result.token
-                pairing.refreshToken = result.refreshToken
-                // Sign-up mails a confirmation code; ask for it right away (it can be skipped).
-                if (register) {
-                    emailVerified = false
-                    verifyingEmail = true
+                val failed = catalog().acceptTerms(token, docs)
+                if (failed == null) {
+                    termsRequired = false
+                    status = null
                 } else {
-                    refreshEmailStatus()
+                    status = failed.text()
+                    if (failed.error == "terms_outdated") signIn.load()
                 }
-                householdName = result.displayName.orEmpty()
-                pairing.displayName = householdName
-                resumePendingWebImports()
-                clearRetiredWebSaves()
-                needsAccount = false
-                needsName = result.needsName
-                // Another account's library is set aside (and restored if it signs in again), never
-                // synced into this household.
-                val setAside = result.householdId?.let { store.bindHousehold(it) } == true
-                refresh()
-                ensurePhoneDevice()
-                // TVs already paired to this household (by another phone, or before a reinstall).
-                syncHouseholdTvs()
-                if (paired) {
-                    // Signing in again after an expired session: the TVs stay
-                    // paired, so reconnect instead of asking for a new PIN.
-                    status = if (needsName) "Choose an account name to continue." else "Signed in again."
-                    addingTv = false
-                    pairing.tvs.forEach { publishLanAddress(it.pin) }
-                    syncLibrary()
-                } else {
-                    status = if (needsName) "Choose an account name to continue." else "Signed in. Scan the TV PIN to pair."
-                    addingTv = !needsName
-                    // Bring back the household's titles even before a TV is paired.
-                    syncLibrary()
-                }
-                if (setAside) status = "Signed in. The previous account's library is kept aside on this phone."
             } finally {
                 busy = false
             }
         }
+    }
+
+    /** New Terms are checked on start and after each sign-in; offline (null) never blocks the app. */
+    private fun checkTerms() {
+        val token = pairing.accountToken ?: return
+        viewModelScope.launch {
+            if (catalog().termsAcceptanceRequired(token) == true) {
+                signIn.load()
+                termsRequired = true
+            }
+        }
+    }
+
+    /** The server returned an account (Google, an email code, or Create your account). */
+    private suspend fun completeSignIn(result: PhonePairResponse) {
+        pairing.accountToken = result.token
+        pairing.refreshToken = result.refreshToken
+        // Every account's email is confirmed when it signs in by Google or a code.
+        emailVerified = true
+        householdName = result.displayName.orEmpty()
+        pairing.displayName = householdName
+        resumePendingWebImports()
+        clearRetiredWebSaves()
+        needsAccount = false
+        needsName = result.needsName
+        // Another account's library is set aside (and restored if it signs in again), never
+        // synced into this household.
+        val setAside = result.householdId?.let { store.bindHousehold(it) } == true
+        refresh()
+        ensurePhoneDevice()
+        // TVs already paired to this household (by another phone, or before a reinstall).
+        syncHouseholdTvs()
+        if (paired) {
+            // Signing in again after an expired session: the TVs stay
+            // paired, so reconnect instead of asking for a new PIN.
+            status = if (needsName) "Choose an account name to continue." else "Signed in again."
+            addingTv = false
+            pairing.tvs.forEach { publishLanAddress(it.pin) }
+            syncLibrary()
+        } else {
+            status = if (needsName) "Choose an account name to continue." else "Signed in. Scan the TV PIN to pair."
+            // A TV scanned before signing in goes straight to "Is this your TV?" (CAB-62); otherwise pairing comes next.
+            addingTv = !needsName && pendingPair == null
+            // Bring back the household's titles even before a TV is paired.
+            syncLibrary()
+        }
+        if (setAside) status = "Signed in. The previous account's library is kept aside on this phone."
+        checkTerms()
     }
 
     private suspend fun ensurePhoneDevice() {
@@ -983,6 +1022,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         addingTv = false
         needsName = false
         needsAccount = true
+        termsRequired = false
+        signIn.reset()
+        loadSignInOptions()
     }
 
     fun signOut() {
@@ -1025,13 +1067,38 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     val accountDeletion = AccountDeletionController(
         token = { pairing.accountToken },
-        delete = { token, password -> catalog().deleteAccount(token, password) },
+        delete = { token, code -> catalog().deleteAccount(token, code) },
         wipeLocal = ::wipeAfterAccountDeletion,
     )
 
+    /** Where the deletion code went; null until one was sent. */
+    var deletionCodeSentTo by mutableStateOf<String?>(null)
+        private set
+    var deletionCodeFailed by mutableStateOf(false)
+        private set
+
     fun openDeleteAccount() {
         accountDeletion.reset()
+        deletionCodeSentTo = null
+        deletionCodeFailed = false
         deletingAccount = true
+    }
+
+    /** Mails a sign-in code to the account's address; it confirms the deletion (spec 007 FR-015). */
+    fun requestDeletionCode() {
+        val token = pairing.accountToken ?: return
+        if (busy) return
+        viewModelScope.launch {
+            busy = true
+            try {
+                val email = catalog().accountEmail(token)
+                val failed = email?.let { catalog().requestSignInCode(it) }
+                deletionCodeFailed = email == null || failed != null
+                if (!deletionCodeFailed) deletionCodeSentTo = email
+            } finally {
+                busy = false
+            }
+        }
     }
 
     fun closeDeleteAccount() {
@@ -1040,8 +1107,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         deletingAccount = false
     }
 
-    fun deleteAccount(password: String) {
-        viewModelScope.launch { accountDeletion.submit(password) }
+    fun deleteAccount(code: String) {
+        viewModelScope.launch { accountDeletion.submit(code) }
     }
 
     /** The server deleted the account: sign out completely and forget everything tied to it on this phone. */
@@ -1063,23 +1130,17 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         relayUsage = null
         emailVerified = null
         verifyingEmail = false
-        resettingPassword = false
         deletingAccount = false
         busy = false
         status = app.getString(R.string.account_deleted_message)
         PairLog.i("Account deleted; phone signed out")
     }
 
-    // ---- Email confirmation and password reset ----
-    /** Shows the "enter the code we emailed" screen (after sign-up, or from Settings). */
+    // ---- Email confirmation (accounts made before spec 007; new ones are confirmed at sign-in) ----
+    /** Shows the "enter the code we emailed" screen (from Settings). */
     var verifyingEmail by mutableStateOf(false)
         private set
     var emailVerified by mutableStateOf<Boolean?>(null)
-        private set
-    var resettingPassword by mutableStateOf(false)
-        private set
-    /** Email the reset code was sent to; null until requested. */
-    var resetEmail by mutableStateOf<String?>(null)
         private set
 
     fun refreshEmailStatus() {
@@ -1134,53 +1195,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun skipEmailVerification() {
         verifyingEmail = false
         status = "You can confirm your email later in Settings. Free relay needs a confirmed email."
-    }
-
-    fun startPasswordReset() {
-        resettingPassword = true
-        resetEmail = null
-        status = null
-    }
-
-    fun cancelPasswordReset() {
-        resettingPassword = false
-        resetEmail = null
-        status = null
-    }
-
-    fun requestPasswordReset(email: String) {
-        viewModelScope.launch {
-            busy = true
-            val (code, _) = catalog().forgotPassword(email.trim())
-            busy = false
-            if (code == null) {
-                status = "Can't reach Cablegram. Check your connection."
-            } else {
-                resetEmail = email.trim()
-                status = "If there's an account for ${email.trim()}, we sent it a code."
-            }
-        }
-    }
-
-    fun completePasswordReset(code: String, password: String) {
-        val email = resetEmail ?: return
-        viewModelScope.launch {
-            busy = true
-            val (status, body) = catalog().resetPassword(email, code.trim(), password)
-            busy = false
-            if (status == 204) {
-                resettingPassword = false
-                resetEmail = null
-                this@PhoneViewModel.status = "Password changed. Signing you in…"
-                loginAccount(email, password)
-            } else {
-                this@PhoneViewModel.status = when (body?.get("error")?.jsonPrimitive?.contentOrNull) {
-                    "code_expired" -> "That code expired. Ask for a new one."
-                    "invalid_code" -> "That code isn't right. Check the email and try again."
-                    else -> if (status == null) "Can't reach Cablegram. Check your connection." else "Use a password with at least 8 characters."
-                }
-            }
-        }
     }
 
     // ---- Telegram as cloud storage (spec 004 US1) ----
