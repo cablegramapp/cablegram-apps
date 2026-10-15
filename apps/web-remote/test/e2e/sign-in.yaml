@@ -1,0 +1,32 @@
+# Web remote sign-in (spec 007): a new person gets a code, then Create your account, which stays off until the
+# age-and-Terms box is ticked. Start the mock first: node test/e2e/mock-control-plane.mjs
+# Run: maestro test --platform web test/e2e/sign-in.yaml
+url: http://localhost:8099
+---
+- openLink: http://localhost:8099
+- assertVisible: "Privacy Policy"
+- assertNotVisible: "Password"
+- tapOn: Email
+- inputText: new@b.co
+- tapOn: Email me a code
+- assertVisible: "Check your email"
+- tapOn: 6-digit code
+- inputText: "000000"
+- tapOn: Continue
+- assertVisible: "That code isn't right. Check the email and try again."
+- tapOn: "000000"
+- eraseText: 6
+- inputText: "123456"
+- tapOn: Continue
+- assertVisible: "Create your account"
+- assertVisible: "For new@b.co."
+- tapOn: Your name
+- inputText: Sam
+# Not ticked: the button does nothing.
+- tapOn: Create account
+- assertVisible: "Create your account"
+- tapOn:
+    id: agree
+- tapOn: Create account
+- assertVisible: "Library"
+- assertVisible: "Living room TV"

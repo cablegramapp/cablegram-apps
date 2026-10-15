@@ -5,9 +5,10 @@ url: http://localhost:8099
 - openLink: http://localhost:8099
 - tapOn: Email
 - inputText: a@b.co
-- tapOn: Password
-- inputText: password1
-- tapOn: Sign in
+- tapOn: Email me a code
+- tapOn: 6-digit code
+- inputText: "123456"
+- tapOn: Continue
 - tapOn: Remote
 
 # Delayed completion: Sent first, confirmed only when the TV completes it.
