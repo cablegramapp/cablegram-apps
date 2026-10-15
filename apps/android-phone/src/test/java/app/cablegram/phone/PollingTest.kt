@@ -13,6 +13,13 @@ class PollingTest {
     }
 
     @Test
+    fun `TV sign-ins are looked for quickly while one is under way or the app is open`() {
+        assertEquals(1_500L, tvSignInPollDelayMs(appVisible = true, sinceActivityMs = Long.MAX_VALUE))
+        assertEquals(1_500L, tvSignInPollDelayMs(appVisible = false, sinceActivityMs = 30_000L))
+        assertEquals(5_000L, tvSignInPollDelayMs(appVisible = false, sinceActivityMs = 3 * 60_000L))
+    }
+
+    @Test
     fun `a web import the server rejected for good is not retried`() {
         listOf("unsupported_site", "no_video", "unsafe_url", "invalid_url").forEach { assertTrue(it, isPermanentWebImportError(it)) }
     }

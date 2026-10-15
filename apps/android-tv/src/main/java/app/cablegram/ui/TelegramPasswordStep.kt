@@ -2,6 +2,7 @@ package app.cablegram.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,12 +34,17 @@ import app.cablegram.data.TELEGRAM_PASSWORD_VIDEO_URL
 private enum class PasswordKeyboard { CHOOSE, TV, PHONE }
 
 /** What the password step shows, before signing in ([TvTelegramStatus.NotSignedIn]) or when Telegram asks. */
-private data class PasswordStepState(val hint: String, val busy: Boolean, val error: String?, val phoneRequestError: String?, val phoneCode: String? = null) {
+private data class PasswordStepState(
+    val hint: String, val busy: Boolean, val error: String?, val phoneRequestError: String?, val phoneCode: String? = null,
+    /** Signing in is waiting for the household phone to let this TV in. */
+    val approving: Boolean = false,
+) {
     companion object {
         fun of(status: TvTelegramStatus) = when (status) {
             is TvTelegramStatus.NeedsPassword -> PasswordStepState(status.hint, status.busy, status.error, status.phoneRequestError, status.phoneCode)
             is TvTelegramStatus.NotSignedIn -> PasswordStepState("", false, null, status.phoneRequestError, status.phoneCode)
             // Signing in with the password already given: the phone's approval and Telegram's check are under way.
+            is TvTelegramStatus.WaitingForPhone -> PasswordStepState("", true, null, null, approving = true)
             else -> PasswordStepState("", true, null, null)
         }
     }
@@ -82,11 +88,16 @@ internal fun TelegramPasswordStep(
         onDispose { if (usingPhone) cancelPhone() }
     }
     fun chooseKeyboard() { keyboard?.hide(); mode = PasswordKeyboard.CHOOSE }
-    BackHandler(enabled = mode != PasswordKeyboard.CHOOSE) { chooseKeyboard() }
+    // While signing in there is no keyboard to go back to: Back is the caller's.
+    BackHandler(enabled = mode != PasswordKeyboard.CHOOSE && !step.busy) { chooseKeyboard() }
 
     TelegramSlide(videoUrl) {
         Text("Telegram sign-in", color = Paper, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-        when (mode) {
+        // The password is given: one steady "signing in" until Telegram answers, never the keyboard choice in between
+        // (CAB-73). The chosen keyboard is kept, so a rejected password comes back to it with Telegram's message.
+        if (step.busy) {
+            SigningIn(step)
+        } else when (mode) {
             PasswordKeyboard.CHOOSE -> {
                 Text("Where would you like to type your password?", color = Cyan, fontSize = 26.sp, lineHeight = 32.sp)
                 Text("Telegram needs your two-step verification password once to sign in on this TV. Signing in starts only after you've typed it.", color = Muted, fontSize = 18.sp, lineHeight = 25.sp)
@@ -120,6 +131,21 @@ internal fun TelegramPasswordStep(
         }
         Text("Your password goes only to Telegram, encrypted for this TV. Cablegram never sees it.", color = Slate, fontSize = 14.sp, lineHeight = 19.sp)
         extraActions()
+    }
+}
+
+@Composable
+private fun SigningIn(step: PasswordStepState) {
+    val focus = remember { FocusRequester() }
+    // Holds focus while the keyboard's buttons are gone, so the remote doesn't lose its place.
+    LaunchedEffect(Unit) { withFrameNanos { }; runCatching { focus.requestFocus() } }
+    Column(Modifier.focusRequester(focus).focusable(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(if (step.approving) "Waiting for your phone…" else "Signing in…", color = Cyan, fontSize = 26.sp)
+        Text(
+            if (step.approving) "Your phone is letting this TV in to Telegram. If it asks, approve it in the Cablegram notification."
+            else "Telegram is checking your password. This TV continues as soon as it's done.",
+            color = Paper, fontSize = 18.sp, lineHeight = 25.sp,
+        )
     }
 }
 
