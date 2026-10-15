@@ -176,6 +176,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var needsAccount by mutableStateOf(pairing.accountToken.isNullOrBlank())
         private set
+    // Declared before init, which loads the sign-in options when the app starts signed out.
+    val signIn = SignInController(client = ::catalog, signedIn = ::completeSignIn)
+    /** The account must accept new Terms before going on (spec 007 US4). */
+    var termsRequired by mutableStateOf(false)
+        private set
     var tvs by mutableStateOf(pairing.tvs)
         private set
     var busy by mutableStateOf(false)
@@ -696,12 +701,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ---- Sign-in (spec 007): Google or an email code, Create your account with the Terms ----
-
-    val signIn = SignInController(client = ::catalog, signedIn = ::completeSignIn)
-
-    /** The account must accept new Terms before going on (spec 007 US4). */
-    var termsRequired by mutableStateOf(false)
-        private set
 
     fun loadSignInOptions() {
         viewModelScope.launch { signIn.load() }
