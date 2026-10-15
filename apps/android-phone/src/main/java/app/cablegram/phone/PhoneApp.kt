@@ -63,7 +63,6 @@ fun PhoneApp(viewModel: PhoneViewModel) {
         viewModel.needsAccount -> SignInScreen(viewModel)
         viewModel.deletingAccount -> DeleteAccountScreen(viewModel)
         viewModel.termsRequired -> TermsScreen(viewModel)
-        viewModel.verifyingEmail -> VerifyEmailForm(viewModel)
         viewModel.addingTv -> PairingForm(viewModel)
         viewModel.needsName -> NameForm(viewModel)
         viewModel.welcomeTourOpen -> WelcomeTour(viewModel)
@@ -151,37 +150,5 @@ private fun PairingForm(viewModel: PhoneViewModel) {
         viewModel.status?.let { StatusNote(it) }
         Text("Keep your phone and TV on the same Wi-Fi while watching. Your video files stay on your phone.",
             color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-/** "Enter the 6-digit code we emailed you" after sign-up or from Settings. */
-@Composable
-private fun VerifyEmailForm(viewModel: PhoneViewModel) {
-    var code by rememberSaveable { mutableStateOf("") }
-    Box(Modifier.fillMaxSize().background(VlcBlack).safeDrawingPadding().imePadding(), contentAlignment = Alignment.Center) {
-        Column(
-            Modifier.widthIn(max = 480.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(28.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            BrandMark()
-            ScreenHeading("Confirm your email", "Enter the 6-digit code we sent you. A confirmed email keeps your account recoverable and turns on free relay streaming.")
-            OutlinedTextField(
-                value = code,
-                onValueChange = { code = it.filter(Char::isDigit).take(6) },
-                modifier = Modifier.fillMaxWidth().maestro("email_code"),
-                singleLine = true,
-                label = { Text("Code") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (code.length == 6) viewModel.submitEmailCode(code) }),
-            )
-            Button(
-                onClick = { viewModel.submitEmailCode(code) },
-                enabled = code.length == 6 && !viewModel.busy,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro("email_code_submit"),
-            ) { Text(if (viewModel.busy) "Checking…" else "Confirm") }
-            TextButton(onClick = viewModel::sendEmailCode, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Send a new code") }
-            TextButton(onClick = viewModel::skipEmailVerification, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth().maestro("email_code_later")) { Text("Later") }
-            viewModel.status?.let { StatusNote(it) }
-        }
     }
 }

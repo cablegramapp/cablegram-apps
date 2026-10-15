@@ -914,7 +914,6 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
         viewModel.loadProfiles()
         viewModel.loadProfileLock()
         viewModel.loadRelayUsage()
-        viewModel.refreshEmailStatus()
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(26.dp)) {
         ScreenHeading("Settings", viewModel.householdName.ifBlank { "Make Cablegram yours." }, Modifier.maestro(MaestroIds.SETTINGS_TITLE))
@@ -933,10 +932,6 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                     accountNameDraft.trim() != viewModel.householdName && !viewModel.busy,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(if (viewModel.busy) "Saving…" else "Save account name") }
-            if (viewModel.emailVerified == false) {
-                Text("Your email isn't confirmed yet. Free relay streaming needs a confirmed email.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
-                OutlinedButton(onClick = viewModel::startEmailVerification, modifier = Modifier.fillMaxWidth().maestro("settings_confirm_email")) { Text("Confirm email") }
-            }
             HorizontalDivider(color = PhoneOutline)
             viewModel.profileLock?.let { locked ->
                 PrefSwitch("Lock account on TVs", locked, viewModel::updateProfileLock, MaestroIds.SETTINGS_PROFILE_LOCK)
