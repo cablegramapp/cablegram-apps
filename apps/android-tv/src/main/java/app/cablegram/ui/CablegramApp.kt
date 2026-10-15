@@ -709,7 +709,7 @@ private fun PairingScreen(
             Spacer(Modifier.height(28.dp))
             Text("Pair this TV", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
             Spacer(Modifier.height(8.dp))
-            Text("In the Cablegram phone app, choose Connect a TV and scan the code, or type this PIN.", color = Muted, fontSize = 17.sp, lineHeight = 24.sp)
+            Text("Scan the code with your phone\u2019s camera, or type this PIN in the Cablegram app or at app.cablegram.app.", color = Muted, fontSize = 17.sp, lineHeight = 24.sp)
             Spacer(Modifier.height(26.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 session.pin.forEach { digit ->
@@ -787,9 +787,9 @@ private fun PairingScreen(
                 Image(bitmap = qrBitmap.asImageBitmap(), contentDescription = "Phone pairing QR code")
             }
             Spacer(Modifier.height(14.dp))
-            Text("Scan with the Cablegram phone app", color = Muted, fontSize = 15.sp)
+            Text("Scan with your phone\u2019s camera", color = Muted, fontSize = 15.sp)
             Spacer(Modifier.height(4.dp))
-            Text("No phone app yet? Get it at cablegram.app", color = Slate, fontSize = 13.sp)
+            Text("Or open app.cablegram.app and enter the PIN", color = Slate, fontSize = 13.sp)
         }
     }
 }

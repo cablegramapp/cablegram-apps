@@ -40,6 +40,14 @@
                 <!-- Where the Google sign-in ends (spec 006): cablegram://storage?provider=…&result=… -->
                 <data android:scheme="cablegram" android:host="storage" />
             </intent-filter>
+            <!-- CAB-62: a TV's pairing QR code is https://app.cablegram.app/?pair=<PIN>&tv=<name>. Verified through
+                 app.cablegram.app/.well-known/assetlinks.json, so the camera opens the app instead of the web remote. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.cablegram.app" android:path="/" />
+            </intent-filter>
         </activity>
         <activity
             android:name=".ShareReceiverActivity"

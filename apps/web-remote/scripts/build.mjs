@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = join(root, "dist");
-const SERVED = ["index.html", "styles.css", "config.js", "sw.js", "manifest.webmanifest", "_headers", "src", "icons"];
+const SERVED = ["index.html", "styles.css", "config.js", "sw.js", "manifest.webmanifest", "_headers", "src", "icons", ".well-known"];
 
 const git = (...args) => { try { return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim(); } catch { return "unknown"; } };
 const ref = process.env.GITHUB_REF_NAME || "local";

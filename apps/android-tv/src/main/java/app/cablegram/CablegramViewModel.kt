@@ -1075,7 +1075,7 @@ class CablegramViewModel @JvmOverloads constructor(
         } catch (error: Exception) {
             if (isDemoMode) return
             val pin = (0..999_999).random().toString().padStart(6, '0')
-            val qr = "cablegram://pair?token=$pin&name=${java.net.URLEncoder.encode(deviceName, "UTF-8")}"
+            val qr = app.cablegram.data.pairLink(app.cablegram.BuildConfig.WEB_APP_BASE, pin, deviceName)
             screen = ScreenState.Pairing(
                 DeviceSession(
                     sessionId = java.util.UUID.randomUUID().toString(),

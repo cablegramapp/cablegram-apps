@@ -733,6 +733,10 @@ class CatalogClient(
         }.onFailure { PairLog.e("revoke request failed api=$baseUrl", it) }.getOrDefault(false)
     }
 
+    /** The server's error code from the last failed [pairPhone], e.g. `pin_expired` (CAB-62); null when offline. */
+    var lastPairError: String? = null
+        private set
+
     suspend fun pairPhone(pin: String, existingToken: String?, trust: TvTrust = TvTrust.Home): PhonePairResponse? = withContext(Dispatchers.IO) {
         if (existingToken.isNullOrBlank()) return@withContext null
         val body = json.encodeToString(buildJsonObject {
@@ -750,7 +754,12 @@ class CatalogClient(
         runCatching {
             client.newCall(builder.build()).execute().use { response ->
                 PairLog.i("POST /api/auth/device/claim HTTP ${response.code}")
-                if (!response.isSuccessful) return@use null
+                if (!response.isSuccessful) {
+                    lastPairError = runCatching {
+                        json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["error"]?.jsonPrimitive?.contentOrNull
+                    }.getOrNull()
+                    return@use null
+                }
                 val parsed = json.decodeFromString<LanClaimResponse>(response.body?.string().orEmpty())
                 PhonePairResponse(
                     token = existingToken,

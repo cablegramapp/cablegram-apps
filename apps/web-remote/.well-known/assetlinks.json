@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.cablegram.phone",
+      "sha256_cert_fingerprints": [
+        "3B:FF:00:5C:7B:C9:33:70:E0:70:47:F3:54:1C:C6:19:9D:39:80:10:48:89:8A:58:D1:6B:AA:E7:D1:B6:B9:9C"
+      ]
+    }
+  }
+]

@@ -76,7 +76,7 @@ class CablegramApi(
             .post(body.toRequestBody(jsonMediaType))
             .build()
         val dto = execute<DeviceSessionDto>(request)
-        val qr = "cablegram://pair?token=${dto.pin}&name=${java.net.URLEncoder.encode(deviceName, "UTF-8")}"
+        val qr = pairLink(BuildConfig.WEB_APP_BASE, dto.pin, deviceName)
         return DeviceSession(
             sessionId = dto.sessionId,
             pairingToken = dto.pairingToken,
