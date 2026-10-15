@@ -774,8 +774,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun completeSignIn(result: PhonePairResponse) {
         pairing.accountToken = result.token
         pairing.refreshToken = result.refreshToken
-        // Every account's email is confirmed when it signs in by Google or a code.
-        emailVerified = true
         householdName = result.displayName.orEmpty()
         pairing.displayName = householdName
         resumePendingWebImports()
@@ -1134,73 +1132,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         collections = store.collections()
         PrivateApprovals.pending.value = emptyList()
         relayUsage = null
-        emailVerified = null
-        verifyingEmail = false
         deletingAccount = false
         busy = false
         status = app.getString(R.string.account_deleted_message)
         PairLog.i("Account deleted; phone signed out")
-    }
-
-    // ---- Email confirmation (accounts made before spec 007; new ones are confirmed at sign-in) ----
-    /** Shows the "enter the code we emailed" screen (from Settings). */
-    var verifyingEmail by mutableStateOf(false)
-        private set
-    var emailVerified by mutableStateOf<Boolean?>(null)
-        private set
-
-    fun refreshEmailStatus() {
-        val token = pairing.accountToken ?: return
-        viewModelScope.launch { catalog().emailVerified(token)?.let { emailVerified = it } }
-    }
-
-    /**
-     * Opens the code screen without mailing a new code: a fresh code would invalidate one the user
-     * already has in their inbox. "Send a new code" on that screen asks for another.
-     */
-    fun startEmailVerification() {
-        verifyingEmail = true
-        status = "Enter the code from your sign-up email, or tap Send a new code."
-    }
-
-    fun sendEmailCode() {
-        val token = pairing.accountToken ?: return
-        viewModelScope.launch {
-            val (code, body) = catalog().sendEmailCode(token)
-            status = when (code) {
-                202 -> "We sent a new code to your email."
-                409 -> { emailVerified = true; verifyingEmail = false; "Your email is already confirmed." }
-                429 -> "Wait ${body?.get("retry_after")?.jsonPrimitive?.intOrNull ?: 60} seconds before asking for another code."
-                null -> "Can't reach Cablegram. Check your connection."
-                else -> "Couldn't send a code right now. Try again in a moment."
-            }
-        }
-    }
-
-    fun submitEmailCode(code: String) {
-        val token = pairing.accountToken ?: return
-        viewModelScope.launch {
-            busy = true
-            val (status, body) = catalog().verifyEmail(token, code.trim())
-            busy = false
-            if (status == 200) {
-                emailVerified = true
-                verifyingEmail = false
-                this@PhoneViewModel.status = "Email confirmed. Free relay is on for this account."
-                loadRelayUsage()
-            } else {
-                this@PhoneViewModel.status = when (body?.get("error")?.jsonPrimitive?.contentOrNull) {
-                    "code_expired" -> "That code expired or was tried too often. Tap Send a new code."
-                    "invalid_code" -> "That code isn't right. Check the email and try again."
-                    else -> if (status == null) "Can't reach Cablegram. Check your connection." else "Couldn't check the code. Try again."
-                }
-            }
-        }
-    }
-
-    fun skipEmailVerification() {
-        verifyingEmail = false
-        status = "You can confirm your email later in Settings. Free relay needs a confirmed email."
     }
 
     // ---- Telegram as cloud storage (spec 004 US1) ----

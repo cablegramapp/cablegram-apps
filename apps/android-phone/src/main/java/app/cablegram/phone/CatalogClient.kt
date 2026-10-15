@@ -310,23 +310,6 @@ class CatalogClient(
         }.getOrNull()
     }
 
-    /** Whether the signed-in account's email is confirmed; null when offline. */
-    suspend fun emailVerified(token: String): Boolean? = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/auth/email").header("Authorization", "Bearer $token").get().build()
-        runCatching {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["verified"]?.jsonPrimitive?.booleanOrNull
-            }
-        }.getOrNull()
-    }
-
-    suspend fun sendEmailCode(token: String) = withContext(Dispatchers.IO) { postJson("/api/auth/email/send-code", token, buildJsonObject {}) }
-
-    suspend fun verifyEmail(token: String, code: String) = withContext(Dispatchers.IO) {
-        postJson("/api/auth/email/verify", token, buildJsonObject { put("code", code) })
-    }
-
     /** This month's relay usage for the household and this phone; null when offline. */
     suspend fun relayUsage(token: String, phoneDeviceId: String?): RelayUsage? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
