@@ -1408,9 +1408,27 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     var profileLock by mutableStateOf<Boolean?>(null)
         private set
 
+    /** CAB-67: minutes an approved profile stays open without use on a TV shared with other accounts. */
+    var sharedTvIdleMinutes by mutableStateOf<Int?>(null)
+        private set
+
     fun loadProfileLock() {
         val token = pairing.accountToken ?: return
-        viewModelScope.launch { catalog().profileLock(token)?.let { profileLock = it } }
+        viewModelScope.launch {
+            catalog().profileLock(token)?.let { profileLock = it }
+            catalog().sharedTvIdleMinutes(token)?.let { sharedTvIdleMinutes = it }
+        }
+    }
+
+    fun updateSharedTvIdleMinutes(minutes: Int) {
+        val token = pairing.accountToken ?: return
+        val before = sharedTvIdleMinutes
+        sharedTvIdleMinutes = minutes
+        viewModelScope.launch {
+            val saved = catalog().setSharedTvIdleMinutes(token, minutes)
+            sharedTvIdleMinutes = saved ?: before
+            if (saved == null) status = "Couldn't change that setting. Check your connection and try again."
+        }
     }
 
     fun updateProfileLock(on: Boolean) {

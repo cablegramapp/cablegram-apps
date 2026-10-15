@@ -189,6 +189,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                         onSelect = viewModel::chooseProfile,
                         onStartPairing = viewModel::startProfilePairing,
                         onSignOut = viewModel::signOut,
+                        sharedTv = viewModel.sharedTv,
                         onPinDigit = { c -> if (digits.length < 8) { digits += c; viewModel.onPinDigit() } },
                         onPinDelete = { digits = digits.dropLast(1) },
                         onPinSubmit = {
@@ -204,7 +205,10 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     )
                     Unit
                 }
-                is ScreenState.SessionActions -> SessionActionsScreen(screen.message, viewModel::showProfilePicker, viewModel::signOutProfile, viewModel::closeSessionActions)
+                is ScreenState.SessionActions -> SessionActionsScreen(
+                    screen.message, viewModel::showProfilePicker, viewModel::signOutProfile, viewModel::closeSessionActions,
+                    sharedTv = viewModel.sharedTv, onUnpair = viewModel::unpairFromHere,
+                )
                 is ScreenState.Library -> { LibraryScreen(
                     videos = viewModel.libraryVideos,
                     isRefreshing = viewModel.isLibraryRefreshing,
@@ -271,7 +275,8 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     onRetry = viewModel::retry,
                     onRemove = screen.removableVideo?.let { video -> { viewModel.removeUnavailableVideo(video) } },
                     onConvert = screen.convertibleVideo?.let { video -> { viewModel.requestTranscode(video) } },
-                    onSignOut = if (screen.canSignOut) viewModel::signOut else null,
+                    // On a shared TV only the open account can be removed here; never every account (CAB-65).
+                    onSignOut = if (screen.canSignOut && (!viewModel.sharedTv || viewModel.hasActiveAccount)) viewModel::unpairFromHere else null,
                     onBack = if (screen.canGoBack) viewModel::closePlayer else null,
                 )
             }
@@ -287,6 +292,7 @@ private fun ProfilePickerScreen(
     onSelect: (Profile) -> Unit,
     onStartPairing: () -> Unit,
     onSignOut: () -> Unit,
+    sharedTv: Boolean,
     onPinDigit: (Char) -> Unit,
     onPinSubmit: () -> Unit,
     onPinDelete: () -> Unit,
@@ -295,7 +301,7 @@ private fun ProfilePickerScreen(
     onApprovalCancel: () -> Unit,
 ) {
     state.awaitingPhoneFor?.let { profile ->
-        PhoneApprovalPanel(profile, onApprovalCancel)
+        PhoneApprovalPanel(profile, sharedTv, onApprovalCancel)
         return
     }
     // R-4 / FR-008: PIN entry overlay for a protected profile; a 4-8 digit code
@@ -406,10 +412,19 @@ private fun ProfilePickerScreen(
                 NewProfileChoice(enabled = !state.pending, requestFocus = state.profiles.isEmpty(), onClick = onStartPairing)
             }
             Spacer(Modifier.height(36.dp))
-            val unpair = remember { UnpairConfirmState() }
-            UnpairConfirmDialog(unpair, onSignOut)
-            Button(onClick = unpair::ask, colors = ButtonDefaults.colors(containerColor = Color.Transparent, contentColor = Muted)) {
-                Text("Unpair this TV")
+            if (sharedTv) {
+                // CAB-65: several accounts use this TV. Unpairing everyone from here would let anyone remove the others.
+                Text(
+                    "Several accounts use this TV. To remove one, open one of its profiles, select the profile picture at the top left, then choose Remove this account from this TV.",
+                    color = Muted,
+                    fontSize = 15.sp,
+                )
+            } else {
+                val unpair = remember { UnpairConfirmState() }
+                UnpairConfirmDialog(unpair, onSignOut)
+                Button(onClick = unpair::ask, colors = ButtonDefaults.colors(containerColor = Color.Transparent, contentColor = Muted)) {
+                    Text("Unpair this TV")
+                }
             }
         }
     }
@@ -417,7 +432,7 @@ private fun ProfilePickerScreen(
 
 /** Profile lock: the TV waits until a phone in the household allows this profile. */
 @Composable
-private fun PhoneApprovalPanel(profile: Profile, onCancel: () -> Unit) {
+private fun PhoneApprovalPanel(profile: Profile, sharedTv: Boolean, onCancel: () -> Unit) {
     BackHandler(onBack = onCancel)
     val cancelFocus = remember { FocusRequester() }
     LaunchedEffect(profile.id) { runCatching { cancelFocus.requestFocus() } }
@@ -436,7 +451,11 @@ private fun PhoneApprovalPanel(profile: Profile, onCancel: () -> Unit) {
             Text(profile.name, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(14.dp))
             Text(
-                "This account is locked. Open Cablegram on a phone signed in to it and tap Allow.",
+                if (sharedTv) {
+                    "Other accounts use this TV too, so this account's phone has to allow it. Open Cablegram on that phone and tap Allow."
+                } else {
+                    "This account is locked. Open Cablegram on a phone signed in to it and tap Allow."
+                },
                 color = Muted,
                 fontSize = 18.sp,
             )
@@ -521,6 +540,8 @@ private fun SessionActionsScreen(
     onSwitchProfile: () -> Unit,
     onSignOutProfile: () -> Unit,
     onBack: () -> Unit,
+    sharedTv: Boolean,
+    onUnpair: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
     Box(Modifier.fillMaxSize().padding(56.dp), contentAlignment = Alignment.Center) {
@@ -537,6 +558,21 @@ private fun SessionActionsScreen(
             }
             Button(onClick = onSignOutProfile, modifier = Modifier.fillMaxWidth()) {
                 Text("Sign out")
+            }
+            // CAB-65: on a shared TV this removes only the open account; with one account it unpairs the TV.
+            val unpair = remember { UnpairConfirmState() }
+            if (sharedTv) {
+                UnpairConfirmDialog(
+                    unpair, onUnpair,
+                    title = "Remove this account from this TV?",
+                    text = "This account and its profiles leave this TV. The other accounts on it stay. To use this account here again, pair the TV with its phone.",
+                    confirmLabel = "Remove",
+                )
+            } else {
+                UnpairConfirmDialog(unpair, onUnpair)
+            }
+            Button(onClick = unpair::ask, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.colors(containerColor = Panel)) {
+                Text(if (sharedTv) "Remove this account from this TV" else "Unpair this TV")
             }
             Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.colors(containerColor = Panel)) {
                 Text("Back")

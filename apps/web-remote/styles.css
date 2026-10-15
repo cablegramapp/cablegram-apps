@@ -132,3 +132,7 @@ input[type=range] { padding: 0; min-height: 36px; margin: 0; border: 0; backgrou
 .outcome .grow { white-space: normal; }
 .outcome[data-outcome="confirmed"] { border-color: var(--accent); }
 .outcome[data-outcome="rejected"], .outcome[data-outcome="unconfirmed"] { border-color: var(--danger); }
+
+/* CAB-67: shared-TV idle time */
+.idle { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; color: var(--text); }
+.idle select { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--raised); border-radius: 12px; padding: 10px 12px; min-height: 44px; }

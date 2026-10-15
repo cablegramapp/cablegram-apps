@@ -38,6 +38,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.serialization.json.jsonPrimitive
@@ -124,6 +125,13 @@ class CablegramViewModel @JvmOverloads constructor(
 
     fun dismissConnectedWelcome() { connectedWelcome = false }
     init {
+        // CAB-67: checked once a minute; only a shared TV with an open profile is affected.
+        viewModelScope.launch {
+            while (isActive) {
+                delay(60_000)
+                closeIdleSharedProfile()
+            }
+        }
         // Spec 004 US8: at a temporary TV's end time, drop everything Telegram-related that was stored here.
         app.cablegram.data.onDeviceExpired = { telegram.wipeLocalData() }
     }
@@ -353,7 +361,18 @@ class CablegramViewModel @JvmOverloads constructor(
     var tvLanIp by mutableStateOf<String?>(null)
         private set
     /** Paired accounts as last read from [authStore]; [lanToken] follows whichever one is active. */
+    /**
+     * CAB-65/67: more than one account is paired on this TV (a family or a hotel TV). Opening a profile then needs that
+     * account's approval, an opened profile closes after the account's idle time, and unpairing removes one account.
+     */
+    var sharedTv by mutableStateOf(false)
+        private set
+
     @Volatile private var accountCredentials: List<AccountCredential> = emptyList()
+        set(value) {
+            field = value
+            sharedTv = value.size > 1
+        }
 
     /**
      * The LAN credential of the active account. One TV can hold several accounts, and the phone
@@ -528,6 +547,64 @@ class CablegramViewModel @JvmOverloads constructor(
 
     /** Refresh only when the app returns to the foreground; never replace the active library screen. */
     fun refreshLibraryOnResume() = refreshLibrary()
+
+    // ---- Shared TV (CAB-65, CAB-67) ----
+
+    private var lastUserActivityAt = android.os.SystemClock.elapsedRealtime()
+    /** The open account's choice (30, 60, 240 or 720 minutes), read when its profile opens. */
+    private var sharedTvIdleMinutes = 240
+
+    /** Every remote key press (see MainActivity). */
+    fun noteUserActivity() {
+        lastUserActivityAt = android.os.SystemClock.elapsedRealtime()
+    }
+
+    /** True when an account is open on this TV, so "Remove this account" knows which one. */
+    val hasActiveAccount: Boolean get() = accountCredentials.any { it.sessionId == sessionId }
+
+    /**
+     * On a shared TV, an opened profile goes back to "Who's watching?" after the account's idle time, and the next
+     * profile needs approval again. A video on screen counts as use.
+     */
+    private fun closeIdleSharedProfile() {
+        if (!sharedTv || activeProfileId == null) return
+        if (screen is ScreenState.Player || screen is ScreenState.ProfilePicker || screen is ScreenState.Pairing) return
+        val idleMs = android.os.SystemClock.elapsedRealtime() - lastUserActivityAt
+        if (idleMs < sharedTvIdleMinutes * 60_000L) return
+        PairLog.i("Shared TV idle for ${idleMs / 60_000} min: back to Who's watching")
+        librarySyncJob?.cancel()
+        stopCommandDelivery()
+        activeProfileId = null
+        cachedVideos = emptyList()
+        noteUserActivity()
+        if (profiles.isNotEmpty()) {
+            screen = ScreenState.ProfilePicker(profiles, message = "This TV wasn't used for a while. Choose who's watching; the account's phone has to allow it again.")
+        }
+        startCommandPolling()
+    }
+
+    /** Removes only the open account from this TV; the others and their data stay (CAB-65). */
+    fun removeActiveAccount() {
+        val account = accountCredentials.firstOrNull { it.sessionId == sessionId } ?: return
+        viewModelScope.launch {
+            librarySyncJob?.cancel()
+            stopCommandDelivery()
+            // Revoke it on the server too, so the account's phone stops seeing this TV.
+            runCatching { kotlinx.coroutines.withTimeout(5_000) { api.revokeSelf(account.token) } }
+            forgetAccount(account)
+            PairLog.i("Removed one account from this TV; ${authStore.getAccounts().size} left")
+            activeProfileId = null
+            token = null
+            sessionId = null
+            cachedVideos = emptyList()
+            loadProfiles()
+        }
+    }
+
+    /** "Unpair" where the person is: one account on a shared TV, the whole TV otherwise. */
+    fun unpairFromHere() {
+        if (sharedTv) removeActiveAccount() else signOut()
+    }
 
     fun showProfilePicker() {
         librarySyncJob?.cancel()
@@ -975,6 +1052,9 @@ class CablegramViewModel @JvmOverloads constructor(
                 activeProfileId = profile.id
                 if (currentSessionId != null) authStore.setActiveSessionId(currentSessionId)
                 api.attachProfile(profile.id, currentToken)
+                noteUserActivity()
+                // CAB-67: how long this account's profile may stay open without use on a shared TV.
+                sharedTvIdleMinutes = runCatching { api.sharedTvIdleMinutes(currentToken) }.getOrNull() ?: 240
                 loadLibrary()
             }
             // Not opened: the TV stays with the account it was showing.

@@ -329,6 +329,9 @@ fun ApprovalCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                 )
+                if (profile && approval.sharedTv) {
+                    Text("Other accounts use this TV too. Allow it only if you are at that TV.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
                         onClick = { viewModel.respondToApproval(approval, approve = true) },
@@ -939,11 +942,26 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             Text(
                 when (viewModel.profileLock) {
                     true -> "A TV asks this phone before it opens any profile."
-                    false -> "Any paired TV opens profiles without asking."
+                    false -> "A TV opens profiles without asking, unless other accounts use it too."
                     null -> "Couldn't load the account lock. Check your connection."
                 },
                 color = VlcMuted, style = MaterialTheme.typography.bodySmall,
             )
+            // CAB-67: a TV shared with other accounts always asks; this is how long an allowed profile stays open unused.
+            viewModel.sharedTvIdleMinutes?.let { minutes ->
+                Text("On a TV shared with other accounts, ask again after", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(30 to "30 min", 60 to "1 hour", 240 to "4 hours", 720 to "12 hours").forEach { (value, label) ->
+                        FilterChip(
+                            selected = minutes == value,
+                            onClick = { viewModel.updateSharedTvIdleMinutes(value) },
+                            label = { Text(label) },
+                            modifier = Modifier.maestro("settings_shared_tv_idle_$value"),
+                        )
+                    }
+                }
+                Text("without use. The TV then goes back to Who's watching, and your phone has to allow it again.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+            }
         }
         OutlinedButton(onClick = { viewModel.subtitleAccountsOpen = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle accounts") }
         OutlinedButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text("Show the welcome tour") }
