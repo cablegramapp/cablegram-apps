@@ -1022,6 +1022,35 @@ class CatalogClient(
         }.getOrNull()
     }
 
+    /** CAB-67: the account's idle time for shared TVs, in minutes; null when offline. */
+    suspend fun sharedTvIdleMinutes(token: String): Int? = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/me").header("Authorization", "Bearer $token").get().build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val household = json.decodeFromString<MeResponse>(response.body?.string().orEmpty()).household
+                ((household as? JsonObject)?.get("shared_tv_idle_minutes") as? JsonPrimitive)?.intOrNull
+            }
+        }.getOrNull()
+    }
+
+    /** The idle time as the server saved it; null when it could not be saved. */
+    suspend fun setSharedTvIdleMinutes(token: String, minutes: Int): Int? = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject { put("shared_tv_idle_minutes", minutes) })
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/household")
+            .header("Authorization", "Bearer $token")
+            .patch(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val household = json.parseToJsonElement(response.body?.string().orEmpty()).jsonObject["household"]
+                ((household as? JsonObject)?.get("shared_tv_idle_minutes") as? JsonPrimitive)?.intOrNull
+            }
+        }.getOrNull()
+    }
+
     /** The lock as the server saved it; null when it could not be saved. */
     suspend fun setProfileLock(token: String, on: Boolean): Boolean? = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject { put("profile_lock", on) })

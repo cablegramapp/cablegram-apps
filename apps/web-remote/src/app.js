@@ -59,7 +59,7 @@ function icon(name) {
 }
 
 const state = {
-  tvs: [], tv: remembered(), library: [], loaded: false, libraryError: "", link: null, pending: [], profileRequests: [], lock: null,
+  tvs: [], tv: remembered(), library: [], loaded: false, libraryError: "", link: null, pending: [], profileRequests: [], lock: null, idle: null,
   tab: TABS[location.hash.slice(1)] ? location.hash.slice(1) : "library", query: "", muted: false, volume: 50,
 };
 let pollTimer = null;
@@ -359,6 +359,7 @@ async function start() {
     if (account.termsRequired) { renderTerms(); return; }
     state.tvs = account.tvs;
     state.lock = account.profileLock;
+    state.idle = account.sharedTvIdleMinutes;
   } catch (e) {
     if (signedOut(e)) return;
     toast(message(e));
@@ -728,7 +729,14 @@ function tvsView() {
         h("input", { type: "checkbox", checked: state.lock, onchange: (e) => setLock(e.target.checked) }))),
     state.lock != null && h("p", { class: "hint" }, state.lock
       ? "A TV asks you before it opens any profile."
-      : "Any paired TV opens profiles without asking."),
+      : "A TV opens profiles without asking, unless other accounts use it too."),
+    // CAB-67: a TV shared with other accounts always asks; this is how long an allowed profile stays open unused.
+    state.idle != null && h("label", { class: "idle" },
+      h("span", {}, "On a TV shared with other accounts, ask again after"),
+      h("select", { "aria-label": "Ask again after", onchange: (e) => setIdle(Number(e.target.value)) },
+        [[30, "30 minutes"], [60, "1 hour"], [240, "4 hours"], [720, "12 hours"]].map(([value, label]) =>
+          h("option", { value, selected: state.idle === value }, label)))),
+    state.idle != null && h("p", { class: "hint" }, "without use. The TV then goes back to Who's watching, and you have to allow it again."),
     installHint(),
   ];
 }
@@ -789,6 +797,17 @@ function banners() {
   return [...profileBanners(), ...telegramBanners()];
 }
 
+async function setIdle(minutes) {
+  try {
+    state.idle = (await api.setSharedTvIdleMinutes(minutes)) ?? state.idle;
+    toast("Saved.");
+  } catch (e) {
+    if (signedOut(e)) return;
+    toast(message(e));
+  }
+  render();
+}
+
 async function setLock(on) {
   try {
     state.lock = await api.setProfileLock(on);
@@ -813,7 +832,9 @@ function profileBanners() {
     };
     return h("div", { class: "banner", role: "alert" },
       h("p", {}, `${request.tv_name || "A TV"} wants to open ${request.profile_name || "a profile"}`),
-      h("p", { class: "hint" }, "Only allow this if you are at that TV."),
+      h("p", { class: "hint" }, request.shared_tv
+        ? "Other accounts use this TV too. Only allow this if you are at that TV."
+        : "Only allow this if you are at that TV."),
       h("div", { class: "row" },
         h("button", { class: "primary", onclick: () => answer(true) }, "Allow"),
         h("button", { onclick: () => answer(false) }, "Don't allow"),

@@ -57,6 +57,8 @@ data class PendingApproval(
     val title: String? = null,
     @SerialName("expires_at") val expiresAt: String? = null,
     @SerialName("tv_name") val tvName: String? = null,
+    /** CAB-67: other accounts use this TV too (profile requests only). */
+    @SerialName("shared_tv") val sharedTv: Boolean = false,
     /** Not sent by the server: [ApprovalKind.Profile] items are built from [PendingProfileRequest]. */
     val kind: ApprovalKind = ApprovalKind.Playback,
 )
@@ -71,8 +73,9 @@ data class PendingProfileRequest(
     @SerialName("profile_name") val profileName: String? = null,
     @SerialName("tv_name") val tvName: String? = null,
     @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("shared_tv") val sharedTv: Boolean = false,
 ) {
-    fun asApproval() = PendingApproval(attemptId = requestId, title = profileName, expiresAt = expiresAt, tvName = tvName, kind = ApprovalKind.Profile)
+    fun asApproval() = PendingApproval(attemptId = requestId, title = profileName, expiresAt = expiresAt, tvName = tvName, sharedTv = sharedTv, kind = ApprovalKind.Profile)
 }
 
 @Serializable

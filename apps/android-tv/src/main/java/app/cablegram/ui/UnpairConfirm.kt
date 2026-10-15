@@ -46,17 +46,23 @@ internal class UnpairConfirmState {
 
 /** Asks before unpairing. Cancel has focus, so a stray OK press does not unpair; Back also cancels. */
 @Composable
-internal fun UnpairConfirmDialog(state: UnpairConfirmState, onUnpair: () -> Unit) {
+internal fun UnpairConfirmDialog(
+    state: UnpairConfirmState,
+    onUnpair: () -> Unit,
+    title: String = "Unpair this TV?",
+    text: String = "This TV will be signed out of Cablegram. To use it again you will need to pair it with your phone again.",
+    confirmLabel: String = "Unpair",
+) {
     if (!state.asking) return
     Dialog(onDismissRequest = state::cancel) {
         Column(
             Modifier.width(560.dp).clip(RoundedCornerShape(22.dp)).background(Panel).padding(32.dp),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
         ) {
-            Text("Unpair this TV?", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text(
-                "This TV will be signed out of Cablegram. To use it again you will need to pair it with your phone again.",
+                text,
                 color = Muted,
                 fontSize = 17.sp,
                 lineHeight = 25.sp,
@@ -70,7 +76,7 @@ internal fun UnpairConfirmDialog(state: UnpairConfirmState, onUnpair: () -> Unit
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = state::cancel, modifier = Modifier.focusRequester(cancelFocus)) { Text("Cancel") }
-                Button(onClick = { state.confirm(onUnpair) }, colors = ButtonDefaults.colors(containerColor = Coral)) { Text("Unpair") }
+                Button(onClick = { state.confirm(onUnpair) }, colors = ButtonDefaults.colors(containerColor = Coral)) { Text(confirmLabel) }
             }
         }
     }

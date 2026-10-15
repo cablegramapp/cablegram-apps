@@ -129,6 +129,7 @@ test("account() drops revoked TVs and phones, and says when new Terms must be ac
   assert.deepEqual(account.tvs.map((d) => d.id), ["1"]);
   assert.equal(account.termsRequired, true);
   assert.equal(account.profileLock, true);
+  assert.equal(account.sharedTvIdleMinutes, 240);
 });
 
 test("remote commands have the shape the control plane and the TV accept", () => {

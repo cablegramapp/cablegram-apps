@@ -138,6 +138,8 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
         tvs: (me.devices || []).filter((d) => d.kind === "tv" && !d.revoked_at),
         termsRequired: me.legal?.acceptance_required === true,
         profileLock: me.household?.profile_lock === true,
+        /** CAB-67: minutes an allowed profile stays open without use on a TV shared with other accounts. */
+        sharedTvIdleMinutes: me.household?.shared_tv_idle_minutes ?? 240,
       };
     },
     claimTv: (pin, name) => send("/api/auth/device/claim", { method: "POST", body: { pin, ...(name ? { tv_display_name: name } : {}) } }),
@@ -155,5 +157,7 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
     /** Whether TVs must ask before opening a profile. */
     profileLock: async () => (await send("/api/me")).household?.profile_lock === true,
     setProfileLock: async (on) => (await send("/api/household", { method: "PATCH", body: { profile_lock: on } })).household?.profile_lock === true,
+    setSharedTvIdleMinutes: async (minutes) =>
+      (await send("/api/household", { method: "PATCH", body: { shared_tv_idle_minutes: minutes } })).household?.shared_tv_idle_minutes,
   };
 }

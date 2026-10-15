@@ -335,6 +335,10 @@ class CablegramApi(
     /** A cheap authenticated call: fails with 401 once this TV's session is revoked or its account deleted (CAB-37). */
     suspend fun checkSession(token: String) = executeNoContent(authenticatedRequest("api/me", token).get().build())
 
+    /** CAB-67: minutes an approved profile of this account stays open without use on a shared TV (default 240). */
+    suspend fun sharedTvIdleMinutes(token: String): Int =
+        execute<MeHouseholdDto>(authenticatedRequest("api/me", token).get().build()).household?.sharedTvIdleMinutes ?: 240
+
     /** Revokes this TV's own device on the control plane (best effort on unpair). */
     suspend fun revokeSelf(token: String) {
         executeNoContent(authenticatedRequest("api/devices/self", token).delete().build())
@@ -1034,6 +1038,14 @@ private data class CatalogProgressDto(
 
 @Serializable
 private data class MeDto(val devices: List<DeviceHintDto> = emptyList())
+
+@Serializable
+private data class MeHouseholdDto(val household: HouseholdSettingsDto? = null)
+
+@Serializable
+private data class HouseholdSettingsDto(
+    @kotlinx.serialization.SerialName("shared_tv_idle_minutes") val sharedTvIdleMinutes: Int? = null,
+)
 
 @Serializable
 internal data class RelayTicketDto(

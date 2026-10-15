@@ -109,7 +109,8 @@ object PrivateApprovals {
         )
         val tv = approval.tvName?.takeIf { it.isNotBlank() } ?: "Your TV"
         val (title, text) = when (approval.kind) {
-            ApprovalKind.Profile -> "$tv wants to open ${approval.title ?: "a profile"}" to "Allow it only if you are at that TV."
+            ApprovalKind.Profile -> "$tv wants to open ${approval.title ?: "a profile"}" to
+                if (approval.sharedTv) "Other accounts use this TV too. Allow it only if you are at that TV." else "Allow it only if you are at that TV."
             ApprovalKind.Playback -> "$tv wants to play a private title" to (approval.title ?: "A private title is waiting for your approval")
         }
         val allowLabel = if (approval.kind == ApprovalKind.Profile) "Allow" else "Allow once"
