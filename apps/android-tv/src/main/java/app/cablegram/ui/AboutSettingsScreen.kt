@@ -1,5 +1,9 @@
 package app.cablegram.ui
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.withFrameNanos
@@ -94,6 +98,8 @@ internal fun AboutSettingsPanel(
             modifier = Modifier
                 .weight(1.1f)
                 .background(PanelSoft, RoundedCornerShape(18.dp))
+                // Scrolls to a focused button: "Licence and notices" sat half below the screen on a 1080p TV.
+                .verticalScroll(rememberScrollState())
                 .padding(28.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -161,9 +167,22 @@ internal fun AboutSettingsPanel(
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )
-            TelegramSettingsSection(telegramStatus, telegramViaPhone, onTelegramViaPhone, onTelegramConnect, onTelegramCancel,
-                onOpenPassword = { passwordStepOpen = true },
-                onSignIn = { twoStep -> if (twoStep == false) onTelegramSignInWithoutPassword() else connectStepOpen = true })
+            // A remote scrolls by moving focus. With Telegram connected this section has no button, so it is focusable
+            // itself (outlined when focused): otherwise "Signed in as" could never be scrolled into view.
+            val telegramInteraction = remember { MutableInteractionSource() }
+            val telegramFocused by telegramInteraction.collectIsFocusedAsState()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(2.dp, if (telegramFocused) Cyan else Color.Transparent, RoundedCornerShape(12.dp))
+                    .focusable(interactionSource = telegramInteraction)
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                TelegramSettingsSection(telegramStatus, telegramViaPhone, onTelegramViaPhone, onTelegramConnect, onTelegramCancel,
+                    onOpenPassword = { passwordStepOpen = true },
+                    onSignIn = { twoStep -> if (twoStep == false) onTelegramSignInWithoutPassword() else connectStepOpen = true })
+            }
         }
     }
 }

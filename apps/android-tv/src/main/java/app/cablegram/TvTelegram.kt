@@ -128,21 +128,61 @@ class TvTelegram(
     /** The TV account whose household this TV signs in to Telegram for; [ensureSession] records it. */
     @Volatile private var account: String? = null
 
+    /** The session owner's token: the channel sync registers titles with it, never with another account's (CAB-66). */
+    @Volatile private var ownerToken: String? = null
+
+    /**
+     * CAB-66: the Telegram session on this TV belongs to another account on it (a family or hotel TV). It is paused,
+     * not signed out: its channel sync stops, its titles can't be streamed, and it resumes when its owner's profile
+     * opens again. The open account plays its Telegram titles through its own phone.
+     */
+    @Volatile private var pausedForOther = false
+
+    private fun heldByOther(accountId: String?): Boolean {
+        val owner = prefs.getString(PREF_OWNER, null) ?: return false
+        return accountId != null && owner != accountId && (session != null || TelegramDatabaseKey(context).hasLocalData())
+    }
+
+    private fun pauseForOtherAccount() {
+        if (!pausedForOther) PairLog.i("Telegram session belongs to another account on this TV: paused")
+        pausedForOther = true
+        syncJob?.cancel()
+        syncJob = null
+        phoneLoginJob?.cancel()
+        phoneLoginJob = null
+        passwordJob?.cancel()
+        passwordJob = null
+        streamServer?.stop()
+        streamServer = null
+        libraryChatId = null
+        expectedUserId = null
+    }
+
     /** Called after the library loads (and on refreshes): follows the household link of [accountId]. */
     fun sync(currentToken: String, accountId: String?) {
         if (!configured) return
         token = currentToken
         account = accountId
+        val other = heldByOther(accountId)
+        // Stop the owner's channel sync before anything runs with this account's token.
+        if (other) pauseForOtherAccount() else ownerToken = currentToken
         scope.launch {
             val link = runCatching { api.telegramLink(currentToken) }
                 .onFailure { PairLog.e("Telegram link check failed", it) }
                 .getOrNull() ?: return@launch
+            linkedPhoneId = link.phoneDeviceId
+            twoStep = link.twoStep
+            if (other) {
+                // Nothing this account's link says may sign out or wipe the owner's session (CAB-66).
+                if (link.logoutRequired) runCatching { api.telegramLogoutAck(currentToken) }
+                _status.value = if (link.linked) TvTelegramStatus.ThroughPhone else TvTelegramStatus.Off
+                return@launch
+            }
+            pausedForOther = false
             prefs.edit()
                 .putBoolean(PREF_TEMPORARY, link.trustLevel == "temporary")
                 .putLong(PREF_ACTIVE, System.currentTimeMillis())
                 .apply()
-            linkedPhoneId = link.phoneDeviceId
-            twoStep = link.twoStep
             (_status.value as? TvTelegramStatus.NotSignedIn)?.let { if (it.twoStep != link.twoStep) _status.value = it.copy(twoStep = link.twoStep) }
             if (link.telegramDirect && !link.logoutRequired) session?.retryStartup()
             when {
@@ -162,6 +202,10 @@ class TvTelegram(
                     expectedUserId = link.userId
                     libraryChatId = link.chatId
                     ensureSession()
+                    // Back from another account: the session is still signed in, so restart its sync and status.
+                    val current = session
+                    val ready = current?.state?.value as? TelegramState.Ready
+                    if (current != null && ready != null) onState(current, ready)
                 }
             }
         }
@@ -331,6 +375,8 @@ class TvTelegram(
     /** Unpair, revocation, household disconnect: log out and delete everything Telegram left here. */
     fun signOutAndWipe() {
         prefs.edit().remove(PREF_OWNER).apply()
+        pausedForOther = false
+        ownerToken = null
         val current = session
         session = null
         standalone = false
@@ -426,6 +472,9 @@ class TvTelegram(
 
     private suspend fun onState(current: TelegramSession, state: TelegramState) {
         PairLog.i("Telegram on TV: ${state.javaClass.simpleName}")
+        // Paused for another account (CAB-66): TDLib may still report states (a reconnect), but nothing may sync, ask a
+        // phone or replace the open account's "through your phone" status. Its owner's next sync resumes it.
+        if (pausedForOther) return
         when (state) {
             is TelegramState.WaitingForApproval -> {
                 // Nobody asked this TV to sign in: keep the link here, so Telegram sees no login attempt (NotSignedIn).
@@ -503,15 +552,17 @@ class TvTelegram(
 
     /** Channel videos become library titles (US3); a TV registers with the file name or caption as title. */
     private fun startSync(current: TelegramSession, chatId: Long) {
-        if (syncJob?.isActive == true) return
+        if (syncJob?.isActive == true || pausedForOther) return
+        // The owner's token, fixed for this sync: another account opening on this TV must never receive these titles.
+        val syncToken = ownerToken ?: token ?: return
         val sync = TelegramLibrarySync(
             api = current.api,
             chatId = chatId,
-            register = { video -> token?.let { api.registerTelegramVideo(it, video) } },
-            reconcile = { keys -> token?.let { api.reconcileTelegramVideos(it, keys) } },
+            register = { video -> api.registerTelegramVideo(syncToken, video) },
+            reconcile = { keys -> api.reconcileTelegramVideos(syncToken, keys) },
             onChanged = { onLibraryChanged() },
             hints = { found ->
-                token?.let { api.postTelegramHints(it, found) }
+                api.postTelegramHints(syncToken, found)
                 PairLog.i("Telegram channel: ${found.size} TMDB reference(s) sent")
             },
         )
@@ -586,7 +637,7 @@ class TvTelegram(
     suspend fun streamUrl(originIdentity: String): String? {
         val (chatId, messageId) = Regex("""^tg:(-?\d+):(\d+)$""").find(originIdentity)?.destructured
             ?.let { (c, m) -> c.toLong() to m.toLong() } ?: return null
-        if (chatId != libraryChatId) return null // only the household's channel (FR-005)
+        if (pausedForOther || chatId != libraryChatId) return null // only the open account's own channel (FR-005, CAB-66)
         val current = session?.takeIf { it.state.value is TelegramState.Ready } ?: return null
         val video = current.api.message(chatId, messageId)?.video ?: return null
         val server = synchronized(this) {

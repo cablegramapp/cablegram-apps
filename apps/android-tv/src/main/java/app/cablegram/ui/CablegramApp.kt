@@ -715,7 +715,9 @@ private fun PairingScreen(
     canCancel: Boolean = false,
     tvLanIp: String? = null,
 ) {
-    BackHandler(onBack = onBack)
+    // With profiles to return to, Back goes back to them. Without, Back leaves the app as usual: catching it here kept
+    // the app open and stopped the TV from noticing that a phone had paired it.
+    BackHandler(enabled = canCancel, onBack = onBack)
     if (nameRequired) {
         Box(Modifier.fillMaxSize().padding(72.dp), contentAlignment = Alignment.Center) {
             Text(
