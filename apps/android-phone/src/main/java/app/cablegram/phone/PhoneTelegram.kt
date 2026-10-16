@@ -11,6 +11,7 @@ import app.cablegram.telegram.TgParameters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * The phone's one Telegram session (spec 004 US1), shared by the Import screen and the background
@@ -28,9 +29,25 @@ object PhoneTelegram {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     @Volatile private var current: TelegramSession? = null
 
-    /** The session, creating (and starting) it on first use or after a sign-out closed the old one. */
+    /** The signed-out client releasing TDLib's database; a new one waits for it (see [session]). */
+    @Volatile private var closing: kotlinx.coroutines.Job? = null
+
+    /**
+     * The session, creating (and starting) it on first use or after a sign-out closed the old one. A session ended
+     * from elsewhere (Telegram → Devices) is still logging out and holds TDLib's database for a moment; the new one
+     * waits for it, or TDLib refuses with "Can't lock file td.binlog" (CAB-73).
+     */
     fun session(context: Context): TelegramSession = synchronized(this) {
-        current?.takeUnless { it.state.value == TelegramState.SignedOut }?.also { it.retryStartup() } ?: create(context.applicationContext).also { current = it }
+        val old = current
+        if (old != null && old.state.value != TelegramState.SignedOut) return old.also { it.retryStartup() }
+        if (old != null) {
+            val previous = closing
+            closing = scope.launch {
+                previous?.join()
+                old.api.close()
+            }
+        }
+        create(context.applicationContext).also { current = it }
     }
 
     /** The running session if there is one; never starts TDLib. */
@@ -55,6 +72,7 @@ object PhoneTelegram {
             api = TdlibTelegramApi(),
             role = TelegramRole.Phone,
             parameters = {
+                closing?.join()
                 val store = PairingStore(context)
                 val token = store.accountToken ?: throw app.cablegram.telegram.TelegramClientUnavailable()
                 val credentials = CatalogClient(store.apiBaseUrl, store).telegramClientCredentials(token)
