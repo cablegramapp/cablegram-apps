@@ -24,6 +24,12 @@ class TransportClassifierTest {
     }
 
     @Test
+    fun `Drive through this TV's proxy is cloud, the phone through it is LAN`() {
+        assertEquals(Transport.CLOUD, kind("http://127.0.0.1:41000/cloud/0a1b2c"))
+        assertEquals(Transport.LAN, kind("http://127.0.0.1:41000/lan/0a1b2c/media/abc"))
+    }
+
+    @Test
     fun `storage links are cloud and live channels are live`() {
         assertEquals(Transport.CLOUD, kind("https://bucket.r2.cloudflarestorage.com/v.mp4?sig=1"))
         assertEquals(Transport.CLOUD, kind("https://www.googleapis.com/drive/v3/files/1?alt=media"))
