@@ -226,7 +226,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     }
     override fun seekTo(positionMs: Long) {
         // A user seek keeps the current play/pause state; only the start-up resume seek autoplays.
-        if (startedOnce) resumeAfterSeek = mediaPlayer.isPlaying
+        if (startedOnce) resumeAfterSeek = resumeAfterUserSeek(settling, settleResume, mediaPlayer.isPlaying)
         pendingSeekMs = positionMs.coerceAtLeast(0)
         if (!flushPendingSeek()) {
             val url = currentUrl ?: return
@@ -397,6 +397,8 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         settling = false
         // Never leave the film paused by the hold itself.
         if (settleResume && !settleResumed) mediaPlayer.play()
+        // Ending paused: the hold hid VLC's Paused event, so tell the screen, or its play button would first "pause".
+        if (!settleResume && !mediaPlayer.isPlaying) eventFlow.tryEmit(PlayerEvent.IsPlayingChanged(false))
         settlingState.value = false
     }
 
@@ -511,3 +513,11 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
 
 /** Long enough for the video's own tracks to be listed first, so the Cablegram track is the only new one. */
 private const val SMART_SUBTITLE_DELAY_MS = 1_200L
+
+/**
+ * The play/pause state a viewer's seek keeps. During the hold after a seek the player is paused on purpose, so it
+ * counts as playing when the hold is going to resume it: a second seek during the hold (two presses of +10 s) must not
+ * leave the video paused.
+ */
+internal fun resumeAfterUserSeek(settling: Boolean, settleResume: Boolean, playing: Boolean): Boolean =
+    if (settling) settleResume else playing
