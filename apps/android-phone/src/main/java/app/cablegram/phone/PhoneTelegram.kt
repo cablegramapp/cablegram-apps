@@ -59,6 +59,14 @@ object PhoneTelegram {
         prefs(context).edit().putBoolean(PREF_LINKED, linked).apply()
     }
 
+    /** Choice completion belongs to this Telegram account, never to another account on the phone. */
+    fun communityChannelsCompleted(context: Context, userId: Long): Boolean =
+        prefs(context).getBoolean("community_channels_v1_$userId", false)
+
+    fun completeCommunityChannels(context: Context, userId: Long) {
+        prefs(context).edit().putBoolean("community_channels_v1_$userId", true).apply()
+    }
+
     /** After log-out: drop the session and delete its database, pieces and key. */
     fun forget(context: Context) = synchronized(this) {
         current = null

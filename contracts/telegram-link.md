@@ -48,6 +48,22 @@ Body `{}`. Returns `204`. The TV calls it after logging out and deleting its
 Telegram data. It clears `telegram_logout_required` for that TV. A new
 `PUT /api/telegram/link` also clears it for every TV of the household.
 
+## Optional Cablegram channel memberships (phone only)
+
+After a successful household link, the phone offers Cablegram News (`CablegramNews`),
+Cablegram Community (`CablegramCommunity`), and Cablegram Bot Hubs (`CablegramBotHubs`).
+All three start selected. The user can uncheck any or all, and no membership changes
+happen until **Save**. Saving an empty selection completes without joining anything.
+
+The phone resolves only these fixed public usernames through TDLib and joins those
+selected, skipping existing memberships. It does not read their messages or add them
+to the media library. No server endpoint, credentials, or stored household channel
+changes are involved. Completion is stored locally per Telegram user ID. A dismissed
+screen can be reopened; an unfinished choice after a process restart starts with the
+default selections again and still requires Save. Failures are shown per channel;
+retries skip successful joins. Disconnecting Cablegram does not leave these channels;
+the user can leave them in Telegram.
+
 ## TV login (phone-approved)
 
 ### `POST /api/telegram/tv-logins` (TV only)

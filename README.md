@@ -7,6 +7,18 @@ already have on your TV, from your phone. Licensed under [GPL-3.0](LICENSE).
 contracts they follow. The account, pairing, catalog and relay services run separately and are closed source,
 the same model Telegram uses for its own apps.
 
+## Telegram channels
+
+Follow Cablegram on Telegram:
+
+- [Cablegram News](https://t.me/CablegramNews)
+- [Cablegram Community](https://t.me/CablegramCommunity)
+- [Cablegram Bot Hubs](https://t.me/CablegramBotHubs)
+
+After connecting Telegram in the phone app, you can choose which channels to join. All three are
+selected by default. Uncheck any you do not want, then tap **Save** to join only the selected channels.
+Uncheck all and save to continue without joining any.
+
 ## Screenshots
 
 <p>
@@ -34,7 +46,8 @@ The videos shown are Blender Foundation open movies under CC BY licences; see
   rejects unknown fields.
 - **The Telegram surface is small and tested.** `TelegramApiSurfaceTest` (in each app, under
   `src/test/java/app/cablegram/telegram`) uses reflection to assert that the methods of `TelegramApi` equal a
-  fixed allowlist, and that `uploadVideo` is the only one that sends anything. Adding a method fails the test
+  fixed allowlist. `uploadVideo` is the only method that sends messages; the optional community
+  channels can be joined only after you save your selection. Adding a method fails the test
   until someone changes the allowlist in review.
 - **Nothing is logged that shouldn't be.** `TelegramLogAuditTest` covers log output.
 - **Cablegram does not store the videos on your phone or in your Telegram channel.** The phone serves them over

@@ -1163,6 +1163,29 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Continue was chosen on "Before you connect" in this app run (or Telegram was already running). */
     var telegramStarted by mutableStateOf(false)
         private set
+    var telegramCommunityChannels by mutableStateOf<app.cablegram.telegram.CommunityChannels?>(null)
+        private set
+    private var telegramCommunityUserId: Long? = null
+    private var telegramCommunitySession: app.cablegram.telegram.TelegramSession? = null
+    private var telegramCommunitySaveJob: Job? = null
+
+    private fun prepareCommunityChannels(session: app.cablegram.telegram.TelegramSession, userId: Long) {
+        if (telegramCommunityUserId == userId && telegramCommunitySession === session && telegramCommunityChannels != null) return
+        telegramCommunitySaveJob?.cancel()
+        telegramCommunityUserId = userId
+        telegramCommunitySession = session
+        telegramCommunityChannels = if (PhoneTelegram.communityChannelsCompleted(getApplication(), userId)) null
+        else app.cablegram.telegram.CommunityChannels(session.api) {
+            PhoneTelegram.completeCommunityChannels(getApplication(), userId)
+        }
+    }
+
+    fun saveTelegramCommunityChannels() {
+        val channels = telegramCommunityChannels ?: return
+        if (telegramCommunitySaveJob?.isActive == true) return
+        telegramCommunitySaveJob = viewModelScope.launch { channels.save() }
+    }
+
     private var telegramFinishJob: kotlinx.coroutines.Job? = null
 
     fun loadTelegramLink() {
@@ -1255,8 +1278,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         telegramSheetOpen = true
         telegramStarted = true
         if (telegramFinishJob?.isActive == true) return
-        if (telegramLink?.linked == true && telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(getApplication())) return
         val session = PhoneTelegram.session(getApplication())
+        if (telegramLink?.linked == true && telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(getApplication())) {
+            telegramLink?.userId?.let { prepareCommunityChannels(session, it) }
+            return
+        }
         telegramFinishJob = viewModelScope.launch {
             // Once per attempt: the link PUT is idempotent for the same account and 409 for another.
             val ready = session.state.first { it is app.cablegram.telegram.TelegramState.Ready } as app.cablegram.telegram.TelegramState.Ready
@@ -1365,6 +1391,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     telegramLink = result.link
                     telegramHealth = TelegramHealth.Ok
                     PhoneTelegram.setLinked(getApplication(), true)
+                    prepareCommunityChannels(session, user.id)
                     status = "Telegram connected. Videos you share into \"Cablegram library\" appear on your TV."
                 }
             }
@@ -1387,6 +1414,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Logs this phone out of Telegram and deletes the local TDLib database, files and key. */
     private fun wipeTelegramLocally() {
+        telegramCommunitySaveJob?.cancel()
+        telegramCommunityChannels = null
+        telegramCommunityUserId = null
+        telegramCommunitySession = null
         PhoneTelegram.existing()?.logOut()
         PhoneTelegram.forget(getApplication())
         telegramLink = TelegramLinkInfo(linked = false)

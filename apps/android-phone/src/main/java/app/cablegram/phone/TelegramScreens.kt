@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -34,11 +36,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cablegram.telegram.CablegramChannel
+import app.cablegram.telegram.CommunityChannels
 import app.cablegram.telegram.TelegramSession
 import app.cablegram.telegram.TelegramState
 
@@ -196,7 +201,7 @@ private fun BeforeYouConnect(viewModel: PhoneViewModel) {
     )
     TrustPoint(
         "What it does",
-        "It only reads and manages one private channel, \"${TelegramSession.LIBRARY_TITLE}\". It never reads your chats or contacts. The only thing it ever sends is a video you choose to save with \"Save to Telegram\", into that channel.",
+        "For your videos, it reads and manages one private channel, \"${TelegramSession.LIBRARY_TITLE}\". After connecting, you can also choose to join Cablegram’s optional channels. It joins only the channels selected when you tap Save. It never reads your other chats or contacts. The only thing it ever sends is a video you choose to save with \"Save to Telegram\", into that channel.",
     )
     TrustPoint(
         "Where your details go",
@@ -263,7 +268,13 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
 
     val linked = viewModel.telegramLink?.linked == true && viewModel.telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(context)
     when {
-        linked -> Done(viewModel)
+        linked -> {
+            val channels = viewModel.telegramCommunityChannels
+            val communityState = channels?.state?.collectAsState()?.value
+            if (channels != null && communityState?.completed == false) {
+                CommunityChannelsOptions(channels, viewModel::saveTelegramCommunityChannels)
+            } else Done(viewModel)
+        }
         viewModel.telegramMessage != null -> {
             Text(viewModel.telegramMessage!!, color = VlcOrange)
             if (state is TelegramState.Ready) {
@@ -329,6 +340,47 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
             TelegramState.SignedOut -> Working("Starting Telegram…")
             is TelegramState.Ready -> Unit
         }
+    }
+}
+
+/** Optional memberships are explicit: even the default selections do nothing until Save. */
+@Composable
+internal fun CommunityChannelsOptions(channels: CommunityChannels, onSave: () -> Unit) {
+    val state by channels.state.collectAsState()
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.maestro("telegram_channels")) {
+        Text("Join Cablegram channels", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "These channels are optional. Uncheck any you don’t want. Tap Save to join the selected channels with your Telegram account, or uncheck all to continue without joining.",
+            color = VlcMuted,
+        )
+        CablegramChannel.entries.forEach { channel ->
+            val joined = channel in state.joined
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .toggleable(
+                        value = channel in state.selected,
+                        enabled = !state.saving && !joined,
+                        role = Role.Checkbox,
+                        onValueChange = { channels.select(channel, it) },
+                    ).maestro("telegram_channel_${channel.username}"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Checkbox(checked = channel in state.selected, onCheckedChange = null, enabled = !state.saving && !joined)
+                Column(Modifier.weight(1f)) {
+                    Text(channel.title, color = Color.White)
+                    Text(channel.url, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    if (joined) Text("Joined", color = VlcOrange)
+                    if (channel in state.failed) Text("Couldn’t join. Try Save again, or uncheck to continue.", color = VlcOrange)
+                }
+            }
+        }
+        Text("Joining a channel follows it in Telegram. You can leave it there at any time.", color = VlcMuted)
+        Button(
+            onClick = onSave,
+            enabled = !state.saving,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro("telegram_channels_save"),
+        ) { Text(if (state.saving) "Joining…" else "Save") }
     }
 }
 

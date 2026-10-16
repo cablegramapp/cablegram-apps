@@ -41,6 +41,7 @@ class FakeTelegramApi : TelegramApi {
     }
     override suspend fun logOut() = record("logOut")
     override suspend fun close() = record("close")
+    override suspend fun joinCommunityChannel(channel: CablegramChannel) = record("joinCommunityChannel:${channel.username}")
     override suspend fun me(): TgUser = user
 
     override suspend fun chat(chatId: Long): TgChat? =

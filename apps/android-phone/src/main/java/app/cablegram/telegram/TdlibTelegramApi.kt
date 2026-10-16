@@ -103,6 +103,12 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
         }
     }
 
+    override suspend fun joinCommunityChannel(channel: CablegramChannel) {
+        val chat = client.searchPublicChat(channel.username).ok()
+        require(chat.type is ChatTypeSupergroup) { "The Cablegram channel is unavailable" }
+        if (!isMember(chat.type)) client.joinChat(chat.id).ok()
+    }
+
     override suspend fun me(): TgUser {
         val user = client.getMe().ok()
         return TgUser(user.id, listOf(user.firstName, user.lastName).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "Telegram" })
