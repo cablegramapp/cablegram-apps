@@ -347,12 +347,17 @@ private fun PreferencesCard(p: SubtitlePreferences, onChange: (SubtitlePreferenc
 private data class SyncPoint(val cue: SubtitleCue, val video: Double)
 
 @Composable
-internal fun ColumnScope.AdjustContent(viewModel: PhoneViewModel, item: LibraryItem, match: SubtitleMatch, subtitleId: String, onDone: () -> Unit) {
+internal fun ColumnScope.AdjustContent(
+    viewModel: PhoneViewModel, item: LibraryItem, match: SubtitleMatch, subtitleId: String,
+    /** The shift and scale to start from: a saved subtitle reopens with the timing it plays with now. */
+    start: Pair<Double, Double> = initialShift(match),
+    onDone: () -> Unit,
+) {
     val scope = rememberCoroutineScope(); val context = LocalContext.current
     val token = viewModel.accountTokenOrNull()
     val cues = match.cues.orEmpty()
-    var offset by remember { mutableStateOf(initialShift(match).first) }
-    var scale by remember { mutableStateOf(initialShift(match).second) }
+    var offset by remember { mutableStateOf(start.first) }
+    var scale by remember { mutableStateOf(start.second) }
     var position by remember { mutableStateOf(0.0) }
     var message by remember { mutableStateOf<String?>(null) }
     var pointA by remember { mutableStateOf<SyncPoint?>(null) }
