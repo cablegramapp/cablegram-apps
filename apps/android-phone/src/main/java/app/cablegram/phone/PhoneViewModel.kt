@@ -1165,15 +1165,30 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var telegramCommunityChannels by mutableStateOf<app.cablegram.telegram.CommunityChannels?>(null)
         private set
+    var telegramLibraryBots by mutableStateOf<app.cablegram.telegram.LibraryBotRecommendations?>(null)
+        private set
+    private var telegramLibraryBotsJob: Job? = null
+    private var telegramCommunityLibraryId: Long? = null
     private var telegramCommunityUserId: Long? = null
     private var telegramCommunitySession: app.cablegram.telegram.TelegramSession? = null
     private var telegramCommunitySaveJob: Job? = null
 
     private fun prepareCommunityChannels(session: app.cablegram.telegram.TelegramSession, userId: Long) {
-        if (telegramCommunityUserId == userId && telegramCommunitySession === session && telegramCommunityChannels != null) return
+        val chatId = telegramLink?.chatId ?: return
+        if (telegramCommunityUserId == userId && telegramCommunityLibraryId == chatId && telegramCommunitySession === session) return
+        telegramLibraryBotsJob?.cancel()
+        telegramCommunityLibraryId = chatId
         telegramCommunitySaveJob?.cancel()
         telegramCommunityUserId = userId
         telegramCommunitySession = session
+        telegramLibraryBots = if (PhoneTelegram.libraryBotsCompleted(getApplication(), userId, chatId)) null
+        else app.cablegram.telegram.LibraryBotRecommendations(
+            api = session.api,
+            libraryChatId = chatId,
+            handledBotIds = PhoneTelegram.handledLibraryBots(getApplication(), userId, chatId),
+            onDecision = { PhoneTelegram.recordLibraryBotDecision(getApplication(), userId, chatId, it) },
+            onCompleted = { PhoneTelegram.completeLibraryBots(getApplication(), userId, chatId) },
+        )
         telegramCommunityChannels = if (PhoneTelegram.communityChannelsCompleted(getApplication(), userId)) null
         else app.cablegram.telegram.CommunityChannels(session.api) {
             PhoneTelegram.completeCommunityChannels(getApplication(), userId)
@@ -1184,6 +1199,18 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val channels = telegramCommunityChannels ?: return
         if (telegramCommunitySaveJob?.isActive == true) return
         telegramCommunitySaveJob = viewModelScope.launch { channels.save() }
+    }
+
+    fun loadTelegramLibraryBots() {
+        val bots = telegramLibraryBots ?: return
+        if (telegramLibraryBotsJob?.isActive == true) return
+        telegramLibraryBotsJob = viewModelScope.launch { bots.load() }
+    }
+
+    fun addRecommendedTelegramBot() {
+        val bots = telegramLibraryBots ?: return
+        if (telegramLibraryBotsJob?.isActive == true) return
+        telegramLibraryBotsJob = viewModelScope.launch { bots.addCurrent() }
     }
 
     private var telegramFinishJob: kotlinx.coroutines.Job? = null
@@ -1256,6 +1283,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Telegram ended this phone's session: sign in again without disconnecting the household. */
     fun signInToTelegramAgain() {
         telegramHealth = TelegramHealth.Unknown
+        clearTelegramRecommendations()
         // The old session is dead; start clean, then finish like a first link (same account → same link).
         PhoneTelegram.forget(getApplication())
         connectTelegram()
@@ -1412,12 +1440,20 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         telegramMessage = null
     }
 
-    /** Logs this phone out of Telegram and deletes the local TDLib database, files and key. */
-    private fun wipeTelegramLocally() {
+    /** Cancel operations tied to the old Telegram session before replacing or signing it out. */
+    private fun clearTelegramRecommendations() {
+        telegramLibraryBotsJob?.cancel()
+        telegramLibraryBots = null
+        telegramCommunityLibraryId = null
         telegramCommunitySaveJob?.cancel()
         telegramCommunityChannels = null
         telegramCommunityUserId = null
         telegramCommunitySession = null
+    }
+
+    /** Logs this phone out of Telegram and deletes the local TDLib database, files and key. */
+    private fun wipeTelegramLocally() {
+        clearTelegramRecommendations()
         PhoneTelegram.existing()?.logOut()
         PhoneTelegram.forget(getApplication())
         telegramLink = TelegramLinkInfo(linked = false)

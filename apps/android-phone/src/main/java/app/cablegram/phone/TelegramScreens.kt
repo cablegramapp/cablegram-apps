@@ -42,6 +42,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.cablegram.telegram.BOT_HUB_DESCRIPTION
+import app.cablegram.telegram.BOT_INDEPENDENCE
+import app.cablegram.telegram.BOT_DISCLAIMER
+import app.cablegram.telegram.BOT_PERMISSIONS
+import app.cablegram.telegram.LibraryBotRecommendations
 import app.cablegram.telegram.CablegramChannel
 import app.cablegram.telegram.CommunityChannels
 import app.cablegram.telegram.TelegramSession
@@ -201,7 +206,7 @@ private fun BeforeYouConnect(viewModel: PhoneViewModel) {
     )
     TrustPoint(
         "What it does",
-        "For your videos, it reads and manages one private channel, \"${TelegramSession.LIBRARY_TITLE}\". After connecting, you can also choose to join Cablegram’s optional channels. It joins only the channels selected when you tap Save. It never reads your other chats or contacts. The only thing it ever sends is a video you choose to save with \"Save to Telegram\", into that channel.",
+        "For your videos, it reads and manages one private channel, \"${TelegramSession.LIBRARY_TITLE}\". After connecting, you can also choose to join Cablegram’s optional channels. It joins only the channels selected when you tap Save. It then reads recommendations from the public Cablegram Bot Hubs channel and offers third-party bots one at a time. Adding a bot to your library requires your separate agreement to its permissions and the disclaimer. It never reads your other chats or contacts. The only thing it ever sends is a video you choose to save with \"Save to Telegram\", into that channel.",
     )
     TrustPoint(
         "Where your details go",
@@ -273,7 +278,14 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
             val communityState = channels?.state?.collectAsState()?.value
             if (channels != null && communityState?.completed == false) {
                 CommunityChannelsOptions(channels, viewModel::saveTelegramCommunityChannels)
-            } else Done(viewModel)
+            } else {
+                val bots = viewModel.telegramLibraryBots
+                val botState = bots?.state?.collectAsState()?.value
+                if (bots != null && botState?.completed == false) {
+                    androidx.compose.runtime.LaunchedEffect(bots) { viewModel.loadTelegramLibraryBots() }
+                    LibraryBotOptions(bots, viewModel::loadTelegramLibraryBots, viewModel::addRecommendedTelegramBot)
+                } else Done(viewModel)
+            }
         }
         viewModel.telegramMessage != null -> {
             Text(viewModel.telegramMessage!!, color = VlcOrange)
@@ -370,6 +382,10 @@ internal fun CommunityChannelsOptions(channels: CommunityChannels, onSave: () ->
                 Column(Modifier.weight(1f)) {
                     Text(channel.title, color = Color.White)
                     Text(channel.url, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    if (channel == CablegramChannel.BotHubs) {
+                        Text(BOT_HUB_DESCRIPTION, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(BOT_INDEPENDENCE, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    }
                     if (joined) Text("Joined", color = VlcOrange)
                     if (channel in state.failed) Text("Couldn’t join. Try Save again, or uncheck to continue.", color = VlcOrange)
                 }
@@ -381,6 +397,63 @@ internal fun CommunityChannelsOptions(channels: CommunityChannels, onSave: () ->
             enabled = !state.saving,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro("telegram_channels_save"),
         ) { Text(if (state.saving) "Joining…" else "Save") }
+    }
+}
+
+/** Each Add is separately gated; Skip never requires accepting the disclaimer. */
+@Composable
+internal fun LibraryBotOptions(bots: LibraryBotRecommendations, onRetry: () -> Unit, onAdd: () -> Unit) {
+    val state by bots.state.collectAsState()
+    val context = LocalContext.current
+    val bot = state.current
+    Column(Modifier.maestro("telegram_library_bots"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("Optional bots for your library", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+        Text(BOT_HUB_DESCRIPTION, color = VlcMuted)
+        Text(BOT_INDEPENDENCE, color = VlcMuted)
+        Text("Recommendations come from posts in @CablegramBotHubs. You don’t have to join it or add any bot.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        if (state.added > 0) Text("Added to your library: ${state.added}", color = VlcOrange)
+        if (!state.loaded) {
+            if (state.busy) Working("Finding bots in Cablegram Bot Hubs…")
+            state.error?.let { Text(it, color = VlcOrange) }
+            if (!state.busy) {
+                OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text("Try again") }
+                TextButton(onClick = bots::finish, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_skip_all")) { Text("Skip bots") }
+            }
+        } else if (bot == null) {
+            Text("No new bots are available to review. You can check Cablegram Bot Hubs in Telegram.", color = VlcMuted)
+            Button(onClick = bots::finish, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_done")) { Text("Continue") }
+        } else {
+            Text("Bot ${state.index + 1} of ${state.bots.size}", color = VlcMuted)
+            Text(bot.displayName, color = Color.White, style = MaterialTheme.typography.titleLarge)
+            Text("@${bot.username}", color = VlcOrange)
+            OutlinedButton(onClick = {
+                runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(bot.url))) }
+            }) { Text("Review bot in Telegram") }
+            Text("Access to your library channel", color = Color.White, style = MaterialTheme.typography.titleMedium)
+            Text(BOT_PERMISSIONS, color = VlcMuted)
+            Text(BOT_DISCLAIMER, color = Color.White, modifier = Modifier.maestro("telegram_bot_disclaimer"))
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(
+                    value = state.disclaimerAccepted,
+                    enabled = !state.busy,
+                    role = Role.Checkbox,
+                    onValueChange = bots::acceptDisclaimer,
+                ).maestro("telegram_bot_accept_disclaimer"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Checkbox(checked = state.disclaimerAccepted, onCheckedChange = null, enabled = !state.busy)
+                Text("I have reviewed this bot’s permissions and agree to the disclaimer for @${bot.username}.", color = Color.White)
+            }
+            state.error?.let { Text(it, color = VlcOrange) }
+            Button(
+                onClick = onAdd,
+                enabled = state.disclaimerAccepted && !state.busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro("telegram_bot_add"),
+            ) { Text(if (state.busy) "Adding…" else "Add to library channel") }
+            OutlinedButton(onClick = bots::skipCurrent, enabled = !state.busy, modifier = Modifier.fillMaxWidth().maestro("telegram_bot_skip")) { Text("Skip this bot") }
+            TextButton(onClick = bots::finish, enabled = !state.busy, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_skip_all")) { Text("Skip remaining bots") }
+        }
     }
 }
 

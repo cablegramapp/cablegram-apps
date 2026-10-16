@@ -13,11 +13,22 @@ Follow Cablegram on Telegram:
 
 - [Cablegram News](https://t.me/CablegramNews)
 - [Cablegram Community](https://t.me/CablegramCommunity)
-- [Cablegram Bot Hubs](https://t.me/CablegramBotHubs)
+- [Cablegram Bot Hubs](https://t.me/CablegramBotHubs) — Discover useful Telegram bots that make managing, organizing, and enjoying your video library easier.
 
 After connecting Telegram in the phone app, you can choose which channels to join. All three are
 selected by default. Uncheck any you do not want, then tap **Save** to join only the selected channels.
 Uncheck all and save to continue without joining any.
+
+Next, Cablegram extracts bot recommendations from posts in Cablegram Bot Hubs and
+asks about each bot individually. These are independent third-party bots and are not developed,
+owned, or operated by Cablegram. Each addition requires reviewing the channel administrator access
+and explicitly accepting the disclaimer below; its checkbox starts unchecked for every bot. You can
+skip any or all bots. New bots receive posting permission and Telegram’s implied administrator access;
+other optional permissions are off. Existing administrator permissions are preserved.
+
+> This recommendation is shared for informational purposes only. Using the bot is entirely optional and at the user's own discretion and responsibility.
+>
+> Cablegram is not responsible for the bot's operation, content, privacy practices, or any consequences arising from its use. Please review its permissions before adding it to your channel.
 
 ## Screenshots
 
@@ -47,7 +58,9 @@ The videos shown are Blender Foundation open movies under CC BY licences; see
 - **The Telegram surface is small and tested.** `TelegramApiSurfaceTest` (in each app, under
   `src/test/java/app/cablegram/telegram`) uses reflection to assert that the methods of `TelegramApi` equal a
   fixed allowlist. `uploadVideo` is the only method that sends messages; the optional community
-  channels can be joined only after you save your selection. Adding a method fails the test
+  channels can be joined only after you save your selection. The fixed public Bot Hubs feed is also read
+  for recommendations; bots are verified by Telegram and added individually only after you confirm
+  their permissions and accept the disclaimer. Adding a method fails the test
   until someone changes the allowlist in review.
 - **Nothing is logged that shouldn't be.** `TelegramLogAuditTest` covers log output.
 - **Cablegram does not store the videos on your phone or in your Telegram channel.** The phone serves them over

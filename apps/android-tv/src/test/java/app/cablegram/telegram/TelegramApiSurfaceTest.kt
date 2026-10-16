@@ -7,7 +7,7 @@ import org.junit.Test
 
 /**
  * Pins the Telegram surface to library management, device sign-in, and joining the fixed Cablegram
- * channels after an explicit Save. No reading other chats, listing contacts, or messaging people.
+ * channels after an explicit Save, and bot recommendations confirmed individually. No reading other chats, listing contacts, or messaging people.
  * Adding a call needs review against the README and privacy claims.
  */
 class TelegramApiSurfaceTest {
@@ -21,6 +21,9 @@ class TelegramApiSurfaceTest {
         "uploadVideo", "uploadLimitBytes",
         // Optional fixed Cablegram channels: only joined after the owner taps Save.
         "joinCommunityChannel",
+        // Read only the fixed Bot Hubs recommendation feed; add only verified discovered bots after
+        // a separate per-bot opt-in and explicit permission/disclaimer confirmation.
+        "recommendedLibraryBots", "addRecommendedBotToLibrary",
         // Files of those videos.
         "file", "download", "readPart", "cancelDownload", "deleteLocalFile",
         // Ending Cablegram's own TV sessions (spec 004 US8).

@@ -56,13 +56,54 @@ All three start selected. The user can uncheck any or all, and no membership cha
 happen until **Save**. Saving an empty selection completes without joining anything.
 
 The phone resolves only these fixed public usernames through TDLib and joins those
-selected, skipping existing memberships. It does not read their messages or add them
-to the media library. No server endpoint, credentials, or stored household channel
-changes are involved. Completion is stored locally per Telegram user ID. A dismissed
+selected, skipping existing memberships. It does not add these channels to the media library.
+A separate optional step reads recommendation posts from the fixed public Bot Hubs channel,
+as described below. No server endpoint, credentials, or stored household channel changes
+are involved. Completion is stored locally per Telegram user ID. A dismissed
 screen can be reopened; an unfinished choice after a process restart starts with the
 default selections again and still requires Save. Failures are shown per channel;
 retries skip successful joins. Disconnecting Cablegram does not leave these channels;
 the user can leave them in Telegram.
+
+## Optional third-party library bots (phone only)
+
+After channel selection is saved (including an empty selection), a separate screen reads
+Bot Hubs posts, paging through the channel history. Text and media captions, embedded text
+links, and inline URL buttons can name bots with `@username`, `https://t.me/username`, `https://telegram.me/username`, or
+`tg://resolve?domain=username`. External URLs, invitation links, and channel-post links are not
+bot candidates. Telegram must resolve every candidate to a bot account that can join groups.
+Duplicates are removed by stable Telegram user ID. No subscription to Bot Hubs is required or
+performed by discovery, and no personal chats or contacts are searched. Recommendation messages
+are processed on the device, never sent to the Cablegram service, and not imported into the library.
+
+Discovery has a 60-second timeout with Retry or Skip on failure.
+
+Each bot is offered individually, with its name, username, a link to review it in Telegram,
+its channel access, the third-party independence statement, and this disclaimer:
+
+> This recommendation is shared for informational purposes only. Using the bot is entirely optional and at the user's own discretion and responsibility.
+>
+> Cablegram is not responsible for the bot's operation, content, privacy practices, or any consequences arising from its use. Please review its permissions before adding it to your channel.
+
+Add remains disabled until the user checks the acceptance box. Acceptance resets for the next
+bot. Skipping one or all bots requires no acceptance and makes no membership changes. Adding
+is limited to the household's linked library channel and the verified IDs from discovery; it
+rechecks the account's bot status immediately before adding. New bots become administrators
+with `canManageChat` (implied by Telegram) and `canPostMessages`; every other optional right
+is false. The screen explains that a bot can receive new library posts including videos and
+captions and can access channel activity, statistics, and member information. Bots already
+configured as administrators are kept as-is; no rights are removed or escalated. Some bots
+need further setup in Telegram. Start parameters and permissions in recommendation links do
+not execute or grant anything automatically.
+
+A failed add stays on the same bot and can be retried or skipped. Added/skipped IDs and
+completion are stored locally per Telegram user and library channel. After a process restart,
+unfinished reviews reload recommendations and omit those handled IDs; disclaimer acceptance is
+never persisted. The whole step can be dismissed or skipped, including when discovery fails.
+Disconnecting Cablegram does not remove third-party bots; the user manages them in Telegram.
+
+The Telegram API allowlist explicitly includes `recommendedLibraryBots` and
+`addRecommendedBotToLibrary` for this feature. No new server endpoint is needed.
 
 ## TV login (phone-approved)
 

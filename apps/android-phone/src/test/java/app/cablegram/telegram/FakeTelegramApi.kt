@@ -42,6 +42,12 @@ class FakeTelegramApi : TelegramApi {
     override suspend fun logOut() = record("logOut")
     override suspend fun close() = record("close")
     override suspend fun joinCommunityChannel(channel: CablegramChannel) = record("joinCommunityChannel:${channel.username}")
+    var recommendedBots = emptyList<RecommendedLibraryBot>()
+    override suspend fun recommendedLibraryBots(): List<RecommendedLibraryBot> {
+        record("recommendedLibraryBots")
+        return recommendedBots
+    }
+    override suspend fun addRecommendedBotToLibrary(libraryChatId: Long, botUserId: Long) = record("addRecommendedBot:$libraryChatId:$botUserId")
     override suspend fun me(): TgUser = user
 
     override suspend fun chat(chatId: Long): TgChat? =
