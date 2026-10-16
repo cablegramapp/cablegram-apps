@@ -1394,7 +1394,7 @@ private fun RelayUsageCard(usage: RelayUsage) {
         val note = when {
             usage.limitedReason == "relay_email_unverified" -> "Confirm your email (above) to use free relay."
             usage.limitedReason == "relay_free_device_limit" ->
-                "Free relay isn't available here: this phone or TV already gives free relay to other Cablegram accounts."
+                "Free relay isn't available here: this phone already gives free relay to other Cablegram accounts."
             fraction >= 1f -> "This month's free relay traffic is used up${resets?.let { " (resets $it)" } ?: ""}. Same Wi‑Fi still works."
             fraction >= 0.8f -> "You've used ${(fraction * 100).toInt()}% of this month's free relay traffic."
             else -> "The relay is used when your TV can't reach this phone on Wi‑Fi${resets?.let { ". Resets $it" } ?: ""}."

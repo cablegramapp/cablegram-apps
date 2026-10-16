@@ -1634,7 +1634,7 @@ internal fun relayMessage(code: Int?, error: String?): String = when {
     error == "phone_offline" -> "Your phone isn't reachable. Open Cablegram on the phone and check that it has internet."
     error == "mobile_data_not_allowed" -> "Your phone is on mobile data, and streaming over mobile data is turned off in Cablegram's settings on the phone."
     error == "relay_email_unverified" -> "Free relay needs a confirmed email. Open Cablegram on your phone and confirm your email in Settings, or use the same Wi‑Fi."
-    error == "relay_free_device_limit" -> "Free relay isn't available: this phone or TV already gives free relay to other Cablegram accounts. Use the same Wi‑Fi, or upgrade your plan."
+    error == "relay_free_device_limit" -> "Free relay isn't available: your phone already gives free relay to other Cablegram accounts. Use the same Wi‑Fi, or upgrade your plan."
     error == "relay_quota_exceeded" -> "This month's relay traffic is used up. Put the phone and TV on the same Wi‑Fi, or upgrade your plan."
     error == "relay_streams_exceeded" -> "Too many relay streams are running in your household. Stop one and try again."
     error == "phone_timeout" || error == "phone_disconnected" || code == 502 || code == 504 -> "Your phone didn't respond. Check that Cablegram is open on the phone."
