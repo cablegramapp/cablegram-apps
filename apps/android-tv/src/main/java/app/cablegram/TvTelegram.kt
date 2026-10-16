@@ -594,6 +594,8 @@ class TvTelegram(
             TelegramState.SignedOut -> {
                 checkingPassword = false
                 _status.value = TvTelegramStatus.Off
+                // Not our own sign-out (that drops the session first): Telegram ended this TV's session.
+                if (session === current) startOverAfterSignOut(current)
             }
             else -> {
                 val shown = _status.value
@@ -601,6 +603,38 @@ class TvTelegram(
                 if (shown !is TvTelegramStatus.WaitingForPhone && !(shown is TvTelegramStatus.NotSignedIn && !armed)) _status.value = TvTelegramStatus.Connecting
             }
         }
+    }
+
+    /**
+     * Telegram ended this TV's session from elsewhere (Settings → Devices on another device, or the account logged out).
+     * TDLib closes and deletes its data, so the session is dropped and a fresh one starts: the TV then offers "Connect
+     * this TV" again. Keeping the closed one left Settings with an empty Telegram section until the app restarted.
+     */
+    private fun startOverAfterSignOut(current: TelegramSession) {
+        PairLog.i("Telegram ended this TV's session: starting over")
+        session = null
+        armed = false
+        heldPassword = null
+        unpostedLink = null
+        postedLink = null
+        syncJob?.cancel()
+        syncJob = null
+        phoneLoginJob?.cancel()
+        phoneLoginJob = null
+        passwordJob?.cancel()
+        passwordJob = null
+        streamServer?.stop()
+        streamServer = null
+        // The new session waits for this one to release TDLib's database (see [ensureSession]).
+        val previous = closing
+        closing = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            previous?.join()
+            current.api.close()
+        }
+        // Last: this runs inside the old session's watcher, which stops here.
+        val watcher = watchJob
+        if (token != null && !pausedForOther) ensureSession()
+        watcher?.cancel()
     }
 
     /**
