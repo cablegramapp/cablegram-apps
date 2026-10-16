@@ -61,8 +61,11 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
                     val pending = client.pendingTvLogins(token).orEmpty()
                     if (pending.isNotEmpty() || !passwords.isNullOrEmpty()) activeAt = System.currentTimeMillis()
                     for (request in pending) {
-                        if (PhoneTelegram.autoApproveTvs(context)) {
-                            approve(context, client, token, request)
+                        // A TV this phone just typed the password for was already allowed by that (CAB-73).
+                        val justTyped = RecentTvPasswords.covers(request.tvDeviceId)
+                        if (PhoneTelegram.autoApproveTvs(context) || justTyped) {
+                            if (justTyped) PairLog.i("Telegram TV login for ${request.tvName}: allowed by the password just sent")
+                            if (approve(context, client, token, request) && justTyped) RecentTvPasswords.used(request.tvDeviceId)
                         } else if (asked.add(request.tvDeviceId + request.loginLink)) {
                             TelegramTvApprovals.ask(context, request)
                         }
@@ -149,13 +152,13 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
         private const val RETRY_MS = 30_000L
         private const val TRUST_POLL_MS = 60_000L
 
-        /** Approves one TV login with the phone's session and reports the outcome (no secrets). */
-        suspend fun approve(context: Context, client: CatalogClient, token: String, request: PendingTvLogin) {
+        /** Approves one TV login with the phone's session and reports the outcome (no secrets). False: not tried yet. */
+        suspend fun approve(context: Context, client: CatalogClient, token: String, request: PendingTvLogin): Boolean {
             val session = PhoneTelegram.session(context)
             val ready = withTimeoutOrNull(20_000) { session.state.first { it is TelegramState.Ready } }
             if (ready == null) {
                 PairLog.i("Telegram TV login ${PairLog.pinTail(request.requestId)}: phone session not ready")
-                return // stays pending; the TV keeps posting fresh links until the phone is ready
+                return false // stays pending; the TV keeps posting fresh links until the phone is ready
             }
             // Verified approval: only a Cablegram session is accepted, and it is identified exactly, so the
             // phone can end that TV's session later even when the TV is off (US8), and never another one.
@@ -166,6 +169,7 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
             if (identified != null) client.putTvTelegramSession(token, request.tvDeviceId, identified.id)
             else if (outcome.isSuccess) PairLog.w("Telegram TV session not listed for ${PairLog.pinTail(request.tvDeviceId)}; it cannot be ended remotely")
             PairLog.i("Telegram TV login for ${request.tvName}: ${if (outcome.isSuccess) "approved" else "failed $error"}")
+            return true
         }
 
         /** Ends every TV session the control plane lists as due (TV removed, signed out, expired, Telegram disconnected). */

@@ -151,6 +151,8 @@ data class PendingTvPasswordRequests(val requests: List<PendingTvPasswordRequest
 @Serializable
 data class PendingTvPasswordRequest(
     @kotlinx.serialization.SerialName("request_id") val requestId: String,
+    /** The TV that asked; its sign-in is approved without asking again once the password went to it (CAB-73). */
+    @kotlinx.serialization.SerialName("tv_device_id") val tvDeviceId: String? = null,
     @kotlinx.serialization.SerialName("tv_name") val tvName: String = "TV",
     /** The TV's one-time public key; the password is sealed to it. */
     @kotlinx.serialization.SerialName("tv_public_key") val tvPublicKey: String,
