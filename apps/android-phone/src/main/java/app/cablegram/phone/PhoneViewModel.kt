@@ -3,6 +3,7 @@ package app.cablegram.phone
 import android.os.SystemClock
 import app.cablegram.phone.cast.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -1236,11 +1238,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         connectTelegram()
     }
 
-    /** Opens the sheet on "Before you connect"; nothing reaches Telegram until [connectTelegram] (FR-021). */
+    /** A first connection needs consent; an existing session resumes its unfinished household link. */
     fun openTelegramSheet() {
         if (!PhoneTelegram.configured) return
         telegramMessage = null
         telegramSheetOpen = true
+        // TDLib outlives this ViewModel. After reopening the app, Ready alone does not mean the
+        // household link was saved: the new ViewModel must also resume the finishing job.
+        if (PhoneTelegram.existing() != null || PhoneTelegram.wasLinked(getApplication())) connectTelegram()
     }
 
     /** The owner chose Continue on "Before you connect": start TDLib and the sign-in steps. */
@@ -1249,8 +1254,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         telegramMessage = null
         telegramSheetOpen = true
         telegramStarted = true
+        if (telegramFinishJob?.isActive == true) return
+        if (telegramLink?.linked == true && telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(getApplication())) return
         val session = PhoneTelegram.session(getApplication())
-        telegramFinishJob?.cancel()
         telegramFinishJob = viewModelScope.launch {
             // Once per attempt: the link PUT is idempotent for the same account and 409 for another.
             val ready = session.state.first { it is app.cablegram.telegram.TelegramState.Ready } as app.cablegram.telegram.TelegramState.Ready
@@ -1342,24 +1348,30 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val token = pairing.accountToken ?: return
         telegramFinishing = true
         try {
-            val library = session.openLibrary(
-                knownChatId = telegramLink?.chatId,
-                allowCreate = true,
-                logoPath = PhoneTelegram.logoPath(getApplication()),
-            ) ?: error("Could not open the Cablegram library channel")
-            telegramChannelCreated = library.created
-            val result = catalog().putTelegramLink(token, user.id, user.displayName, library.chatId, pairing.phoneDeviceId)
-            if (result.conflictName != null) {
-                telegramMessage = "This household already uses the Telegram account of ${result.conflictName}. " +
-                    "Disconnect it first, or sign in with that account."
-                session.logOut()
-                PhoneTelegram.forget(getApplication())
-            } else {
-                telegramLink = result.link
-                telegramHealth = TelegramHealth.Ok
-                PhoneTelegram.setLinked(getApplication(), true)
-                status = "Telegram connected. Videos you share into \"Cablegram library\" appear on your TV."
+            withTimeout(60_000) {
+                val library = session.openLibrary(
+                    knownChatId = telegramLink?.chatId,
+                    allowCreate = true,
+                    logoPath = PhoneTelegram.logoPath(getApplication()),
+                ) ?: error("Could not open the Cablegram library channel")
+                telegramChannelCreated = library.created
+                val result = catalog().putTelegramLink(token, user.id, user.displayName, library.chatId, pairing.phoneDeviceId)
+                if (result.conflictName != null) {
+                    telegramMessage = "This household already uses the Telegram account of ${result.conflictName}. " +
+                        "Disconnect it first, or sign in with that account."
+                    session.logOut()
+                    PhoneTelegram.forget(getApplication())
+                } else {
+                    telegramLink = result.link
+                    telegramHealth = TelegramHealth.Ok
+                    PhoneTelegram.setLinked(getApplication(), true)
+                    status = "Telegram connected. Videos you share into \"Cablegram library\" appear on your TV."
+                }
             }
+        } catch (e: TimeoutCancellationException) {
+            telegramMessage = "Setting up your Telegram library took too long. Check your connection and try again."
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             telegramMessage = "Signed in to Telegram, but setting up the library failed: ${e.message ?: "unknown error"}. Try again."
         } finally {
