@@ -23,6 +23,21 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * The password step when Telegram asks for it: [checking] while a password is on its way, which keeps it busy instead of
+ * flashing the keyboard choice (CAB-73). An open phone prompt's code and message carry over from [shown].
+ */
+internal fun passwordStatus(hint: String, shown: TvTelegramStatus, checking: Boolean): TvTelegramStatus.NeedsPassword {
+    return when (shown) {
+        is TvTelegramStatus.NeedsPassword -> TvTelegramStatus.NeedsPassword(hint, checking, null, shown.phoneRequestError, shown.phoneCode, shown.phoneSentAt)
+        is TvTelegramStatus.NotSignedIn -> TvTelegramStatus.NeedsPassword(hint, checking, null, shown.phoneRequestError, shown.phoneCode, shown.phoneSentAt)
+        else -> TvTelegramStatus.NeedsPassword(hint, busy = checking)
+    }
+}
+
+/** "Ask my phone again" sends a new prompt only after this; sooner it keeps the open one (CAB-73). */
+internal const val PHONE_REASK_MS = 30_000L
+
 /** What the TV shows about Telegram in Settings (spec 004 US2). */
 /** This TV has started signing in to the household's Telegram but can't stream from it yet. */
 fun TvTelegramStatus.isSigningIn(): Boolean =
@@ -42,7 +57,13 @@ sealed interface TvTelegramStatus {
      * Telegram's login until they do: with two-step verification ([twoStep] true, or null when unknown) the password is
      * collected first, so Telegram never reports an "incomplete login attempt" for a sign-in the viewer walked away from.
      */
-    data class NotSignedIn(val twoStep: Boolean?, val phoneRequestError: String? = null, val phoneCode: String? = null) : TvTelegramStatus
+    data class NotSignedIn(
+        val twoStep: Boolean?,
+        val phoneRequestError: String? = null,
+        val phoneCode: String? = null,
+        /** When the phone prompt reached the server; null while it is still being sent (CAB-73). */
+        val phoneSentAt: Long? = null,
+    ) : TvTelegramStatus
     /**
      * Waiting for the household phone to approve [link]; [since] is when waiting began (QR fallback after 20 s).
      * [standalone]: the owner chose to connect from this TV, so no phone is asked and the QR code shows at once.
@@ -60,6 +81,8 @@ sealed interface TvTelegramStatus {
         val phoneRequestError: String? = null,
         /** The check code of the key the phone should seal to ([app.cablegram.telegram.PasswordSeal.checkCode]). */
         val phoneCode: String? = null,
+        /** When the phone prompt reached the server; null while it is still being sent (CAB-73). */
+        val phoneSentAt: Long? = null,
     ) : TvTelegramStatus
     data class Problem(val message: String) : TvTelegramStatus
     /** A temporary TV: Telegram titles play through the owner's phone; nothing Telegram is stored here. */
@@ -97,6 +120,11 @@ class TvTelegram(
     @Volatile private var twoStep: Boolean? = null
     /** The newest login link TDLib made while nobody had asked to sign in yet. */
     @Volatile private var unpostedLink: String? = null
+    /**
+     * A password was given and Telegram hasn't answered yet (CAB-73): the password step stays "signing in" until Ready or
+     * a rejection, even while TDLib is between states, and a second password or phone prompt can't start meanwhile.
+     */
+    @Volatile private var checkingPassword = false
 
     private val prefs = context.getSharedPreferences("cablegram_tv_trust", Context.MODE_PRIVATE)
 
@@ -234,7 +262,15 @@ class TvTelegram(
      * Cablegram. Before signing in it is held and the sign-in starts now; Telegram gets it as soon as it asks.
      */
     fun submitPassword(password: String) {
-        if (_status.value is TvTelegramStatus.NotSignedIn) beginSignIn(password) else session?.submitPassword(password)
+        if (checkingPassword) return
+        if (_status.value is TvTelegramStatus.NotSignedIn) {
+            beginSignIn(password)
+            return
+        }
+        val current = session ?: return
+        checkingPassword = true
+        (_status.value as? TvTelegramStatus.NeedsPassword)?.let { _status.value = it.copy(busy = true, error = null) }
+        current.submitPassword(password)
     }
 
     /** The viewer chose to sign in, for an account without two-step verification (or one they say has none). */
@@ -244,6 +280,7 @@ class TvTelegram(
 
     private fun beginSignIn(password: String?) {
         heldPassword = password
+        checkingPassword = password != null
         armed = true
         val link = unpostedLink
         if (session != null && link != null) {
@@ -276,11 +313,14 @@ class TvTelegram(
         }
     }
 
-    /** Shows the check code of the key the phone is asked to seal to (null: no request open). */
-    private fun setPhoneCode(code: String?) {
+    /**
+     * Shows the check code of the key the phone is asked to seal to (null: no request open), and [sentAt], when the
+     * prompt reached the server (null: still being sent).
+     */
+    private fun setPhoneCode(code: String?, sentAt: Long? = null) {
         when (val current = _status.value) {
-            is TvTelegramStatus.NeedsPassword -> _status.value = current.copy(phoneCode = code)
-            is TvTelegramStatus.NotSignedIn -> _status.value = current.copy(phoneCode = code)
+            is TvTelegramStatus.NeedsPassword -> _status.value = current.copy(phoneCode = code, phoneSentAt = sentAt)
+            is TvTelegramStatus.NotSignedIn -> _status.value = current.copy(phoneCode = code, phoneSentAt = sentAt)
             else -> Unit
         }
     }
@@ -291,22 +331,24 @@ class TvTelegram(
     /**
      * Asks the household phone to type the Telegram password (a notification with a text field). The phone seals it to a
      * one-time key made here, so the control plane relays bytes it cannot read; the password reaches Telegram only.
-     * Safe to call again: an open request is kept, an expired or answered one is replaced by a fresh one.
+     * Safe to call again: a request younger than [PHONE_REASK_MS] is kept, so a double press doesn't ask twice; an older,
+     * expired or answered one is replaced by a fresh one, which the phone shows again.
      */
     fun askPhoneForPassword() {
-        if (!waitingForPassword()) return
+        if (!waitingForPassword() || checkingPassword) return
         val hint = (_status.value as? TvTelegramStatus.NeedsPassword)?.hint.orEmpty()
         val currentToken = token ?: run {
             setPhoneRequestError("Pair your phone with this TV to use its keyboard, or choose the TV keyboard.")
             return
         }
-        if (passwordJob?.isActive == true && System.currentTimeMillis() - passwordRequestedAt < PASSWORD_REQUEST_MS) return
+        if (passwordJob?.isActive == true && System.currentTimeMillis() - passwordRequestedAt < PHONE_REASK_MS) return
         setPhoneRequestError(null)
         passwordJob?.cancel()
         passwordRequestedAt = System.currentTimeMillis()
         passwordJob = scope.launch {
             val keys = app.cablegram.telegram.PasswordSeal.newTvKeys()
-            setPhoneCode(app.cablegram.telegram.PasswordSeal.checkCode(keys.publicKey))
+            val code = app.cablegram.telegram.PasswordSeal.checkCode(keys.publicKey)
+            setPhoneCode(code)
             val requestId = try {
                 api.postTelegramPasswordRequest(currentToken, keys.publicKey, hint)
             } catch (e: ApiException) {
@@ -322,6 +364,8 @@ class TvTelegram(
                 setPhoneRequestError("Couldn't send the phone prompt. Check your connection, send it again, or choose the TV keyboard.")
                 return@launch
             }
+            setPhoneCode(code, System.currentTimeMillis())
+            PairLog.i("Telegram password asked from the phone")
             // Collected: the sealed bytes are gone from the control plane. Otherwise the request is withdrawn when this
             // stops waiting (signed in on the TV, timed out, replaced), so the phone doesn't keep asking.
             var collected = false
@@ -405,6 +449,7 @@ class TvTelegram(
         standalone = false
         armed = false
         heldPassword = null
+        checkingPassword = false
         unpostedLink = null
         postedLink = null
         watchJob?.cancel()
@@ -468,8 +513,11 @@ class TvTelegram(
         // Keep the password step's busy flag and rejection message in the status the UI shows.
         scope.launch {
             kotlinx.coroutines.flow.combine(created.busy, created.lastError) { busy, error -> busy to error }.collect { (busy, error) ->
+                // Telegram rejected the password: the viewer may try again. Cleared before the status changes, so
+                // whoever waits for the rejection (the phone prompt) can ask again at once.
+                if (error != null) checkingPassword = false
                 val current = _status.value
-                if (current is TvTelegramStatus.NeedsPassword) _status.value = current.copy(busy = busy, error = error)
+                if (current is TvTelegramStatus.NeedsPassword) _status.value = current.copy(busy = busy || checkingPassword, error = error)
             }
         }
     }
@@ -503,14 +551,16 @@ class TvTelegram(
             is TelegramState.WaitingForApproval -> {
                 // Nobody asked this TV to sign in: keep the link here, so Telegram sees no login attempt (NotSignedIn).
                 if (!standalone && !armed) {
+                    checkingPassword = false
                     unpostedLink = state.link
                     val asked = _status.value as? TvTelegramStatus.NotSignedIn
-                    _status.value = TvTelegramStatus.NotSignedIn(twoStep, asked?.phoneRequestError, asked?.phoneCode)
+                    _status.value = TvTelegramStatus.NotSignedIn(twoStep, asked?.phoneRequestError, asked?.phoneCode, asked?.phoneSentAt)
                     return
                 }
                 offerLink(state.link)
             }
             is TelegramState.Ready -> {
+                checkingPassword = false
                 val expected = expectedUserId
                 if (expected != null && state.user.id != expected) {
                     // Scanned with a different account than the household's (US2 acceptance 3).
@@ -531,18 +581,60 @@ class TvTelegram(
             is TelegramState.NeedsPassword -> {
                 val held = heldPassword
                 heldPassword = null
-                _status.value = TvTelegramStatus.NeedsPassword(state.hint, busy = held != null)
+                // TDLib may report the password step again while a password is on its way (CAB-73): stay busy, and keep
+                // an open phone prompt's code and message on screen.
+                _status.value = passwordStatus(state.hint, _status.value, checking = held != null || checkingPassword)
                 // Collected before signing in: Telegram gets it at once. Otherwise the password UI asks for a keyboard.
                 if (held != null) current.submitPassword(held)
             }
-            is TelegramState.Failed -> _status.value = TvTelegramStatus.Problem(state.message)
-            TelegramState.SignedOut -> _status.value = TvTelegramStatus.Off
+            is TelegramState.Failed -> {
+                checkingPassword = false
+                _status.value = TvTelegramStatus.Problem(state.message)
+            }
+            TelegramState.SignedOut -> {
+                checkingPassword = false
+                _status.value = TvTelegramStatus.Off
+                // Not our own sign-out (that drops the session first): Telegram ended this TV's session.
+                if (session === current) startOverAfterSignOut(current)
+            }
             else -> {
                 val shown = _status.value
                 // A TV nobody asked to sign in stays "not signed in" while TDLib works in the background.
                 if (shown !is TvTelegramStatus.WaitingForPhone && !(shown is TvTelegramStatus.NotSignedIn && !armed)) _status.value = TvTelegramStatus.Connecting
             }
         }
+    }
+
+    /**
+     * Telegram ended this TV's session from elsewhere (Settings → Devices on another device, or the account logged out).
+     * TDLib closes and deletes its data, so the session is dropped and a fresh one starts: the TV then offers "Connect
+     * this TV" again. Keeping the closed one left Settings with an empty Telegram section until the app restarted.
+     */
+    private fun startOverAfterSignOut(current: TelegramSession) {
+        PairLog.i("Telegram ended this TV's session: starting over")
+        session = null
+        armed = false
+        heldPassword = null
+        unpostedLink = null
+        postedLink = null
+        syncJob?.cancel()
+        syncJob = null
+        phoneLoginJob?.cancel()
+        phoneLoginJob = null
+        passwordJob?.cancel()
+        passwordJob = null
+        streamServer?.stop()
+        streamServer = null
+        // The new session waits for this one to release TDLib's database (see [ensureSession]).
+        val previous = closing
+        closing = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            previous?.join()
+            current.api.close()
+        }
+        // Last: this runs inside the old session's watcher, which stops here.
+        val watcher = watchJob
+        if (token != null && !pausedForOther) ensureSession()
+        watcher?.cancel()
     }
 
     /**
@@ -691,7 +783,8 @@ class TvTelegram(
         /** The TV account (pairing session) whose household this TV's Telegram session belongs to (CAB-37). */
         const val PREF_OWNER = "telegram_owner_account"
         const val PHONE_LOGIN_POLL_MS = 4_000L
-        const val PASSWORD_POLL_MS = 2_000L
+        /** Polled only while a phone prompt is open, so the TV picks up the password within a second (CAB-73). */
+        const val PASSWORD_POLL_MS = 1_000L
         /** Before signing in, a password from the phone also waits for the phone to approve this TV. */
         const val PASSWORD_OUTCOME_MS = 90_000L
         /** The server keeps a password request open for 5 minutes; stop polling a little before. */

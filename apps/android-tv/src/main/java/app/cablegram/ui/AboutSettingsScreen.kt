@@ -45,6 +45,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import app.cablegram.R
+import app.cablegram.isSigningIn
 import app.cablegram.data.PRIVACY_POLICY_URL
 
 @Composable
@@ -63,26 +64,24 @@ internal fun AboutSettingsPanel(
 ) {
     // The password step opens over Settings, but never locks the viewer out of the rest of it (sign-out, pairing).
     var passwordStepOpen by remember { mutableStateOf(true) }
-    if (telegramStatus is app.cablegram.TvTelegramStatus.NeedsPassword && passwordStepOpen) {
-        TelegramPasswordStep(
-            telegramStatus, onTelegramPassword, onTelegramAskPhone, onTelegramCancelPasswordRequest,
-        ) {
-            Button(onClick = { passwordStepOpen = false }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Back to Settings") }
-            if (telegramViaPhone) {
-                Button(onClick = { onTelegramViaPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Use this TV for Telegram playback") }
-            }
-        }
-        return
-    }
     // A linked household's TV that isn't signed in: the keyboard slide opens only when the viewer chooses to connect.
     var connectStepOpen by remember { mutableStateOf(false) }
-    if (telegramStatus is app.cablegram.TvTelegramStatus.NotSignedIn && connectStepOpen) {
-        androidx.activity.compose.BackHandler { connectStepOpen = false }
+    val signingIn = telegramStatus.isSigningIn()
+    LaunchedEffect(signingIn) { if (!signingIn) connectStepOpen = false }
+    // One step for the whole sign-in, kept up from the keyboard choice until Telegram answers: leaving it while
+    // "Connecting" brought it back on the keyboard choice for a moment (CAB-73).
+    if ((telegramStatus is app.cablegram.TvTelegramStatus.NeedsPassword && passwordStepOpen) || (connectStepOpen && signingIn)) {
+        fun backToSettings() { connectStepOpen = false; passwordStepOpen = false }
+        androidx.activity.compose.BackHandler(enabled = connectStepOpen) { backToSettings() }
+        val notSignedIn = telegramStatus as? app.cablegram.TvTelegramStatus.NotSignedIn
         TelegramPasswordStep(
             telegramStatus, onTelegramPassword, onTelegramAskPhone, onTelegramCancelPasswordRequest,
-            onNoPassword = if (telegramStatus.twoStep == null) onTelegramSignInWithoutPassword else null,
+            onNoPassword = if (notSignedIn != null && notSignedIn.twoStep == null) onTelegramSignInWithoutPassword else null,
         ) {
-            Button(onClick = { connectStepOpen = false }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Back to Settings") }
+            Button(onClick = ::backToSettings, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Back to Settings") }
+            if (telegramStatus is app.cablegram.TvTelegramStatus.NeedsPassword && telegramViaPhone) {
+                Button(onClick = { onTelegramViaPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Use this TV for Telegram playback") }
+            }
         }
         return
     }
@@ -180,7 +179,7 @@ internal fun AboutSettingsPanel(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 TelegramSettingsSection(telegramStatus, telegramViaPhone, onTelegramViaPhone, onTelegramConnect, onTelegramCancel,
-                    onOpenPassword = { passwordStepOpen = true },
+                    onOpenPassword = { passwordStepOpen = true; connectStepOpen = true },
                     onSignIn = { twoStep -> if (twoStep == false) onTelegramSignInWithoutPassword() else connectStepOpen = true })
             }
         }
@@ -310,8 +309,11 @@ internal fun TelegramPasswordScreen(
     val notSignedIn = status as? app.cablegram.TvTelegramStatus.NotSignedIn
     // An account without two-step verification signs in right away: approving on the phone finishes it.
     LaunchedEffect(notSignedIn?.twoStep) { if (notSignedIn?.twoStep == false) onSignInWithoutPassword() }
+    // Kept up through the whole sign-in (its own "signing in" while busy), so the chosen keyboard survives the
+    // in-between states and the keyboard choice never flashes back (CAB-73).
     val askPassword = (notSignedIn != null && notSignedIn.twoStep != false) ||
-        (status is app.cablegram.TvTelegramStatus.NeedsPassword && !status.busy)
+        status is app.cablegram.TvTelegramStatus.NeedsPassword ||
+        status == app.cablegram.TvTelegramStatus.Connecting || status is app.cablegram.TvTelegramStatus.WaitingForPhone
     if (askPassword) {
         TelegramPasswordStep(
             status, onPassword, onAskPhone, onCancelPasswordRequest, videoUrl = passwordVideoUrl,

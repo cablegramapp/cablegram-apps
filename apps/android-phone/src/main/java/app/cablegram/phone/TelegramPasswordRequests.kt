@@ -115,6 +115,32 @@ object TelegramPasswordRequests {
     }
 }
 
+/**
+ * TVs this phone just sent the Telegram password to (CAB-73). Typing the password for a TV is the owner agreeing that it
+ * signs in, so its sign-in that follows within [WINDOW_MS] is approved without a second "Let <TV> use your Telegram?".
+ * Only for the TV the server named in that request, never by name; held in memory only, so it ends with the process.
+ */
+object RecentTvPasswords {
+    internal const val WINDOW_MS = 2 * 60_000L
+    private val sentAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    fun sent(tvDeviceId: String, now: Long = System.currentTimeMillis()) {
+        sentAt[tvDeviceId] = now
+    }
+
+    fun covers(tvDeviceId: String, now: Long = System.currentTimeMillis()): Boolean {
+        val at = sentAt[tvDeviceId] ?: return false
+        if (now - at in 0 until WINDOW_MS) return true
+        sentAt.remove(tvDeviceId, at)
+        return false
+    }
+
+    /** Used up by the approval it allowed: a later sign-in of that TV asks again. */
+    fun used(tvDeviceId: String) {
+        sentAt.remove(tvDeviceId)
+    }
+}
+
 class TelegramPasswordReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != TelegramPasswordRequests.ACTION_CANCEL) return
@@ -200,6 +226,7 @@ class TelegramPasswordActivity : ComponentActivity() {
                 // Never log the password or the sealed bytes: only whether it went.
                 PairLog.i("Telegram password for ${request.tvName}: ${if (sent) "sent" else "not sent"}")
                 if (sent) {
+                    request.tvDeviceId?.let(RecentTvPasswords::sent)
                     password = ""
                     close()
                 } else {

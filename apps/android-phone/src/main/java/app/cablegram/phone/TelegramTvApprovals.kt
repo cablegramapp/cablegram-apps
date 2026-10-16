@@ -25,8 +25,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * a TV posts its login link, the phone approves it like Telegram's "Scan QR" would.
  *
  * Runs inside [LanLibraryService] only on the phone that linked Telegram. A TV's link lives about
- * 30 s before TDLib replaces it, so this polls every 5 s (a push over the relay socket would be
- * cheaper; see spec 004 tasks).
+ * 30 s before TDLib replaces it, so this polls every 5 s, and faster while a TV is signing in (a push over the relay
+ * socket would be cheaper; see spec 004 tasks).
  */
 class TelegramTvApprovalWatcher(private val context: Context, private val scope: CoroutineScope) {
     private val store = PairingStore(context)
@@ -41,27 +41,38 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
             val asked = mutableSetOf<String>()
             val askedPassword = mutableSetOf<String>()
             var twoStepReportedAt = 0L
+            var activeAt = 0L
             while (isActive) {
                 val token = store.accountToken
                 if (!token.isNullOrBlank() && PhoneTelegram.wasLinked(context)) {
+                    // First, and never behind an approval that waits for this phone's session: a TV that wants the
+                    // password shows its prompt until the phone screen opens (CAB-73).
+                    val passwords = client.pendingTvPasswordRequests(token)
+                    passwords?.forEach {
+                        if (askedPassword.add(it.requestId)) {
+                            PairLog.i("Telegram password prompt for ${it.tvName}")
+                            TelegramPasswordRequests.ask(context, it)
+                        }
+                    }
+                    if (passwords != null && passwords.isEmpty()) TelegramPasswordRequests.cancel(context)
                     if (System.currentTimeMillis() - twoStepReportedAt > TWO_STEP_REPORT_MS && reportTwoStep(token)) {
                         twoStepReportedAt = System.currentTimeMillis()
                     }
                     val pending = client.pendingTvLogins(token).orEmpty()
+                    if (pending.isNotEmpty() || !passwords.isNullOrEmpty()) activeAt = System.currentTimeMillis()
                     for (request in pending) {
-                        if (PhoneTelegram.autoApproveTvs(context)) {
-                            approve(context, client, token, request)
+                        // A TV this phone just typed the password for was already allowed by that (CAB-73).
+                        val justTyped = RecentTvPasswords.covers(request.tvDeviceId)
+                        if (PhoneTelegram.autoApproveTvs(context) || justTyped) {
+                            if (justTyped) PairLog.i("Telegram TV login for ${request.tvName}: allowed by the password just sent")
+                            if (approve(context, client, token, request) && justTyped) RecentTvPasswords.used(request.tvDeviceId)
                         } else if (asked.add(request.tvDeviceId + request.loginLink)) {
                             TelegramTvApprovals.ask(context, request)
                         }
                     }
                     if (pending.isEmpty()) TelegramTvApprovals.cancel(context)
-                    // A TV that Telegram asks for the two-step password: the phone's keyboard types it (sealed to the TV).
-                    val passwords = client.pendingTvPasswordRequests(token)
-                    passwords?.forEach { if (askedPassword.add(it.requestId)) TelegramPasswordRequests.ask(context, it) }
-                    if (passwords != null && passwords.isEmpty()) TelegramPasswordRequests.cancel(context)
                 }
-                delay(POLL_MS)
+                delay(tvSignInPollDelayMs(PrivateApprovals.appVisible, System.currentTimeMillis() - activeAt))
             }
         }
     }
@@ -136,19 +147,18 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
     }
 
     companion object {
-        private const val POLL_MS = 5_000L
         /** Two-step verification rarely changes; checked again every 10 minutes. */
         private const val TWO_STEP_REPORT_MS = 10 * 60_000L
         private const val RETRY_MS = 30_000L
         private const val TRUST_POLL_MS = 60_000L
 
-        /** Approves one TV login with the phone's session and reports the outcome (no secrets). */
-        suspend fun approve(context: Context, client: CatalogClient, token: String, request: PendingTvLogin) {
+        /** Approves one TV login with the phone's session and reports the outcome (no secrets). False: not tried yet. */
+        suspend fun approve(context: Context, client: CatalogClient, token: String, request: PendingTvLogin): Boolean {
             val session = PhoneTelegram.session(context)
             val ready = withTimeoutOrNull(20_000) { session.state.first { it is TelegramState.Ready } }
             if (ready == null) {
                 PairLog.i("Telegram TV login ${PairLog.pinTail(request.requestId)}: phone session not ready")
-                return // stays pending; the TV keeps posting fresh links until the phone is ready
+                return false // stays pending; the TV keeps posting fresh links until the phone is ready
             }
             // Verified approval: only a Cablegram session is accepted, and it is identified exactly, so the
             // phone can end that TV's session later even when the TV is off (US8), and never another one.
@@ -159,6 +169,7 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
             if (identified != null) client.putTvTelegramSession(token, request.tvDeviceId, identified.id)
             else if (outcome.isSuccess) PairLog.w("Telegram TV session not listed for ${PairLog.pinTail(request.tvDeviceId)}; it cannot be ended remotely")
             PairLog.i("Telegram TV login for ${request.tvName}: ${if (outcome.isSuccess) "approved" else "failed $error"}")
+            return true
         }
 
         /** Ends every TV session the control plane lists as due (TV removed, signed out, expired, Telegram disconnected). */
@@ -190,6 +201,14 @@ class TelegramTvApprovalWatcher(private val context: Context, private val scope:
             raw.uppercase().replace(Regex("[^A-Z0-9_ ]"), " ").trim().take(80).ifBlank { "UNKNOWN" }
     }
 }
+
+/**
+ * How long until the next look for TV sign-ins. Quick while Cablegram is in front (the password screen opens by itself
+ * then) and for two minutes after a TV asked for something, since its next step follows within seconds; 5 s otherwise
+ * (CAB-73).
+ */
+internal fun tvSignInPollDelayMs(appVisible: Boolean, sinceActivityMs: Long): Long =
+    if (appVisible || sinceActivityMs < 2 * 60_000L) 1_500L else 5_000L
 
 /** "Allow <TV> to use your Telegram?" when automatic approval is off. */
 object TelegramTvApprovals {

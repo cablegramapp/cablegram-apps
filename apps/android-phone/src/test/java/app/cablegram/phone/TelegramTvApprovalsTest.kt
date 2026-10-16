@@ -22,3 +22,20 @@ class TelegramTvApprovalsTest {
         assertNull(TelegramTvApprovals.requestToApprove(null, "a"))
     }
 }
+
+class RecentTvPasswordsTest {
+    @Test
+    fun `a TV the password was just sent to signs in without asking again, only that TV and only for a while`() {
+        RecentTvPasswords.sent("tv-1", now = 1_000L)
+        org.junit.Assert.assertTrue(RecentTvPasswords.covers("tv-1", now = 1_000L + 60_000L))
+        org.junit.Assert.assertFalse(RecentTvPasswords.covers("tv-2", now = 1_000L))
+        org.junit.Assert.assertFalse(RecentTvPasswords.covers("tv-1", now = 1_000L + RecentTvPasswords.WINDOW_MS))
+    }
+
+    @Test
+    fun `the allowance is used up by the approval`() {
+        RecentTvPasswords.sent("tv-3", now = 1_000L)
+        RecentTvPasswords.used("tv-3")
+        org.junit.Assert.assertFalse(RecentTvPasswords.covers("tv-3", now = 1_000L))
+    }
+}
