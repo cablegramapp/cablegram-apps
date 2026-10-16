@@ -187,6 +187,33 @@ class LibraryBotsTest {
     }
 
     @Test
+    fun `manual review after completion fetches fresh bots and requires new acceptance`() = runTest {
+        val api = FakeTelegramApi().also { it.recommendedBots = listOf(first) }
+        val decisions = mutableSetOf<Long>()
+        val original = LibraryBotRecommendations(api, library, onDecision = { decisions += it }, onCompleted = {})
+        original.load()
+        original.acceptDisclaimer(true)
+        original.skipCurrent()
+        assertTrue(original.state.value.completed)
+        assertEquals(setOf(first.id), decisions)
+
+        // Manual review intentionally omits saved handled IDs so a skipped bot can be reconsidered.
+        api.recommendedBots = listOf(first, second)
+        val reopened = LibraryBotRecommendations(api, library, onDecision = { decisions += it }, onCompleted = {})
+        reopened.load()
+        assertEquals(listOf(first, second), reopened.state.value.bots)
+        assertEquals(first, reopened.state.value.current)
+        assertFalse(reopened.state.value.disclaimerAccepted)
+        reopened.addCurrent()
+        assertEquals(listOf("recommendedLibraryBots", "recommendedLibraryBots"), api.calls)
+        reopened.acceptDisclaimer(true)
+        reopened.addCurrent()
+        assertEquals("addRecommendedBot:$library:71", api.calls.last())
+        assertEquals(second, reopened.state.value.current)
+        assertFalse(reopened.state.value.disclaimerAccepted)
+    }
+
+    @Test
     fun `new bot rights cannot delete edit invite or promote`() {
         val rights = libraryBotPostingRights()
         val enabled = rights.javaClass.declaredMethods.filter { it.name.startsWith("get") && it.returnType == Boolean::class.javaPrimitiveType }

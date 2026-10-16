@@ -26,6 +26,10 @@ and explicitly accepting the disclaimer below; its checkbox starts unchecked for
 skip any or all bots. New bots receive posting permission and Telegram’s implied administrator access;
 other optional permissions are off. Existing administrator permissions are preserved.
 
+You can reopen the picker any time from **Storage → Telegram → Check Bot Hub** while signed in
+on this phone. Each check refreshes the recommendations and lets you reconsider previously skipped
+bots. Each bot still needs a fresh disclaimer confirmation; existing bot administrator rights are kept.
+
 > This recommendation is shared for informational purposes only. Using the bot is entirely optional and at the user's own discretion and responsibility.
 >
 > Cablegram is not responsible for the bot's operation, content, privacy practices, or any consequences arising from its use. Please review its permissions before adding it to your channel.

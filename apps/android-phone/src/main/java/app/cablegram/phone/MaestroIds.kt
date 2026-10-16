@@ -34,6 +34,7 @@ object MaestroIds {
     const val TELEGRAM_DISCONNECT = "telegram_disconnect"
     const val TELEGRAM_SHEET = "telegram_sheet"
     const val TELEGRAM_CONTINUE = "telegram_continue"
+    const val TELEGRAM_CHECK_BOT_HUB = "telegram_check_bot_hub"
     const val TELEGRAM_OPEN = "telegram_open"
     const val TELEGRAM_RECREATE = "telegram_recreate"
     const val TELEGRAM_INPUT = "telegram_input"

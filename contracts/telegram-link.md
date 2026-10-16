@@ -100,7 +100,14 @@ A failed add stays on the same bot and can be retried or skipped. Added/skipped 
 completion are stored locally per Telegram user and library channel. After a process restart,
 unfinished reviews reload recommendations and omit those handled IDs; disclaimer acceptance is
 never persisted. The whole step can be dismissed or skipped, including when discovery fails.
-Disconnecting Cablegram does not remove third-party bots; the user manages them in Telegram.
+An explicit **Check Bot Hub** button in Storage → Telegram opens a fresh review whenever the
+phone is signed in and the library is available. It bypasses onboarding completion and the saved
+handled-ID filter, refreshes recommendations, and starts at the first bot with acceptance unchecked.
+Users can reconsider skipped bots; existing bot administrator rights remain unchanged. This entry
+point opens only the bot picker, preserving unfinished channel selections. An in-flight bot task is
+cancelled and awaited before a fresh review replaces the API’s verified bot IDs. Automatic onboarding
+still resumes using the saved decisions. Disconnecting Cablegram does not remove third-party bots;
+the user manages them in Telegram.
 
 The Telegram API allowlist explicitly includes `recommendedLibraryBots` and
 `addRecommendedBotToLibrary` for this feature. No new server endpoint is needed.

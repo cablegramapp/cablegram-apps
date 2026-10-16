@@ -117,6 +117,10 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
         }
     }
     if (linked && health == TelegramHealth.Ok && PhoneTelegram.wasLinked(context)) {
+        OutlinedButton(
+            onClick = viewModel::checkTelegramBotHub,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_CHECK_BOT_HUB),
+        ) { Text("Check Bot Hub") }
         var autoApprove by remember { mutableStateOf(PhoneTelegram.autoApproveTvs(context)) }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -269,14 +273,14 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
     val busy by session.busy.collectAsState()
     val inputError by session.lastError.collectAsState()
     var input by rememberSaveable(state::class) { mutableStateOf("") }
-    Text("Connect Telegram", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+    Text(if (viewModel.telegramBotHubOnly) "Bot Hub" else "Connect Telegram", color = Color.White, style = MaterialTheme.typography.headlineSmall)
 
     val linked = viewModel.telegramLink?.linked == true && viewModel.telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(context)
     when {
         linked -> {
             val channels = viewModel.telegramCommunityChannels
             val communityState = channels?.state?.collectAsState()?.value
-            if (channels != null && communityState?.completed == false) {
+            if (!viewModel.telegramBotHubOnly && channels != null && communityState?.completed == false) {
                 CommunityChannelsOptions(channels, viewModel::saveTelegramCommunityChannels)
             } else {
                 val bots = viewModel.telegramLibraryBots
@@ -284,6 +288,9 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
                 if (bots != null && botState?.completed == false) {
                     androidx.compose.runtime.LaunchedEffect(bots) { viewModel.loadTelegramLibraryBots() }
                     LibraryBotOptions(bots, viewModel::loadTelegramLibraryBots, viewModel::addRecommendedTelegramBot)
+                } else if (viewModel.telegramBotHubOnly) {
+                    Text("Bot Hub review complete. Check again any time for current recommendations.", color = VlcMuted)
+                    Button(onClick = viewModel::closeTelegramSheet, modifier = Modifier.fillMaxWidth()) { Text("Close Bot Hub") }
                 } else Done(viewModel)
             }
         }
@@ -420,7 +427,7 @@ internal fun LibraryBotOptions(bots: LibraryBotRecommendations, onRetry: () -> U
                 TextButton(onClick = bots::finish, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_skip_all")) { Text("Skip bots") }
             }
         } else if (bot == null) {
-            Text("No new bots are available to review. You can check Cablegram Bot Hubs in Telegram.", color = VlcMuted)
+            Text("No bots are available to review. You can check Cablegram Bot Hubs in Telegram.", color = VlcMuted)
             Button(onClick = bots::finish, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_done")) { Text("Continue") }
         } else {
             Text("Bot ${state.index + 1} of ${state.bots.size}", color = VlcMuted)

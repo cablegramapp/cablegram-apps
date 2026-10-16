@@ -1167,6 +1167,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var telegramLibraryBots by mutableStateOf<app.cablegram.telegram.LibraryBotRecommendations?>(null)
         private set
+    var telegramBotHubOnly by mutableStateOf(false)
+        private set
     private var telegramLibraryBotsJob: Job? = null
     private var telegramCommunityLibraryId: Long? = null
     private var telegramCommunityUserId: Long? = null
@@ -1182,16 +1184,48 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         telegramCommunityUserId = userId
         telegramCommunitySession = session
         telegramLibraryBots = if (PhoneTelegram.libraryBotsCompleted(getApplication(), userId, chatId)) null
-        else app.cablegram.telegram.LibraryBotRecommendations(
-            api = session.api,
-            libraryChatId = chatId,
-            handledBotIds = PhoneTelegram.handledLibraryBots(getApplication(), userId, chatId),
-            onDecision = { PhoneTelegram.recordLibraryBotDecision(getApplication(), userId, chatId, it) },
-            onCompleted = { PhoneTelegram.completeLibraryBots(getApplication(), userId, chatId) },
-        )
+        else createLibraryBotReview(session, userId, chatId, reviewAll = false)
         telegramCommunityChannels = if (PhoneTelegram.communityChannelsCompleted(getApplication(), userId)) null
         else app.cablegram.telegram.CommunityChannels(session.api) {
             PhoneTelegram.completeCommunityChannels(getApplication(), userId)
+        }
+    }
+
+    private fun createLibraryBotReview(
+        session: app.cablegram.telegram.TelegramSession,
+        userId: Long,
+        chatId: Long,
+        reviewAll: Boolean,
+    ) = app.cablegram.telegram.LibraryBotRecommendations(
+        api = session.api,
+        libraryChatId = chatId,
+        handledBotIds = if (reviewAll) emptySet() else PhoneTelegram.handledLibraryBots(getApplication(), userId, chatId),
+        onDecision = { PhoneTelegram.recordLibraryBotDecision(getApplication(), userId, chatId, it) },
+        onCompleted = { PhoneTelegram.completeLibraryBots(getApplication(), userId, chatId) },
+    )
+
+    /** Explicit checks always fetch current recommendations and let users reconsider skipped bots. */
+    fun checkTelegramBotHub() {
+        val link = telegramLink?.takeIf { it.linked } ?: return
+        val userId = link.userId ?: return
+        val chatId = link.chatId ?: return
+        if (telegramHealth != TelegramHealth.Ok || !PhoneTelegram.wasLinked(getApplication())) return
+        val session = PhoneTelegram.session(getApplication())
+        val ready = session.state.value as? app.cablegram.telegram.TelegramState.Ready
+        if (ready?.user?.id != userId) {
+            openTelegramSheet()
+            return
+        }
+        val previous = telegramLibraryBotsJob
+        previous?.cancel()
+        telegramLibraryBotsJob = viewModelScope.launch {
+            // Finish cancellation before discovery replaces the API's verified bot IDs.
+            previous?.join()
+            if (telegramLink?.userId != userId || telegramLink?.chatId != chatId || PhoneTelegram.existing() !== session) return@launch
+            telegramLibraryBots = createLibraryBotReview(session, userId, chatId, reviewAll = true)
+            telegramBotHubOnly = true
+            telegramMessage = null
+            telegramSheetOpen = true
         }
     }
 
@@ -1436,12 +1470,14 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Closing half-way keeps the step: reopening continues where the user left off. */
     fun closeTelegramSheet() {
+        telegramBotHubOnly = false
         telegramSheetOpen = false
         telegramMessage = null
     }
 
     /** Cancel operations tied to the old Telegram session before replacing or signing it out. */
     private fun clearTelegramRecommendations() {
+        telegramBotHubOnly = false
         telegramLibraryBotsJob?.cancel()
         telegramLibraryBots = null
         telegramCommunityLibraryId = null
