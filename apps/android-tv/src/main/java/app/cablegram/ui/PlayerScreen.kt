@@ -1179,6 +1179,8 @@ internal fun classifyTransport(url: String?, isLive: Boolean): Transport {
         isTelegramLocalUrl(url) -> Transport.TELEGRAM
         isRelayUrl(url) -> Transport.RELAY
         isPhoneTelegramUrl(url) -> Transport.TELEGRAM_VIA_PHONE
+        // Drive goes through this TV's own proxy on 127.0.0.1, which is not the home network.
+        isCloudLocalUrl(url) -> Transport.CLOUD
         (url.startsWith("http://") || url.startsWith("https://")) && !isPublicHost(url) -> Transport.LAN
         else -> Transport.CLOUD
     }
