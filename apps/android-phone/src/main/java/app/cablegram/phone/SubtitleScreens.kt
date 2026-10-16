@@ -1,8 +1,7 @@
 package app.cablegram.phone
 
-import android.media.MediaPlayer
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import android.graphics.SurfaceTexture
+import android.view.TextureView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -358,7 +358,6 @@ internal fun ColumnScope.AdjustContent(
     val cues = match.cues.orEmpty()
     var offset by remember { mutableStateOf(start.first) }
     var scale by remember { mutableStateOf(start.second) }
-    var position by remember { mutableStateOf(0.0) }
     var message by remember { mutableStateOf<String?>(null) }
     var pointA by remember { mutableStateOf<SyncPoint?>(null) }
     var pointB by remember { mutableStateOf<SyncPoint?>(null) }
@@ -368,11 +367,15 @@ internal fun ColumnScope.AdjustContent(
     var input by remember { mutableStateOf<SubtitleMediaInput?>(null) }
     var opening by remember { mutableStateOf(true) }
     var openError by remember { mutableStateOf<String?>(null) }
-    var player by remember { mutableStateOf<MediaPlayer?>(null) }
-    var durationMs by remember { mutableStateOf(0) }
-    var playing by remember { mutableStateOf(false) }
-    var buffering by remember { mutableStateOf(false) }
-    var seeking by remember { mutableStateOf(false) }
+    val preview = remember(input) { input?.let(::SubtitlePreviewPlayer) }
+    val emptyPreview = remember { kotlinx.coroutines.flow.MutableStateFlow(SubtitlePreviewState()) }
+    val playback by (preview?.state ?: emptyPreview).collectAsState()
+    val position = playback.positionMs / 1000.0
+    val durationMs = playback.durationMs
+    val playing = playback.playing
+    val buffering = playback.buffering
+    val seeking = playback.seeking
+    DisposableEffect(preview) { onDispose { preview?.close() } }
     var fetchedBytes by remember { mutableStateOf(0L) }
     LaunchedEffect(item.id) {
         // Not cancellable: an input opened after the screen closed must still be closed, not dropped.
@@ -381,22 +384,12 @@ internal fun ColumnScope.AdjustContent(
         opened.fold({ input = it }, { openError = (it as? VideoUnavailable)?.message })
         opening = false
     }
-    // MediaPlayer calls can wait on the data source (a slow Telegram read), so none of them may run on the UI thread.
-    val control = remember { java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "subtitle-preview").apply { isDaemon = true } } }
-    // Once the screen is gone the executor is shut down; a late surface callback still has to release its player.
-    fun offMain(task: () -> Unit) { runCatching { control.execute(task) }.onFailure { Thread(task, "subtitle-preview-release").start() } }
-    fun withPlayer(block: (MediaPlayer) -> Unit) { player?.let { p -> offMain { runCatching { block(p) } } } }
-    // The player of the current surface from creation on, prepared or not, so every path can release it.
-    val created = remember { java.util.concurrent.atomic.AtomicReference<MediaPlayer?>(null) }
-    fun releasePlayer() { val p = created.getAndSet(null); player = null; if (p != null) offMain { runCatching { p.release() } } }
-    DisposableEffect(item.id) { onDispose { releasePlayer(); val i = input; offMain { runCatching { i?.close() }; control.shutdown() } } }
     var audioNote by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(input) { input?.let { i -> audioNote = withContext(kotlinx.coroutines.Dispatchers.IO) { LocalSubtitleAnalysis.unsupportedAudio(i) }?.let(::unsupportedAudioNote) } }
-    LaunchedEffect(player) { while (true) { val p = player; if (p != null) withContext(kotlinx.coroutines.Dispatchers.Default) { runCatching { p.currentPosition to p.isPlaying } }.getOrNull()?.let { position = it.first / 1000.0; playing = it.second }; delay(150) } }
     LaunchedEffect(input) { while (true) { fetchedBytes = input?.bytesFetched ?: 0L; delay(500) } }
     // A video that never starts (a slow Telegram read) must not leave a black box with no explanation.
-    LaunchedEffect(input) { if (input?.remote == true) { delay(45_000); if (player == null && message == null) message = "This video is taking too long to open from Telegram, so it can't be previewed right now. You can still shift the timing." } }
-    fun seek(ms: Int) { seeking = true; withPlayer { it.seekTo(ms.coerceIn(0, maxOf(durationMs, 1)).toLong(), MediaPlayer.SEEK_CLOSEST) } }
+    LaunchedEffect(input) { if (input?.remote == true) { delay(45_000); if (!playback.ready && playback.error == null && message == null) message = "This video is taking too long to open from Telegram, so it can't be previewed right now. You can still shift the timing." } }
+    fun seek(ms: Int) { preview?.seek(ms) }
     // Set while a TV is playing this title with the timing it loaded (so later shifts are sent to it as a difference).
     var tvBase by remember { mutableStateOf<Double?>(null) }
     fun adjust(delta: Double) {
@@ -419,44 +412,39 @@ internal fun ColumnScope.AdjustContent(
 
     val source = input
     audioNote?.let { StatusNote(it) }
+    playback.error?.let { StatusNote(it) }
     if (source != null) {
-        Box(Modifier.fillMaxWidth().height(200.dp)) {
+        Box(Modifier.fillMaxWidth().height(200.dp).background(Color.Black)) {
         AndroidView(factory = { c ->
-            SurfaceView(c).apply {
-                holder.addCallback(object : SurfaceHolder.Callback {
-                    override fun surfaceCreated(h: SurfaceHolder) {
-                        val mp = MediaPlayer()
-                        created.getAndSet(mp)?.let { old -> offMain { runCatching { old.release() } } }
-                        runCatching {
-                            source.attach(mp); mp.setDisplay(h)
-                            mp.setOnPreparedListener {
-                                durationMs = it.duration; it.seekTo(1L, MediaPlayer.SEEK_CLOSEST)
-                                player = it
-                                // Reads the file header, so never on the UI thread.
-                                offMain { runCatching { LocalSubtitleAnalysis.selectPlayableAudio(it, source) } }
-                            }
-                            mp.setOnSeekCompleteListener { seeking = false }
-                            mp.setOnInfoListener { _, what, _ ->
-                                if (what == MediaPlayer.MEDIA_INFO_BUFFERING_START) buffering = true
-                                else if (what == MediaPlayer.MEDIA_INFO_BUFFERING_END || what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) buffering = false
-                                false
-                            }
-                            mp.setOnErrorListener { _, _, _ -> releasePlayer(); message = "This video can't be previewed right now, but you can still adjust the timing."; true }
-                            mp.prepareAsync()
-                        }.onFailure { releasePlayer(); message = "This video can't be previewed right now, but you can still adjust the timing." }
+            // TextureView renders inside the dialog, rather than punching a separate surface through it.
+            TextureView(c).apply {
+                surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                    override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) { preview?.attach(texture) }
+                    override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) {}
+                    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {}
+                    override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+                        preview?.detach(texture)
+                        return false // The player releases the texture after releasing its decoder.
                     }
-                    override fun surfaceChanged(h: SurfaceHolder, f: Int, w: Int, hh: Int) {}
-                    override fun surfaceDestroyed(h: SurfaceHolder) = releasePlayer()
+                }
+            }
+        }, update = { view ->
+            val w = playback.videoWidth
+            val h = playback.videoHeight
+            if (w > 0 && h > 0 && view.width > 0 && view.height > 0) {
+                val fit = minOf(view.width.toFloat() / w, view.height.toFloat() / h)
+                view.setTransform(android.graphics.Matrix().apply {
+                    setScale(w * fit / view.width, h * fit / view.height, view.width / 2f, view.height / 2f)
                 })
             }
         }, modifier = Modifier.fillMaxSize())
         // Never leave a bare black box: say what is happening, and how much has arrived when it comes over the network.
-        if (player == null || buffering || seeking) Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (playback.error == null && (!playback.ready || buffering || seeking)) Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             CircularProgressIndicator(Modifier.width(32.dp).height(32.dp), color = VlcOrange)
             Text(
                 when {
-                    player == null && source.remote -> "Fetching your video from Telegram…"
-                    player == null -> "Opening your video…"
+                    !playback.ready && source.remote -> "Fetching your video from Telegram…"
+                    !playback.ready -> "Opening your video…"
                     seeking -> "Jumping…"
                     else -> "Loading…"
                 } + if (source.remote && fetchedBytes > 0) " · ${"%.1f".format(fetchedBytes / 1_048_576.0)} MB" else "",
@@ -465,14 +453,14 @@ internal fun ColumnScope.AdjustContent(
         }
         }
         if (durationMs > 0) {
-            Slider(value = (position * 1000 / durationMs).toFloat().coerceIn(0f, 1f), onValueChange = { f -> position = f * durationMs / 1000.0; seek((f * durationMs).toInt()) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SEEK))
+            Slider(value = (position * 1000 / durationMs).toFloat().coerceIn(0f, 1f), onValueChange = { f -> seek((f * durationMs).toInt()) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SEEK))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { playing = !playing; withPlayer { if (it.isPlaying) it.pause() else it.start() } }, modifier = Modifier.maestro(MaestroIds.SUBTITLES_PLAY)) {
+            OutlinedButton(onClick = { preview?.togglePlayback() }, enabled = playback.ready, modifier = Modifier.maestro(MaestroIds.SUBTITLES_PLAY)) {
                 Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (playing) "Pause" else "Play")
             }
-            OutlinedButton(onClick = { seek((position * 1000).toInt() - 10_000) }) { Text("−10 s") }
-            OutlinedButton(onClick = { seek((position * 1000).toInt() + 10_000) }) { Text("+10 s") }
+            OutlinedButton(onClick = { seek((position * 1000).toInt() - 10_000) }, enabled = playback.ready) { Text("−10 s") }
+            OutlinedButton(onClick = { seek((position * 1000).toInt() + 10_000) }, enabled = playback.ready) { Text("+10 s") }
         }
     } else if (opening) StatusNote("Opening your video…")
     else StatusNote((openError ?: "This video can't be opened right now, so it can't be previewed.") + " You can still shift the timing.")
