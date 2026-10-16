@@ -264,7 +264,12 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
     val linked = viewModel.telegramLink?.linked == true && viewModel.telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(context)
     when {
         linked -> Done(viewModel)
-        viewModel.telegramMessage != null -> Text(viewModel.telegramMessage!!, color = VlcOrange)
+        viewModel.telegramMessage != null -> {
+            Text(viewModel.telegramMessage!!, color = VlcOrange)
+            if (state is TelegramState.Ready) {
+                OutlinedButton(onClick = viewModel::connectTelegram) { Text("Try again") }
+            }
+        }
         viewModel.telegramFinishing || state is TelegramState.Ready -> Working("Setting up your \"${TelegramSession.LIBRARY_TITLE}\" channel…")
         else -> when (val s = state) {
             TelegramState.Starting -> Working("Starting Telegram…")
