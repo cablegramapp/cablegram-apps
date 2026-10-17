@@ -25,7 +25,8 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          # Robolectric needs JDK 21 for SDK 36; the apps still compile to Java 17 bytecode.
+          java-version: 21
       - uses: gradle/actions/setup-gradle@v4
       - name: Check the release scripts
         run: scripts/release/test.sh
