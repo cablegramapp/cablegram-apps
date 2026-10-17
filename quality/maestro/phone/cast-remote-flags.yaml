@@ -6,6 +6,8 @@ appId: app.cablegram.phone
     id: nav_remote
 - tapOn:
     id: nav_settings
+- tapOn:
+    id: settings_category_transfers
 - scrollUntilVisible:
     element:
       id: settings_legacy_remote
