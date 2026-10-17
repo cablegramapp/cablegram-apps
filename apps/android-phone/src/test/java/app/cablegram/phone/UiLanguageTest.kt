@@ -19,6 +19,14 @@ class UiLanguageTest {
         }
     }
 
+    @Test fun `profile override outranks the device language and falls back when unsupported`() {
+        val supported = setOf("en", "de", "ar", "fa", "ru", "es", "it")
+        assertEquals("ar", phoneUiLanguage(appLanguageTags("ar", listOf("de-DE")), supported))
+        assertEquals("de", phoneUiLanguage(appLanguageTags(null, listOf("de-DE")), supported))
+        assertEquals("de", phoneUiLanguage(appLanguageTags("ja", listOf("de-DE")), supported))
+        assertEquals("en", phoneUiLanguage(appLanguageTags("ja", emptyList()), supported))
+    }
+
     @Test fun `reported tag keeps the region of the shown language and unsupported first choices`() {
         val supported = setOf("en", "de", "ar", "fa", "ru", "es", "it")
         assertEquals("de-AT", phoneLanguageTag(listOf("de-AT", "en-US"), supported))

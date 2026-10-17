@@ -44,7 +44,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun uiResources(): android.content.res.Resources {
         val app = getApplication<Application>()
-        val language = phoneUiLanguage(app.resources.configuration.languageTags(), supportedLanguages)
+        val language = phoneUiLanguage(appLanguageTags(PhoneLanguageOverride.tag, app.resources.configuration.languageTags()), supportedLanguages)
         uiCache?.let { (cached, resources) -> if (cached == language) return resources }
         val configuration = android.content.res.Configuration(app.resources.configuration).apply {
             setLocales(android.os.LocaleList.forLanguageTags(language))
@@ -609,6 +609,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         val token = pairing.accountToken ?: return
         viewModelScope.launch { storage = catalog().storageStatus(token) }
         syncDeviceLanguage()
+        loadProfiles()
     }
 
     /** Retry failures on the next foreground refresh, including after account changes. */
@@ -1068,6 +1069,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         connectionDetail = null
         householdName = ""
         profiles = emptyList()
+        PhoneLanguageOverride.set(null)
         selectedId = null
         tab = PhoneTab.Library
         addingTv = false
@@ -1654,7 +1656,13 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadProfiles() {
         val token = pairing.accountToken ?: return
-        viewModelScope.launch { catalog().profiles(token)?.let { profiles = it } }
+        viewModelScope.launch { catalog().profiles(token)?.let(::applyProfiles) }
+    }
+
+    /** The account owner's profile language also sets the language of this app. */
+    private fun applyProfiles(list: List<HouseholdProfile>) {
+        profiles = list
+        PhoneLanguageOverride.set(list.firstOrNull { it.sortOrder == 0 }?.uiLanguageOverride)
     }
 
     fun updateProfileLanguage(profile: HouseholdProfile, language: String?) {
@@ -1664,7 +1672,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             busy = true
             try {
                 if (catalog().setProfileLanguage(token, profile.id, language)) {
-                    catalog().profiles(token)?.let { profiles = it }
+                    catalog().profiles(token)?.let(::applyProfiles)
                     status = uiText(R.string.ui_language_updated_ff0392)
                 } else status = uiText(R.string.ui_could_not_update_the_language_check_your_connection_an_ce45e9)
             } finally { busy = false }

@@ -10,6 +10,7 @@ class PhoneApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        PhoneLanguageOverride.init(this)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             private var started = 0
 
