@@ -36,7 +36,7 @@ interface TelegramApi {
     suspend fun addRecommendedBotToLibrary(libraryChatId: Long, botUserId: Long)
 
     /** Organize only the library, joined Cablegram channels, support bot, and confirmed library bots. */
-    suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray)
+    suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray): TgFolderResult
 
     suspend fun me(): TgUser
     suspend fun chat(chatId: Long): TgChat?

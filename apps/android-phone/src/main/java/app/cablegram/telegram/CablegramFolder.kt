@@ -51,3 +51,6 @@ internal class CablegramFolderOrganizer(private val store: CablegramFolderStore)
         else if (old != merged) store.edit(info.id, merged)
     }
 }
+
+/** Unstarted bot dialogs cannot be included in a Telegram folder without user interaction. */
+data class TgFolderResult(val unlistedBots: List<String> = emptyList())

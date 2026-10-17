@@ -48,7 +48,10 @@ class FakeTelegramApi : TelegramApi {
         return recommendedBots
     }
     override suspend fun addRecommendedBotToLibrary(libraryChatId: Long, botUserId: Long) = record("addRecommendedBot:$libraryChatId:$botUserId")
-    override suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray) = record("organizeCablegramFolder:$libraryChatId")
+    override suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray): TgFolderResult {
+        record("organizeCablegramFolder:$libraryChatId")
+        return TgFolderResult()
+    }
     override suspend fun me(): TgUser = user
 
     override suspend fun chat(chatId: Long): TgChat? =

@@ -100,7 +100,7 @@ A failed add stays on the same bot and can be retried or skipped. Added/skipped 
 completion are stored locally per Telegram user and library channel. After a process restart,
 unfinished reviews reload recommendations and omit those handled IDs; disclaimer acceptance is
 never persisted. The whole step can be dismissed or skipped, including when discovery fails.
-An explicit **Check Bot Hub** button in Storage → Telegram opens a fresh review whenever the
+An explicit **Check Bot Hub** button in Import → Connected storage → Telegram opens a fresh review whenever the
 phone is signed in and the library is available. It bypasses onboarding completion and the saved
 handled-ID filter, refreshes recommendations, and starts at the first bot with acceptance unchecked.
 Users can reconsider skipped bots; existing bot administrator rights remain unchanged. This entry
@@ -115,7 +115,7 @@ The Telegram API allowlist explicitly includes `recommendedLibraryBots` and
 ## Cablegram folder in Telegram (phone only)
 
 After linking, channel selection, or a successful bot addition, the phone creates or updates a
-Telegram chat folder named **Cablegram**. Existing accounts can use **Storage → Telegram →
+Telegram chat folder named **Cablegram**. Existing accounts can use **Import → Connected storage → Telegram →
 Organize Telegram folder** to apply it immediately or retry. This includes the linked library
 channel, the fixed Cablegram community channels the user already belongs to, the verified
 `CablegramSupportBot` private chat, and reviewed third-party bots currently confirmed as
@@ -123,12 +123,17 @@ administrators of the library channel. Skipped bots without that membership are 
 No channel is joined, no bot is added to the library, and no messages or bot-start commands
 are sent by folder organization.
 
-The adapter subscribes to folder metadata updates before TDLib initialization, then fetches
-only the matched folder settings. It merges case-insensitively into an existing named folder,
+The adapter subscribes to folder metadata updates before TDLib initialization and loads
+main/archive dialog-list metadata so TDLib can locate existing chats. The app fetches only
+Cablegram-related chat objects and the matched folder settings, not unrelated histories. It merges case-insensitively into an existing named folder,
 retaining unrelated entries, pins, appearance, sharing state, and include/exclude filters.
 Only explicit requested chats are removed from the folder's exclusion list; pinned chats
 are not duplicated in included chats. New folders use explicit IDs with broad categories off.
-Repeated organization is idempotent and concurrent merges are serialized. Other folders and
+Telegram rejects never-started bot dialogs that are not in a chat list. These are omitted
+without blocking the folder update, and the result names the bots the user must open and
+start in Telegram before retrying. Folder organization never sends /start automatically;
+existing archived chats stay archived. Repeated organization is idempotent and concurrent
+merges are serialized. Other folders and
 folder order are left alone. Folder metadata and chat IDs are not sent to Cablegram servers.
 Telegram folder limits and connection failures are shown as retryable folder errors without
 undoing successful channel joins, bot additions, or account linking. Disconnecting Cablegram

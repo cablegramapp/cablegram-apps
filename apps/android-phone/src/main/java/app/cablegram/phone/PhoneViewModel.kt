@@ -1274,15 +1274,17 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             telegramFolderBusy = true
             telegramFolderMessage = null
             try {
-                withTimeout(30_000) {
+                val result = withTimeout(30_000) {
                     session.api.organizeCablegramFolder(chatId, PhoneTelegram.handledLibraryBots(getApplication(), userId, chatId).toLongArray())
                 }
-                telegramFolderMessage = "Cablegram folder updated in Telegram."
+                telegramFolderMessage = if (result.unlistedBots.isEmpty()) "Cablegram folder updated in Telegram."
+                else "Cablegram folder updated in Telegram. To include ${result.unlistedBots.joinToString(", ")}, open those bots in Telegram and tap Start, then organize again."
             } catch (_: TimeoutCancellationException) {
                 telegramFolderMessage = "Updating the Telegram folder took too long. Tap Organize Telegram folder to retry."
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                PairLog.w("Telegram folder update failed", e)
                 telegramFolderMessage = "Couldn’t update the Telegram folder. Check your connection and Telegram’s folder limits, then tap Organize Telegram folder to retry."
             } finally {
                 telegramFolderBusy = false

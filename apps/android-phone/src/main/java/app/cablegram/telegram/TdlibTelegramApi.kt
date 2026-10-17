@@ -9,6 +9,7 @@ import dev.g000sha256.tdl.dto.ReplyMarkupInlineKeyboard
 import dev.g000sha256.tdl.dto.InlineKeyboardButtonTypeUrl
 import dev.g000sha256.tdl.dto.TextEntityTypeTextUrl
 import dev.g000sha256.tdl.dto.ChatFolder
+import dev.g000sha256.tdl.dto.ChatListArchive
 import dev.g000sha256.tdl.dto.ChatFolderInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import dev.g000sha256.tdl.TdlClient
@@ -201,7 +202,18 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
         ).ok()
     }
 
-    override suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray) {
+    override suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray): TgFolderResult {
+        // TDLib needs dialog-list metadata before it can put existing chats into a folder. No
+        // unrelated chat objects or histories are read by the app; loadChats returns only Ok.
+        for (list in listOf(ChatListMain(), ChatListArchive())) {
+            while (true) {
+                when (val result = client.loadChats(list, 100)) {
+                    is TdlResult.Success -> Unit
+                    is TdlResult.Failure -> if (result.code == 404) break else throw TgException(result.code, result.message)
+                }
+            }
+        }
+        val unlistedBots = mutableListOf<String>()
         val library = client.getChat(libraryChatId).ok()
         val libraryType = library.type as? ChatTypeSupergroup ?: error("The library is not a channel")
         require(client.getSupergroup(libraryType.supergroupId).ok().isChannel && isMember(libraryType)) {
@@ -220,7 +232,9 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
         val support = client.searchPublicChat(CABLEGRAM_SUPPORT_BOT).ok()
         val supportType = support.type as? ChatTypePrivate ?: error("The Cablegram support bot is unavailable")
         require(client.getUser(supportType.userId).ok().type is UserTypeBot) { "The Cablegram support account is not a bot" }
-        chats += client.createPrivateChat(supportType.userId, false).ok().id
+        val supportChat = client.createPrivateChat(supportType.userId, false).ok()
+        if (supportChat.positions.any { it.order != 0L }) chats += supportChat.id
+        else unlistedBots += "@$CABLEGRAM_SUPPORT_BOT"
         for (botId in reviewedBotUserIds.distinct()) {
             val user = client.getUser(botId).ok()
             if (user.type !is UserTypeBot) continue
@@ -229,9 +243,14 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
                 is TdlResult.Failure -> if (result.code == 400 && result.message == "USER_NOT_PARTICIPANT") continue
                     else throw TgException(result.code, result.message)
             }
-            if (member.status is ChatMemberStatusAdministrator) chats += client.createPrivateChat(botId, false).ok().id
+            if (member.status is ChatMemberStatusAdministrator) {
+                val botChat = client.createPrivateChat(botId, false).ok()
+                if (botChat.positions.any { it.order != 0L }) chats += botChat.id
+                else unlistedBots += user.usernames?.activeUsernames?.firstOrNull()?.let { "@$it" } ?: user.firstName
+            }
         }
         folderOrganizer.include(chats.toLongArray())
+        return TgFolderResult(unlistedBots.distinct())
     }
 
     override suspend fun me(): TgUser {
