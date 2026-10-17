@@ -103,7 +103,7 @@ identical.
 
 ## Building
 
-You need JDK 17 and the Android SDK (compileSdk 36). Each app is its own Gradle project:
+You need JDK 21 (the unit tests use Robolectric, which needs it for SDK 36) and the Android SDK (compileSdk 36). Each app is its own Gradle project:
 
 ```sh
 cd apps/android-phone   # or apps/android-tv
