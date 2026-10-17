@@ -119,6 +119,23 @@ fun LibraryShell(viewModel: PhoneViewModel) {
         TelegramAccountHelp(onBack = { accountHelpOpen = false })
         return
     }
+    if (viewModel.collectionsDialogOpen) AlertDialog(
+        onDismissRequest = { viewModel.collectionsDialogOpen = false },
+        title = { Text(ui.getString(R.string.ui_collections_9f9fea)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(viewModel.collectionDraft, { viewModel.collectionDraft = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(ui.getString(R.string.ui_collection_name_922214)) })
+                OutlinedButton(onClick = viewModel::createCollection, enabled = viewModel.collectionDraft.isNotBlank()) { Text(ui.getString(R.string.ui_create_collection_69152b)) }
+                viewModel.collections.forEach { collection ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(collection.name, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { viewModel.deleteCollection(collection.id) }) { Text(ui.getString(R.string.ui_remove_c3812f)) }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { viewModel.collectionsDialogOpen = false }) { Text(ui.getString(R.string.ui_done_11a676)) } },
+    )
     BackHandler(enabled = viewModel.selected != null || viewModel.openSeriesKey != null || viewModel.tab != PhoneTab.Library) {
         if (viewModel.selected != null) viewModel.closeItem()
         else if (viewModel.openSeriesKey != null) viewModel.closeSeries()
@@ -241,6 +258,9 @@ private fun LibraryHome(viewModel: PhoneViewModel) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     BrandMark(compact = true)
                     ScreenHeading(ui.getString(R.string.ui_your_library_1ad842), modifier = Modifier.maestro(MaestroIds.LIBRARY_TITLE))
+                }
+                Surface(color = VlcPanel, shape = RoundedCornerShape(16.dp)) {
+                    IconButton(onClick = { viewModel.collectionsDialogOpen = true }, modifier = Modifier.maestro("library_collections")) { Icon(Icons.Default.Folder, ui.getString(R.string.ui_collections_9f9fea), tint = VlcOrange) }
                 }
                 Surface(color = VlcPanel, shape = RoundedCornerShape(16.dp)) {
                     IconButton(onClick = { viewModel.tab = PhoneTab.Browse }) { Icon(Icons.Default.Add, ui.getString(R.string.ui_import_videos_fec728), tint = VlcOrange) }
@@ -906,6 +926,14 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
         }
         return
     }
+    var page by rememberSaveable { mutableStateOf<String?>(null) }
+    BackHandler(enabled = page != null) { page = null }
+    val overviewScroll = rememberScrollState()
+    val detailScroll = rememberScrollState()
+    LaunchedEffect(page) {
+        viewModel.status = null
+        detailScroll.scrollTo(0)
+    }
     var advanced by rememberSaveable { mutableStateOf(false) }
     var apiDraft by remember(viewModel.apiBaseUrl) { mutableStateOf(viewModel.apiBaseUrl) }
     var tunnelDraft by remember(viewModel.tunnelUrl) { mutableStateOf(viewModel.tunnelUrl) }
@@ -920,9 +948,31 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
         viewModel.loadProfileLock()
         viewModel.loadRelayUsage()
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(26.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(if (page == null) overviewScroll else detailScroll).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         ScreenHeading(ui.getString(R.string.ui_settings_74a883), viewModel.householdName.ifBlank { ui.getString(R.string.ui_make_cablegram_yours_13baae) }, Modifier.maestro(MaestroIds.SETTINGS_TITLE))
-        SectionCard(ui.getString(R.string.ui_account_7e1b0d)) {
+        if (page != null) {
+            TextButton(onClick = { page = null }, modifier = Modifier.maestro("settings_back")) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(ui.getString(R.string.ui_back_to_settings_ea37ec))
+            }
+        } else {
+            Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp)) {
+                Column {
+                    SettingsNavigationRow(ui.getString(R.string.ui_account_7e1b0d), Icons.Default.Lock, "settings_category_account") { page = "account" }
+                    HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = PhoneOutline)
+                    SettingsNavigationRow(ui.getString(R.string.ui_your_tvs_427608), Icons.Default.Tv, "settings_category_tvs") { page = "tvs" }
+                    HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = PhoneOutline)
+                    SettingsNavigationRow(ui.getString(R.string.ui_profiles_535e52), Icons.Default.PhoneAndroid, "settings_category_profiles") { page = "profiles" }
+                    HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = PhoneOutline)
+                    SettingsNavigationRow(ui.getString(R.string.ui_transfers_privacy_af4a2f), Icons.Default.Sync, "settings_category_transfers") { page = "transfers" }
+                    HorizontalDivider(Modifier.padding(horizontal = 20.dp), color = PhoneOutline)
+                    SettingsNavigationRow(ui.getString(R.string.ui_app_connection_535ee6), Icons.Default.Settings, "settings_category_connection") { page = "connection" }
+                }
+            }
+            SettingsNavigationRow(ui.getString(R.string.ui_subtitle_accounts_9602a0), Icons.AutoMirrored.Filled.LibraryBooks, "settings_subtitle_accounts") { viewModel.subtitleAccountsOpen = true }
+        }
+        if (page == "account") SectionCard(ui.getString(R.string.ui_account_7e1b0d)) {
             OutlinedTextField(
                 value = accountNameDraft,
                 onValueChange = { accountNameDraft = it.take(80) },
@@ -965,9 +1015,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 Text(ui.getString(R.string.ui_without_use_the_tv_then_goes_back_to_who_s_watching_an_cef3ab), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
-        OutlinedButton(onClick = { viewModel.subtitleAccountsOpen = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text(ui.getString(R.string.ui_subtitle_accounts_9602a0)) }
-        OutlinedButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text(ui.getString(R.string.ui_show_the_welcome_tour_140eac)) }
-        SectionCard(ui.getString(R.string.ui_your_tvs_427608)) {
+        if (page == "tvs") SectionCard(ui.getString(R.string.ui_your_tvs_427608)) {
             if (!viewModel.paired) Text(ui.getString(R.string.ui_connect_a_tv_to_enjoy_your_library_on_a_bigger_screen_a1212f), color = VlcMuted)
             viewModel.tvs.forEach { tv ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -984,8 +1032,8 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             }
             Button(onClick = viewModel::startAddTv, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_ADD_TV)) { Text(ui.getString(R.string.ui_connect_a_tv_0ff3f5)) }
         }
-        viewModel.relayUsage?.let { usage -> SectionCard(ui.getString(R.string.ui_relay_c226b0)) { RelayUsageCard(usage) } }
-        if (viewModel.profiles.isNotEmpty()) SectionCard(ui.getString(R.string.ui_profiles_535e52)) {
+        if (page == "transfers") viewModel.relayUsage?.let { usage -> SectionCard(ui.getString(R.string.ui_relay_c226b0)) { RelayUsageCard(usage) } }
+        if (page == "profiles") SectionCard(ui.getString(R.string.ui_profiles_535e52)) {
             viewModel.profiles.forEach { profile ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(Modifier.weight(1f)) {
@@ -1015,7 +1063,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             }
             Text(ui.getString(R.string.ui_add_profiles_on_the_tv_deleting_one_removes_its_progre_22f2f3), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
-        Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp), onClick = { viewModel.tab = PhoneTab.Storage }, modifier = Modifier.maestro(MaestroIds.NAV_STORAGE)) {
+        if (page == null) Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp), onClick = { viewModel.tab = PhoneTab.Storage }, modifier = Modifier.maestro(MaestroIds.NAV_STORAGE)) {
             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Icon(Icons.Default.Storage, null, tint = VlcOrange)
                 Column(Modifier.weight(1f)) {
@@ -1025,17 +1073,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 Icon(Icons.Default.ChevronRight, null, tint = VlcMuted)
             }
         }
-        SectionCard(ui.getString(R.string.ui_collections_9f9fea)) {
-            OutlinedTextField(viewModel.collectionDraft, { viewModel.collectionDraft = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(ui.getString(R.string.ui_collection_name_922214)) })
-            OutlinedButton(onClick = viewModel::createCollection, enabled = viewModel.collectionDraft.isNotBlank()) { Text(ui.getString(R.string.ui_create_collection_69152b)) }
-            viewModel.collections.forEach { collection ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(collection.name, color = Color.White, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { viewModel.deleteCollection(collection.id) }) { Text(ui.getString(R.string.ui_remove_c3812f)) }
-                }
-            }
-        }
-        SectionCard(ui.getString(R.string.ui_transfers_privacy_af4a2f)) {
+        if (page == "transfers") SectionCard(ui.getString(R.string.ui_transfers_privacy_af4a2f)) {
             PrefSwitch(ui.getString(R.string.ui_open_tv_with_cast_0dd4f2), viewModel.castConnect, viewModel::updateCastConnect, MaestroIds.SETTINGS_CAST_CONNECT)
             PrefSwitch(ui.getString(R.string.ui_show_remote_controls_b49919), viewModel.legacyRemote, viewModel::updateLegacyRemote, MaestroIds.SETTINGS_LEGACY_REMOTE)
             PrefSwitch(ui.getString(R.string.ui_transfer_on_wi_fi_only_992dd6), viewModel.wifiOnlyTransfers, viewModel::setWifiOnly)
@@ -1060,7 +1098,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             }
             Text(ui.getString(R.string.ui_share_your_catalog_with_your_household_your_video_file_fc6c1f), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
-        SectionCard(ui.getString(R.string.ui_app_connection_535ee6)) {
+        if (page == "connection") SectionCard(ui.getString(R.string.ui_app_connection_535ee6)) {
             OutlinedButton(onClick = viewModel::clearLocalMetadata, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_clear_artwork_cache_6b5bf3)) }
             TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) ui.getString(R.string.ui_hide_advanced_settings_82557c) else ui.getString(R.string.ui_advanced_connection_settings_891724)) }
             if (advanced) {
@@ -1072,25 +1110,32 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 Text(viewModel.phoneIps.joinToString(" · ").ifBlank { ui.getString(R.string.ui_no_wi_fi_address_d5b041) }, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
-        OutlinedButton(
-            onClick = { confirmSignOut = true },
-            enabled = !viewModel.busy,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_SIGN_OUT),
-        ) { Text(ui.getString(R.string.ui_sign_out_48f0d3), color = MaterialTheme.colorScheme.error) }
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (page == "account") {
             OutlinedButton(
-                onClick = viewModel::openDeleteAccount,
+                onClick = { confirmSignOut = true },
                 enabled = !viewModel.busy,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro("settings_delete_account"),
-            ) { Text(stringResource(R.string.delete_account_entry), color = MaterialTheme.colorScheme.error) }
-            Text(stringResource(R.string.delete_account_entry_hint), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_SIGN_OUT),
+            ) { Text(ui.getString(R.string.ui_sign_out_48f0d3), color = MaterialTheme.colorScheme.error) }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedButton(
+                    onClick = viewModel::openDeleteAccount,
+                    enabled = !viewModel.busy,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro("settings_delete_account"),
+                ) { Text(stringResource(R.string.delete_account_entry), color = MaterialTheme.colorScheme.error) }
+                Text(stringResource(R.string.delete_account_entry_hint), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+            }
         }
         viewModel.status?.let { StatusNote(it) }
-        TextButton(onClick = { showLegal = true }) { Text(ui.getString(R.string.ui_licence_and_third_party_notices_0dcfa5)) }
-        val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-        TextButton(onClick = { uriHandler.openUri(DELETE_ACCOUNT_WEB_URL) }) { Text(stringResource(R.string.delete_account_web_link)) }
-        Text(ui.getString(R.string.ui_cablegram_your_videos_your_screen_your_space_b83cca, BuildConfig.VERSION_NAME), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        if (page == null) {
+            TextButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text(ui.getString(R.string.ui_show_the_welcome_tour_140eac)) }
+            TextButton(onClick = { showLegal = true }) { Text(ui.getString(R.string.ui_licence_and_third_party_notices_0dcfa5)) }
+            Text(ui.getString(R.string.ui_cablegram_your_videos_your_screen_your_space_b83cca, BuildConfig.VERSION_NAME), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        }
+        if (page == "account") {
+            val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+            TextButton(onClick = { uriHandler.openUri(DELETE_ACCOUNT_WEB_URL) }) { Text(stringResource(R.string.delete_account_web_link)) }
+        }
     }
     if (showLegal) {
         val context = androidx.compose.ui.platform.LocalContext.current
@@ -1154,6 +1199,26 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             confirmButton = { TextButton(onClick = { viewModel.deleteProfile(profile); profileToDelete = null }) { Text(ui.getString(R.string.ui_delete_profile_47311a)) } },
             dismissButton = { TextButton(onClick = { profileToDelete = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
         )
+    }
+}
+
+@Composable
+private fun SettingsNavigationRow(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    maestroId: String,
+    onClick: () -> Unit,
+) {
+    Surface(onClick = onClick, color = VlcPanel, shape = RoundedCornerShape(16.dp), modifier = Modifier.maestro(maestroId)) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(icon, null, tint = VlcOrange, modifier = Modifier.size(22.dp))
+            Text(title, modifier = Modifier.weight(1f), color = Color.White, style = MaterialTheme.typography.bodyLarge)
+            Icon(Icons.Default.ChevronRight, null, tint = VlcMuted, modifier = Modifier.size(20.dp))
+        }
     }
 }
 

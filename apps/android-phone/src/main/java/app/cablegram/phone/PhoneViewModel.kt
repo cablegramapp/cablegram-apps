@@ -369,6 +369,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     private val telegramDeletions by lazy { TelegramDeletionQueue.forContext(getApplication()) }
     private val telegramDeletionMutex = kotlinx.coroutines.sync.Mutex()
     var collectionDraft by mutableStateOf("")
+    var collectionsDialogOpen by mutableStateOf(false)
     var wifiOnlyTransfers by mutableStateOf(pairing.wifiOnlyTransfers)
     var transferWhileCharging by mutableStateOf(pairing.transferWhileCharging)
     var syncLibraryToApi by mutableStateOf(pairing.syncLibraryToApi)
