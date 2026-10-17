@@ -614,7 +614,6 @@ private fun BrowseScreen(
     onChooseFolder: () -> Unit,
 ) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
-    var webUrl by rememberSaveable { mutableStateOf("") }
     var folderToRemove by remember { mutableStateOf<IndexedFolder?>(null) }
     folderToRemove?.let { folder ->
         AlertDialog(
@@ -682,26 +681,6 @@ private fun BrowseScreen(
         if (atRoots) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 item { TelegramLibraryCard(viewModel) }
-                item {
-                    SectionCard(ui.getString(R.string.ui_play_from_web_3bf8bf)) {
-                        Text(ui.getString(R.string.ui_paste_a_public_video_page_or_direct_video_url_cablegra_d37a61), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
-                        OutlinedTextField(
-                            value = webUrl,
-                            onValueChange = { webUrl = it.trim().take(4096) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            label = { Text(ui.getString(R.string.ui_video_url_f094b1)) },
-                            placeholder = { Text("https://…") },
-                        )
-                        Button(
-                            onClick = { viewModel.importWeb(webUrl); webUrl = "" },
-                            enabled = !viewModel.busy && (webUrl.startsWith("https://") || webUrl.startsWith("http://")),
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                        ) {
-                            Text(if (viewModel.busy) ui.getString(R.string.ui_analyzing_89b633) else ui.getString(R.string.ui_add_to_library_2bf9ea))
-                        }
-                    }
-                }
                 item {
                     SectionCard(ui.getString(R.string.ui_from_your_phone_624fe9)) {
                         Icon(Icons.Default.FolderOpen, null, Modifier.size(36.dp), tint = VlcOrange)

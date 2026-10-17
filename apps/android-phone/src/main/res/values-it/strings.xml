@@ -90,8 +90,6 @@
     <string name="ui_already_have_one_skip_to_step_2_55c7ad" formatted="false">"Ne hai gia\' uno? Salta al passo 2."</string>
     <string name="ui_always_allow_977618" formatted="false">"Consenti sempre"</string>
     <string name="ui_always_de9f05" formatted="false">"Sempre"</string>
-    <string name="ui_analyzing_89b633" formatted="false">"Analizzando..."</string>
-    <string name="ui_analyzing_link_c9a741" formatted="false">"Analizzando il link..."</string>
     <string name="ui_android_paused_saving_after_a_long_run_open_cablegram__736bf1" formatted="false">"Android sospese il salvataggio dopo un lungo periodo. Aprire Cablegram e salvare di nuovo per continuare."</string>
     <string name="ui_another_language_e901fd" formatted="false">"Un\'altra lingua"</string>
     <string name="ui_api_announce_failed_check_the_api_server_in_settings_576e6b" formatted="false">"API annuncia fallita. Controllare il server API in Impostazioni."</string>
@@ -120,7 +118,6 @@
     <string name="ui_bot_of_c8ea8f">"Bot %1$s di %2$s"</string>
     <string name="ui_bucket_name_800f2e" formatted="false">"Nome della fibbia"</string>
     <string name="ui_cablegram_can_only_reach_the_files_it_creates_never_th_69bc5f" formatted="false">"Cablegram può raggiungere solo i file che crea, mai il resto della vostra unità."</string>
-    <string name="ui_cablegram_cannot_extract_video_from_this_site_yet_52c56b" formatted="false">"Cablegram non può ancora estrarre video da questo sito."</string>
     <string name="ui_cablegram_created_the_private_channel_in_your_telegram_12ed98">"Cablegram ha creato il canale privato \"%1$s\" nel vostro Telegram, con il logo Cablegram."</string>
     <string name="ui_cablegram_finds_subtitles_through_your_own_free_accoun_811b7f" formatted="false">"Cablegram trova sottotitoli attraverso il proprio account gratuito in un sito sottotitolo. Basta un conto."</string>
     <string name="ui_cablegram_folder_updated_in_telegram_acc08b" formatted="false">"Cablegram cartella aggiornata in Telegram."</string>
@@ -226,7 +223,6 @@
     <string name="ui_controlling_2084c5" formatted="false">"CONTROLLO"</string>
     <string name="ui_copy_each_value_from_the_page_cloudflare_showed_you_sp_bb099b" formatted="false">"Copia ogni valore dalla pagina Cloudflare ti ha mostrato. Gli spazi intorno a loro sono ignorati."</string>
     <string name="ui_copying_26b256">"Copia %1$s..."</string>
-    <string name="ui_could_not_add_that_link_f63312" formatted="false">"Non è possibile aggiungere il link"</string>
     <string name="ui_could_not_connect_check_your_connection_and_try_the_tv_d77e1c" formatted="false">"Non poteva connettersi. Controlla la tua connessione e riprova il codice TV."</string>
     <string name="ui_could_not_disconnect_storage_a23494" formatted="false">"Non poteva disconnettere lo storage."</string>
     <string name="ui_could_not_finish_importing_the_file_is_no_longer_avail_63e50e">"Non poteva finire di importare %1$s: il file non è più disponibile."</string>
@@ -450,7 +446,6 @@
     <string name="ui_likely_match_not_verified_3f4c43" formatted="false">"Abbinarsi · non verificato"</string>
     <string name="ui_likely_match_partly_checked_e71ab3" formatted="false">"Abbinamento appropriato · parzialmente controllato"</string>
     <string name="ui_line_it_up_on_your_tv_bedcd2" formatted="false">"Mettilo in fila sulla tua TV"</string>
-    <string name="ui_link_saved_sign_in_to_finish_adding_it_72ef94" formatted="false">"Collegamento salvato. Accedi per finire di aggiungerlo."</string>
     <string name="ui_listening_for_dialogue_15adbe" formatted="false">"Ascoltare il dialogo..."</string>
     <string name="ui_listening_for_dialogue_of_c5b5bb">"Ascolto per il dialogo... (%1$s di %2$s)"</string>
     <string name="ui_live_on_your_tv_from_what_it_loaded_tap_save_timing_wh_600c3a">"Vivere sulla vostra TV · %1$s da quello che ha caricato. Tocca Salvare i tempi quando si abbina."</string>
@@ -500,7 +495,6 @@
     <string name="ui_no_files_in_this_folder_38c9a3" formatted="false">"Nessun file in questa cartella"</string>
     <string name="ui_no_longer_needs_the_password_9cb267">"%1$s non ha più bisogno della password."</string>
     <string name="ui_no_play_freely_on_the_tv_ea1f0c" formatted="false">"No, gioca liberamente in TV"</string>
-    <string name="ui_no_playable_video_was_found_at_that_link_f4972b" formatted="false">"Nessun video riproducibile è stato trovato a quel link."</string>
     <string name="ui_no_subtitle_could_be_confirmed_against_your_video_revi_f74e63" formatted="false">"Nessun sottotitolo potrebbe essere confermato contro il video. Rivedere le opzioni qui sotto."</string>
     <string name="ui_no_subtitles_were_found_for_this_title_aa5d5c">"No %1$s sottotitoli sono stati trovati per questo titolo."</string>
     <string name="ui_no_subtitles_were_found_for_this_title_in_your_languag_d2a72f" formatted="false">"Non sono stati trovati sottotitoli per questo titolo nelle tue lingue."</string>
@@ -575,7 +569,6 @@
     <string name="ui_paired_but_this_phone_has_no_wi_fi_address_yet_5134d1" formatted="false">"Abbinato, ma questo telefono non ha ancora Wi‑Fi indirizzo."</string>
     <string name="ui_paired_tv_68fdc7" formatted="false">"TV a schermo piatto"</string>
     <string name="ui_password_e7cf3e" formatted="false">"Password"</string>
-    <string name="ui_paste_a_public_video_page_or_direct_video_url_cablegra_d37a61" formatted="false">"Incolla una pagina video pubblica o un URL video diretto. Cablegram aggiungerà il suo titolo, descrizione e opere d\'arte disponibili."</string>
     <string name="ui_paste_code_682909" formatted="false">"Incolla codice"</string>
     <string name="ui_paste_key_b95819" formatted="false">"Tasto di incollaggio"</string>
     <string name="ui_paste_the_endpoint_address_cloudflare_showed_or_just_t_6ee22f" formatted="false">"Incolla l\'indirizzo di Endpoint Cloudflare mostrato, o solo l\'ID conto 32-character in esso."</string>
@@ -592,7 +585,6 @@
     <string name="ui_pick_video_files_to_add_95b421" formatted="false">"Scegliere i file video per aggiungere"</string>
     <string name="ui_pin_protected_d6dcf5" formatted="false">"Protezione PIN"</string>
     <string name="ui_play_436e61" formatted="false">"Riproduci"</string>
-    <string name="ui_play_from_web_3bf8bf" formatted="false">"Giocare da Web"</string>
     <string name="ui_play_on_tv_and_adjust_there_43cf9e" formatted="false">"Giocare in TV e regolare lì"</string>
     <string name="ui_play_on_tv_f47dcd" formatted="false">"Riproduci sulla TV"</string>
     <string name="ui_play_to_a_line_near_the_start_tap_the_line_you_are_hea_1a15b0" formatted="false">"Gioca a una linea vicino all\'inizio, toccare la linea che si sente, quindi fare lo stesso vicino alla fine."</string>
@@ -842,9 +834,8 @@
     <string name="ui_that_code_expired_or_was_tried_too_often_ask_for_a_new_0aa93e" formatted="false">"Quel codice è scaduto o è stato provato troppo spesso. Chiedine una nuova."</string>
     <string name="ui_that_code_expired_scan_the_new_code_on_the_tv_or_type__1c6e7a" formatted="false">"Quel codice e\' scaduto. Scansiona il nuovo codice in TV o digita il nuovo PIN."</string>
     <string name="ui_that_code_isn_t_right_check_the_email_and_try_again_38ed4a" formatted="false">"Quel codice non e\' giusto. Controllare l\'e-mail e riprovare."</string>
-    <string name="ui_that_is_not_a_supported_public_web_link_847418" formatted="false">"Questo non è un link pubblico supportato."</string>
     <string name="ui_that_pack_does_not_identify_one_exact_episode_choose_a_deb1db" formatted="false">"Quel pacco non identifica un episodio esatto. Scegli un altro sottotitolo."</string>
-    <string name="ui_that_share_did_not_include_a_video_or_web_link_496fff" formatted="false">"Quella parte non includeva un video o un link web."</string>
+    <string name="ui_that_share_did_not_include_a_video_or_web_link_496fff" formatted="false">"Questa condivisione non includeva un video."</string>
     <string name="ui_that_subtitle_file_is_damaged_or_in_the_wrong_language_711e0a" formatted="false">"Quel file sottotitolo è danneggiato o nella lingua sbagliata."</string>
     <string name="ui_that_took_too_long_start_again_8a44f3" formatted="false">"Ci e\' voluto troppo tempo. Ricominciate."</string>
     <string name="ui_the_account_owner_s_profile_can_t_be_deleted_2f8068" formatted="false">"Il profilo del proprietario dell\'account non può essere cancellato."</string>
@@ -951,7 +942,6 @@
     <string name="ui_video_frame_a4a3c5">"Fotogramma del video %1$s"</string>
     <string name="ui_video_frame_selected_0e54db" formatted="false">"Video frame selezionato"</string>
     <string name="ui_video_shift_ca726e">"Video %1$s · Spostamento %2$s"</string>
-    <string name="ui_video_url_f094b1" formatted="false">"URL del video"</string>
     <string name="ui_videos_added_3d5b7a" formatted="false">"Video aggiunti"</string>
     <string name="ui_videos_added_cbf82e">"%1$s video aggiunti"</string>
     <string name="ui_view_title_c9916d" formatted="false">"Mostra il titolo"</string>
