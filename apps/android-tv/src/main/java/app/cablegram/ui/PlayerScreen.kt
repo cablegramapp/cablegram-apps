@@ -230,7 +230,7 @@ fun PlayerScreen(
         val subs = player.subtitleTracks.map { HudTrack(it.id.toString(), it.label) }
         return PlaybackHudContext(
             isPlaying = player.isPlaying,
-            positionMs = player.positionMs,
+            positionMs = if (hud.seekFlashDeltaMs != null) currentPositionMs else player.positionMs,
             durationMs = (player.durationMs ?: currentDurationMs).coerceAtLeast(0L),
             audioTracks = audio,
             subtitleTracks = subs,
@@ -456,6 +456,18 @@ fun PlayerScreen(
             delay(PlaybackHud.AUTO_HIDE_MS)
             hud = hud.copy(controlsVisible = false, previewPositionMs = null, holdMultiplier = 1)
         }
+    }
+    // The timeline never holds the screen: skimmed steps land after a short quiet spell, and an idle timeline lets go.
+    LaunchedEffect(hud.timelineActive, hud.previewPositionMs, userInteractionCount) {
+        if (!hud.timelineActive) return@LaunchedEffect
+        val preview = hud.previewPositionMs
+        val skimming = preview != null && preview != currentPositionMs
+        delay(if (skimming) PlaybackHud.SCRUB_COMMIT_MS else PlaybackHud.AUTO_HIDE_MS)
+        if (preview != null && skimming) {
+            player.seekTo(preview)
+            currentPositionMs = preview
+        }
+        hud = hud.copy(focus = ControlsFocus.PLAY_PAUSE, previewPositionMs = null, holdMultiplier = 1)
     }
     LaunchedEffect(player) { player.isSettling.collect { settling = it } }
     LaunchedEffect(player, start, retryCount) {

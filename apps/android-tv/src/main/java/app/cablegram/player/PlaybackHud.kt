@@ -112,6 +112,9 @@ object PlaybackHud {
     const val AUTO_HIDE_MS = 4_000L
     const val SEEK_FLASH_MS = 1_500L
 
+    /** Quiet time on the timeline before a skimmed position lands. */
+    const val SCRUB_COMMIT_MS = 1_200L
+
     /** Where a relative seek lands: never before the start. */
     fun seekTargetMs(positionMs: Long, deltaMs: Long): Long = (positionMs + deltaMs).coerceAtLeast(0L)
 
@@ -135,24 +138,46 @@ fun reducePlaybackHud(
     ctx: PlaybackHudContext,
 ): Pair<PlaybackHudState, List<HudEffect>> {
     if (state.menuOpen) return reduceMenu(state, key, ctx)
-    if (!state.controlsVisible) return reduceFullscreen(state, key, ctx)
+    if (!state.controlsVisible) return reduceFullscreen(state, key, repeatCount, ctx)
     return reduceControls(state, key, repeatCount, ctx)
+}
+
+/**
+ * A first press jumps right away. Another press while the seek flash is still up (or a held key) means the viewer
+ * is skimming, so hand over to the timeline: the steps accumulate as a preview and land once the remote goes quiet.
+ */
+private fun fullscreenSeek(
+    state: PlaybackHudState,
+    delta: Long,
+    repeatCount: Int,
+    ctx: PlaybackHudContext,
+): Pair<PlaybackHudState, List<HudEffect>> {
+    if (state.seekFlashDeltaMs == null && repeatCount == 0) {
+        return state.copy(seekFlashDeltaMs = delta, controlsVisible = false) to listOf(HudEffect.SeekBy(delta))
+    }
+    val step = PlaybackHud.seekStepMs(repeatCount)
+    val signed = if (delta < 0) -step else step
+    val duration = ctx.durationMs.coerceAtLeast(0L)
+    val target = (ctx.positionMs + signed).coerceAtLeast(0L).let { if (duration > 0) it.coerceAtMost(duration) else it }
+    return state.copy(
+        controlsVisible = true,
+        overlay = OverlayMenu.CLOSED,
+        focus = ControlsFocus.TIMELINE,
+        previewPositionMs = target,
+        holdMultiplier = PlaybackHud.holdMultiplier(repeatCount),
+        seekFlashDeltaMs = null,
+    ) to emptyList()
 }
 
 private fun reduceFullscreen(
     state: PlaybackHudState,
     key: DpadKey,
+    repeatCount: Int,
     ctx: PlaybackHudContext,
 ): Pair<PlaybackHudState, List<HudEffect>> = when (key) {
     DpadKey.UP, DpadKey.DOWN -> showControls(state) to emptyList()
-    DpadKey.LEFT -> {
-        val delta = -PlaybackHud.SEEK_STEP_MS
-        state.copy(seekFlashDeltaMs = delta, controlsVisible = false) to listOf(HudEffect.SeekBy(delta))
-    }
-    DpadKey.RIGHT -> {
-        val delta = PlaybackHud.SEEK_STEP_MS
-        state.copy(seekFlashDeltaMs = delta, controlsVisible = false) to listOf(HudEffect.SeekBy(delta))
-    }
+    DpadKey.LEFT -> fullscreenSeek(state, -PlaybackHud.SEEK_STEP_MS, repeatCount, ctx)
+    DpadKey.RIGHT -> fullscreenSeek(state, PlaybackHud.SEEK_STEP_MS, repeatCount, ctx)
     DpadKey.OK -> {
         val effects = if (ctx.isPlaying) listOf(HudEffect.Pause) else emptyList()
         showControls(state.copy(seekFlashDeltaMs = null)) to effects

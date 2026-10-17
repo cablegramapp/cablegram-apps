@@ -177,4 +177,13 @@ class PlaybackHudTest {
         assertEquals(10_000L, PlaybackHud.seekStepMs(0))
         assertEquals(20_000L, PlaybackHud.seekStepMs(6))
     }
+
+    @Test
+    fun `second quick press in fullscreen switches to the timeline preview`() {
+        val (first, _) = reducePlaybackHud(PlaybackHudState(), DpadKey.RIGHT, 0, ctx)
+        val (second, effects) = reducePlaybackHud(first, DpadKey.RIGHT, 0, ctx)
+        assertTrue(second.timelineActive)
+        assertEquals(ctx.positionMs + 10_000L, second.previewPositionMs)
+        assertTrue(effects.isEmpty())
+    }
 }
