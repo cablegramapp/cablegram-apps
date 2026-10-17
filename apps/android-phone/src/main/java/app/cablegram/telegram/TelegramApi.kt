@@ -35,6 +35,9 @@ interface TelegramApi {
     /** Only discovered, Telegram-verified bots, after separate permission/disclaimer confirmation. */
     suspend fun addRecommendedBotToLibrary(libraryChatId: Long, botUserId: Long)
 
+    /** Organize only the library, joined Cablegram channels, support bot, and confirmed library bots. */
+    suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray)
+
     suspend fun me(): TgUser
     suspend fun chat(chatId: Long): TgChat?
     suspend fun findChatByTitle(title: String): Long?

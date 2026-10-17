@@ -121,6 +121,12 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
             onClick = viewModel::checkTelegramBotHub,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_CHECK_BOT_HUB),
         ) { Text("Check Bot Hub") }
+        OutlinedButton(
+            onClick = viewModel::organizeTelegramFolder,
+            enabled = !viewModel.telegramFolderBusy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_ORGANIZE_FOLDER),
+        ) { Text(if (viewModel.telegramFolderBusy) "Organizing…" else "Organize Telegram folder") }
+        viewModel.telegramFolderMessage?.let { Text(it, color = VlcMuted, modifier = Modifier.padding(horizontal = 8.dp)) }
         var autoApprove by remember { mutableStateOf(PhoneTelegram.autoApproveTvs(context)) }
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -210,7 +216,7 @@ private fun BeforeYouConnect(viewModel: PhoneViewModel) {
     )
     TrustPoint(
         "What it does",
-        "For your videos, it reads and manages one private channel, \"${TelegramSession.LIBRARY_TITLE}\". After connecting, you can also choose to join Cablegram’s optional channels. It joins only the channels selected when you tap Save. It then reads recommendations from the public Cablegram Bot Hubs channel and offers third-party bots one at a time. Adding a bot to your library requires your separate agreement to its permissions and the disclaimer. It never reads your other chats or contacts. The only thing it ever sends is a video you choose to save with \"Save to Telegram\", into that channel.",
+        "For your videos, it reads and manages one private channel, \"${TelegramSession.LIBRARY_TITLE}\". After connecting, you can also choose to join Cablegram’s optional channels. It organizes your library, joined Cablegram channels, support, and added bots in a Cablegram folder in Telegram. It joins only the channels selected when you tap Save. It then reads recommendations from the public Cablegram Bot Hubs channel and offers third-party bots one at a time. Adding a bot to your library requires your separate agreement to its permissions and the disclaimer. It never reads your other chats or contacts. The only thing it ever sends is a video you choose to save with \"Save to Telegram\", into that channel.",
     )
     TrustPoint(
         "Where your details go",
@@ -398,7 +404,7 @@ internal fun CommunityChannelsOptions(channels: CommunityChannels, onSave: () ->
                 }
             }
         }
-        Text("Joining a channel follows it in Telegram. You can leave it there at any time.", color = VlcMuted)
+        Text("Joined Cablegram channels, your library, support, and added bots are organized in a Cablegram folder in Telegram. You can leave channels or manage the folder there at any time.", color = VlcMuted)
         Button(
             onClick = onSave,
             enabled = !state.saving,

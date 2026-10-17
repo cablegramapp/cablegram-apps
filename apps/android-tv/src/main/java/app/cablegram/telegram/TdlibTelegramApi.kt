@@ -8,6 +8,9 @@ import dev.g000sha256.tdl.dto.UserTypeBot
 import dev.g000sha256.tdl.dto.ReplyMarkupInlineKeyboard
 import dev.g000sha256.tdl.dto.InlineKeyboardButtonTypeUrl
 import dev.g000sha256.tdl.dto.TextEntityTypeTextUrl
+import dev.g000sha256.tdl.dto.ChatFolder
+import dev.g000sha256.tdl.dto.ChatFolderInfo
+import kotlinx.coroutines.flow.MutableStateFlow
 import dev.g000sha256.tdl.TdlClient
 import dev.g000sha256.tdl.TdlResult
 import dev.g000sha256.tdl.dto.AuthorizationState
@@ -60,11 +63,25 @@ import kotlinx.coroutines.flow.map
 /** [TelegramApi] over TDLib (`dev.g000sha256:tdl-coroutines-android`). */
 class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : TelegramApi {
 
+    private val knownFolders = MutableStateFlow<List<ChatFolderInfo>?>(null)
+    private val folderOrganizer = CablegramFolderOrganizer(object : CablegramFolderStore {
+        override suspend fun folders(): List<ChatFolderInfo> = knownFolders.first { it != null }!!
+        override suspend fun folder(id: Int): ChatFolder = client.getChatFolder(id).ok()
+        override suspend fun create(folder: ChatFolder) {
+            val created = client.createChatFolder(folder).ok()
+            // The native update may arrive after this call; cache the result before another merge.
+            knownFolders.value = knownFolders.value.orEmpty().filter { it.id != created.id } + created
+        }
+        override suspend fun edit(id: Int, folder: ChatFolder) { client.editChatFolder(id, folder).ok() }
+    })
+
     /**
      * Updates only report changes, so a late subscriber would miss the current state: subscribe first,
      * then ask for the current one; duplicates of the same state are dropped.
      */
     override val authStates: Flow<TgAuthState> = channelFlow {
+        // Subscribe before TDLib parameters are supplied so initial folder metadata cannot be missed.
+        launch { client.chatFoldersUpdates.collect { knownFolders.value = it.chatFolders.toList() } }
         launch { client.authorizationStateUpdates.collect { send(toAuthState(it.authorizationState)) } }
         yield()
         (client.getAuthorizationState() as? TdlResult.Success)?.let { send(toAuthState(it.result)) }
@@ -182,6 +199,39 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
             libraryChatId, MessageSenderUser(botUserId),
             ChatMemberStatusAdministrator(canBeEdited = true, rights = libraryBotPostingRights()),
         ).ok()
+    }
+
+    override suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray) {
+        val library = client.getChat(libraryChatId).ok()
+        val libraryType = library.type as? ChatTypeSupergroup ?: error("The library is not a channel")
+        require(client.getSupergroup(libraryType.supergroupId).ok().isChannel && isMember(libraryType)) {
+            "The library channel is unavailable"
+        }
+        val chats = linkedSetOf(libraryChatId)
+        for (channel in CablegramChannel.entries) {
+            val resolved = when (val result = client.searchPublicChat(channel.username)) {
+                is TdlResult.Success -> result.result
+                is TdlResult.Failure -> if (result.code == 400 || result.code == 404) continue else throw TgException(result.code, result.message)
+            }
+            val type = resolved.type as? ChatTypeSupergroup ?: continue
+            if (isMember(type)) chats += resolved.id
+        }
+        // Resolving a bot chat does not start it or send /start.
+        val support = client.searchPublicChat(CABLEGRAM_SUPPORT_BOT).ok()
+        val supportType = support.type as? ChatTypePrivate ?: error("The Cablegram support bot is unavailable")
+        require(client.getUser(supportType.userId).ok().type is UserTypeBot) { "The Cablegram support account is not a bot" }
+        chats += client.createPrivateChat(supportType.userId, false).ok().id
+        for (botId in reviewedBotUserIds.distinct()) {
+            val user = client.getUser(botId).ok()
+            if (user.type !is UserTypeBot) continue
+            val member = when (val result = client.getChatMember(libraryChatId, MessageSenderUser(botId))) {
+                is TdlResult.Success -> result.result
+                is TdlResult.Failure -> if (result.code == 400 && result.message == "USER_NOT_PARTICIPANT") continue
+                    else throw TgException(result.code, result.message)
+            }
+            if (member.status is ChatMemberStatusAdministrator) chats += client.createPrivateChat(botId, false).ok().id
+        }
+        folderOrganizer.include(chats.toLongArray())
     }
 
     override suspend fun me(): TgUser {

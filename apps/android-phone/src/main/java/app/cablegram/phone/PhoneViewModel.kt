@@ -1169,6 +1169,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var telegramBotHubOnly by mutableStateOf(false)
         private set
+    var telegramFolderBusy by mutableStateOf(false)
+        private set
+    var telegramFolderMessage by mutableStateOf<String?>(null)
+        private set
+    private var telegramFolderJob: Job? = null
     private var telegramLibraryBotsJob: Job? = null
     private var telegramCommunityLibraryId: Long? = null
     private var telegramCommunityUserId: Long? = null
@@ -1232,7 +1237,10 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun saveTelegramCommunityChannels() {
         val channels = telegramCommunityChannels ?: return
         if (telegramCommunitySaveJob?.isActive == true) return
-        telegramCommunitySaveJob = viewModelScope.launch { channels.save() }
+        telegramCommunitySaveJob = viewModelScope.launch {
+            channels.save()
+            organizeTelegramFolder()
+        }
     }
 
     fun loadTelegramLibraryBots() {
@@ -1244,7 +1252,42 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun addRecommendedTelegramBot() {
         val bots = telegramLibraryBots ?: return
         if (telegramLibraryBotsJob?.isActive == true) return
-        telegramLibraryBotsJob = viewModelScope.launch { bots.addCurrent() }
+        telegramLibraryBotsJob = viewModelScope.launch {
+            val addedBefore = bots.state.value.added
+            bots.addCurrent()
+            if (bots.state.value.added > addedBefore) organizeTelegramFolder()
+        }
+    }
+
+    /** Folder failures are retryable and never undo successful channel or bot membership changes. */
+    fun organizeTelegramFolder() {
+        val link = telegramLink?.takeIf { it.linked } ?: return
+        val chatId = link.chatId ?: return
+        val userId = link.userId ?: return
+        val session = PhoneTelegram.existing() ?: return
+        if (telegramHealth != TelegramHealth.Ok || !PhoneTelegram.wasLinked(getApplication())) return
+        if ((session.state.value as? app.cablegram.telegram.TelegramState.Ready)?.user?.id != userId) return
+        val previous = telegramFolderJob
+        previous?.cancel()
+        telegramFolderJob = viewModelScope.launch {
+            previous?.join()
+            telegramFolderBusy = true
+            telegramFolderMessage = null
+            try {
+                withTimeout(30_000) {
+                    session.api.organizeCablegramFolder(chatId, PhoneTelegram.handledLibraryBots(getApplication(), userId, chatId).toLongArray())
+                }
+                telegramFolderMessage = "Cablegram folder updated in Telegram."
+            } catch (_: TimeoutCancellationException) {
+                telegramFolderMessage = "Updating the Telegram folder took too long. Tap Organize Telegram folder to retry."
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                telegramFolderMessage = "Couldn’t update the Telegram folder. Check your connection and Telegram’s folder limits, then tap Organize Telegram folder to retry."
+            } finally {
+                telegramFolderBusy = false
+            }
+        }
     }
 
     private var telegramFinishJob: kotlinx.coroutines.Job? = null
@@ -1306,6 +1349,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 result.link?.let { telegramLink = it }
                 telegramChannelCreated = library.created
                 telegramHealth = TelegramHealth.Ok
+                organizeTelegramFolder()
                 status = if (library.created) "Created a new \"Cablegram library\" channel in Telegram."
                 else "Found your \"Cablegram library\" channel in Telegram again."
             } catch (e: Exception) {
@@ -1454,6 +1498,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     telegramHealth = TelegramHealth.Ok
                     PhoneTelegram.setLinked(getApplication(), true)
                     prepareCommunityChannels(session, user.id)
+                    organizeTelegramFolder()
                     status = "Telegram connected. Videos you share into \"Cablegram library\" appear on your TV."
                 }
             }
@@ -1477,6 +1522,9 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Cancel operations tied to the old Telegram session before replacing or signing it out. */
     private fun clearTelegramRecommendations() {
+        telegramFolderJob?.cancel()
+        telegramFolderMessage = null
+        telegramFolderBusy = false
         telegramBotHubOnly = false
         telegramLibraryBotsJob?.cancel()
         telegramLibraryBots = null

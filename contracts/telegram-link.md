@@ -112,6 +112,30 @@ the user manages them in Telegram.
 The Telegram API allowlist explicitly includes `recommendedLibraryBots` and
 `addRecommendedBotToLibrary` for this feature. No new server endpoint is needed.
 
+## Cablegram folder in Telegram (phone only)
+
+After linking, channel selection, or a successful bot addition, the phone creates or updates a
+Telegram chat folder named **Cablegram**. Existing accounts can use **Storage → Telegram →
+Organize Telegram folder** to apply it immediately or retry. This includes the linked library
+channel, the fixed Cablegram community channels the user already belongs to, the verified
+`CablegramSupportBot` private chat, and reviewed third-party bots currently confirmed as
+administrators of the library channel. Skipped bots without that membership are omitted.
+No channel is joined, no bot is added to the library, and no messages or bot-start commands
+are sent by folder organization.
+
+The adapter subscribes to folder metadata updates before TDLib initialization, then fetches
+only the matched folder settings. It merges case-insensitively into an existing named folder,
+retaining unrelated entries, pins, appearance, sharing state, and include/exclude filters.
+Only explicit requested chats are removed from the folder's exclusion list; pinned chats
+are not duplicated in included chats. New folders use explicit IDs with broad categories off.
+Repeated organization is idempotent and concurrent merges are serialized. Other folders and
+folder order are left alone. Folder metadata and chat IDs are not sent to Cablegram servers.
+Telegram folder limits and connection failures are shown as retryable folder errors without
+undoing successful channel joins, bot additions, or account linking. Disconnecting Cablegram
+does not delete the user's Telegram folder.
+
+`organizeCablegramFolder` is pinned in the Telegram API surface allowlist for this behavior.
+
 ## TV login (phone-approved)
 
 ### `POST /api/telegram/tv-logins` (TV only)

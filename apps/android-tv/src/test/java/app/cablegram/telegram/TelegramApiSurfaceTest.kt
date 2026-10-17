@@ -24,6 +24,8 @@ class TelegramApiSurfaceTest {
         // Read only the fixed Bot Hubs recommendation feed; add only verified discovered bots after
         // a separate per-bot opt-in and explicit permission/disclaimer confirmation.
         "recommendedLibraryBots", "addRecommendedBotToLibrary",
+        // Merge Cablegram-related chats into the named folder; no unrelated histories or contacts.
+        "organizeCablegramFolder",
         // Files of those videos.
         "file", "download", "readPart", "cancelDownload", "deleteLocalFile",
         // Ending Cablegram's own TV sessions (spec 004 US8).
