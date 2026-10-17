@@ -160,7 +160,7 @@ paths:
     get:
       responses:
         "200":
-          description: Profiles including pin_set boolean (not pin)
+          description: Profiles including pin_set boolean (not pin) and effective ui_language (BCP 47 tag), plus nullable ui_language_override
     post:
       summary: Create profile (optional PIN)
       requestBody:
@@ -176,6 +176,51 @@ paths:
       responses:
         "201":
           description: Created
+  /api/me/language:
+    put:
+      summary: Save the signed-in phone user's device language
+      description: >
+        Phone only. The account owner's language is inherited by profiles without an
+        explicit override. Other accounts paired to the same TV are unaffected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ui_language]
+              properties:
+                ui_language: { type: string, minLength: 2, maxLength: 64, description: Valid BCP 47 language tag }
+      responses:
+        "200":
+          description: Canonical ui_language tag saved
+        "403":
+          description: TV credentials cannot change language preferences
+  /api/profiles/{profileId}/language:
+    patch:
+      summary: Set a profile language or reset it to follow the account owner's phone
+      description: Phone only; the profile must belong to the authenticated household.
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ui_language]
+              properties:
+                ui_language: { type: string, nullable: true, minLength: 2, maxLength: 64 }
+      responses:
+        "200":
+          description: Override saved; null restores inheritance
+        "404":
+          description: Profile absent from the authenticated household
   /api/household:
     patch:
       summary: Rename the account and/or set the profile lock

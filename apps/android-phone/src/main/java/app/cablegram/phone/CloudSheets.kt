@@ -61,6 +61,7 @@ fun CloudFlow(viewModel: PhoneViewModel) {
 
 @Composable
 fun TransferCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val item = viewModel.activeSave ?: return
     if (viewModel.transferCardDismissed) return
     val done = item.uploadBytes ?: 0
@@ -74,7 +75,7 @@ fun TransferCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text("Saving to ${viewModel.saveDestinationName}", color = Color.White, style = MaterialTheme.typography.titleMedium)
+        Text(ui.getString(R.string.ui_saving_to_a516ef, viewModel.saveDestinationName), color = Color.White, style = MaterialTheme.typography.titleMedium)
         Text(item.title, color = Color.White)
         LinearProgressIndicator(
             progress = { transferFraction(item) },
@@ -82,18 +83,19 @@ fun TransferCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
             color = VlcOrange,
             trackColor = Color(0xFF333333),
         )
-        Text("${formatBytes(done)} / ${formatBytes(total)}", color = VlcMuted, fontSize = 12.sp)
+        Text(ui.getString(R.string.ui_message_f1c1f8, formatBytes(done), formatBytes(total)), color = VlcMuted, fontSize = 12.sp)
         val rate = formatRate(item.transferBytesPerSec)
-        val eta = etaLabel(remaining, item.transferBytesPerSec)
+        val eta = etaLabel(remaining, item.transferBytesPerSec, resources = ui)
         if (rate.isNotBlank() || eta.isNotBlank()) {
             Text(listOf(rate, eta).filter { it.isNotBlank() }.joinToString(" · "), color = VlcMuted, fontSize = 12.sp)
         }
-        TextButton(onClick = viewModel::runSaveInBackground) { Text("Hide — keep saving") }
+        TextButton(onClick = viewModel::runSaveInBackground) { Text(ui.getString(R.string.ui_hide_keep_saving_e0c66f)) }
     }
 }
 
 @Composable
 private fun SheetScaffold(title: String, onClose: () -> Unit, content: @Composable () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Column(
         Modifier
             .fillMaxSize()
@@ -102,7 +104,7 @@ private fun SheetScaffold(title: String, onClose: () -> Unit, content: @Composab
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        TextButton(onClick = onClose, modifier = Modifier.maestro(MaestroIds.CLOUD_CLOSE)) { Text("Close", color = VlcOrange) }
+        TextButton(onClick = onClose, modifier = Modifier.maestro(MaestroIds.CLOUD_CLOSE)) { Text(ui.getString(R.string.ui_close_7d9eb7), color = VlcOrange) }
         Text(title, color = Color.White, style = MaterialTheme.typography.headlineSmall)
         content()
     }
@@ -110,18 +112,19 @@ private fun SheetScaffold(title: String, onClose: () -> Unit, content: @Composab
 
 @Composable
 private fun SaveSetupSheet(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     // Saves go only to the household's own storage (CAB-38): this sheet leads to connecting it.
-    SheetScaffold("Save to Cloud", viewModel::dismissCloudSheet) {
-        Text("Keep your videos available even when your phone is off by saving a copy to your own storage.", color = VlcMuted)
-        val offered = providerRows(viewModel.storage)
+    SheetScaffold(ui.getString(R.string.ui_save_to_cloud_0fd280), viewModel::dismissCloudSheet) {
+        Text(ui.getString(R.string.ui_keep_your_videos_available_even_when_your_phone_is_off_b72efb), color = VlcMuted)
+        val offered = providerRows(viewModel.storage, resources = ui)
         Text(
-            if (offered.isEmpty()) "Your own storage isn't available on this server."
+            if (offered.isEmpty()) ui.getString(R.string.ui_your_own_storage_isn_t_available_on_this_server_d34244)
             else offered.joinToString(" · ") { it.name },
             color = VlcMuted, fontSize = 12.sp,
         )
         if (offered.isNotEmpty()) {
             Button(onClick = viewModel::openOwnCloudSetup, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.CLOUD_CONTINUE)) {
-                Text("Connect your storage")
+                Text(ui.getString(R.string.ui_connect_your_storage_04561b))
             }
         }
     }
@@ -129,65 +132,68 @@ private fun SaveSetupSheet(viewModel: PhoneViewModel) {
 
 @Composable
 private fun SaveOversizeSheet(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val item = viewModel.saveTarget ?: return
-    SheetScaffold("Save to Cloud", viewModel::dismissCloudSheet) {
+    SheetScaffold(ui.getString(R.string.ui_save_to_cloud_0fd280), viewModel::dismissCloudSheet) {
         Text(item.title, color = Color.White, style = MaterialTheme.typography.titleLarge)
         Text(item.fileSizeBytes?.let(::formatBytes).orEmpty(), color = VlcMuted)
-        Text("This file is larger than your available storage.", color = Color(0xFFFFB74D))
-        Text("Cloud storage", color = Color.White)
-        Text("${formatBytes(viewModel.cloudAvailable)} available", color = VlcMuted)
+        Text(ui.getString(R.string.ui_this_file_is_larger_than_your_available_storage_e6fe5f), color = Color(0xFFFFB74D))
+        Text(ui.getString(R.string.ui_cloud_storage_9644ab), color = Color.White)
+        Text(ui.getString(R.string.ui_available_9ffcbc, formatBytes(viewModel.cloudAvailable)), color = VlcMuted)
         OutlinedButton(onClick = viewModel::chooseAnotherStorage, modifier = Modifier.fillMaxWidth()) {
-            Text("Choose another storage")
+            Text(ui.getString(R.string.ui_choose_another_storage_10ef3b))
         }
     }
 }
 
 @Composable
 private fun SaveConfirmSheet(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val item = viewModel.saveTarget ?: return
     val destination = viewModel.saveDestinationName
-    SheetScaffold("Save to $destination", viewModel::dismissCloudSheet) {
+    SheetScaffold(ui.getString(R.string.ui_save_to_48c64f, destination), viewModel::dismissCloudSheet) {
         Text(item.title, color = Color.White, style = MaterialTheme.typography.titleLarge)
         Text(item.fileSizeBytes?.let(::formatBytes).orEmpty(), color = VlcMuted)
         Text(destination, color = Color.White)
-        Text(destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable), color = VlcMuted)
-        Text("After saving, this title stays on your phone. Free up space later if you want.", color = VlcMuted)
-        Text("●  Keep on phone", color = Color.White)
-        Text("○  Remove from phone", color = VlcMuted)
+        Text(destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable, resources = ui), color = VlcMuted)
+        Text(ui.getString(R.string.ui_after_saving_this_title_stays_on_your_phone_free_up_sp_d0fcae), color = VlcMuted)
+        Text(ui.getString(R.string.ui_keep_on_phone_cff4f5), color = Color.White)
+        Text(ui.getString(R.string.ui_remove_from_phone_b2bf2b), color = VlcMuted)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Wi-Fi only", color = Color.White, modifier = Modifier.weight(1f))
+            Text(ui.getString(R.string.ui_wi_fi_only_ca99bb), color = Color.White, modifier = Modifier.weight(1f))
             Switch(checked = viewModel.wifiOnlyTransfers, onCheckedChange = viewModel::setWifiOnly)
         }
         Button(onClick = viewModel::confirmSaveToCloud, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.CLOUD_CONFIRM)) {
-            Text("Save to $destination")
+            Text(ui.getString(R.string.ui_save_to_48c64f, destination))
         }
     }
 }
 
 @Composable
 private fun ManageCloudSheet(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val context = LocalContext.current
     val status = viewModel.storage
-    val rows = providerRows(status).filter { it.state != ProviderState.Connected }
-    SheetScaffold("Cloud Storage", viewModel::dismissCloudSheet) {
-        Text("Your own storage", color = Color.White, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
+    val rows = providerRows(status, resources = ui).filter { it.state != ProviderState.Connected }
+    SheetScaffold(ui.getString(R.string.ui_cloud_storage_2ec3eb), viewModel::dismissCloudSheet) {
+        Text(ui.getString(R.string.ui_your_own_storage_6765b7), color = Color.White, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp))
         val connection = status?.connection?.takeIf { it.status == "active" }
         if (connection != null) {
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1A1A1A)).padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(providerName(connection.provider, status), color = Color.White, style = MaterialTheme.typography.titleSmall)
-                Text(connectedSummary(connection, status), color = Color(0xFF79D6B0))
+                Text(providerName(connection.provider, status, resources = ui), color = Color.White, style = MaterialTheme.typography.titleSmall)
+                Text(connectedSummary(connection, status, resources = ui), color = Color(0xFF79D6B0))
                 OutlinedButton(onClick = viewModel::disconnectStorage, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth()) {
-                    Text("Disconnect ${providerName(connection.provider, status)}")
+                    Text(ui.getString(R.string.ui_disconnect_7d073a, providerName(connection.provider, status, resources = ui)))
                 }
             }
         } else {
-            Text("Keep your videos in storage you own. They go straight there from your phone.", color = VlcMuted)
+            Text(ui.getString(R.string.ui_keep_your_videos_in_storage_you_own_they_go_straight_t_697721), color = VlcMuted)
         }
         if (rows.isEmpty() && connection == null) {
-            Text("Not available on this server", color = VlcMuted)
+            Text(ui.getString(R.string.ui_not_available_on_this_server_210147), color = VlcMuted)
         }
         rows.forEach { row ->
             ProviderRowView(row, enabled = row.state != ProviderState.Locked && !viewModel.busy) {
@@ -202,15 +208,15 @@ private fun ManageCloudSheet(viewModel: PhoneViewModel) {
     if (viewModel.googleSignInNoteOpen) {
         AlertDialog(
             onDismissRequest = { viewModel.googleSignInNoteOpen = false },
-            title = { Text("One box to tick") },
-            text = { Text(googleSignInPreparation()) },
+            title = { Text(ui.getString(R.string.ui_one_box_to_tick_0f7e37)) },
+            text = { Text(googleSignInPreparation( resources = ui)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.googleSignInNoteOpen = false
                     viewModel.connectGoogle { url -> openCustomTab(context, url) }
-                }) { Text("Open Google") }
+                }) { Text(ui.getString(R.string.ui_open_google_f8b2a8)) }
             },
-            dismissButton = { TextButton(onClick = { viewModel.googleSignInNoteOpen = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { viewModel.googleSignInNoteOpen = false }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
         )
     }
 }
@@ -218,6 +224,7 @@ private fun ManageCloudSheet(viewModel: PhoneViewModel) {
 /** One provider in the list: its name, what connecting takes, and why it is off when it is. */
 @Composable
 private fun ProviderRowView(row: ProviderRow, enabled: Boolean, onClick: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Column(
         Modifier
             .fillMaxWidth()
@@ -232,7 +239,7 @@ private fun ProviderRowView(row: ProviderRow, enabled: Boolean, onClick: () -> U
         row.note?.let {
             Text(it, color = if (row.state == ProviderState.NeedsSignIn) Color(0xFFFFB74D) else VlcMuted, fontSize = 13.sp)
         }
-        if (row.state == ProviderState.NeedsSignIn) Text("Sign in again", color = VlcOrange, fontSize = 14.sp)
+        if (row.state == ProviderState.NeedsSignIn) Text(ui.getString(R.string.ui_sign_in_again_51fbe1), color = VlcOrange, fontSize = 14.sp)
     }
 }
 
@@ -273,57 +280,58 @@ private fun GuideStep(number: Int, title: String, lines: List<String>, openLabel
  */
 @Composable
 private fun ConnectR2Sheet(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var accountId by remember { mutableStateOf("") }
     var bucket by remember { mutableStateOf("") }
     var keyId by remember { mutableStateOf("") }
     var secret by remember { mutableStateOf("") }
     val problems = listOf(r2AccountIdProblem(accountId), r2BucketProblem(bucket), r2KeyIdProblem(keyId), r2SecretProblem(secret))
     val complete = listOf(accountId, bucket, keyId, secret).all { it.isNotBlank() } && problems.all { it == null }
-    SheetScaffold("Connect your own storage", viewModel::dismissCloudSheet) {
-        Text("Keep your videos in your own Cloudflare R2 storage. They go straight there from your phone, and your TV plays them even when the phone is off. About 5 minutes, once.", color = VlcMuted)
+    SheetScaffold(ui.getString(R.string.ui_connect_your_own_storage_10a917), viewModel::dismissCloudSheet) {
+        Text(ui.getString(R.string.ui_keep_your_videos_in_your_own_cloudflare_r2_storage_the_16689a), color = VlcMuted)
         GuideStep(
-            1, "Create a free Cloudflare account",
-            listOf("Already have one? Skip to step 2."),
-            "Open Cloudflare sign-up", CLOUDFLARE_SIGN_UP,
+            1, ui.getString(R.string.ui_create_a_free_cloudflare_account_9d8fd1),
+            listOf(ui.getString(R.string.ui_already_have_one_skip_to_step_2_55c7ad)),
+            ui.getString(R.string.ui_open_cloudflare_sign_up_53c22b), CLOUDFLARE_SIGN_UP,
         )
         GuideStep(
-            2, "Turn on R2 and make a bucket",
+            2, ui.getString(R.string.ui_turn_on_r2_and_make_a_bucket_2479a0),
             listOf(
-                "Open R2. Cloudflare asks you to subscribe to R2 once; it is free to start, and it may ask for a payment card.",
-                "Then tap Create bucket. Name it with lowercase letters, digits and dashes, for example my-cablegram-videos. Leave the other settings as they are.",
+                ui.getString(R.string.ui_open_r2_cloudflare_asks_you_to_subscribe_to_r2_once_it_10d8f5),
+                ui.getString(R.string.ui_then_tap_create_bucket_name_it_with_lowercase_letters__10114b),
             ),
-            "Open R2", CLOUDFLARE_R2,
+            ui.getString(R.string.ui_open_r2_41969b), CLOUDFLARE_R2,
         )
         GuideStep(
-            3, "Create an access token",
+            3, ui.getString(R.string.ui_create_an_access_token_ed7ea7),
             listOf(
-                "On the R2 page, find Account Details and tap Manage next to API Tokens. Then tap Create Account API token.",
-                "Permission: Object Read & Write. Apply it to a specific bucket and choose the one from step 2. Then tap Create.",
-                "Cloudflare now shows an Access Key ID, a Secret Access Key and an Endpoint. The secret is shown only once, so keep that page open.",
+                ui.getString(R.string.ui_on_the_r2_page_find_account_details_and_tap_manage_nex_31acb8),
+                ui.getString(R.string.ui_permission_object_read_write_apply_it_to_a_specific_bu_ac52d4),
+                ui.getString(R.string.ui_cloudflare_now_shows_an_access_key_id_a_secret_access__5639c8),
             ),
-            "Open R2", CLOUDFLARE_R2,
+            ui.getString(R.string.ui_open_r2_41969b), CLOUDFLARE_R2,
         )
-        GuideStep(4, "Enter the details", listOf("Copy each value from the page Cloudflare showed you. Spaces around them are ignored.")) {
+        GuideStep(4, ui.getString(R.string.ui_enter_the_details_0aa04d), listOf(ui.getString(R.string.ui_copy_each_value_from_the_page_cloudflare_showed_you_sp_bb099b))) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    accountId, { accountId = it }, label = { Text("Endpoint or Account ID") }, singleLine = true,
-                    isError = problems[0] != null, supportingText = { Text(problems[0] ?: "Paste the Endpoint address Cloudflare showed, or just the 32-character account ID in it.") },
+                    accountId, { accountId = it }, label = { Text(ui.getString(R.string.ui_endpoint_or_account_id_dce8d2)) }, singleLine = true,
+                    isError = problems[0] != null, supportingText = { Text(problems[0] ?: ui.getString(R.string.ui_paste_the_endpoint_address_cloudflare_showed_or_just_t_6ee22f)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
-                    bucket, { bucket = it }, label = { Text("Bucket name") }, singleLine = true,
-                    isError = problems[1] != null, supportingText = { Text(problems[1] ?: "The name you gave the bucket.") },
+                    bucket, { bucket = it }, label = { Text(ui.getString(R.string.ui_bucket_name_800f2e)) }, singleLine = true,
+                    isError = problems[1] != null, supportingText = { Text(problems[1] ?: ui.getString(R.string.ui_the_name_you_gave_the_bucket_2ae9c0)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
-                    keyId, { keyId = it }, label = { Text("Access Key ID") }, singleLine = true,
-                    isError = problems[2] != null, supportingText = { Text(problems[2] ?: "Shown when you created the token.") },
+                    keyId, { keyId = it }, label = { Text(ui.getString(R.string.ui_access_key_id_8761c0)) }, singleLine = true,
+                    isError = problems[2] != null, supportingText = { Text(problems[2] ?: ui.getString(R.string.ui_shown_when_you_created_the_token_e2211a)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
-                    secret, { secret = it }, label = { Text("Secret Access Key") }, singleLine = true,
+                    secret, { secret = it }, label = { Text(ui.getString(R.string.ui_secret_access_key_d2aeac)) }, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    isError = problems[3] != null, supportingText = { Text(problems[3] ?: "Shown once, under the Access Key ID.") },
+                    isError = problems[3] != null, supportingText = { Text(problems[3] ?: ui.getString(R.string.ui_shown_once_under_the_access_key_id_27f4b9)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -337,23 +345,24 @@ private fun ConnectR2Sheet(viewModel: PhoneViewModel) {
             },
             enabled = !viewModel.busy && complete,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (viewModel.busy) "Checking…" else "Connect") }
-        Text("What it costs: R2 includes 10 GB free; after that Cloudflare charges about $0.015 per GB a month, and downloads are free.", color = VlcMuted, fontSize = 12.sp)
-        Text("Cablegram keeps the keys encrypted and uses them only for your library. To remove access later, delete the token in Cloudflare.", color = VlcMuted, fontSize = 12.sp)
+        ) { Text(if (viewModel.busy) ui.getString(R.string.ui_checking_ec963f) else ui.getString(R.string.ui_connect_1a2303)) }
+        Text(ui.getString(R.string.ui_what_it_costs_r2_includes_10_gb_free_after_that_cloudf_499770), color = VlcMuted, fontSize = 12.sp)
+        Text(ui.getString(R.string.ui_cablegram_keeps_the_keys_encrypted_and_uses_them_only__5e4393), color = VlcMuted, fontSize = 12.sp)
     }
 }
 
 @Composable
 private fun FreeUpSheet(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val candidates = freeUpCandidates(viewModel.items)
     val bytes = freeUpBytes(viewModel.items)
-    SheetScaffold("Free up space", viewModel::dismissCloudSheet) {
+    SheetScaffold(ui.getString(R.string.ui_free_up_space_5912ec), viewModel::dismissCloudSheet) {
         if (candidates.isEmpty()) {
-            Text("Save titles to the cloud first. Then you can remove the phone copies.", color = VlcMuted)
+            Text(ui.getString(R.string.ui_save_titles_to_the_cloud_first_then_you_can_remove_the_a6c5d3), color = VlcMuted)
             return@SheetScaffold
         }
-        Text("Free up ${formatBytes(bytes)}", color = Color.White, style = MaterialTheme.typography.titleLarge)
-        Text("These videos are already safely stored in the cloud.", color = VlcMuted)
+        Text(ui.getString(R.string.ui_free_up_8fe74c, formatBytes(bytes)), color = Color.White, style = MaterialTheme.typography.titleLarge)
+        Text(ui.getString(R.string.ui_these_videos_are_already_safely_stored_in_the_cloud_8fce14), color = VlcMuted)
         candidates.forEach { item ->
             Column(
                 Modifier
@@ -362,28 +371,29 @@ private fun FreeUpSheet(viewModel: PhoneViewModel) {
                     .padding(vertical = 8.dp),
             ) {
                 Text(item.title, color = Color.White)
-                Text("☁️  ${item.fileSizeBytes?.let(::formatBytes).orEmpty()}", color = VlcMuted)
+                Text(ui.getString(R.string.ui_message_20f3b4, item.fileSizeBytes?.let(::formatBytes).orEmpty()), color = VlcMuted)
             }
         }
         Button(onClick = { candidates.firstOrNull()?.let(viewModel::askFreeUp) }, modifier = Modifier.fillMaxWidth()) {
-            Text("Review & free space")
+            Text(ui.getString(R.string.ui_review_free_space_0a228f))
         }
     }
 }
 
 @Composable
 private fun FreeUpConfirmSheet(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val item = viewModel.freeUpTarget ?: return
     SheetScaffold(item.title, viewModel::dismissCloudSheet) {
-        Text("Safely stored in ${viewModel.saveDestinationName}", color = Color(0xFF79D6B0))
-        Text("Remove local copy?", color = Color.White, style = MaterialTheme.typography.titleMedium)
-        Text("Your copy in ${viewModel.saveDestinationName} will remain available for TV playback.", color = VlcMuted)
+        Text(ui.getString(R.string.ui_safely_stored_in_f9eee7, viewModel.saveDestinationName), color = Color(0xFF79D6B0))
+        Text(ui.getString(R.string.ui_remove_local_copy_67b13a), color = Color.White, style = MaterialTheme.typography.titleMedium)
+        Text(ui.getString(R.string.ui_your_copy_in_will_remain_available_for_tv_playback_bb5796, viewModel.saveDestinationName), color = VlcMuted)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { viewModel.keepOnPhone(item) }, modifier = Modifier.weight(1f)) {
-                Text("Keep on phone")
+                Text(ui.getString(R.string.ui_keep_on_phone_bded0c))
             }
             Button(onClick = { viewModel.confirmFreeUp(item) }, modifier = Modifier.weight(1f)) {
-                Text("Remove")
+                Text(ui.getString(R.string.ui_remove_c3812f))
             }
         }
     }

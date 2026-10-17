@@ -1,5 +1,6 @@
 package app.cablegram.ui
 
+import app.cablegram.R
 import android.net.Uri
 import android.os.SystemClock
 import android.widget.VideoView
@@ -29,6 +30,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun SignatureOpeningScreen(url: String, onFinished: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     BackHandler(onBack = onFinished)
     val focus = remember { FocusRequester() }
     LaunchedEffect(url) { focus.requestFocus() }
@@ -37,7 +39,7 @@ internal fun SignatureOpeningScreen(url: String, onFinished: () -> Unit) {
         SignatureVideo(url, loop = false, muted = false, onFirstCycleFinished = onFinished, onUnavailable = onFinished)
         Text("CABLEGRAM", color = Cyan, modifier = Modifier.align(Alignment.TopStart).padding(28.dp))
         Button(onClick = onFinished, modifier = Modifier.align(Alignment.BottomEnd).padding(28.dp).focusRequester(focus)) {
-            Text("Skip")
+            Text(ui.getString(R.string.ui_skip_28d035))
         }
     }
 }

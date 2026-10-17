@@ -1,0 +1,12 @@
+<resources>
+    <!-- Keep in sync with locales_config.xml and the bundled UI translations. -->
+    <string-array name="ui_languages" translatable="false">
+        <item>en</item>
+        <item>de</item>
+        <item>ar</item>
+        <item>fa</item>
+        <item>ru</item>
+        <item>es</item>
+        <item>it</item>
+    </string-array>
+</resources>

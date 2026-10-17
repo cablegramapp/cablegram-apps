@@ -30,6 +30,7 @@ sealed interface SignInStep {
 class SignInController(
     private val client: () -> CatalogClient,
     private val signedIn: suspend (PhonePairResponse) -> Unit,
+    private val resources: () -> android.content.res.Resources? = { null },
 ) {
     var step by mutableStateOf<SignInStep>(SignInStep.Start)
         private set
@@ -55,14 +56,14 @@ class SignInController(
     suspend fun requestCode(email: String) = run {
         val address = email.trim()
         val failed = client().requestSignInCode(address)
-        if (failed == null) step = SignInStep.Code(address) else message = failed.text()
+        if (failed == null) step = SignInStep.Code(address) else message = failed.text(resources())
     }
 
     suspend fun resendCode() {
         val current = step as? SignInStep.Code ?: return
         run {
             val failed = client().requestSignInCode(current.email)
-            message = failed?.text() ?: "A new code is on its way."
+            message = failed?.text(resources()) ?: (resources()?.getString(R.string.ui_a_new_code_is_on_its_way_8f5c29) ?: "A new code is on its way.")
         }
     }
 
@@ -79,20 +80,20 @@ class SignInController(
         run {
             val docs = legal ?: client().legalDocuments()?.also { legal = it }
             if (docs == null) {
-                message = "Can't reach Cablegram. Check your connection."
+                message = (resources()?.getString(R.string.ui_can_t_reach_cablegram_check_your_connection_0f7f38) ?: "Can't reach Cablegram. Check your connection.")
                 return@run
             }
             when (val result = client().signUp(current.ticket, name.trim(), docs)) {
                 is SignInResult.Failed -> when (result.error) {
                     "terms_outdated" -> {
                         legal = client().legalDocuments() ?: legal
-                        message = "The Terms or Privacy Policy just changed. Please read them again."
+                        message = (resources()?.getString(R.string.ui_the_terms_or_privacy_policy_just_changed_please_read_t_fa977a) ?: "The Terms or Privacy Policy just changed. Please read them again.")
                     }
                     "invalid_signup_ticket" -> {
                         step = SignInStep.Start
-                        message = "That took too long. Start again."
+                        message = (resources()?.getString(R.string.ui_that_took_too_long_start_again_8a44f3) ?: "That took too long. Start again.")
                     }
-                    else -> message = result.text()
+                    else -> message = result.text(resources())
                 }
                 else -> handle(result)
             }
@@ -118,7 +119,7 @@ class SignInController(
                 step = SignInStep.Start
             }
             is SignInResult.SignupRequired -> step = SignInStep.CreateAccount(result.ticket, result.email, result.name.orEmpty())
-            is SignInResult.Failed -> message = result.text()
+            is SignInResult.Failed -> message = result.text(resources())
         }
     }
 
@@ -131,23 +132,23 @@ class SignInController(
 }
 
 /** A short, specific sentence for a failed sign-in step. */
-fun SignInResult.Failed.text(): String = when (error) {
-    "invalid_code" -> "That code isn't right. Check the email and try again."
-    "code_expired" -> "That code expired or was tried too often. Ask for a new one."
-    "code_rate_limited" -> "A code was sent a moment ago. Wait a minute before asking again."
-    "rate_limited" -> "Too many tries. Wait a while and try again."
-    "mail_unavailable" -> "We couldn't send the email. Try again in a few minutes."
-    "disposable_email" -> "Temporary email addresses can't be used. Use an email address you keep."
-    "invalid_google_token" -> "Google sign-in didn't work. Try again."
-    "google_email_unverified" -> "Your Google account's email isn't verified. Sign in with an email code instead."
-    "google_account_mismatch" -> "This email is already linked to another Google account."
-    "google_not_configured" -> "Google sign-in isn't available on this server."
-    "terms_not_accepted" -> "Tick the box to accept the Terms first."
-    "terms_outdated" -> "The Terms just changed. Please read them again."
+fun SignInResult.Failed.text(resources: android.content.res.Resources? = null): String = when (error) {
+    "invalid_code" -> (resources?.getString(R.string.ui_that_code_isn_t_right_check_the_email_and_try_again_38ed4a) ?: "That code isn't right. Check the email and try again.")
+    "code_expired" -> (resources?.getString(R.string.ui_that_code_expired_or_was_tried_too_often_ask_for_a_new_0aa93e) ?: "That code expired or was tried too often. Ask for a new one.")
+    "code_rate_limited" -> (resources?.getString(R.string.ui_a_code_was_sent_a_moment_ago_wait_a_minute_before_aski_cc929d) ?: "A code was sent a moment ago. Wait a minute before asking again.")
+    "rate_limited" -> (resources?.getString(R.string.ui_too_many_tries_wait_a_while_and_try_again_114288) ?: "Too many tries. Wait a while and try again.")
+    "mail_unavailable" -> (resources?.getString(R.string.ui_we_couldn_t_send_the_email_try_again_in_a_few_minutes_fb5f5f) ?: "We couldn't send the email. Try again in a few minutes.")
+    "disposable_email" -> (resources?.getString(R.string.ui_temporary_email_addresses_can_t_be_used_use_an_email_a_5c8d8f) ?: "Temporary email addresses can't be used. Use an email address you keep.")
+    "invalid_google_token" -> (resources?.getString(R.string.ui_google_sign_in_didn_t_work_try_again_78c785) ?: "Google sign-in didn't work. Try again.")
+    "google_email_unverified" -> (resources?.getString(R.string.ui_your_google_account_s_email_isn_t_verified_sign_in_wit_c385f8) ?: "Your Google account's email isn't verified. Sign in with an email code instead.")
+    "google_account_mismatch" -> (resources?.getString(R.string.ui_this_email_is_already_linked_to_another_google_account_05cce9) ?: "This email is already linked to another Google account.")
+    "google_not_configured" -> (resources?.getString(R.string.ui_google_sign_in_isn_t_available_on_this_server_abf693) ?: "Google sign-in isn't available on this server.")
+    "terms_not_accepted" -> (resources?.getString(R.string.ui_tick_the_box_to_accept_the_terms_first_5e5035) ?: "Tick the box to accept the Terms first.")
+    "terms_outdated" -> (resources?.getString(R.string.ui_the_terms_just_changed_please_read_them_again_648707) ?: "The Terms just changed. Please read them again.")
     else -> when (status) {
-        null -> "Can't reach Cablegram. Check your connection or the API server in Settings."
-        400 -> "Check the email address and try again."
-        else -> "Something went wrong. Try again in a moment."
+        null -> (resources?.getString(R.string.ui_can_t_reach_cablegram_check_your_connection_or_the_api_e3f77a) ?: "Can't reach Cablegram. Check your connection or the API server in Settings.")
+        400 -> (resources?.getString(R.string.ui_check_the_email_address_and_try_again_5e6910) ?: "Check the email address and try again.")
+        else -> (resources?.getString(R.string.ui_something_went_wrong_try_again_in_a_moment_156a12) ?: "Something went wrong. Try again in a moment.")
     }
 }
 
@@ -173,12 +174,12 @@ suspend fun googleIdToken(activity: Context, serverClientId: String): GoogleIdRe
         if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             GoogleIdResult.Token(GoogleIdTokenCredential.createFrom(credential.data).idToken, nonce)
         } else {
-            GoogleIdResult.Failed("Google didn't return an account. Try again, or use an email code.")
+            GoogleIdResult.Failed(activity.resources.getString(R.string.ui_google_didn_t_return_an_account_try_again_or_use_an_em_555820))
         }
     } catch (_: GetCredentialCancellationException) {
         GoogleIdResult.Cancelled
     } catch (e: GetCredentialException) {
         PairLog.w("Google sign-in failed: ${e.type}")
-        GoogleIdResult.Failed("Google sign-in isn't available right now. Use an email code instead.")
+        GoogleIdResult.Failed(activity.resources.getString(R.string.ui_google_sign_in_isn_t_available_right_now_use_an_email__d91f26))
     }
 }

@@ -1,5 +1,6 @@
 package app.cablegram.ui
 
+import app.cablegram.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -48,6 +49,7 @@ private val WHAT_YOU_CAN_DO = listOf(
  */
 @Composable
 internal fun ConnectedWelcomeDialog(visible: Boolean, onDismiss: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (!visible) return
     // The platform's default dialog width is far narrower than asked for (440 dp on a 960 dp Chromecast), which
     // wrapped the text into a column taller than the screen and squashed the button. Capped to the screen, it
@@ -65,10 +67,10 @@ internal fun ConnectedWelcomeDialog(visible: Boolean, onDismiss: () -> Unit) {
         ) {
             BrandMark()
             Spacer(Modifier.height(20.dp))
-            Text("This TV is connected", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Text(ui.getString(R.string.ui_this_tv_is_connected_c944e9), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
             Text(
-                "Your phone is the remote and the library. Add videos in the phone app's Import tab and they appear here within a few seconds.",
+                ui.getString(R.string.ui_your_phone_is_the_remote_and_the_library_add_videos_in_fc9a65),
                 color = Muted,
                 fontSize = 17.sp,
                 lineHeight = 25.sp,
@@ -84,7 +86,7 @@ internal fun ConnectedWelcomeDialog(visible: Boolean, onDismiss: () -> Unit) {
                 androidx.compose.runtime.withFrameNanos { }
                 runCatching { startFocus.requestFocus() }
             }
-            Button(onClick = onDismiss, modifier = Modifier.focusRequester(startFocus)) { Text("Start watching") }
+            Button(onClick = onDismiss, modifier = Modifier.focusRequester(startFocus)) { Text(ui.getString(R.string.ui_start_watching_89562c)) }
         }
     }
 }

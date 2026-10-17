@@ -42,6 +42,8 @@ class ShareReceiverActivity : ComponentActivity() {
             }
         }
         setContent {
+            PhoneLanguage {
+            val ui = androidx.compose.ui.platform.LocalContext.current.resources
             PhoneTheme {
                 if (viewModel.pendingPrivacyItem != null) {
                     PrivacyPrompt(viewModel)
@@ -54,13 +56,13 @@ class ShareReceiverActivity : ComponentActivity() {
                     ) {
                         // No Surface sets a content color here; without an explicit
                         // color this text rendered black on the dark background.
-                        Text("Adding to library", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onBackground)
+                        Text(ui.getString(R.string.ui_adding_to_library_7ca806), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onBackground)
                         Text(
                             viewModel.status
                                 ?: when {
-                                    uri != null -> "Copying $name…"
-                                    webUrl != null -> "Analyzing link…"
-                                    else -> "That share did not include a video or web link."
+                                    uri != null -> ui.getString(R.string.ui_copying_26b256, name)
+                                    webUrl != null -> ui.getString(R.string.ui_analyzing_link_c9a741)
+                                    else -> ui.getString(R.string.ui_that_share_did_not_include_a_video_or_web_link_496fff)
                                 },
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center,
@@ -69,22 +71,21 @@ class ShareReceiverActivity : ComponentActivity() {
                         if (viewModel.busy) {
                             CircularProgressIndicator()
                         } else {
-                            Button(onClick = { goToLibrary() }) { Text("Open library") }
+                            Button(onClick = { goToLibrary() }) { Text(ui.getString(R.string.ui_open_library_24974a)) }
                         }
                     }
                 }
-                LaunchedEffect(viewModel.busy, viewModel.status, viewModel.pendingPrivacyItem) {
+                LaunchedEffect(viewModel.busy, viewModel.sharedImportSucceeded, viewModel.pendingPrivacyItem) {
                     if (
                         !viewModel.busy &&
                         viewModel.pendingPrivacyItem == null &&
-                        viewModel.status != null &&
-                        viewModel.status?.startsWith("Could") != true &&
-                        viewModel.status?.startsWith("Name this") != true
+                        viewModel.sharedImportSucceeded == true
                     ) {
                         delay(700)
                         goToLibrary()
                     }
                 }
+            }
             }
         }
     }

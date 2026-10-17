@@ -67,90 +67,92 @@ private class TourPage(
     val recommended: Boolean = false,
 )
 
-private val TOUR_PAGES = listOf(
+private fun tourPages(ui: android.content.res.Resources) = listOf(
     TourPage(
         TourStep.Welcome, Icons.Default.Movie,
-        "Your videos.\nYour big screen.",
-        "Cablegram turns your phone into the library and remote for your TV. Here's a quick look at what you can set up. Everything is optional.",
+        ui.getString(R.string.ui_your_videos_your_big_screen_b7a07b),
+        ui.getString(R.string.ui_cablegram_turns_your_phone_into_the_library_and_remote_68c907),
         listOf(
-            "Your phone keeps the library and does the setup.",
-            "Your TV plays your videos.",
-            "Your videos stay in storage you own. Cablegram doesn't provide movies.",
+            ui.getString(R.string.ui_your_phone_keeps_the_library_and_does_the_setup_e69ab1),
+            ui.getString(R.string.ui_your_tv_plays_your_videos_759124),
+            ui.getString(R.string.ui_your_videos_stay_in_storage_you_own_cablegram_doesn_t__0ccf72),
         ),
     ),
     TourPage(
         TourStep.Tv, Icons.Default.Tv,
-        "Connect your TV",
-        "Install Cablegram on your Android TV or Google TV and open it. Then enter the six-digit code it shows.",
+        ui.getString(R.string.ui_connect_your_tv_4ad8a8),
+        ui.getString(R.string.ui_install_cablegram_on_your_android_tv_or_google_tv_and__d27b55),
         listOf(
-            "Pick a title on your phone and it plays on the TV.",
-            "Add more TVs whenever you like.",
-            "Keep your phone and TV on the same Wi-Fi to stream from the phone.",
+            ui.getString(R.string.ui_pick_a_title_on_your_phone_and_it_plays_on_the_tv_8e206a),
+            ui.getString(R.string.ui_add_more_tvs_whenever_you_like_46dfbc),
+            ui.getString(R.string.ui_keep_your_phone_and_tv_on_the_same_wi_fi_to_stream_fro_e080cd),
         ),
-        where = "Settings › Your TVs › Connect a TV",
-        action = "Connect a TV",
+        where = ui.getString(R.string.ui_settings_your_tvs_connect_a_tv_231c90),
+        action = ui.getString(R.string.ui_connect_a_tv_0ff3f5),
     ),
     TourPage(
         TourStep.Telegram, Icons.AutoMirrored.Filled.Send,
-        "Watch without your phone",
-        "Connect your own Telegram account. A private Cablegram channel becomes cloud storage for your videos, using the space that comes with your account.",
+        ui.getString(R.string.ui_watch_without_your_phone_7d2fb5),
+        ui.getString(R.string.ui_connect_your_own_telegram_account_a_private_cablegram__03df9a),
         listOf(
-            "Your TV plays straight from Telegram, so your phone can be off or away from home.",
-            "Share or forward a video into the private channel and it shows up in your library.",
-            "Cablegram only uses its own private channel, never your chats or contacts. Your number and login code go only to Telegram.",
+            ui.getString(R.string.ui_your_tv_plays_straight_from_telegram_so_your_phone_can_a79536),
+            ui.getString(R.string.ui_share_or_forward_a_video_into_the_private_channel_and__97bd0c),
+            ui.getString(R.string.ui_cablegram_only_uses_its_own_private_channel_never_your_dd2890),
         ),
-        where = "Import › Connected storage › Telegram",
-        action = "Connect Telegram",
+        where = ui.getString(R.string.ui_import_connected_storage_telegram_f2fb3f),
+        action = ui.getString(R.string.ui_connect_telegram_00c799),
         recommended = true,
     ),
     TourPage(
         TourStep.Drive, Icons.Default.Cloud,
-        "Keep a copy in Google Drive",
-        "Save a cloud copy of any title to your own Google Drive. Your TV can play it when your phone isn't around, and you can free up space on the phone.",
+        ui.getString(R.string.ui_keep_a_copy_in_google_drive_8b9c00),
+        ui.getString(R.string.ui_save_a_cloud_copy_of_any_title_to_your_own_google_driv_3aac39),
         listOf(
-            "Sign in with Google. It takes about a minute.",
-            "Cablegram can only reach the files it creates, never the rest of your Drive.",
-            "Have your own bucket? Cloudflare R2 works too.",
+            ui.getString(R.string.ui_sign_in_with_google_it_takes_about_a_minute_277553),
+            ui.getString(R.string.ui_cablegram_can_only_reach_the_files_it_creates_never_th_69bc5f),
+            ui.getString(R.string.ui_have_your_own_bucket_cloudflare_r2_works_too_431345),
         ),
-        where = "Settings › Storage › Manage cloud storage, or Save to cloud on a title",
-        action = "Connect Google Drive",
+        where = ui.getString(R.string.ui_settings_storage_manage_cloud_storage_or_save_to_cloud_80ea66),
+        action = ui.getString(R.string.ui_connect_google_drive_4406cf),
     ),
     TourPage(
         TourStep.Subtitles, Icons.Default.Subtitles,
-        "Subtitles in your language",
-        "Open a title and tap Find subtitles. Cablegram finds subtitles that match your file and sends the one you choose to your TV.",
+        ui.getString(R.string.ui_subtitles_in_your_language_6e5267),
+        ui.getString(R.string.ui_open_a_title_and_tap_find_subtitles_cablegram_finds_su_892bc5),
         listOf(
-            "Uses your own free account at SubDL or OpenSubtitles. One is enough.",
-            "Searches go straight from your phone to that site.",
-            "Subtitle files saved next to your video are picked up too.",
+            ui.getString(R.string.ui_uses_your_own_free_account_at_subdl_or_opensubtitles_o_35b12b),
+            ui.getString(R.string.ui_searches_go_straight_from_your_phone_to_that_site_f137b0),
+            ui.getString(R.string.ui_subtitle_files_saved_next_to_your_video_are_picked_up__665d7f),
         ),
-        where = "Settings › Subtitle accounts, then a title › Find subtitles",
-        action = "Add a subtitle account",
+        where = ui.getString(R.string.ui_settings_subtitle_accounts_then_a_title_find_subtitles_60e1db),
+        action = ui.getString(R.string.ui_add_a_subtitle_account_ba3be8),
     ),
     TourPage(
         TourStep.Ready, Icons.Default.PlayCircle,
-        "You're all set",
-        "Start by importing a few videos from your phone. You can open this tour again from Settings.",
+        ui.getString(R.string.ui_you_re_all_set_f08920),
+        ui.getString(R.string.ui_start_by_importing_a_few_videos_from_your_phone_you_ca_1fb185),
         emptyList(),
-        action = "Import videos",
+        action = ui.getString(R.string.ui_import_videos_fec728),
     ),
 )
 
 /** Already set up: the page shows that instead of its setup button. */
-private fun connectedLabel(viewModel: PhoneViewModel, step: TourStep, subtitlesConnected: Boolean): String? = when (step) {
-    TourStep.Tv -> "TV connected".takeIf { viewModel.paired }
-    TourStep.Telegram -> "Telegram connected".takeIf { viewModel.telegramLink?.linked == true }
-    TourStep.Drive -> "Cloud storage connected".takeIf { viewModel.cloudConnected }
-    TourStep.Subtitles -> "Subtitle account connected".takeIf { subtitlesConnected }
+private fun connectedLabel(viewModel: PhoneViewModel, step: TourStep, subtitlesConnected: Boolean, ui: android.content.res.Resources): String? = when (step) {
+    TourStep.Tv -> ui.getString(R.string.ui_tv_connected_5710cb).takeIf { viewModel.paired }
+    TourStep.Telegram -> ui.getString(R.string.ui_telegram_connected_815464).takeIf { viewModel.telegramLink?.linked == true }
+    TourStep.Drive -> ui.getString(R.string.ui_cloud_storage_connected_fe282c).takeIf { viewModel.cloudConnected }
+    TourStep.Subtitles -> ui.getString(R.string.ui_subtitle_account_connected_c16774).takeIf { subtitlesConnected }
     TourStep.Welcome, TourStep.Ready -> null
 }
 
 /** First-run introduction to the phone app: what each feature is for, why, and where to set it up later. */
 @Composable
 internal fun WelcomeTour(viewModel: PhoneViewModel) {
-    val pager = rememberPagerState { TOUR_PAGES.size }
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
+    val pages = remember(ui.configuration) { tourPages(ui) }
+    val pager = rememberPagerState { pages.size }
     val scope = rememberCoroutineScope()
-    val last = pager.currentPage == TOUR_PAGES.lastIndex
+    val last = pager.currentPage == pages.lastIndex
     // Reading a saved account decrypts it: once per credential change, not on every recomposition.
     val subtitlesConnected = remember(viewModel.subtitleCredentialRevision) {
         viewModel.subtitleProviderConfigured("subdl") || viewModel.subtitleProviderConfigured("opensubtitles")
@@ -162,33 +164,33 @@ internal fun WelcomeTour(viewModel: PhoneViewModel) {
     Column(Modifier.fillMaxSize().background(VlcBlack).safeDrawingPadding()) {
         Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             BrandMark(Modifier.weight(1f), compact = true)
-            if (!last) TextButton(onClick = viewModel::closeWelcomeTour, modifier = Modifier.maestro(MaestroIds.TOUR_SKIP)) { Text("Skip") }
+            if (!last) TextButton(onClick = viewModel::closeWelcomeTour, modifier = Modifier.maestro(MaestroIds.TOUR_SKIP)) { Text(ui.getString(R.string.ui_skip_28d035)) }
         }
         HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.Top) { index ->
-            TourPageContent(TOUR_PAGES[index], connectedLabel(viewModel, TOUR_PAGES[index].step, subtitlesConnected))
+            TourPageContent(pages[index], connectedLabel(viewModel, pages[index].step, subtitlesConnected, ui))
         }
         Column(
             Modifier.widthIn(max = 480.dp).fillMaxWidth().align(Alignment.CenterHorizontally).padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            PageDots(pager.currentPage, TOUR_PAGES.size, Modifier.align(Alignment.CenterHorizontally))
-            val page = TOUR_PAGES[pager.currentPage]
+            PageDots(pager.currentPage, pages.size, Modifier.align(Alignment.CenterHorizontally))
+            val page = pages[pager.currentPage]
             if (last) {
                 Button(onClick = { viewModel.startFromTour(TourStep.Ready) }, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro(MaestroIds.TOUR_ACTION)) {
                     Text(page.action.orEmpty())
                 }
-                OutlinedButton(onClick = viewModel::closeWelcomeTour, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Go to my library") }
+                OutlinedButton(onClick = viewModel::closeWelcomeTour, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(ui.getString(R.string.ui_go_to_my_library_f23fc1)) }
             } else {
-                val done = connectedLabel(viewModel, page.step, subtitlesConnected)
+                val done = connectedLabel(viewModel, page.step, subtitlesConnected, ui)
                 if (page.action != null && done == null) {
                     OutlinedButton(onClick = { viewModel.startFromTour(page.step) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.TOUR_ACTION)) {
-                        Text("${page.action} now")
+                        Text(ui.getString(R.string.ui_now_cecd79, page.action))
                     }
                 }
                 Button(
                     onClick = { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro(MaestroIds.TOUR_NEXT),
-                ) { Text(if (pager.currentPage == 0) "Show me around" else "Next") }
+                ) { Text(if (pager.currentPage == 0) ui.getString(R.string.ui_show_me_around_80afe5) else ui.getString(R.string.ui_next_1ff57a)) }
             }
         }
     }
@@ -196,6 +198,7 @@ internal fun WelcomeTour(viewModel: PhoneViewModel) {
 
 @Composable
 private fun TourPageContent(page: TourPage, done: String?) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(
             Modifier.widthIn(max = 480.dp).fillMaxWidth().verticalScroll(rememberScrollState())
@@ -208,7 +211,7 @@ private fun TourPageContent(page: TourPage, done: String?) {
                 }
                 if (page.recommended) {
                     Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(50)) {
-                        Text("Recommended", Modifier.padding(horizontal = 12.dp, vertical = 6.dp), color = VlcOrange, style = MaterialTheme.typography.labelMedium)
+                        Text(ui.getString(R.string.ui_recommended_d70604), Modifier.padding(horizontal = 12.dp, vertical = 6.dp), color = VlcOrange, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -225,7 +228,7 @@ private fun TourPageContent(page: TourPage, done: String?) {
             page.where?.let { where ->
                 Surface(color = VlcPanel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Find it later", color = VlcMuted, style = MaterialTheme.typography.labelMedium)
+                        Text(ui.getString(R.string.ui_find_it_later_bcf629), color = VlcMuted, style = MaterialTheme.typography.labelMedium)
                         Text(where, color = Color.White, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
@@ -242,8 +245,9 @@ private fun TourPageContent(page: TourPage, done: String?) {
 
 @Composable
 private fun PageDots(current: Int, count: Int, modifier: Modifier = Modifier) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Row(
-        modifier.semantics { contentDescription = "Page ${current + 1} of $count" },
+        modifier.semantics { contentDescription = ui.getString(R.string.ui_page_of_8b9ffa, (current + 1).toString(), (count).toString()) },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

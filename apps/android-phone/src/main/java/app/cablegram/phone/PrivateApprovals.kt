@@ -97,8 +97,9 @@ object PrivateApprovals {
     const val EXTRA_KIND = "kind"
 
     fun notifyPending(context: Context, approval: PendingApproval) {
+        val ui = context.deviceLanguageResources()
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
-        manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, "Playback approvals", NotificationManager.IMPORTANCE_HIGH))
+        manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, ui.getString(R.string.ui_playback_approvals_e4b945), NotificationManager.IMPORTANCE_HIGH))
         fun action(name: String, code: Int) = PendingIntent.getBroadcast(
             context,
             code,
@@ -107,13 +108,13 @@ object PrivateApprovals {
                 .putExtra(EXTRA_KIND, approval.kind.name),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val tv = approval.tvName?.takeIf { it.isNotBlank() } ?: "Your TV"
+        val tv = approval.tvName?.takeIf { it.isNotBlank() } ?: ui.getString(R.string.ui_your_tv_f04452)
         val (title, text) = when (approval.kind) {
-            ApprovalKind.Profile -> "$tv wants to open ${approval.title ?: "a profile"}" to
-                if (approval.sharedTv) "Other accounts use this TV too. Allow it only if you are at that TV." else "Allow it only if you are at that TV."
-            ApprovalKind.Playback -> "$tv wants to play a private title" to (approval.title ?: "A private title is waiting for your approval")
+            ApprovalKind.Profile -> ui.getString(R.string.ui_wants_to_open_5ee092, tv, approval.title ?: ui.getString(R.string.ui_a_profile_4913b3)) to
+                if (approval.sharedTv) ui.getString(R.string.ui_other_accounts_use_this_tv_too_allow_it_only_if_you_ar_7a66a8) else ui.getString(R.string.ui_allow_it_only_if_you_are_at_that_tv_2f7976)
+            ApprovalKind.Playback -> ui.getString(R.string.ui_wants_to_play_a_private_title_b90ffa, tv) to (approval.title ?: ui.getString(R.string.ui_a_private_title_is_waiting_for_your_approval_43ca2a))
         }
-        val allowLabel = if (approval.kind == ApprovalKind.Profile) "Allow" else "Allow once"
+        val allowLabel = if (approval.kind == ApprovalKind.Profile) ui.getString(R.string.ui_allow_e213c1) else ui.getString(R.string.ui_allow_once_168511)
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
@@ -122,7 +123,7 @@ object PrivateApprovals {
             // Tapping opens the app, where the same request is shown as a card.
             .setContentIntent(PhoneActivity.openIntent(context))
             .addAction(Notification.Action.Builder(null, allowLabel, action(ACTION_APPROVE, approval.attemptId.hashCode())).build())
-            .addAction(Notification.Action.Builder(null, "Not now", action(ACTION_DENY, approval.attemptId.hashCode() + 1)).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_not_now_a0e63d), action(ACTION_DENY, approval.attemptId.hashCode() + 1)).build())
             .setAutoCancel(true)
             .build()
         runCatching { manager.notify(notifyId(approval.attemptId), notification) }

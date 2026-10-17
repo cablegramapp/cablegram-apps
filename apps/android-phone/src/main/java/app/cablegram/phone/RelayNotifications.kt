@@ -69,9 +69,10 @@ object RelayConsent {
     }
 
     private fun ask(context: Context) {
+        val ui = context.deviceLanguageResources()
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (Build.VERSION.SDK_INT >= 26) {
-            manager.createNotificationChannel(NotificationChannel(CHANNEL, "Mobile data for TV streaming", NotificationManager.IMPORTANCE_HIGH))
+            manager.createNotificationChannel(NotificationChannel(CHANNEL, ui.getString(R.string.ui_mobile_data_for_tv_streaming_4ce339), NotificationManager.IMPORTANCE_HIGH))
         }
         fun action(name: String, code: Int) = PendingIntent.getBroadcast(
             context, code, Intent(context, RelayConsentReceiver::class.java).setAction(name),
@@ -81,14 +82,14 @@ object RelayConsent {
         else @Suppress("DEPRECATION") Notification.Builder(context)
         val notification = builder
             .setSmallIcon(R.drawable.ic_stat_cablegram)
-            .setContentTitle("Stream to your TV over mobile data?")
+            .setContentTitle(ui.getString(R.string.ui_stream_to_your_tv_over_mobile_data_25ced7))
             .setStyle(Notification.BigTextStyle().bigText(
-                "Your TV can't reach this phone on Wi‑Fi. Streaming through the Cablegram relay uploads the video over your mobile data plan (about 2–3 GB per hour of HD video).",
+                ui.getString(R.string.ui_your_tv_can_t_reach_this_phone_on_wi_fi_streaming_thro_8de181),
             ))
             .setAutoCancel(true)
-            .addAction(Notification.Action.Builder(null, "Allow this time", action(ACTION_ALLOW_ONCE, 1)).build())
-            .addAction(Notification.Action.Builder(null, "Always allow", action(ACTION_ALLOW_ALWAYS, 2)).build())
-            .addAction(Notification.Action.Builder(null, "Don't allow", action(ACTION_DENY, 3)).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_allow_this_time_0a5d24), action(ACTION_ALLOW_ONCE, 1)).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_always_allow_977618), action(ACTION_ALLOW_ALWAYS, 2)).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_don_t_allow_9803bd), action(ACTION_DENY, 3)).build())
             .build()
         runCatching { manager.notify(NOTIFICATION_ID, notification) }
     }

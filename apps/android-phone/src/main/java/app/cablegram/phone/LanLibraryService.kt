@@ -257,9 +257,10 @@ class LanLibraryService : Service() {
      * has something playing on the TV — a remote for it.
      */
     private fun notification(): Notification {
+        val ui = this.deviceLanguageResources()
         val channelId = "lan_library"
         getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(NotificationChannel(channelId, "Library on TV", NotificationManager.IMPORTANCE_LOW))
+            .createNotificationChannel(NotificationChannel(channelId, ui.getString(R.string.ui_library_on_tv_11874a), NotificationManager.IMPORTANCE_LOW))
         val relay = relayText
         val cast = CastSession.state.value
         val builder = Notification.Builder(this, channelId)
@@ -268,12 +269,12 @@ class LanLibraryService : Service() {
             .setShowWhen(false)
         if (cast == null) {
             return builder
-                .setContentTitle(if (relay != null) "Cablegram is streaming to your TV" else "Cablegram library is on your TV")
-                .setContentText(relay ?: "Same Wi‑Fi streams directly; elsewhere Cablegram can use the relay.")
+                .setContentTitle(if (relay != null) ui.getString(R.string.ui_cablegram_is_streaming_to_your_tv_953537) else ui.getString(R.string.ui_cablegram_library_is_on_your_tv_f2b773))
+                .setContentText(relay ?: ui.getString(R.string.ui_same_wi_fi_streams_directly_elsewhere_cablegram_can_us_8633be))
                 .setContentIntent(PhoneActivity.openIntent(this))
                 .addAction(Notification.Action.Builder(
                     android.graphics.drawable.Icon.createWithResource(this, android.R.drawable.ic_menu_close_clear_cancel),
-                    "Stop",
+                    ui.getString(R.string.ui_stop_cae7d5),
                     PendingIntent.getService(
                         this, 0, Intent(this, LanLibraryService::class.java).setAction(ACTION_STOP),
                         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
@@ -291,17 +292,17 @@ class LanLibraryService : Service() {
         ).build()
         return builder
             .setContentTitle(cast.title)
-            .setContentText(listOfNotNull((if (cast.paused) "Paused on " else "Playing on ") + cast.tvName, relay).joinToString(" · "))
+            .setContentText(listOfNotNull((if (cast.paused) ui.getString(R.string.ui_paused_on_a7fb4a) else ui.getString(R.string.ui_playing_on_d56a8e)) + cast.tvName, relay).joinToString(" · "))
             .setContentIntent(PhoneActivity.openIntent(this, PhoneTab.Remote))
             .setCategory(Notification.CATEGORY_TRANSPORT)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .addAction(action(android.R.drawable.ic_media_rew, "Back ${CastRemoteReceiver.SEEK_SECONDS} seconds", CastRemoteReceiver.ACTION_REWIND))
+            .addAction(action(android.R.drawable.ic_media_rew, ui.getString(R.string.ui_back_seconds_fa7e12, (CastRemoteReceiver.SEEK_SECONDS).toString()), CastRemoteReceiver.ACTION_REWIND))
             .addAction(
-                if (cast.paused) action(android.R.drawable.ic_media_play, "Resume", CastRemoteReceiver.ACTION_TOGGLE)
-                else action(android.R.drawable.ic_media_pause, "Pause", CastRemoteReceiver.ACTION_TOGGLE),
+                if (cast.paused) action(android.R.drawable.ic_media_play, ui.getString(R.string.ui_resume_d640c7), CastRemoteReceiver.ACTION_TOGGLE)
+                else action(android.R.drawable.ic_media_pause, ui.getString(R.string.ui_pause_858e4b), CastRemoteReceiver.ACTION_TOGGLE),
             )
-            .addAction(action(android.R.drawable.ic_media_ff, "Forward ${CastRemoteReceiver.SEEK_SECONDS} seconds", CastRemoteReceiver.ACTION_FORWARD))
-            .addAction(action(android.R.drawable.ic_menu_close_clear_cancel, "Stop", CastRemoteReceiver.ACTION_STOP))
+            .addAction(action(android.R.drawable.ic_media_ff, ui.getString(R.string.ui_forward_seconds_55855b, (CastRemoteReceiver.SEEK_SECONDS).toString()), CastRemoteReceiver.ACTION_FORWARD))
+            .addAction(action(android.R.drawable.ic_menu_close_clear_cancel, ui.getString(R.string.ui_stop_cae7d5), CastRemoteReceiver.ACTION_STOP))
             .setStyle(Notification.MediaStyle().setShowActionsInCompactView(0, 1, 2))
             .build()
     }

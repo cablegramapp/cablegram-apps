@@ -29,32 +29,32 @@ const val PROVIDER_GOOGLE_DRIVE = "google_drive"
 const val PROVIDER_CLOUDFLARE_R2 = "cloudflare_r2"
 
 /** What this build knows how to connect, with the words that describe each. Others the server lists are left out. */
-private val KNOWN_PROVIDERS = mapOf(
-    PROVIDER_GOOGLE_DRIVE to Triple("Google Drive", "Sign in with Google", "about 1 minute"),
-    PROVIDER_CLOUDFLARE_R2 to Triple("Cloudflare R2", "Use your own bucket and keys", "about 5 minutes · for advanced users"),
+private fun knownProviders(resources: android.content.res.Resources? = null) = mapOf(
+    PROVIDER_GOOGLE_DRIVE to Triple("Google Drive", (resources?.getString(R.string.ui_sign_in_with_google_1dbcee) ?: "Sign in with Google"), "about 1 minute"),
+    PROVIDER_CLOUDFLARE_R2 to Triple("Cloudflare R2", (resources?.getString(R.string.ui_use_your_own_bucket_and_keys_1a0fdb) ?: "Use your own bucket and keys"), (resources?.getString(R.string.ui_about_5_minutes_for_advanced_users_1d6ff3) ?: "about 5 minutes · for advanced users")),
 )
 
 /** A provider's display name for messages: the server's, else this build's, else a neutral phrase. */
-fun providerName(id: String?, status: StorageStatusResponse? = null): String =
+fun providerName(id: String?, status: StorageStatusResponse? = null, resources: android.content.res.Resources? = null): String =
     status?.providers?.firstOrNull { it.id == id }?.name?.takeIf { it.isNotBlank() }
-        ?: KNOWN_PROVIDERS[id]?.first
-        ?: "your own storage"
+        ?: knownProviders(resources)[id]?.first
+        ?: (resources?.getString(R.string.ui_your_own_storage_cc541c) ?: "your own storage")
 
 /**
  * The "Your own storage" list: the providers the server is set up for, in the server's order. While one is
  * connected the rest are turned off; a connection that needs signing in again is marked on its own row.
  */
-fun providerRows(status: StorageStatusResponse?): List<ProviderRow> {
-    val offered = status?.providers.orEmpty().filter { it.configured && it.id in KNOWN_PROVIDERS }
+fun providerRows(status: StorageStatusResponse?, resources: android.content.res.Resources? = null): List<ProviderRow> {
+    val offered = status?.providers.orEmpty().filter { it.configured && it.id in knownProviders(resources) }
     val active = status?.connection?.takeIf { it.status == "active" }
     val broken = status?.connections.orEmpty().firstOrNull { it.status == "error" && active == null }
     return offered.map { provider ->
-        val (name, summary, duration) = KNOWN_PROVIDERS.getValue(provider.id)
+        val (name, summary, duration) = knownProviders(resources).getValue(provider.id)
         val label = provider.name.ifBlank { name }
         val (state, note) = when {
             active?.provider == provider.id -> ProviderState.Connected to null
-            active != null -> ProviderState.Locked to "Disconnect ${providerName(active.provider, status)} to switch"
-            broken?.provider == provider.id -> ProviderState.NeedsSignIn to "Sign in again to keep using it"
+            active != null -> ProviderState.Locked to (resources?.getString(R.string.ui_disconnect_to_switch_5d456e, providerName(active.provider, status, resources = resources)) ?: "Disconnect ${providerName(active.provider, status)} to switch")
+            broken?.provider == provider.id -> ProviderState.NeedsSignIn to (resources?.getString(R.string.ui_sign_in_again_to_keep_using_it_3abfd0) ?: "Sign in again to keep using it")
             else -> ProviderState.Available to null
         }
         ProviderRow(provider.id, label, summary, duration, state, note)
@@ -65,9 +65,9 @@ fun providerRows(status: StorageStatusResponse?): List<ProviderRow> {
 fun hasOwnStorageProvider(status: StorageStatusResponse?): Boolean = providerRows(status).isNotEmpty()
 
 /** "Google Drive · name@gmail.com · 12.4 GB free": the connected card's line. */
-fun connectedSummary(connection: StorageConnection, status: StorageStatusResponse? = null): String {
-    val base = connection.displayLabel?.takeIf { it.isNotBlank() } ?: providerName(connection.provider, status)
-    val free = freeSpace(connection.quota)?.let { "${formatBytes(it)} free" }
+fun connectedSummary(connection: StorageConnection, status: StorageStatusResponse? = null, resources: android.content.res.Resources? = null): String {
+    val base = connection.displayLabel?.takeIf { it.isNotBlank() } ?: providerName(connection.provider, status, resources = resources)
+    val free = freeSpace(connection.quota)?.let { (resources?.getString(R.string.ui_free_97e1da, formatBytes(it)) ?: "${formatBytes(it)} free") }
     return listOfNotNull(base, free).joinToString(" · ")
 }
 
@@ -75,15 +75,15 @@ fun connectedSummary(connection: StorageConnection, status: StorageStatusRespons
 fun freeSpace(quota: StorageQuota?): Long? = quota?.limitBytes?.let { (it - quota.usedBytes).coerceAtLeast(0) }
 
 /** Where a save goes, for the words on every save sheet: the connected provider. Saves need one (CAB-38). */
-fun saveDestination(status: StorageStatusResponse?): String {
-    val active = status?.connection?.takeIf { it.status == "active" } ?: return "your own storage"
-    return providerName(active.provider, status)
+fun saveDestination(status: StorageStatusResponse?, resources: android.content.res.Resources? = null): String {
+    val active = status?.connection?.takeIf { it.status == "active" } ?: return (resources?.getString(R.string.ui_your_own_storage_cc541c) ?: "your own storage")
+    return providerName(active.provider, status, resources = resources)
 }
 
 /** The line under the destination on a save sheet. Own storage has no fixed size unless the provider reports one. */
-fun destinationSpaceLine(status: StorageStatusResponse?, cablegramAvailable: Long): String {
-    val active = status?.connection?.takeIf { it.status == "active" } ?: return "${formatBytes(cablegramAvailable)} available"
-    return freeSpace(active.quota)?.let { "${formatBytes(it)} free" } ?: "In your own storage"
+fun destinationSpaceLine(status: StorageStatusResponse?, cablegramAvailable: Long, resources: android.content.res.Resources? = null): String {
+    val active = status?.connection?.takeIf { it.status == "active" } ?: return (resources?.getString(R.string.ui_available_9ffcbc, formatBytes(cablegramAvailable)) ?: "${formatBytes(cablegramAvailable)} available")
+    return freeSpace(active.quota)?.let { (resources?.getString(R.string.ui_free_97e1da, formatBytes(it)) ?: "${formatBytes(it)} free") } ?: (resources?.getString(R.string.ui_in_your_own_storage_e2575f) ?: "In your own storage")
 }
 
 /** What `cablegram://storage?provider=…&result=…` carried. */
@@ -111,23 +111,23 @@ fun parseStorageReturn(uri: String): StorageReturn? = runCatching<StorageReturn?
 const val DRIVE_PERMISSION_TEXT = "See, edit, create, and delete only the specific Google Drive files you use with this app"
 
 /** What the app says just before it opens Google's sign-in. */
-fun googleSignInPreparation(): String =
-    "Google will show a box beside \"$DRIVE_PERMISSION_TEXT\". Tick it, then tap Continue. Without it Cablegram can't save to your Drive. " +
-        "It only reaches the files Cablegram creates, never the rest of your Drive."
+fun googleSignInPreparation( resources: android.content.res.Resources? = null): String =
+    (resources?.getString(R.string.ui_google_will_show_a_box_beside_tick_it_then_tap_continu_c21e7b, DRIVE_PERMISSION_TEXT) ?: "Google will show a box beside \"$DRIVE_PERMISSION_TEXT\". Tick it, then tap Continue. Without it Cablegram can't save to your Drive. ") +
+        (resources?.getString(R.string.ui_it_only_reaches_the_files_cablegram_creates_never_the__2a9187) ?: "It only reaches the files Cablegram creates, never the rest of your Drive.")
 
 /** True when the sign-in ended because the permission box was left unticked, so the screen offers to try again. */
 fun signInNeedsAnotherTry(ret: StorageReturn): Boolean = ret.result == "scope_missing"
 
 /** What to tell the owner when the sign-in ends. Never repeats text that came from the link or the provider. */
-fun storageReturnMessage(ret: StorageReturn, status: StorageStatusResponse? = null): String {
-    val name = providerName(ret.provider, status)
+fun storageReturnMessage(ret: StorageReturn, status: StorageStatusResponse? = null, resources: android.content.res.Resources? = null): String {
+    val name = providerName(ret.provider, status, resources = resources)
     return when (ret.result) {
-        "connected" -> "Connected to $name."
-        "denied" -> "Not connected. You didn't allow Cablegram to use $name."
-        "scope_missing" -> "$name access wasn't granted. On Google's screen, tick the box \"$DRIVE_PERMISSION_TEXT\", then tap Continue."
-        "expired" -> "The sign-in expired. Start again."
-        "already_connected" -> "Your storage is already connected."
-        else -> "Couldn't connect $name. Try again in a moment."
+        "connected" -> (resources?.getString(R.string.ui_connected_to_6c372e, name) ?: "Connected to $name.")
+        "denied" -> (resources?.getString(R.string.ui_not_connected_you_didn_t_allow_cablegram_to_use_fb658f, name) ?: "Not connected. You didn't allow Cablegram to use $name.")
+        "scope_missing" -> (resources?.getString(R.string.ui_access_wasn_t_granted_on_google_s_screen_tick_the_box__5ed88c, name, DRIVE_PERMISSION_TEXT) ?: "$name access wasn't granted. On Google's screen, tick the box \"$DRIVE_PERMISSION_TEXT\", then tap Continue.")
+        "expired" -> (resources?.getString(R.string.ui_the_sign_in_expired_start_again_683df5) ?: "The sign-in expired. Start again.")
+        "already_connected" -> (resources?.getString(R.string.ui_your_storage_is_already_connected_17b55e) ?: "Your storage is already connected.")
+        else -> (resources?.getString(R.string.ui_couldn_t_connect_try_again_in_a_moment_ed1a38, name) ?: "Couldn't connect $name. Try again in a moment.")
     }
 }
 
@@ -135,18 +135,18 @@ fun storageReturnMessage(ret: StorageReturn, status: StorageStatusResponse? = nu
 data class GoogleConnectStart(val authorizeUrl: String?, val error: String?)
 
 /** What to tell the owner when the app could not even start the sign-in. */
-fun googleStartMessage(error: String): String = when (error) {
-    "provider_not_configured" -> "Google Drive isn't set up on this server."
-    "storage_already_connected" -> "Your storage is already connected."
-    "offline" -> "Couldn't reach Cablegram. Check your connection."
-    else -> "Couldn't start the Google sign-in."
+fun googleStartMessage(error: String, resources: android.content.res.Resources? = null): String = when (error) {
+    "provider_not_configured" -> (resources?.getString(R.string.ui_google_drive_isn_t_set_up_on_this_server_7692c7) ?: "Google Drive isn't set up on this server.")
+    "storage_already_connected" -> (resources?.getString(R.string.ui_your_storage_is_already_connected_17b55e) ?: "Your storage is already connected.")
+    "offline" -> (resources?.getString(R.string.ui_couldn_t_reach_cablegram_check_your_connection_3c4a29) ?: "Couldn't reach Cablegram. Check your connection.")
+    else -> (resources?.getString(R.string.ui_couldn_t_start_the_google_sign_in_1730f7) ?: "Couldn't start the Google sign-in.")
 }
 
 /** Words for a disconnect, naming where the files stay. */
-fun disconnectMessage(provider: String?, status: StorageStatusResponse? = null): String = when (provider) {
-    PROVIDER_GOOGLE_DRIVE -> "Google Drive disconnected. Your files stay in your Drive."
-    PROVIDER_CLOUDFLARE_R2 -> "Storage disconnected. Your files stay in the bucket; delete the API token in Cloudflare to remove access."
-    else -> "${providerName(provider, status).replaceFirstChar { it.uppercase() }} disconnected. Your files stay where they are."
+fun disconnectMessage(provider: String?, status: StorageStatusResponse? = null, resources: android.content.res.Resources? = null): String = when (provider) {
+    PROVIDER_GOOGLE_DRIVE -> (resources?.getString(R.string.ui_google_drive_disconnected_your_files_stay_in_your_driv_d0a3b7) ?: "Google Drive disconnected. Your files stay in your Drive.")
+    PROVIDER_CLOUDFLARE_R2 -> (resources?.getString(R.string.ui_storage_disconnected_your_files_stay_in_the_bucket_del_cc7dcf) ?: "Storage disconnected. Your files stay in the bucket; delete the API token in Cloudflare to remove access.")
+    else -> (resources?.getString(R.string.ui_disconnected_your_files_stay_where_they_are_fb9447, providerName(provider, status, resources = resources).replaceFirstChar { it.uppercase() }) ?: "${providerName(provider, status).replaceFirstChar { it.uppercase() }} disconnected. Your files stay where they are.")
 }
 
 /**

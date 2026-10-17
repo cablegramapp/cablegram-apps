@@ -42,6 +42,13 @@ start bots, send messages, or add bots to the library.
 >
 > Cablegram is not responsible for the bot's operation, content, privacy practices, or any consequences arising from its use. Please review its permissions before adding it to your channel.
 
+## Languages
+
+The phone and TV apps support English, German, Arabic, Farsi, Russian, Spanish and Italian.
+The phone follows its Android language preferences; TV profiles follow the phone or a language
+chosen in Settings. Mixed-language TV profiles keep the profile picker in English.
+See [app languages](docs/localization.md) for behavior and translation maintenance.
+
 ## Screenshots
 
 <p>

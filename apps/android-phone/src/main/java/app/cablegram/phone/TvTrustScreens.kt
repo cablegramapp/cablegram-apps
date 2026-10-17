@@ -41,6 +41,7 @@ internal fun formatCheckout(instant: Instant): String =
  */
 @Composable
 internal fun PairTrustDialog(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val choices = remember { TvTrustRules.checkoutChoices() }
     var temporary by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(0) }
@@ -51,13 +52,13 @@ internal fun PairTrustDialog(viewModel: PhoneViewModel) {
     AlertDialog(
         modifier = Modifier.maestroRoot(),
         onDismissRequest = viewModel::cancelPendingPair,
-        title = { Text("Is this your TV?") },
+        title = { Text(ui.getString(R.string.ui_is_this_your_tv_525588)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                ChoiceRow("My TV (home)", "It signs in to your Telegram library and stays paired.", !temporary) { temporary = false }
-                ChoiceRow("Temporary TV", "A hotel, a friend's or a rental. It is unpaired at the time you choose.", temporary) { temporary = true }
+                ChoiceRow(ui.getString(R.string.ui_my_tv_home_4a4daa), ui.getString(R.string.ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf), !temporary) { temporary = false }
+                ChoiceRow(ui.getString(R.string.ui_temporary_tv_2b77cf), ui.getString(R.string.ui_a_hotel_a_friend_s_or_a_rental_it_is_unpaired_at_the_t_312310), temporary) { temporary = true }
                 if (temporary) {
-                    Text("Unpair it at", color = VlcMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    Text(ui.getString(R.string.ui_unpair_it_at_e679be), color = VlcMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                     choices.forEachIndexed { index, (label, instant) ->
                         Row(
                             Modifier.fillMaxWidth().clickable { selected = index },
@@ -76,11 +77,11 @@ internal fun PairTrustDialog(viewModel: PhoneViewModel) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Checkbox(checked = direct && directAllowed, onCheckedChange = { direct = it }, enabled = directAllowed)
-                            Text("Let this TV use Telegram directly until then", color = if (directAllowed) Color.Unspecified else VlcMuted)
+                            Text(ui.getString(R.string.ui_let_this_tv_use_telegram_directly_until_then_3cd46b), color = if (directAllowed) Color.Unspecified else VlcMuted)
                         }
                         Text(
-                            if (directAllowed) "Otherwise it plays your Telegram videos through this phone, and holds no Telegram session."
-                            else "Not available yet: Telegram only lets Cablegram end a TV's session 24 hours after you connected. Until then this TV plays Telegram videos through this phone.",
+                            if (directAllowed) ui.getString(R.string.ui_otherwise_it_plays_your_telegram_videos_through_this_p_72fc1d)
+                            else ui.getString(R.string.ui_not_available_yet_telegram_only_lets_cablegram_end_a_t_cc8d89),
                             color = VlcMuted, fontSize = 12.sp,
                         )
                     }
@@ -93,9 +94,9 @@ internal fun PairTrustDialog(viewModel: PhoneViewModel) {
                     if (temporary) TvTrust(temporary = true, expiresAt = choices[selected].second, telegramDirect = direct && directAllowed && linked)
                     else TvTrust.Home,
                 )
-            }) { Text("Connect TV") }
+            }) { Text(ui.getString(R.string.ui_connect_tv_c9f94c)) }
         },
-        dismissButton = { TextButton(onClick = viewModel::cancelPendingPair) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = viewModel::cancelPendingPair) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
     )
 }
 
@@ -113,20 +114,21 @@ private fun ChoiceRow(title: String, detail: String, selected: Boolean, onSelect
 /** Trust line and Telegram actions under a TV in Settings → Your TVs. */
 @Composable
 internal fun TvTrustActions(viewModel: PhoneViewModel, tv: PairedTv) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val telegramLinked = viewModel.telegramLink?.linked == true && PhoneTelegram.configured
     if (tv.trust.temporary) {
         Text(
-            "Temporary · unpaired ${tv.trust.expiresAt?.let(::formatCheckout) ?: "soon"}" + if (tv.trust.telegramDirect) " · uses Telegram directly" else "",
+            ui.getString(R.string.ui_temporary_unpaired_d52b66, tv.trust.expiresAt?.let(::formatCheckout) ?: "soon") + if (tv.trust.telegramDirect) ui.getString(R.string.ui_uses_telegram_directly_f552f4) else "",
             color = VlcOrange, style = MaterialTheme.typography.bodySmall,
         )
     }
     if (tv.deviceId == null) return
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         if (tv.trust.temporary && tv.trust.expiresAt != null) {
-            TextButton(onClick = { viewModel.updateTvTrust(tv, tv.trust.copy(expiresAt = tv.trust.expiresAt.plus(TvTrustRules.EXTEND_BY))) }) { Text("Extend a day") }
+            TextButton(onClick = { viewModel.updateTvTrust(tv, tv.trust.copy(expiresAt = tv.trust.expiresAt.plus(TvTrustRules.EXTEND_BY))) }) { Text(ui.getString(R.string.ui_extend_a_day_c30370)) }
         }
         if (telegramLinked) {
-            TextButton(onClick = { viewModel.signOutTvTelegram(tv) }) { Text("Sign out of Telegram") }
+            TextButton(onClick = { viewModel.signOutTvTelegram(tv) }) { Text(ui.getString(R.string.ui_sign_out_of_telegram_1f1dc3)) }
         }
     }
 }

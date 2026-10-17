@@ -30,10 +30,11 @@ internal fun savedTimingError(code: String?): String = when (code) {
  */
 @Composable
 internal fun SavedSubtitleTimingButton(viewModel: PhoneViewModel, item: LibraryItem, enabled: Boolean) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var open by remember(item.id) { mutableStateOf(false) }
     OutlinedButton(onClick = { open = true }, enabled = enabled,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro("detail_adjust_subtitle_timing")) {
-        Text("Adjust subtitle timing")
+        Text(ui.getString(R.string.ui_adjust_subtitle_timing_6be7cc))
     }
     if (open) Dialog(onDismissRequest = { open = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         SavedSubtitleTimingScreen(viewModel, item) { open = false }
@@ -42,6 +43,7 @@ internal fun SavedSubtitleTimingButton(viewModel: PhoneViewModel, item: LibraryI
 
 @Composable
 private fun SavedSubtitleTimingScreen(viewModel: PhoneViewModel, item: LibraryItem, onClose: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var timing by remember { mutableStateOf<SavedSubtitleTiming?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(item.id) {
@@ -54,12 +56,12 @@ private fun SavedSubtitleTimingScreen(viewModel: PhoneViewModel, item: LibraryIt
     }
     Column(Modifier.fillMaxSize().background(VlcBlack).safeDrawingPadding().padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(onClick = onClose) { Text("Done") }
-        Text("Subtitle timing", color = Color.White, style = MaterialTheme.typography.titleLarge)
+        TextButton(onClick = onClose) { Text(ui.getString(R.string.ui_done_11a676)) }
+        Text(ui.getString(R.string.ui_subtitle_timing_5a6158), color = Color.White, style = MaterialTheme.typography.titleLarge)
         val loaded = timing
         when {
             error != null -> Text(error!!, color = VlcMuted)
-            loaded == null -> Text("Opening the subtitle…", color = VlcMuted)
+            loaded == null -> Text(ui.getString(R.string.ui_opening_the_subtitle_2629bd), color = VlcMuted)
             else -> AdjustContent(
                 viewModel, item,
                 SubtitleMatch(id = loaded.id, language = loaded.language, cues = loaded.cues, provider = "saved"),

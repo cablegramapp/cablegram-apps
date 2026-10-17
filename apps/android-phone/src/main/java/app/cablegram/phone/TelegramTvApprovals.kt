@@ -223,9 +223,10 @@ object TelegramTvApprovals {
         pending?.firstOrNull { it.requestId == requestId }
 
     fun ask(context: Context, request: PendingTvLogin) {
+        val ui = context.deviceLanguageResources()
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (Build.VERSION.SDK_INT >= 26) {
-            manager.createNotificationChannel(NotificationChannel(CHANNEL, "Telegram sign-in for TVs", NotificationManager.IMPORTANCE_HIGH))
+            manager.createNotificationChannel(NotificationChannel(CHANNEL, ui.getString(R.string.ui_telegram_sign_in_for_tvs_168c1b), NotificationManager.IMPORTANCE_HIGH))
         }
         fun action(name: String, code: Int) = PendingIntent.getBroadcast(
             context, code,
@@ -237,13 +238,13 @@ object TelegramTvApprovals {
         else @Suppress("DEPRECATION") Notification.Builder(context)
         val notification = builder
             .setSmallIcon(R.drawable.ic_stat_cablegram)
-            .setContentTitle("Let ${request.tvName} use your Telegram?")
+            .setContentTitle(ui.getString(R.string.ui_let_use_your_telegram_814f87, request.tvName))
             .setStyle(Notification.BigTextStyle().bigText(
-                "${request.tvName} wants to play videos from your \"Cablegram library\" channel. It signs in as its own device on your Telegram account.",
+                ui.getString(R.string.ui_wants_to_play_videos_from_your_cablegram_library_chann_84f55e, request.tvName),
             ))
             .setAutoCancel(true)
-            .addAction(Notification.Action.Builder(null, "Allow", action(ACTION_ALLOW, 11)).build())
-            .addAction(Notification.Action.Builder(null, "Don't allow", action(ACTION_DENY, 12)).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_allow_e213c1), action(ACTION_ALLOW, 11)).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_don_t_allow_9803bd), action(ACTION_DENY, 12)).build())
             .build()
         runCatching { manager.notify(NOTIFICATION_ID, notification) }
     }
@@ -300,25 +301,26 @@ object TvCheckoutReminders {
     }
 
     private fun remind(context: Context, tv: MeDevice, trust: TvTrust) {
+        val ui = context.deviceLanguageResources()
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (Build.VERSION.SDK_INT >= 26) {
-            manager.createNotificationChannel(NotificationChannel(CHANNEL, "Temporary TV reminders", NotificationManager.IMPORTANCE_HIGH))
+            manager.createNotificationChannel(NotificationChannel(CHANNEL, ui.getString(R.string.ui_temporary_tv_reminders_b50239), NotificationManager.IMPORTANCE_HIGH))
         }
         fun action(name: String, code: Int) = PendingIntent.getBroadcast(
             context, code + tv.id.hashCode(),
             Intent(context, TvCheckoutReceiver::class.java).setAction(name).putExtra(EXTRA_TV, tv.id),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val name = tv.displayName ?: "Your temporary TV"
+        val name = tv.displayName ?: ui.getString(R.string.ui_your_temporary_tv_fd49e9)
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, CHANNEL)
         else @Suppress("DEPRECATION") Notification.Builder(context)
         val notification = builder
             .setSmallIcon(R.drawable.ic_stat_cablegram)
-            .setContentTitle("$name is still paired")
-            .setContentText("It will be unpaired ${trust.expiresAt?.let(::formatCheckout) ?: "soon"}.")
+            .setContentTitle(ui.getString(R.string.ui_is_still_paired_0d5a10, name))
+            .setContentText(ui.getString(R.string.ui_it_will_be_unpaired_4f9898, trust.expiresAt?.let(::formatCheckout) ?: "soon"))
             .setAutoCancel(true)
-            .addAction(Notification.Action.Builder(null, "Sign out now", action(ACTION_SIGN_OUT, 21)).build())
-            .addAction(Notification.Action.Builder(null, "Extend a day", action(ACTION_EXTEND, 22)).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_sign_out_now_71de23), action(ACTION_SIGN_OUT, 21)).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_extend_a_day_c30370), action(ACTION_EXTEND, 22)).build())
             .build()
         runCatching { manager.notify(7400 + (tv.id.hashCode() and 0xff), notification) }
     }

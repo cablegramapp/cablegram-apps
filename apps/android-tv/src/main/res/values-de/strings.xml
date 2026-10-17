@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bundled offline translations. Review wording in this file; no runtime translation service. -->
+<resources>
+    <string name="app_tagline" formatted="false">"Ihre eigenen Videos, von Ihrem Telefon zu Ihrem TV gestreamt"</string>
+    <string name="legal_disclaimer" formatted="false">"Cablegram spielt Videos, die Sie besitzen oder dürfen zuschauen. Es bietet keine eigenen Medien. Videos von Ihrem Telefon oder Ihrem Telegram Kanal werden nie auf seinen Servern gespeichert; nur ein Web-Video, das Sie wählen, um zu speichern Cablegram Speicher ist, bis Sie Ihr Konto löschen."</string>
+    <string name="ui_a_phone_in_your_household_asked_this_tv_to_sign_it_in__568faf" formatted="false">"Ein Telefon in Ihrem Haushalt bat diesen Fernseher, um es in Ihrem Telegram Konto zu unterschreiben. Nur zulassen, wenn Sie nur "</string>
+    <string name="ui_about_cablegram_8eeae9" formatted="false">"Über Cablegram"</string>
+    <string name="ui_add_profile_f964be" formatted="false">"Profil hinzufügen"</string>
+    <string name="ui_added_to_my_list_c528ea" formatted="false">"Zu meiner Liste hinzugefügt"</string>
+    <string name="ui_all_a52ace" formatted="false">"Alle"</string>
+    <string name="ui_all_titles_531868" formatted="false">"‹ Alle Titel"</string>
+    <string name="ui_allow_e213c1" formatted="false">"Erlauben"</string>
+    <string name="ui_allow_on_your_phone_f78aa2" formatted="false">"Erlauben Sie auf Ihrem Handy"</string>
+    <string name="ui_allow_streaming_on_your_phone_394ad4" formatted="false">"Erlauben Sie Strom auf Ihrem Telefon"</string>
+    <string name="ui_allow_this_play_on_your_phone_8a268c" formatted="false">"Lassen Sie dieses Spiel auf Ihrem Handy"</string>
+    <string name="ui_almost_there_750a35" formatted="false">"Fast da"</string>
+    <string name="ui_always_use_my_phone_ce2492" formatted="false">"Immer mein Handy benutzen"</string>
+    <string name="ui_api_unreachable_phone_qr_still_works_on_this_wi_fi_cfb036" formatted="false">"API unerreichbar. Phone QR funktioniert noch auf diesem Wi‑Fi."</string>
+    <string name="ui_ask_my_phone_again_c2ad29" formatted="false">"Fragen Sie mein Handy wieder"</string>
+    <string name="ui_aspect_ratio_556f85" formatted="false">"Seitenverhältnis"</string>
+    <string name="ui_audio_bc1b88" formatted="false">"Audio"</string>
+    <string name="ui_audio_delay_f1f2f5" formatted="false">"Audio-Verzögerung"</string>
+    <string name="ui_audio_subtitles_0c57c9" formatted="false">"Audio und Untertitel"</string>
+    <string name="ui_audio_subtitles_ee0b9b" formatted="false">"Audio und Untertitel"</string>
+    <string name="ui_back_76900f" formatted="false">"Zurück"</string>
+    <string name="ui_back_on_the_remote_closes_the_keyboard_cancel_picks_an_c14dae" formatted="false">"Zurück auf der Fernbedienung schließt die Tastatur. Abbrechen wählt einen anderen."</string>
+    <string name="ui_back_on_your_wi_fi_b6047e" formatted="false">"Zurück zu Ihrem WI‐FI"</string>
+    <string name="ui_back_to_library_008e42" formatted="false">"Zurück zur Mediathek"</string>
+    <string name="ui_back_to_settings_ea37ec" formatted="false">"Zurück zu den Einstellungen"</string>
+    <string name="ui_backup_838557" formatted="false">"Backup"</string>
+    <string name="ui_cablegram_is_an_unofficial_app_not_made_or_endorsed_by_5de578" formatted="false">"Cablegram ist eine inoffizielle App, die nicht von Telegram gemacht oder unterstützt wird. Es verwendet Ihr eigenes Telegram-Konto."</string>
+    <string name="ui_cablegram_is_getting_the_best_available_stream_ready_52cd87" formatted="false">"Cablegram bekommt den besten verfügbaren Stream bereit."</string>
+    <string name="ui_cablegram_on_your_phone_will_open_a_password_screen_8fe1ea" formatted="false">"Cablegram auf Ihrem Telefon öffnet ein Passwort-Bildschirm."</string>
+    <string name="ui_cablegram_reads_only_your_cablegram_library_channel_ne_359f98" formatted="false">"Cablegram liest nur Ihren \"Cablegram Bibliothek\" Kanal, nie Ihre Chats."</string>
+    <string name="ui_can_t_convert_this_video_260740" formatted="false">"Kann dieses Video nicht konvertieren"</string>
+    <string name="ui_can_t_play_this_video_7cfde0" formatted="false">"Kann dieses Video nicht spielen"</string>
+    <string name="ui_can_t_remove_this_video_51b490" formatted="false">"Kann dieses Video nicht entfernen"</string>
+    <string name="ui_cancel_19766e" formatted="false">"Abbrechen"</string>
+    <string name="ui_check_again_fb7099" formatted="false">"Noch einmal überprüfen"</string>
+    <string name="ui_check_the_backend_address_and_network_connection_1548f3" formatted="false">"Überprüfen Sie die Backend-Adresse und Netzwerkverbindung."</string>
+    <string name="ui_checking_0dfe1d" formatted="false">"Überprüfung"</string>
+    <string name="ui_checking_ec963f" formatted="false">"Sieh mal..."</string>
+    <string name="ui_checking_the_file_1c7df4" formatted="false">"Überprüfen der Datei"</string>
+    <string name="ui_checking_your_password_06c20d" formatted="false">"Überprüfen Sie Ihr Passwort..."</string>
+    <string name="ui_choose_an_action_769239" formatted="false">"Wählen Sie eine Aktion"</string>
+    <string name="ui_choose_the_digits_then_ok_30a667" formatted="false">"Wählen Sie die Ziffern, dann OK."</string>
+    <string name="ui_choose_your_profile_a946b9" formatted="false">"Wähle dein Profil"</string>
+    <string name="ui_chose_use_the_qr_code_on_your_tv_on_your_own_phone_all_ce22eb" formatted="false">"wählte \"Benutzen Sie den QR-Code auf Ihrem TV\" auf Ihrem eigenen Telefon. Erlauben gibt diesem Telefon vollen Zugriff auf Ihre Telegram."</string>
+    <string name="ui_cloud_b977b9" formatted="false">"Cloud-Software"</string>
+    <string name="ui_connect_telegram_on_this_tv_461bf0" formatted="false">"Telegram in diesem TV anschließen"</string>
+    <string name="ui_connect_the_phone_that_has_this_video_to_the_same_wi_f_5fe0b3" formatted="false">"Verbinden Sie das Telefon, das dieses Video mit dem gleichen Wi-Fi wie dieser TV hat und halten Cablegram offen."</string>
+    <string name="ui_connect_this_tv_8474b0" formatted="false">"Verbinden Sie diesen Fernseher"</string>
+    <string name="ui_connect_your_telegram_to_this_tv_once_and_your_library_f3e103" formatted="false">"Verbinden Sie Ihre Telegram mit diesem TV einmal, und Ihre Bibliothek spielt gerade ab Telegram."</string>
+    <string name="ui_connecting_telegram_ed3dc8" formatted="false">"Anschluss Telegram"</string>
+    <string name="ui_connecting_through_the_relay_a3dfc7" formatted="false">"UNTERNEHMEN DURCH DIE RELAY"</string>
+    <string name="ui_connecting_to_telegram_06a2ff" formatted="false">"Anschluss an Telegram..."</string>
+    <string name="ui_connection_639a40" formatted="false">"Verbindung"</string>
+    <string name="ui_continue_31fbef" formatted="false">"Weiter"</string>
+    <string name="ui_continue_watching_81ebbe" formatted="false">"Weiterschauen"</string>
+    <string name="ui_continue_watching_908149" formatted="false">"Sehen Sie weiter?"</string>
+    <string name="ui_continuing_straight_from_telegram_fbf398" formatted="false">"Kontinuität gerade ab Telegram"</string>
+    <string name="ui_continuing_through_your_phone_bd43fe" formatted="false">"Fortsetzen durch Ihr Telefon"</string>
+    <string name="ui_convert_anyway_2c1857" formatted="false">"sowieso"</string>
+    <string name="ui_converting_your_movie_3a5267" formatted="false">"Konvertieren Sie Ihren Film..."</string>
+    <string name="ui_could_not_load_profiles_a6c9d7" formatted="false">"Konnte Profile nicht laden."</string>
+    <string name="ui_couldn_t_check_the_pin_check_the_connection_and_try_ag_ce4d77" formatted="false">"Ich konnte die PIN nicht überprüfen. Überprüfen Sie die Verbindung und versuchen Sie es erneut."</string>
+    <string name="ui_couldn_t_send_the_phone_prompt_check_your_connection_s_97e9ba" formatted="false">"Ich konnte die Telefonanforderung nicht senden. Überprüfen Sie Ihre Verbindung, senden Sie es erneut, oder wählen Sie die TV-Tastatur."</string>
+    <string name="ui_couldn_t_set_up_your_telegram_library_check_your_conne_793c9c" formatted="false">"Ich konnte Ihre Telegram Bibliothek nicht einrichten. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut."</string>
+    <string name="ui_cover_fa8d84" formatted="false">"Abdeckung"</string>
+    <string name="ui_crop_98caf7" formatted="false">"Zuschneiden"</string>
+    <string name="ui_demo_8a2cc0" formatted="false">"Demonstranten"</string>
+    <string name="ui_demo_mode_royalty_free_sample_streams_9e36b2" formatted="false">"Demo-Modus · lizenzfreie Probenströme"</string>
+    <string name="ui_don_t_allow_9803bd" formatted="false">"Nicht erlauben"</string>
+    <string name="ui_done_11a676" formatted="false">"Fertig"</string>
+    <string name="ui_downloading_37b345" formatted="false">"Downloads"</string>
+    <string name="ui_downloading_your_video_4a7a5a" formatted="false">"Ihr Video herunterladen"</string>
+    <string name="ui_enjoy_a_little_cablegram_while_we_prepare_your_video_b47aa0" formatted="false">"Genießen Sie ein wenig Cablegram, während wir Ihr Video vorbereiten."</string>
+    <string name="ui_enter_pin_f246c7" formatted="false">"Geben Sie PIN"</string>
+    <string name="ui_enter_telegram_password_7844e5" formatted="false">"Telegram Passwort eingeben"</string>
+    <string name="ui_fill_033955" formatted="false">"Ausfüllen"</string>
+    <string name="ui_finding_the_movie_515229" formatted="false">"Den Film finden"</string>
+    <string name="ui_finish_signing_in_from_settings_telegram_on_this_tv_d69b81" formatted="false">"Beenden Sie die Anmeldung von Einstellungen → Telegram auf diesem TV."</string>
+    <string name="ui_finish_signing_in_to_telegram_enter_your_telegram_pass_284439" formatted="false">"Beenden Sie die Anmeldung auf Telegram: Geben Sie Ihr Telegram-Passwort in Einstellungen auf diesem TV ein."</string>
+    <string name="ui_fit_9f872e" formatted="false">"Einpassen"</string>
+    <string name="ui_genre_8dc737">"Genre: %1$s"</string>
+    <string name="ui_getting_it_ready_for_tv_f762f4" formatted="false">"Bereit für das Fernsehen"</string>
+    <string name="ui_getting_the_picture_ready_ef0b9b" formatted="false">"Das Bild fertig zu machen..."</string>
+    <string name="ui_getting_your_video_ready_09b497" formatted="false">"Bereit für Ihr Video"</string>
+    <string name="ui_hide_licence_and_notices_35e525" formatted="false">"Lizenz und Bekanntmachungen verbergen"</string>
+    <string name="ui_hint_3033f3">"Hinweis: %1$s"</string>
+    <string name="ui_hold_ok_on_any_title_to_save_it_here_8857f0" formatted="false">"Halten Sie OK auf jeden Titel, um es hier zu speichern."</string>
+    <string name="ui_home_3a7869" formatted="false">"Startseite"</string>
+    <string name="ui_it_s_on_its_way_cablegram_on_your_phone_opens_a_passwo_f216b7" formatted="false">"Es ist auf dem Weg. Cablegram auf Ihrem Telefon öffnet ein Passwort-Bildschirm in wenigen Sekunden, oder zeigt eine Benachrichtigung zu tippen. Geben Sie das Passwort dort ein; dieses TV-Zeichen, sobald Telegram es akzeptiert."</string>
+    <string name="ui_it_was_removed_from_your_library_on_the_phone_5bd088" formatted="false">"Es wurde telefonisch von Ihrer Bibliothek entfernt."</string>
+    <string name="ui_keep_the_phone_and_tv_on_the_same_wi_fi_your_videos_st_898a8b" formatted="false">"Halten Sie das Telefon und das Fernsehen auf den gleichen Wi‑Fi. Deine Videos bleiben auf deinem Handy."</string>
+    <string name="ui_keep_your_phone_nearby_2dc5e4" formatted="false">"KEEP IHRE PHONE NEARBY"</string>
+    <string name="ui_keeping_a_backup_7c73a2" formatted="false">"Halten Sie eine Sicherung"</string>
+    <string name="ui_left_right_to_adjust_42fa43" formatted="false">"Links / Recht zur Einstellung"</string>
+    <string name="ui_library_unavailable_357219" formatted="false">"Bibliothek nicht verfügbar"</string>
+    <string name="ui_licence_and_notices_ded184" formatted="false">"Lizenzen und Bekanntmachungen"</string>
+    <string name="ui_live_b64ac0" formatted="false">"Leben"</string>
+    <string name="ui_local_lan_3cd048" formatted="false">"Lokales LAN"</string>
+    <string name="ui_looking_for_your_phone_d386a9" formatted="false">"Auf der Suche nach Ihrem Handy"</string>
+    <string name="ui_making_a_cover_photo_b9f1ef" formatted="false">"Ein Cover-Foto erstellen"</string>
+    <string name="ui_media_source_de4006" formatted="false">"Medienquelle"</string>
+    <string name="ui_message_6c5b82">"%1$s%2$s"</string>
+    <string name="ui_message_b6bb55">"%1$s%%"</string>
+    <string name="ui_message_f1c1f8">"%1$s / %2$s"</string>
+    <string name="ui_movies_and_shows_from_your_phone_appear_here_db03ba" formatted="false">"Filme und Shows von Ihrem Telefon erscheinen hier."</string>
+    <string name="ui_movies_dff924" formatted="false">"Filme"</string>
+    <string name="ui_muted_2346f2" formatted="false">"Stumm"</string>
+    <string name="ui_my_list_e957f4" formatted="false">"Meine Liste"</string>
+    <string name="ui_my_telegram_has_no_password_2e003f" formatted="false">"Mein Telegram hat kein Passwort"</string>
+    <string name="ui_new_pin_6d8849" formatted="false">"Neue PIN"</string>
+    <string name="ui_no_titles_match_these_filters_a0f06f" formatted="false">"Keine Titel passen zu diesen Filtern."</string>
+    <string name="ui_no_wi_fi_address_yet_614231" formatted="false">"noch keine Wi‑Fi Adresse"</string>
+    <string name="ui_nobody_allowed_on_a_phone_in_time_try_again_39ef3f">"Niemand erlaubte %1$s auf einem Telefon in der Zeit. Versuchen Sie es noch mal."</string>
+    <string name="ui_nothing_here_yet_49abaf" formatted="false">"Hier ist noch nichts"</string>
+    <string name="ui_nothing_in_progress_44a3cc" formatted="false">"Nichts im Gange"</string>
+    <string name="ui_nothing_on_your_phone_yet_6a0939" formatted="false">"Noch nichts am Telefon?"</string>
+    <string name="ui_nothing_saved_yet_hold_ok_on_a_title_to_add_it_00ae6a" formatted="false">"Noch nichts gerettet. Halten Sie OK auf einem Titel, um es hinzuzufügen."</string>
+    <string name="ui_off_ca7981" formatted="false">"Aus"</string>
+    <string name="ui_ok_565339" formatted="false">"OK."</string>
+    <string name="ui_ok_to_play_back_for_all_titles_df524e" formatted="false">"OK to play · Zurück für alle Titel"</string>
+    <string name="ui_on_your_phone_open_cablegram_and_tap_import_to_add_vid_f88e31" formatted="false">"Öffnen Sie auf Ihrem Handy Cablegram und tippen Sie auf Importieren, um Videos hinzuzufügen. Sie erscheinen in wenigen Sekunden auf diesem Fernseher."</string>
+    <string name="ui_on_your_phone_open_the_cablegram_notification_and_tap__c5d631" formatted="false">"Öffnen Sie auf Ihrem Telefon die Cablegram Benachrichtigung und tippen Sie auf “Diese Zeit nutzen”. Die Wiedergabe geht hier nachher weiter."</string>
+    <string name="ui_open_cablegram_on_your_phone_1bc6dd" formatted="false">"Cablegram auf Ihrem Handy öffnen"</string>
+    <string name="ui_open_privacy_policy_c90fcb" formatted="false">"Datenschutzrichtlinien öffnen"</string>
+    <string name="ui_opening_profile_08573a" formatted="false">"Eröffnungsprofil..."</string>
+    <string name="ui_opening_the_video_file_f25019" formatted="false">"Öffnen der Videodatei"</string>
+    <string name="ui_opening_your_library_2d9a4d" formatted="false">"Öffnen Sie Ihre Bibliothek..."</string>
+    <string name="ui_or_open_app_cablegram_app_and_enter_the_pin_8e31cb" formatted="false">"Oder öffnen Sie app.cablegram.app und geben Sie die PIN ein"</string>
+    <string name="ui_other_accounts_use_this_tv_too_so_this_account_s_phone_9a6f28" formatted="false">"Andere Konten verwenden diesen Fernseher auch, so dass dieses Konto Telefon muss es zu ermöglichen. Öffnen Sie Cablegram auf diesem Telefon und tippen Sie auf Erlauben."</string>
+    <string name="ui_pair_this_tv_a16f6b" formatted="false">"Dieses TV-Gerät"</string>
+    <string name="ui_pair_this_tv_from_the_cablegram_app_on_your_phone_894b76" formatted="false">"Kombinieren Sie diesen Fernseher von der Cablegram App auf Ihrem Handy."</string>
+    <string name="ui_pair_your_phone_with_this_tv_to_use_its_keyboard_or_ch_4d91e1" formatted="false">"Kombinieren Sie Ihr Telefon mit diesem Fernseher, um seine Tastatur zu verwenden, oder wählen Sie die TV-Tastatur."</string>
+    <string name="ui_paused_e159b0" formatted="false">"Pausiert"</string>
+    <string name="ui_phone_keyboard_recommended_9db367" formatted="false">"Telefontastatur (empfohlen)"</string>
+    <string name="ui_phone_not_on_this_wi_fi_f08589" formatted="false">"PHONE NICHT DIESES WI-FI"</string>
+    <string name="ui_phone_paired_choose_who_s_watching_9e5cf5" formatted="false">"Telefon gepaart. Wählen Sie, wer zuschaut."</string>
+    <string name="ui_phone_paired_opening_the_library_3954f7" formatted="false">"Telefon gepaart. Öffnen Sie die Bibliothek."</string>
+    <string name="ui_phone_pairing_qr_code_6fc5a0" formatted="false">"Telefonpaarung QR Code"</string>
+    <string name="ui_play_through_my_phone_this_time_389f1f" formatted="false">"Spielen Sie dieses Mal durch mein Telefon"</string>
+    <string name="ui_playback_continues_from_where_you_were_using_this_tv_s_344891" formatted="false">"Die Wiedergabe geht davon aus, wo Sie waren, mit der eigenen Telegram Verbindung dieses Fernsehers fort."</string>
+    <string name="ui_playback_didn_t_start_check_that_your_phone_is_online__af7362" formatted="false">"Playback hat nicht angefangen. Überprüfen Sie, dass Ihr Telefon ist online mit Cablegram geöffnet, dann versuchen Sie es wieder."</string>
+    <string name="ui_playback_interrupted_b9de29" formatted="false">"Playback unterbrochen"</string>
+    <string name="ui_playback_path_5cecee" formatted="false">"Zurück zur Übersicht"</string>
+    <string name="ui_playback_speed_4b2f5d" formatted="false">"Wiedergabegeschwindigkeit"</string>
+    <string name="ui_playback_starts_automatically_when_your_video_is_ready_6d9609" formatted="false">"Die Wiedergabe beginnt automatisch, wenn Ihr Video bereit ist."</string>
+    <string name="ui_playback_wasn_t_approved_5cb346" formatted="false">"Playback wurde nicht genehmigt"</string>
+    <string name="ui_player_settings_d9f938" formatted="false">"Wiedergabeeinstellungen"</string>
+    <string name="ui_playing_until_your_stream_is_ready_906bd0" formatted="false">"Spielen, bis Ihr Stream bereit ist"</string>
+    <string name="ui_poster_9ca171">"%1$s Poster"</string>
+    <string name="ui_preparing_your_movie_f22b39" formatted="false">"Vorbereiten Sie Ihren Film..."</string>
+    <string name="ui_preparing_your_video_7daf7e" formatted="false">"Bereiten Sie Ihr Video"</string>
+    <string name="ui_press_back_again_to_exit_e12dfa" formatted="false">"Zurück zum Ausstieg"</string>
+    <string name="ui_press_back_to_browse_library_1b206d" formatted="false">"Zurück zur Browser-Bibliothek"</string>
+    <string name="ui_press_back_to_cancel_and_return_to_your_library_35e34a" formatted="false">"Zurück zu stornieren und zurück zu Ihrer Bibliothek"</string>
+    <string name="ui_preview_324b13" formatted="false">"Vorschau"</string>
+    <string name="ui_profiles_unavailable_ea6ad2" formatted="false">"Nicht verfügbare Profile"</string>
+    <string name="ui_queued_661ff4" formatted="false">"Queued"</string>
+    <string name="ui_reaching_your_phone_over_the_internet_f54b1f" formatted="false">"Ihr Telefon über das Internet erreichen"</string>
+    <string name="ui_ready_5fa7aa" formatted="false">"Fertig"</string>
+    <string name="ui_ready_to_play_6dbc08" formatted="false">"Bereit zu spielen"</string>
+    <string name="ui_recently_added_96ec5d" formatted="false">"Kürzlich hinzugefügt"</string>
+    <string name="ui_relay_c226b0" formatted="false">"Relais"</string>
+    <string name="ui_remove_c3812f" formatted="false">"Entfernen"</string>
+    <string name="ui_remove_this_account_from_this_tv_7dea07" formatted="false">"Entfernen Sie dieses Konto von diesem TV?"</string>
+    <string name="ui_remove_this_account_from_this_tv_b0c050" formatted="false">"Entfernen Sie dieses Konto von diesem TV"</string>
+    <string name="ui_removed_from_my_list_570caa" formatted="false">"Von Meiner Liste entfernt"</string>
+    <string name="ui_resume_d640c7" formatted="false">"Fortsetzen"</string>
+    <string name="ui_retry_942087" formatted="false">"Erneut versuchen"</string>
+    <string name="ui_same_wi_fi_gives_the_fastest_start_and_best_quality_el_50f729" formatted="false">"Gleich Wi‑Fi gibt den schnellsten Start und die beste Qualität. Irgendwo fließt Cablegram durch sein Relais."</string>
+    <string name="ui_saving_096b73" formatted="false">"Sparen"</string>
+    <string name="ui_saving_the_video_829213" formatted="false">"Das Video retten"</string>
+    <string name="ui_scan_the_code_with_your_phone_s_camera_or_type_this_pi_f54954" formatted="false">"Scannen Sie den Code mit der Kamera Ihres Telefons oder tippen Sie diese PIN in der Cablegram App oder auf app.cablegram.app."</string>
+    <string name="ui_scan_this_code_in_telegram_on_your_phone_settings_devi_1df732" formatted="false">"Scannen Sie diesen Code in Telegram auf Ihrem Telefon: Einstellungen → Geräte → Link Desktop-Gerät."</string>
+    <string name="ui_scan_with_your_phone_s_camera_91a2f3" formatted="false">"Scannen mit der Kamera Ihres Telefons"</string>
+    <string name="ui_sec_7a04a5">"%1$s Sek."</string>
+    <string name="ui_sec_7d0a5c">"%1$s sec."</string>
+    <string name="ui_send_your_password_only_if_the_phone_shows_this_same_c_4e8437" formatted="false">"Senden Sie Ihr Passwort nur, wenn das Telefon diesen gleichen Code zeigt."</string>
+    <string name="ui_sending_it_to_your_tv_aad4d0" formatted="false">"Senden Sie es an Ihren Fernseher"</string>
+    <string name="ui_sending_to_your_phone_4c2c7f" formatted="false">"Senden an Ihr Telefon..."</string>
+    <string name="ui_settings_74a883" formatted="false">"Einstellungen"</string>
+    <string name="ui_several_accounts_use_this_tv_to_remove_one_open_one_of_f713b3" formatted="false">"Mehrere Konten verwenden diesen Fernseher. Um eines zu entfernen, öffnen Sie eines seiner Profile, wählen Sie das Profilbild oben links, dann wählen Entfernen Sie dieses Konto aus diesem TV."</string>
+    <string name="ui_sign_in_bfd402" formatted="false">"Anmelden"</string>
+    <string name="ui_sign_in_to_your_telegram_a2b2cf">"Unterschreiben Sie %1$s zu Ihrem Telegram?"</string>
+    <string name="ui_sign_out_48f0d3" formatted="false">"Abmelden"</string>
+    <string name="ui_signed_in_as_abc50e" formatted="false">"Unterzeichnet als"</string>
+    <string name="ui_signing_in_8b9d3d" formatted="false">"Unterzeichnen in..."</string>
+    <string name="ui_skip_28d035" formatted="false">"Überspringen"</string>
+    <string name="ui_start_now_9ff3a6" formatted="false">"Jetzt starten"</string>
+    <string name="ui_start_over_5eed7e" formatted="false">"Von vorne starten"</string>
+    <string name="ui_start_watching_89562c" formatted="false">"Starten Sie zu beobachten"</string>
+    <string name="ui_starting_aeed4d" formatted="false">"Beginn"</string>
+    <string name="ui_starting_playback_f13f4e" formatted="false">"Starten der Wiedergabe..."</string>
+    <string name="ui_starts_faster_and_seeks_smoothly_the_video_comes_strai_bd5209" formatted="false">"Startet schneller und sucht reibungslos: das Video kommt gerade von Telegram."</string>
+    <string name="ui_stopped_at_59a5a3">"Gestoppt bei %1$s"</string>
+    <string name="ui_stopped_at_of_29e480">"bei %1$s von %2$s angehalten"</string>
+    <string name="ui_stream_quality_good_4e325d" formatted="false">"Stream-Qualität: Gut"</string>
+    <string name="ui_stream_quality_ok_095e1f" formatted="false">"Stream-Qualität: OK"</string>
+    <string name="ui_stream_quality_poor_7b7238" formatted="false">"Stream-Qualität: Schlecht"</string>
+    <string name="ui_subtitle_delay_825119" formatted="false">"Untertitelverzögerung"</string>
+    <string name="ui_subtitles_0ee695" formatted="false">"Untertitel"</string>
+    <string name="ui_subtitles_s_0c46b8">"Untertitel %1$s%2$s s"</string>
+    <string name="ui_switch_39921a" formatted="false">"Schalter"</string>
+    <string name="ui_switch_profile_c1e0da" formatted="false">"Profil wechseln"</string>
+    <string name="ui_switching_back_to_your_phone_56a1f2" formatted="false">"Zurück zu Ihrem Telefon wechseln"</string>
+    <string name="ui_switching_source_1ede8f" formatted="false">"SCHWERPUNKT"</string>
+    <string name="ui_switching_to_the_cablegram_relay_79ead3" formatted="false">"Umschaltung auf das Cablegram Relais"</string>
+    <string name="ui_telegram_is_already_connected_for_this_household_ask_t_2ca07e" formatted="false">"Telegram sind bereits für diesen Haushalt angeschlossen. Bitten Sie den Besitzer, die App zu benutzen, die sie angeschlossen hat."</string>
+    <string name="ui_telegram_is_checking_your_password_this_tv_continues_a_8aca24" formatted="false">"Telegram überprüft Ihr Passwort. Dieser Fernseher geht weiter, sobald er fertig ist."</string>
+    <string name="ui_telegram_isn_t_connected_for_this_household_yet_you_ca_634c79" formatted="false">"Telegram sind noch nicht für diesen Haushalt verbunden. Sie können es von diesem TV verbinden: Scannen Sie einen Code mit der Telegram App auf Ihrem Telefon."</string>
+    <string name="ui_telegram_login_qr_code_b413de" formatted="false">"Telegram login QR Code"</string>
+    <string name="ui_telegram_needs_your_two_step_verification_password_onc_fe96c0" formatted="false">"Telegram braucht Ihr zweistufiges Verifikations-Passwort einmal, um sich in diesem TV anzumelden. Die Anmeldung beginnt erst, nachdem Sie es eingegeben haben."</string>
+    <string name="ui_telegram_needs_your_two_step_verification_password_to__2f2be0" formatted="false">"Telegram braucht Ihr zweistufiges Verifikations-Passwort, um die Anmeldung in diesem TV zu beenden."</string>
+    <string name="ui_telegram_password_65d868" formatted="false">"Telegram Passwort"</string>
+    <string name="ui_telegram_sign_in_f886b3" formatted="false">"Telegram Anmeldung"</string>
+    <string name="ui_telegram_via_phone_6802a7" formatted="false">"Telegram per Telefon"</string>
+    <string name="ui_telegram_videos_play_through_your_phone_on_this_tv_not_e75ff6" formatted="false">"Telegram Videos spielen durch Ihr Telefon auf diesem TV. Nichts von Telegram ist hier gespeichert."</string>
+    <string name="ui_telegram_was_too_slow_on_this_tv_so_your_phone_fetches_ad106b" formatted="false">"Telegram war zu langsam auf diesem TV, so dass Ihr Telefon holt das Video und sendet es hier. Die Wiedergabe geht weiter, von wo aus Sie waren."</string>
+    <string name="ui_the_password_screen_didn_t_reach_your_phone_f88f9e" formatted="false">"Der Passwort-Bildschirm hat Ihr Telefon nicht erreicht."</string>
+    <string name="ui_the_phone_keyboard_isn_t_available_for_this_tv_choose__e2ade7" formatted="false">"Die Telefontastatur ist für diesen Fernseher nicht verfügbar. Wählen Sie stattdessen die TV-Tastatur aus."</string>
+    <string name="ui_this_account_and_its_profiles_leave_this_tv_the_other__3f0d5a" formatted="false">"Dieses Konto und seine Profile verlassen diesen Fernseher. Die anderen Konten bleiben. Um dieses Konto hier wieder zu verwenden, koppeln Sie den Fernseher mit seinem Telefon."</string>
+    <string name="ui_this_account_is_locked_open_cablegram_on_a_phone_signe_af553c" formatted="false">"Dieses Konto ist gesperrt. Öffnen Sie Cablegram auf einem Telefon, das in ihm signiert ist und tippen Sie auf Erlauben."</string>
+    <string name="ui_this_title_b588b8" formatted="false">"Diesen Titel"</string>
+    <string name="ui_this_title_is_private_open_cablegram_or_its_notificati_d68ff8" formatted="false">"Dieser Titel ist privat. Öffnen Sie Cablegram oder seine Benachrichtigung auf Ihrem Telefon und tippen Sie auf “Allow einmal”."</string>
+    <string name="ui_this_tv_036568">"Dieses TV: %1$s"</string>
+    <string name="ui_this_tv_3e2400" formatted="false">"Diesen Fernseher"</string>
+    <string name="ui_this_tv_gets_its_own_session_end_it_any_time_in_telegr_ad0e0a" formatted="false">"Dieser Fernseher bekommt seine eigene Sitzung. Beenden Sie es jederzeit in Telegram → Einstellungen → Geräte."</string>
+    <string name="ui_this_tv_is_connected_c944e9" formatted="false">"Dieser Fernseher ist angeschlossen"</string>
+    <string name="ui_this_tv_was_signed_in_to_a_different_telegram_account__f97fa9" formatted="false">"Dieser Fernseher wurde auf einem anderen Konto von Telegram als der Ihres Haushaltes angemeldet. Es hat wieder unterschrieben."</string>
+    <string name="ui_this_tv_wasn_t_used_for_a_while_choose_who_s_watching__9bb395" formatted="false">"Dieser Fernseher wurde nicht für eine Weile benutzt. Wählen Sie, wer zuschaut; das Telefon des Kontos muss es wieder zulassen."</string>
+    <string name="ui_this_tv_will_be_signed_out_of_cablegram_to_use_it_agai_40c00b" formatted="false">"Dieser TV wird von Cablegram signiert. Um es wieder zu verwenden, müssen Sie es wieder mit Ihrem Telefon paaren."</string>
+    <string name="ui_this_usually_takes_a_minute_playback_starts_when_it_s__fb7bed" formatted="false">"Das dauert in der Regel eine Minute. Die Wiedergabe beginnt, wenn sie bereit ist."</string>
+    <string name="ui_this_video_s_source_changed_on_your_phone_open_cablegr_d12a5c" formatted="false">"Das Video hat sich auf Ihrem Handy verändert. Öffne Cablegram am Telefon, um es zu aktualisieren."</string>
+    <string name="ui_this_video_was_deleted_1ddf86" formatted="false">"Dieses Video wurde gelöscht"</string>
+    <string name="ui_tip_connect_telegram_in_the_phone_app_import_connected_a039b5" formatted="false">"Tipp: Verbinden Sie Telegram in der Telefon-App (Import › Connected Storage) und dieser TV kann auch spielen, wenn Ihr Telefon aus ist."</string>
+    <string name="ui_titles_you_start_watching_show_up_here_5990dd" formatted="false">"Titel, die du hier auftauchst."</string>
+    <string name="ui_too_many_tries_this_profile_is_locked_for_15_minutes_21bd30" formatted="false">"Zu viele Versuche. Dieses Profil ist für 15 Minuten gesperrt."</string>
+    <string name="ui_try_again_d8b839" formatted="false">"Erneut versuchen"</string>
+    <string name="ui_tuning_2abeef" formatted="false">"Tuning"</string>
+    <string name="ui_tv_keyboard_0fb61f" formatted="false">"Fernsehtastatur"</string>
+    <string name="ui_tv_pairing_expired_410_new_pin_ff7100" formatted="false">"TV-Paar abgelaufen (410), neue PIN"</string>
+    <string name="ui_tv_session_dca893" formatted="false">"TV-Sitzung"</string>
+    <string name="ui_tv_shows_6adcc6" formatted="false">"Serien"</string>
+    <string name="ui_type_on_your_phone_a4ef92" formatted="false">"Geben Sie Ihr Telefon ein"</string>
+    <string name="ui_type_with_the_tv_keyboard_b12dad" formatted="false">"Typ mit TV-Tastatur"</string>
+    <string name="ui_unpair_10be2f" formatted="false">"Unzulänglichkeiten"</string>
+    <string name="ui_unpair_this_tv_c7796b" formatted="false">"Unpair this TV"</string>
+    <string name="ui_unpair_this_tv_d99d68" formatted="false">"Haben Sie diesen Fernseher nicht beeinträchtigt?"</string>
+    <string name="ui_unpair_tv_fbd044" formatted="false">"Unpair TV"</string>
+    <string name="ui_use_the_tv_keyboard_instead_c6c66e" formatted="false">"Verwenden Sie stattdessen die TV-Tastatur"</string>
+    <string name="ui_use_this_tv_for_telegram_playback_051438" formatted="false">"Verwenden Sie diesen TV für Telegram Wiedergabe"</string>
+    <string name="ui_volume_b10fb9" formatted="false">"Lautstärke"</string>
+    <string name="ui_waiting_for_approval_10c573" formatted="false">"Warten auf Genehmigung"</string>
+    <string name="ui_waiting_for_wi_fi_72c813" formatted="false">"Warten auf Wi-Fi"</string>
+    <string name="ui_waiting_for_your_phone_3c5ba6" formatted="false">"Warten auf dein Handy..."</string>
+    <string name="ui_waiting_for_your_phone_to_approve_ec56d7" formatted="false">"Warten auf Ihr Telefon zu genehmigen"</string>
+    <string name="ui_waiting_for_your_phone_to_let_this_tv_use_your_telegra_6296ca" formatted="false">"Warten Sie auf Ihr Telefon, um dieses TV nutzen Sie Ihre Telegram..."</string>
+    <string name="ui_waiting_in_line_28cc95" formatted="false">"Warten in der Linie"</string>
+    <string name="ui_wants_to_play_choose_who_s_watching_dbc0ba">"%1$s will spielen %2$s — wählen, wer beobachtet"</string>
+    <string name="ui_watch_telegram_on_this_tv_b79cf0" formatted="false">"Sehen Sie Telegram auf diesem Fernseher?"</string>
+    <string name="ui_where_would_you_like_to_type_your_password_cbc0dc" formatted="false">"Wo möchten Sie Ihr Passwort eingeben?"</string>
+    <string name="ui_who_s_watching_d0ec3b" formatted="false">"Wer schaut gerade?"</string>
+    <string name="ui_wi_fi_connection_lost_591289" formatted="false">"WI‐FI CONNECTION LOST"</string>
+    <string name="ui_wi_fi_first_relay_when_away_4ab75e" formatted="false">"Wi‑Fi zuerst, Relais, wenn weg"</string>
+    <string name="ui_wrong_pin_try_again_c5ce26" formatted="false">"Falsche PIN. Versuchen Sie es noch mal."</string>
+    <string name="ui_x_db967f">"%1$s %2$s"</string>
+    <string name="ui_you_can_leave_this_screen_with_back_and_return_to_the__848751" formatted="false">"Sie können diesen Bildschirm mit Zurück verlassen und später zum Titel zurückkehren."</string>
+    <string name="ui_your_household_s_telegram_is_connected_but_this_tv_isn_90d748" formatted="false">"Ihr Haushalt ist Telegram angeschlossen, aber dieser Fernseher ist nicht angemeldet. Melden Sie sich an, um Telegram Videos direkt von Telegram, ohne Ihr Telefon zu streamen."</string>
+    <string name="ui_your_library_1ad842" formatted="false">"Deine Mediathek"</string>
+    <string name="ui_your_list_is_empty_6a2cf9" formatted="false">"Ihre Liste ist leer"</string>
+    <string name="ui_your_paired_phone_7e4f9a" formatted="false">"Ihr gepaartes Telefon"</string>
+    <string name="ui_your_password_goes_only_to_telegram_encrypted_for_this_c23ea4" formatted="false">"Ihr Passwort geht nur auf Telegram, verschlüsselt für diesen TV. Cablegram sehen es nie."</string>
+    <string name="ui_your_phone_807163" formatted="false">"Ihr Telefon"</string>
+    <string name="ui_your_phone_and_this_tv_aren_t_on_the_same_wi_fi_so_cab_29145c" formatted="false">"Ihr Telefon und dieser Fernseher sind nicht auf der gleichen Wi‑Fi, so Cablegram Streams durch sein Relais. Das dauert ein paar Sekunden."</string>
+    <string name="ui_your_phone_can_sleep_or_leave_home_it_uses_no_battery__dec30b" formatted="false">"Ihr Telefon kann schlafen oder nach Hause gehen; es verwendet keine Batterie oder Daten."</string>
+    <string name="ui_your_phone_didn_t_allow_3272a3">"Ihr Telefon erlaubte %1$s nicht."</string>
+    <string name="ui_your_phone_didn_t_approve_this_title_press_try_again_t_6fe116" formatted="false">"Ihr Telefon hat diesen Titel nicht angenommen. Drücken Sie erneut versuchen, noch einmal zu fragen, oder Zurück zum Titel."</string>
+    <string name="ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_a75585" formatted="false">"Ihr Telefon lässt diesen Fernseher auf Telegram ein. Wenn es fragt, billigen Sie es in der Cablegram Benachrichtigung. Das Video beginnt, sobald es fertig ist."</string>
+    <string name="ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_e165e6" formatted="false">"Ihr Telefon lässt diesen Fernseher auf Telegram ein. Wenn es fragt, billigen Sie es in der Cablegram Benachrichtigung."</string>
+    <string name="ui_your_phone_is_on_this_wi_fi_again_so_playback_continue_b85633" formatted="false">"Ihr Telefon ist auf dieser Wi‑Fi wieder, so dass Wiedergabe geht direkt davon."</string>
+    <string name="ui_your_phone_is_the_remote_and_the_library_add_videos_in_fc9a65" formatted="false">"Ihr Telefon ist die Fernbedienung und die Bibliothek. Fügen Sie Videos in der Registerkarte Import der Telefon-App hinzu und sie erscheinen hier innerhalb von wenigen Sekunden."</string>
+    <string name="ui_your_phone_isn_t_on_the_same_wi_fi_as_this_tv_so_cable_a08076" formatted="false">"Ihr Telefon ist nicht auf der gleichen Wi‑Fi wie dieser TV, so Cablegram kann durch sein Relais mit den mobilen Daten des Telefons streamen."</string>
+    <string name="ui_your_phone_left_this_wi_fi_playback_continues_through__120c29" formatted="false">"Ihr Telefon hat diese Wi‑Fi verlassen. Die Wiedergabe setzt sich durch das Relais fort, von wo aus Sie waren – das dauert ein paar Sekunden."</string>
+    <string name="ui_your_phone_shows_the_code_de7f56" formatted="false">"Ihr Telefon zeigt den Code"</string>
+    <string name="ui_your_title_starts_automatically_after_approval_1cc12a" formatted="false">"Ihr Titel beginnt automatisch nach der Genehmigung."</string>
+    <string name="ui_your_video_is_ready_4f9fb5" formatted="false">"Ihr Video ist fertig."</string>
+    <string name="ui_zoom_509c51" formatted="false">"Vergrößern"</string>
+</resources>

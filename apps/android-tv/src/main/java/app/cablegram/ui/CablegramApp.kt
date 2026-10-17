@@ -79,6 +79,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 @Composable
 fun CablegramApp(viewModel: CablegramViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     viewModel.openingSignature?.let { opening ->
         androidx.compose.runtime.key(opening.id) {
             SignatureOpeningScreen(opening.url, onFinished = { viewModel.finishOpeningSignature(opening.id) })
@@ -172,7 +173,7 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                             (pickerContext as? android.app.Activity)?.finish()
                         } else {
                             exitArmedAt = now
-                            android.widget.Toast.makeText(pickerContext, "Press Back again to exit", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(pickerContext, ui.getString(R.string.ui_press_back_again_to_exit_e12dfa), android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }
                     // R-4: hardware/remote number keys also feed the keypad.
@@ -300,6 +301,7 @@ private fun ProfilePickerScreen(
     pinBuffer: String,
     onApprovalCancel: () -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     state.awaitingPhoneFor?.let { profile ->
         PhoneApprovalPanel(profile, sharedTv, onApprovalCancel)
         return
@@ -327,7 +329,7 @@ private fun ProfilePickerScreen(
                 Column(Modifier.width(300.dp)) {
                     BrandMark()
                     Spacer(Modifier.height(24.dp))
-                    Text("Enter PIN", color = Muted, fontSize = 16.sp)
+                    Text(ui.getString(R.string.ui_enter_pin_f246c7), color = Muted, fontSize = 16.sp)
                     Text(pinProfile.name, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Spacer(Modifier.height(18.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -343,36 +345,38 @@ private fun ProfilePickerScreen(
                     Spacer(Modifier.height(16.dp))
                     Text(
                         when {
-                            state.pending -> "Checking…"
+                            state.pending -> ui.getString(R.string.ui_checking_ec963f)
                             state.pinError != null -> state.pinError
-                            else -> "Choose the digits, then OK."
+                            else -> ui.getString(R.string.ui_choose_the_digits_then_ok_30a667)
                         },
                         color = if (state.pinError != null && !state.pending) Warning else Muted,
                         fontSize = 15.sp,
                     )
                     Spacer(Modifier.height(22.dp))
                     Button(onClick = onPinCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
-                        Text("Cancel")
+                        Text(ui.getString(R.string.ui_cancel_19766e))
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9")).forEach { row ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            row.forEach { digit ->
-                                PinKey(
-                                    label = digit,
-                                    focused = focusedDigit == digit,
-                                    requestFocus = digit == "1",
-                                    onFocus = { focusedDigit = digit },
-                                    onClick = { onPinDigit(digit.first()) },
-                                )
+                LtrControls {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9")).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                row.forEach { digit ->
+                                    PinKey(
+                                        label = digit,
+                                        focused = focusedDigit == digit,
+                                        requestFocus = digit == "1",
+                                        onFocus = { focusedDigit = digit },
+                                        onClick = { onPinDigit(digit.first()) },
+                                    )
+                                }
                             }
                         }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PinKey(label = "⌫", focused = focusedDigit == "del", onFocus = { focusedDigit = "del" }, onClick = onPinDelete)
-                        PinKey(label = "0", focused = focusedDigit == "0", onFocus = { focusedDigit = "0" }, onClick = { onPinDigit('0') })
-                        PinKey(label = "OK", focused = focusedDigit == "ok", onFocus = { focusedDigit = "ok" }, onClick = onPinSubmit)
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            PinKey(label = "⌫", focused = focusedDigit == "del", onFocus = { focusedDigit = "del" }, onClick = onPinDelete)
+                            PinKey(label = "0", focused = focusedDigit == "0", onFocus = { focusedDigit = "0" }, onClick = { onPinDigit('0') })
+                            PinKey(label = ui.getString(R.string.ui_ok_565339), focused = focusedDigit == "ok", onFocus = { focusedDigit = "ok" }, onClick = onPinSubmit)
+                        }
                     }
                 }
             }
@@ -389,7 +393,7 @@ private fun ProfilePickerScreen(
             modifier = Modifier.align(Alignment.Center).padding(horizontal = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Who's watching?", color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
+            Text(ui.getString(R.string.ui_who_s_watching_d0ec3b), color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
             castBanner?.let {
                 Spacer(Modifier.height(12.dp))
                 Text(it, color = Color.White, fontSize = 18.sp, maxLines = 2,
@@ -397,7 +401,7 @@ private fun ProfilePickerScreen(
             }
             Spacer(Modifier.height(10.dp))
             Text(
-                state.message ?: "Choose your profile",
+                state.message ?: ui.getString(R.string.ui_choose_your_profile_a946b9),
                 color = if (state.message != null && !state.pending) Warning else Muted,
                 fontSize = 18.sp,
             )
@@ -415,7 +419,7 @@ private fun ProfilePickerScreen(
             if (sharedTv) {
                 // CAB-65: several accounts use this TV. Unpairing everyone from here would let anyone remove the others.
                 Text(
-                    "Several accounts use this TV. To remove one, open one of its profiles, select the profile picture at the top left, then choose Remove this account from this TV.",
+                    ui.getString(R.string.ui_several_accounts_use_this_tv_to_remove_one_open_one_of_f713b3),
                     color = Muted,
                     fontSize = 15.sp,
                 )
@@ -423,7 +427,7 @@ private fun ProfilePickerScreen(
                 val unpair = remember { UnpairConfirmState() }
                 UnpairConfirmDialog(unpair, onSignOut)
                 Button(onClick = unpair::ask, colors = ButtonDefaults.colors(containerColor = Color.Transparent, contentColor = Muted)) {
-                    Text("Unpair this TV")
+                    Text(ui.getString(R.string.ui_unpair_this_tv_c7796b))
                 }
             }
         }
@@ -433,6 +437,7 @@ private fun ProfilePickerScreen(
 /** Profile lock: the TV waits until a phone in the household allows this profile. */
 @Composable
 private fun PhoneApprovalPanel(profile: Profile, sharedTv: Boolean, onCancel: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     BackHandler(onBack = onCancel)
     val cancelFocus = remember { FocusRequester() }
     LaunchedEffect(profile.id) { runCatching { cancelFocus.requestFocus() } }
@@ -447,14 +452,14 @@ private fun PhoneApprovalPanel(profile: Profile, sharedTv: Boolean, onCancel: ()
         ) {
             BrandMark()
             Spacer(Modifier.height(24.dp))
-            Text("Allow on your phone", color = Muted, fontSize = 16.sp)
+            Text(ui.getString(R.string.ui_allow_on_your_phone_f78aa2), color = Muted, fontSize = 16.sp)
             Text(profile.name, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(14.dp))
             Text(
                 if (sharedTv) {
-                    "Other accounts use this TV too, so this account's phone has to allow it. Open Cablegram on that phone and tap Allow."
+                    ui.getString(R.string.ui_other_accounts_use_this_tv_too_so_this_account_s_phone_9a6f28)
                 } else {
-                    "This account is locked. Open Cablegram on a phone signed in to it and tap Allow."
+                    ui.getString(R.string.ui_this_account_is_locked_open_cablegram_on_a_phone_signe_af553c)
                 },
                 color = Muted,
                 fontSize = 18.sp,
@@ -465,7 +470,7 @@ private fun PhoneApprovalPanel(profile: Profile, sharedTv: Boolean, onCancel: ()
                 colors = ButtonDefaults.colors(containerColor = PanelRaised),
                 modifier = Modifier.focusRequester(cancelFocus),
             ) {
-                Text("Cancel")
+                Text(ui.getString(R.string.ui_cancel_19766e))
             }
         }
     }
@@ -543,6 +548,7 @@ private fun SessionActionsScreen(
     sharedTv: Boolean,
     onUnpair: () -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     BackHandler(onBack = onBack)
     Box(Modifier.fillMaxSize().padding(56.dp), contentAlignment = Alignment.Center) {
         Column(
@@ -551,31 +557,31 @@ private fun SessionActionsScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             BrandMark()
-            Text("TV session", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-            Text("Choose an action", color = Muted, fontSize = 17.sp)
+            Text(ui.getString(R.string.ui_tv_session_dca893), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Text(ui.getString(R.string.ui_choose_an_action_769239), color = Muted, fontSize = 17.sp)
             Button(onClick = onSwitchProfile, modifier = Modifier.fillMaxWidth()) {
-                Text("Switch profile")
+                Text(ui.getString(R.string.ui_switch_profile_c1e0da))
             }
             Button(onClick = onSignOutProfile, modifier = Modifier.fillMaxWidth()) {
-                Text("Sign out")
+                Text(ui.getString(R.string.ui_sign_out_48f0d3))
             }
             // CAB-65: on a shared TV this removes only the open account; with one account it unpairs the TV.
             val unpair = remember { UnpairConfirmState() }
             if (sharedTv) {
                 UnpairConfirmDialog(
                     unpair, onUnpair,
-                    title = "Remove this account from this TV?",
-                    text = "This account and its profiles leave this TV. The other accounts on it stay. To use this account here again, pair the TV with its phone.",
-                    confirmLabel = "Remove",
+                    title = ui.getString(R.string.ui_remove_this_account_from_this_tv_7dea07),
+                    text = ui.getString(R.string.ui_this_account_and_its_profiles_leave_this_tv_the_other__3f0d5a),
+                    confirmLabel = ui.getString(R.string.ui_remove_c3812f),
                 )
             } else {
                 UnpairConfirmDialog(unpair, onUnpair)
             }
             Button(onClick = unpair::ask, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.colors(containerColor = Panel)) {
-                Text(if (sharedTv) "Remove this account from this TV" else "Unpair this TV")
+                Text(if (sharedTv) ui.getString(R.string.ui_remove_this_account_from_this_tv_b0c050) else ui.getString(R.string.ui_unpair_this_tv_c7796b))
             }
             Button(onClick = onBack, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.colors(containerColor = Panel)) {
-                Text("Back")
+                Text(ui.getString(R.string.ui_back_76900f))
             }
             message?.let { Text(it, color = Warning, fontSize = 13.sp) }
         }
@@ -584,8 +590,9 @@ private fun SessionActionsScreen(
 
 @Composable
 private fun NewProfileChoice(enabled: Boolean, requestFocus: Boolean, onClick: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     ProfileTile(
-        label = "Add profile",
+        label = ui.getString(R.string.ui_add_profile_f964be),
         enabled = enabled,
         requestFocus = requestFocus,
         onClick = onClick,
@@ -696,12 +703,13 @@ private fun ProfileTile(
 }
 
 @Composable
-private fun LoadingScreen(label: String = "Opening your library...") {
+private fun LoadingScreen(label: String? = null) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             BrandMark()
             Spacer(Modifier.height(24.dp))
-            Text(label, color = Muted, fontSize = 18.sp)
+            Text(label ?: ui.getString(R.string.ui_opening_your_library_2d9a4d), color = Muted, fontSize = 18.sp)
         }
     }
 }
@@ -715,13 +723,14 @@ private fun PairingScreen(
     canCancel: Boolean = false,
     tvLanIp: String? = null,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     // With profiles to return to, Back goes back to them. Without, Back leaves the app as usual: catching it here kept
     // the app open and stopped the TV from noticing that a phone had paired it.
     BackHandler(enabled = canCancel, onBack = onBack)
     if (nameRequired) {
         Box(Modifier.fillMaxSize().padding(72.dp), contentAlignment = Alignment.Center) {
             Text(
-                "Pair this TV from the Cablegram app on your phone.",
+                ui.getString(R.string.ui_pair_this_tv_from_the_cablegram_app_on_your_phone_894b76),
                 color = Aqua,
                 fontSize = 28.sp,
                 lineHeight = 36.sp,
@@ -745,21 +754,23 @@ private fun PairingScreen(
         Column(modifier = Modifier.weight(1f)) {
             BrandMark()
             Spacer(Modifier.height(28.dp))
-            Text("Pair this TV", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
+            Text(ui.getString(R.string.ui_pair_this_tv_a16f6b), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
             Spacer(Modifier.height(8.dp))
-            Text("Scan the code with your phone\u2019s camera, or type this PIN in the Cablegram app or at app.cablegram.app.", color = Muted, fontSize = 17.sp, lineHeight = 24.sp)
+            Text(ui.getString(R.string.ui_scan_the_code_with_your_phone_s_camera_or_type_this_pi_f54954), color = Muted, fontSize = 17.sp, lineHeight = 24.sp)
             Spacer(Modifier.height(26.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                session.pin.forEach { digit ->
-                    Box(
-                        Modifier
-                            .size(width = 58.dp, height = 74.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(PanelRaised)
-                            .border(1.dp, Outline, RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(digit.toString(), color = Acid, fontSize = 40.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+            LtrControls {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    session.pin.forEach { digit ->
+                        Box(
+                            Modifier
+                                .size(width = 58.dp, height = 74.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(PanelRaised)
+                                .border(1.dp, Outline, RoundedCornerShape(12.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(digit.toString(), color = Acid, fontSize = 40.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -783,24 +794,24 @@ private fun PairingScreen(
                     modifier = Modifier.focusRequester(newPinFocus).onFocusChanged { newPinFocused = it.hasFocus },
                     colors = ButtonDefaults.colors(containerColor = PanelRaised),
                 ) {
-                    Text("New PIN")
+                    Text(ui.getString(R.string.ui_new_pin_6d8849))
                 }
                 if (canCancel) {
                     Button(onClick = onBack, colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
-                        Text("Cancel")
+                        Text(ui.getString(R.string.ui_cancel_19766e))
                     }
                 }
             }
             Spacer(Modifier.height(26.dp))
             Text(
-                "Keep the phone and TV on the same Wi‑Fi. Your videos stay on your phone.",
+                ui.getString(R.string.ui_keep_the_phone_and_tv_on_the_same_wi_fi_your_videos_st_898a8b),
                 color = Slate,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "This TV: ${tvLanIp ?: "no Wi‑Fi address yet"}",
+                ui.getString(R.string.ui_this_tv_036568, tvLanIp ?: ui.getString(R.string.ui_no_wi_fi_address_yet_614231)),
                 color = Muted,
                 fontSize = 14.sp,
                 fontFamily = FontFamily.Monospace,
@@ -822,12 +833,12 @@ private fun PairingScreen(
                     .padding(14.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(bitmap = qrBitmap.asImageBitmap(), contentDescription = "Phone pairing QR code")
+                Image(bitmap = qrBitmap.asImageBitmap(), contentDescription = ui.getString(R.string.ui_phone_pairing_qr_code_6fc5a0))
             }
             Spacer(Modifier.height(14.dp))
-            Text("Scan with your phone\u2019s camera", color = Muted, fontSize = 15.sp)
+            Text(ui.getString(R.string.ui_scan_with_your_phone_s_camera_91a2f3), color = Muted, fontSize = 15.sp)
             Spacer(Modifier.height(4.dp))
-            Text("Or open app.cablegram.app and enter the PIN", color = Slate, fontSize = 13.sp)
+            Text(ui.getString(R.string.ui_or_open_app_cablegram_app_and_enter_the_pin_8e31cb), color = Slate, fontSize = 13.sp)
         }
     }
 }
@@ -843,6 +854,7 @@ internal fun ErrorScreen(
     onBack: (() -> Unit)? = null,
     errorVideoUrl: String? = null,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (onBack != null) BackHandler(onBack = onBack)
     UnhappyScenarioFrame(eventKey = "$title:$message", videoUrl = errorVideoUrl) {
             Text("CABLEGRAM", color = Coral, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -857,20 +869,20 @@ internal fun ErrorScreen(
                 }
                 // After a deleted video, "Try again" reloads the library; "Back to library" leaves at once.
                 if (onBack != null) {
-                    Button(onClick = onBack, modifier = Modifier.focusRequester(retryFocus)) { Text("Back to library") }
-                    Button(onClick = onRetry, colors = ButtonDefaults.colors(containerColor = Panel)) { Text("Try again") }
+                    Button(onClick = onBack, modifier = Modifier.focusRequester(retryFocus)) { Text(ui.getString(R.string.ui_back_to_library_008e42)) }
+                    Button(onClick = onRetry, colors = ButtonDefaults.colors(containerColor = Panel)) { Text(ui.getString(R.string.ui_try_again_d8b839)) }
                 } else {
-                    Button(onClick = onRetry, modifier = Modifier.focusRequester(retryFocus)) { Text("Try again") }
+                    Button(onClick = onRetry, modifier = Modifier.focusRequester(retryFocus)) { Text(ui.getString(R.string.ui_try_again_d8b839)) }
                 }
-                if (onConvert != null) Button(onClick = onConvert) { Text("Convert anyway") }
+                if (onConvert != null) Button(onClick = onConvert) { Text(ui.getString(R.string.ui_convert_anyway_2c1857)) }
                 if (onRemove != null) {
-                    Button(onClick = onRemove, colors = ButtonDefaults.colors(containerColor = Coral)) { Text("Remove") }
+                    Button(onClick = onRemove, colors = ButtonDefaults.colors(containerColor = Coral)) { Text(ui.getString(R.string.ui_remove_c3812f)) }
                 }
                 if (onSignOut != null) {
                     val unpair = remember { UnpairConfirmState() }
                     UnpairConfirmDialog(unpair, onSignOut)
                     Button(onClick = unpair::ask, colors = ButtonDefaults.colors(containerColor = Panel)) {
-                        Text("Unpair TV")
+                        Text(ui.getString(R.string.ui_unpair_tv_fbd044))
                     }
                 }
             }
@@ -907,6 +919,7 @@ internal fun createQrBitmap(content: String, size: Int): Bitmap {
  */
 @Composable
 private fun TelegramPhoneLoginPrompt(viewModel: CablegramViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val prompt = viewModel.telegram.phoneLoginPrompt.collectAsState().value ?: return
     val denyFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(prompt.requestId) { runCatching { denyFocus.requestFocus() } }
@@ -920,10 +933,10 @@ private fun TelegramPhoneLoginPrompt(viewModel: CablegramViewModel) {
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Text("TELEGRAM", color = Color(0xFFF3B86A), fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-            Text("Sign in ${prompt.phoneName} to your Telegram?", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Text(ui.getString(R.string.ui_sign_in_to_your_telegram_a2b2cf, prompt.phoneName), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             Text(
-                "A phone in your household asked this TV to sign it in to your Telegram account. Allow only if you just " +
-                    "chose \"Use the QR code on your TV\" on your own phone. Allowing gives that phone full access to your Telegram.",
+                ui.getString(R.string.ui_a_phone_in_your_household_asked_this_tv_to_sign_it_in__568faf) +
+                    ui.getString(R.string.ui_chose_use_the_qr_code_on_your_tv_on_your_own_phone_all_ce22eb),
                 color = Color.White.copy(alpha = 0.8f),
                 fontSize = 17.sp,
                 lineHeight = 24.sp,
@@ -932,8 +945,8 @@ private fun TelegramPhoneLoginPrompt(viewModel: CablegramViewModel) {
                 androidx.tv.material3.Button(
                     onClick = { viewModel.telegram.answerPhoneLogin(false) },
                     modifier = Modifier.focusRequester(denyFocus),
-                ) { Text("Don't allow") }
-                androidx.tv.material3.Button(onClick = { viewModel.telegram.answerPhoneLogin(true) }) { Text("Allow") }
+                ) { Text(ui.getString(R.string.ui_don_t_allow_9803bd)) }
+                androidx.tv.material3.Button(onClick = { viewModel.telegram.answerPhoneLogin(true) }) { Text(ui.getString(R.string.ui_allow_e213c1)) }
             }
         }
     }

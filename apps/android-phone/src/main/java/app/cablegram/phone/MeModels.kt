@@ -9,6 +9,8 @@ data class HouseholdProfile(
     val name: String,
     @kotlinx.serialization.SerialName("sort_order") val sortOrder: Int = 0,
     @kotlinx.serialization.SerialName("pin_set") val pinSet: Boolean = false,
+    @SerialName("ui_language") val uiLanguage: String = "en",
+    @SerialName("ui_language_override") val uiLanguageOverride: String? = null,
 )
 
 /** GET /api/relay/usage (spec 003 US4). */

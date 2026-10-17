@@ -30,6 +30,7 @@ import com.journeyapps.barcodescanner.DecoratedBarcodeView
 
 @Composable
 fun PairingScanner(modifier: Modifier = Modifier, onQr: (String) -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val context = LocalContext.current
     var cameraAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { cameraAllowed = it }
@@ -39,8 +40,8 @@ fun PairingScanner(modifier: Modifier = Modifier, onQr: (String) -> Unit) {
     var consumed by remember { mutableStateOf(false) }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         if (!cameraAllowed) {
-            Text("Allow camera access to scan the TV code. You can also enter the code above.", color = VlcMuted)
-            Button(onClick = { permission.launch(Manifest.permission.CAMERA) }) { Text("Allow camera") }
+            Text(ui.getString(R.string.ui_allow_camera_access_to_scan_the_tv_code_you_can_also_e_1e0033), color = VlcMuted)
+            Button(onClick = { permission.launch(Manifest.permission.CAMERA) }) { Text(ui.getString(R.string.ui_allow_camera_e18835)) }
         } else {
             AndroidView(
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -51,7 +52,7 @@ fun PairingScanner(modifier: Modifier = Modifier, onQr: (String) -> Unit) {
                             ViewGroup.LayoutParams.MATCH_PARENT,
                         )
                         barcodeView.decoderFactory = DefaultDecoderFactory(listOf(BarcodeFormat.QR_CODE))
-                        setStatusText("Point the camera at the QR on the TV")
+                        setStatusText(ui.getString(R.string.ui_point_the_camera_at_the_qr_on_the_tv_f4e744))
                         decodeContinuous { result ->
                             val text = result.text?.trim().orEmpty()
                             if (text.isNotBlank() && !consumed) {
@@ -68,7 +69,7 @@ fun PairingScanner(modifier: Modifier = Modifier, onQr: (String) -> Unit) {
                     view = null
                 },
             )
-            if (consumed) Button(onClick = { consumed = false }) { Text("Scan again") }
+            if (consumed) Button(onClick = { consumed = false }) { Text(ui.getString(R.string.ui_scan_again_3d0458)) }
         }
     }
     DisposableEffect(lifecycle) {

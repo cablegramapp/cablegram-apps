@@ -42,10 +42,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.cablegram.telegram.BOT_HUB_DESCRIPTION
-import app.cablegram.telegram.BOT_INDEPENDENCE
-import app.cablegram.telegram.BOT_DISCLAIMER
-import app.cablegram.telegram.BOT_PERMISSIONS
 import app.cablegram.telegram.LibraryBotRecommendations
 import app.cablegram.telegram.CablegramChannel
 import app.cablegram.telegram.CommunityChannels
@@ -67,6 +63,7 @@ private const val TELEGRAM_CODE_URL =
  */
 @Composable
 internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (!PhoneTelegram.configured) return
     val link = viewModel.telegramLink
     val linked = link?.linked == true
@@ -81,15 +78,15 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
     ) {
         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = VlcOrange)
         Column(Modifier.weight(1f)) {
-            Text(if (linked) "Telegram · ${TelegramSession.LIBRARY_TITLE}" else "Telegram", color = Color.White)
+            Text(if (linked) ui.getString(R.string.ui_telegram_4bdd3a, TelegramSession.LIBRARY_TITLE) else "Telegram", color = Color.White)
             Text(
                 when {
-                    !linked -> "Use your own Telegram account as cloud storage. Share videos into a private channel and watch them on your TV."
+                    !linked -> ui.getString(R.string.ui_use_your_own_telegram_account_as_cloud_storage_share_v_0d5978)
                     health == TelegramHealth.ChannelLost ->
-                        "You're no longer in the \"${TelegramSession.LIBRARY_TITLE}\" channel (you left it or it was deleted), so Cablegram can't see its videos."
+                        ui.getString(R.string.ui_you_re_no_longer_in_the_channel_you_left_it_or_it_was__46af5b, TelegramSession.LIBRARY_TITLE)
                     health == TelegramHealth.SignedOut ->
-                        "Telegram signed Cablegram out on this phone (for example from Telegram → Devices). Sign in again, or disconnect."
-                    else -> "Connected as ${link?.displayName ?: "your account"}. Videos you share into this private channel appear on your TV."
+                        ui.getString(R.string.ui_telegram_signed_cablegram_out_on_this_phone_for_exampl_c6a476)
+                    else -> ui.getString(R.string.ui_connected_as_videos_you_share_into_this_private_channe_54b272, link?.displayName ?: ui.getString(R.string.ui_your_account_17a7e5))
                 },
                 color = if (health == TelegramHealth.ChannelLost || health == TelegramHealth.SignedOut) VlcOrange else VlcMuted,
                 fontSize = 12.sp,
@@ -100,32 +97,32 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
         !linked -> Button(
             onClick = viewModel::openTelegramSheet,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_CONNECT),
-        ) { Text("Connect Telegram") }
+        ) { Text(ui.getString(R.string.ui_connect_telegram_00c799)) }
         health == TelegramHealth.ChannelLost -> Button(
             onClick = viewModel::recreateTelegramChannel,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_RECREATE),
-        ) { Text("Create a new \"${TelegramSession.LIBRARY_TITLE}\"") }
+        ) { Text(ui.getString(R.string.ui_create_a_new_cb63aa, TelegramSession.LIBRARY_TITLE)) }
         health == TelegramHealth.SignedOut -> Button(
             onClick = viewModel::signInToTelegramAgain,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-        ) { Text("Sign in to Telegram again") }
+        ) { Text(ui.getString(R.string.ui_sign_in_to_telegram_again_ce9582)) }
         else -> link?.chatId?.let { chatId ->
             OutlinedButton(
                 onClick = { openInTelegram(context, chatId) },
                 modifier = Modifier.fillMaxWidth().maestro(MaestroIds.TELEGRAM_OPEN),
-            ) { Text("Open \"${TelegramSession.LIBRARY_TITLE}\" in Telegram") }
+            ) { Text(ui.getString(R.string.ui_open_in_telegram_700ad9, TelegramSession.LIBRARY_TITLE)) }
         }
     }
     if (linked && health == TelegramHealth.Ok && PhoneTelegram.wasLinked(context)) {
         OutlinedButton(
             onClick = viewModel::checkTelegramBotHub,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_CHECK_BOT_HUB),
-        ) { Text("Check Bot Hub") }
+        ) { Text(ui.getString(R.string.ui_check_bot_hub_d194d2)) }
         OutlinedButton(
             onClick = viewModel::organizeTelegramFolder,
             enabled = !viewModel.telegramFolderBusy,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_ORGANIZE_FOLDER),
-        ) { Text(if (viewModel.telegramFolderBusy) "Organizing…" else "Organize Telegram folder") }
+        ) { Text(if (viewModel.telegramFolderBusy) ui.getString(R.string.ui_organizing_564f6b) else ui.getString(R.string.ui_organize_telegram_folder_84e271)) }
         viewModel.telegramFolderMessage?.let { Text(it, color = VlcMuted, modifier = Modifier.padding(horizontal = 8.dp)) }
         var autoApprove by remember { mutableStateOf(PhoneTelegram.autoApproveTvs(context)) }
         Row(
@@ -133,9 +130,9 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Approve my TVs automatically", color = Color.White)
+                Text(ui.getString(R.string.ui_approve_my_tvs_automatically_23e7c5), color = Color.White)
                 Text(
-                    "Off: a notification asks before each TV signs in to Telegram. On: paired TVs sign in without asking.",
+                    ui.getString(R.string.ui_off_a_notification_asks_before_each_tv_signs_in_to_tel_6f98b3),
                     color = VlcMuted,
                     fontSize = 12.sp,
                 )
@@ -150,35 +147,35 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
         // The household is linked (from another phone, or before a reinstall) but this phone has no session,
         // so it can't approve TVs, save videos or end TV sessions until it signs in too.
         Text(
-            "This phone isn't signed in to Telegram yet, so it can't approve your TVs or save videos to Telegram.",
+            ui.getString(R.string.ui_this_phone_isn_t_signed_in_to_telegram_yet_so_it_can_t_a21b4f),
             color = VlcOrange, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp),
         )
-        Button(onClick = viewModel::openTelegramSheet, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Sign in on this phone") }
+        Button(onClick = viewModel::openTelegramSheet, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(ui.getString(R.string.ui_sign_in_on_this_phone_1bc154)) }
     }
     if (linked && health == TelegramHealth.Ok) {
-        OutlinedButton(onClick = viewModel::openHiddenVideos, modifier = Modifier.fillMaxWidth()) { Text("Hidden videos") }
+        OutlinedButton(onClick = viewModel::openHiddenVideos, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_hidden_videos_e92f75)) }
     }
     if (viewModel.showHiddenVideos) HiddenVideosDialog(viewModel)
     if (linked) {
         OutlinedButton(
             onClick = { confirmDisconnect = true },
             modifier = Modifier.fillMaxWidth().maestro(MaestroIds.TELEGRAM_DISCONNECT),
-        ) { Text("Disconnect Telegram", color = Color(0xFFFF8A80)) }
+        ) { Text(ui.getString(R.string.ui_disconnect_telegram_3896d7), color = Color(0xFFFF8A80)) }
     }
     if (confirmDisconnect) {
         AlertDialog(
             onDismissRequest = { confirmDisconnect = false },
-            title = { Text("Disconnect Telegram?") },
+            title = { Text(ui.getString(R.string.ui_disconnect_telegram_eb9ab8)) },
             text = {
                 Text(
-                    "Cablegram signs out of Telegram on this phone and on your TVs. Videos stay in your " +
-                        "\"${TelegramSession.LIBRARY_TITLE}\" channel; they disappear from Cablegram until you connect again.",
+                    ui.getString(R.string.ui_cablegram_signs_out_of_telegram_on_this_phone_and_on_y_73f0dc) +
+                        ui.getString(R.string.ui_channel_they_disappear_from_cablegram_until_you_connec_2ef282, TelegramSession.LIBRARY_TITLE),
                 )
             },
             confirmButton = {
-                TextButton(onClick = { confirmDisconnect = false; viewModel.disconnectTelegram() }) { Text("Disconnect") }
+                TextButton(onClick = { confirmDisconnect = false; viewModel.disconnectTelegram() }) { Text(ui.getString(R.string.ui_disconnect_acfc5b)) }
             },
-            dismissButton = { TextButton(onClick = { confirmDisconnect = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { confirmDisconnect = false }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
             modifier = Modifier.maestroRoot(),
         )
     }
@@ -187,6 +184,7 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
 /** Phone number → code → (password) → library set up. One request at a time (the session enforces it). */
 @Composable
 internal fun TelegramConnectSheet(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     BackHandler(onBack = viewModel::closeTelegramSheet)
     val started = viewModel.telegramStarted || PhoneTelegram.existing() != null
     Column(
@@ -198,7 +196,7 @@ internal fun TelegramConnectSheet(viewModel: PhoneViewModel) {
             .maestro(MaestroIds.TELEGRAM_SHEET),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        TextButton(onClick = viewModel::closeTelegramSheet) { Text("Close", color = VlcOrange) }
+        TextButton(onClick = viewModel::closeTelegramSheet) { Text(ui.getString(R.string.ui_close_7d9eb7), color = VlcOrange) }
         // A household that is already linked still needs the intro on a phone that has no session of its own.
         val context = LocalContext.current
         if (!started && !PhoneTelegram.wasLinked(context)) BeforeYouConnect(viewModel) else SignInSteps(viewModel)
@@ -208,59 +206,60 @@ internal fun TelegramConnectSheet(viewModel: PhoneViewModel) {
 /** FR-021: what Cablegram gets, what it uses, where credentials go, how to revoke — before any input. */
 @Composable
 private fun BeforeYouConnect(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val context = LocalContext.current
-    Text("Before you connect Telegram", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+    Text(ui.getString(R.string.ui_before_you_connect_telegram_435c06), color = Color.White, style = MaterialTheme.typography.headlineSmall)
     TrustPoint(
-        "What Cablegram can do",
-        "Like any Telegram app (Telegram Desktop, for example), Cablegram signs in as a device on your account.",
+        ui.getString(R.string.ui_what_cablegram_can_do_86c731),
+        ui.getString(R.string.ui_like_any_telegram_app_telegram_desktop_for_example_cab_22d711),
     )
     TrustPoint(
-        "What it does",
-        "For your videos, it reads and manages one private channel, \"${TelegramSession.LIBRARY_TITLE}\". After connecting, you can also choose to join Cablegram’s optional channels. It organizes your library, joined Cablegram channels, support, and added bots in a Cablegram folder in Telegram. It joins only the channels selected when you tap Save. It then reads recommendations from the public Cablegram Bot Hubs channel and offers third-party bots one at a time. Adding a bot to your library requires your separate agreement to its permissions and the disclaimer. It never reads your other chats or contacts. The only thing it ever sends is a video you choose to save with \"Save to Telegram\", into that channel.",
+        ui.getString(R.string.ui_what_it_does_c74ea9),
+        ui.getString(R.string.ui_for_your_videos_it_reads_and_manages_one_private_chann_a5212a, TelegramSession.LIBRARY_TITLE),
     )
     TrustPoint(
-        "Where your details go",
-        "Your phone number, login code and password go straight to Telegram. They are never sent to or stored on Cablegram's servers.",
+        ui.getString(R.string.ui_where_your_details_go_c282bf),
+        ui.getString(R.string.ui_your_phone_number_login_code_and_password_go_straight__bc3e04),
     )
     TrustPoint(
-        "You stay in control",
-        "You'll see Cablegram in Telegram → Settings → Devices and can end it there at any time. Disconnect in Cablegram signs out everywhere.",
+        ui.getString(R.string.ui_you_stay_in_control_faa171),
+        ui.getString(R.string.ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486),
     )
     TrustPoint(
-        "You can check this",
-        "The Cablegram apps are open source. Anyone can check what they do with your Telegram account. Cablegram's servers are not part of that.",
+        ui.getString(R.string.ui_you_can_check_this_ba4981),
+        ui.getString(R.string.ui_the_cablegram_apps_are_open_source_anyone_can_check_wh_3a0623),
     )
     TextButton(onClick = {
         runCatching {
             context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(TELEGRAM_CODE_URL)))
         }
-    }) { Text("Read the code", color = VlcOrange) }
+    }) { Text(ui.getString(R.string.ui_read_the_code_f049d5), color = VlcOrange) }
     Text(
-        "Cablegram is an unofficial app. It isn't made or endorsed by Telegram; it uses your own Telegram account through Telegram's public API.",
+        ui.getString(R.string.ui_cablegram_is_an_unofficial_app_it_isn_t_made_or_endors_7e0562),
         color = VlcMuted,
         style = MaterialTheme.typography.bodySmall,
     )
     Button(
         onClick = viewModel::connectTelegram,
         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_CONTINUE),
-    ) { Text("Continue") }
+    ) { Text(ui.getString(R.string.ui_continue_31fbef)) }
     // FR-023: only when a Home TV is paired; it must already be signed in to the household's Telegram.
     if (viewModel.homeTvForTelegram() != null && viewModel.telegramLink?.linked == true) {
         OutlinedButton(onClick = viewModel::connectTelegramViaTv, modifier = Modifier.fillMaxWidth()) {
-            Text("Use the QR code on your TV instead")
+            Text(ui.getString(R.string.ui_use_the_qr_code_on_your_tv_instead_7c5651))
         }
         Text(
-            "Your TV is already signed in to your Telegram. It approves this phone, so you don't need your phone number or a code.",
+            ui.getString(R.string.ui_your_tv_is_already_signed_in_to_your_telegram_it_appro_6e35a3),
             color = VlcMuted,
             style = MaterialTheme.typography.bodySmall,
         )
     }
-    OutlinedButton(onClick = viewModel::closeTelegramSheet, modifier = Modifier.fillMaxWidth()) { Text("Not now") }
+    OutlinedButton(onClick = viewModel::closeTelegramSheet, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_not_now_a0e63d)) }
     TextButton(onClick = {
         runCatching {
             context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(PRIVACY_URL)))
         }
-    }) { Text("How this works", color = VlcOrange) }
+    }) { Text(ui.getString(R.string.ui_how_this_works_bdbd77), color = VlcOrange) }
 }
 
 @Composable
@@ -273,13 +272,14 @@ private fun TrustPoint(title: String, body: String) {
 
 @Composable
 private fun SignInSteps(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val context = LocalContext.current
     val session = remember { PhoneTelegram.session(context) }
     val state by session.state.collectAsState()
     val busy by session.busy.collectAsState()
     val inputError by session.lastError.collectAsState()
     var input by rememberSaveable(state::class) { mutableStateOf("") }
-    Text(if (viewModel.telegramBotHubOnly) "Bot Hub" else "Connect Telegram", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+    Text(if (viewModel.telegramBotHubOnly) ui.getString(R.string.ui_bot_hub_6dcb6e) else ui.getString(R.string.ui_connect_telegram_00c799), color = Color.White, style = MaterialTheme.typography.headlineSmall)
 
     val linked = viewModel.telegramLink?.linked == true && viewModel.telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(context)
     when {
@@ -295,74 +295,74 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
                     androidx.compose.runtime.LaunchedEffect(bots) { viewModel.loadTelegramLibraryBots() }
                     LibraryBotOptions(bots, viewModel::loadTelegramLibraryBots, viewModel::addRecommendedTelegramBot)
                 } else if (viewModel.telegramBotHubOnly) {
-                    Text("Bot Hub review complete. Check again any time for current recommendations.", color = VlcMuted)
-                    Button(onClick = viewModel::closeTelegramSheet, modifier = Modifier.fillMaxWidth()) { Text("Close Bot Hub") }
+                    Text(ui.getString(R.string.ui_bot_hub_review_complete_check_again_any_time_for_curre_700291), color = VlcMuted)
+                    Button(onClick = viewModel::closeTelegramSheet, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_close_bot_hub_855e5a)) }
                 } else Done(viewModel)
             }
         }
         viewModel.telegramMessage != null -> {
             Text(viewModel.telegramMessage!!, color = VlcOrange)
             if (state is TelegramState.Ready) {
-                OutlinedButton(onClick = viewModel::connectTelegram) { Text("Try again") }
+                OutlinedButton(onClick = viewModel::connectTelegram) { Text(ui.getString(R.string.ui_try_again_d8b839)) }
             }
         }
-        viewModel.telegramFinishing || state is TelegramState.Ready -> Working("Setting up your \"${TelegramSession.LIBRARY_TITLE}\" channel…")
+        viewModel.telegramFinishing || state is TelegramState.Ready -> Working(ui.getString(R.string.ui_setting_up_your_channel_3eeef5, TelegramSession.LIBRARY_TITLE))
         else -> when (val s = state) {
-            TelegramState.Starting -> Working("Starting Telegram…")
+            TelegramState.Starting -> Working(ui.getString(R.string.ui_starting_telegram_44fd03))
             TelegramState.NeedsPhoneNumber -> {
-                Text("Enter the phone number of your Telegram account. It goes to Telegram only.", color = VlcMuted)
+                Text(ui.getString(R.string.ui_enter_the_phone_number_of_your_telegram_account_it_goe_284479), color = VlcMuted)
                 Step(
-                    label = "Phone number",
-                    hint = "With country code, e.g. +31 6 1234 5678",
+                    label = ui.getString(R.string.ui_phone_number_306f1b),
+                    hint = ui.getString(R.string.ui_with_country_code_e_g_31_6_1234_5678_f10939),
                     value = input,
                     onValue = { input = it.take(20) },
                     keyboard = KeyboardType.Phone,
                     busy = busy,
                     error = inputError,
-                    action = "Send code",
+                    action = ui.getString(R.string.ui_send_code_66a5b4),
                     enabled = input.count(Char::isDigit) >= 7,
                 ) { session.submitPhoneNumber(input) }
             }
             TelegramState.NeedsCode -> {
-                Text("Telegram sent a login code to your Telegram app (or by SMS). Enter it here.", color = VlcMuted)
+                Text(ui.getString(R.string.ui_telegram_sent_a_login_code_to_your_telegram_app_or_by__0317af), color = VlcMuted)
                 Text(
-                    "Telegram's message says not to give this code to anyone. You're not giving it to a person: " +
-                        "Cablegram uses it to sign in with Telegram directly, like Telegram Desktop.",
+                    ui.getString(R.string.ui_telegram_s_message_says_not_to_give_this_code_to_anyon_7277cb) +
+                        ui.getString(R.string.ui_cablegram_uses_it_to_sign_in_with_telegram_directly_li_f3fc01),
                     color = VlcMuted,
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Step("Login code", "5 digits", input, { input = it.filter(Char::isDigit).take(8) }, KeyboardType.NumberPassword, busy, inputError, "Continue", input.length >= 5) {
+                Step(ui.getString(R.string.ui_login_code_95e717), "5 digits", input, { input = it.filter(Char::isDigit).take(8) }, KeyboardType.NumberPassword, busy, inputError, ui.getString(R.string.ui_continue_31fbef), input.length >= 5) {
                     session.submitCode(input)
                 }
             }
             is TelegramState.NeedsPassword -> {
-                Text("Your account has two-step verification. Enter your Telegram password.", color = VlcMuted)
+                Text(ui.getString(R.string.ui_your_account_has_two_step_verification_enter_your_tele_9e706f), color = VlcMuted)
                 Text(
-                    "Cablegram passes your password to Telegram to sign in, and never stores it or sends it anywhere else.",
+                    ui.getString(R.string.ui_cablegram_passes_your_password_to_telegram_to_sign_in__0bb35c),
                     color = VlcMuted,
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Step(
-                    label = "Telegram password",
-                    hint = s.hint.takeIf { it.isNotBlank() }?.let { "Hint: $it" } ?: "",
+                    label = ui.getString(R.string.ui_telegram_password_65d868),
+                    hint = s.hint.takeIf { it.isNotBlank() }?.let { ui.getString(R.string.ui_hint_3033f3, it) } ?: "",
                     value = input,
                     onValue = { input = it },
                     keyboard = KeyboardType.Password,
                     busy = busy,
                     error = inputError,
-                    action = "Sign in",
+                    action = ui.getString(R.string.ui_sign_in_bfd402),
                     enabled = input.isNotEmpty(),
                     secret = true,
                 ) { session.submitPassword(input) }
             }
             is TelegramState.Failed -> {
                 Text(s.message, color = VlcOrange)
-                OutlinedButton(onClick = { session.retryStartup() }) { Text("Try again") }
+                OutlinedButton(onClick = { session.retryStartup() }) { Text(ui.getString(R.string.ui_try_again_d8b839)) }
             }
             is TelegramState.WaitingForApproval ->
-                if (viewModel.telegramViaTv) Working("Waiting for your TV to approve… Keep Cablegram open on the TV.")
-                else Working("Starting Telegram…")
-            TelegramState.SignedOut -> Working("Starting Telegram…")
+                if (viewModel.telegramViaTv) Working(ui.getString(R.string.ui_waiting_for_your_tv_to_approve_keep_cablegram_open_on__785c22))
+                else Working(ui.getString(R.string.ui_starting_telegram_44fd03))
+            TelegramState.SignedOut -> Working(ui.getString(R.string.ui_starting_telegram_44fd03))
             is TelegramState.Ready -> Unit
         }
     }
@@ -371,11 +371,12 @@ private fun SignInSteps(viewModel: PhoneViewModel) {
 /** Optional memberships are explicit: even the default selections do nothing until Save. */
 @Composable
 internal fun CommunityChannelsOptions(channels: CommunityChannels, onSave: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val state by channels.state.collectAsState()
     Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.maestro("telegram_channels")) {
-        Text("Join Cablegram channels", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+        Text(ui.getString(R.string.ui_join_cablegram_channels_d35d5f), color = Color.White, style = MaterialTheme.typography.headlineSmall)
         Text(
-            "These channels are optional. Uncheck any you don’t want. Tap Save to join the selected channels with your Telegram account, or uncheck all to continue without joining.",
+            ui.getString(R.string.ui_these_channels_are_optional_uncheck_any_you_don_t_want_b5e843),
             color = VlcMuted,
         )
         CablegramChannel.entries.forEach { channel ->
@@ -396,55 +397,56 @@ internal fun CommunityChannelsOptions(channels: CommunityChannels, onSave: () ->
                     Text(channel.title, color = Color.White)
                     Text(channel.url, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                     if (channel == CablegramChannel.BotHubs) {
-                        Text(BOT_HUB_DESCRIPTION, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-                        Text(BOT_INDEPENDENCE, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(ui.getString(R.string.ui_discover_useful_telegram_bots_that_make_managing_organ_090372), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(ui.getString(R.string.ui_these_are_independent_third_party_bots_and_are_not_dev_296876), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                     }
-                    if (joined) Text("Joined", color = VlcOrange)
-                    if (channel in state.failed) Text("Couldn’t join. Try Save again, or uncheck to continue.", color = VlcOrange)
+                    if (joined) Text(ui.getString(R.string.ui_joined_69318b), color = VlcOrange)
+                    if (channel in state.failed) Text(ui.getString(R.string.ui_couldn_t_join_try_save_again_or_uncheck_to_continue_02e0d9), color = VlcOrange)
                 }
             }
         }
-        Text("Joined Cablegram channels, your library, support, and added bots are organized in a Cablegram folder in Telegram. You can leave channels or manage the folder there at any time.", color = VlcMuted)
+        Text(ui.getString(R.string.ui_joined_cablegram_channels_your_library_support_and_add_30d764), color = VlcMuted)
         Button(
             onClick = onSave,
             enabled = !state.saving,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro("telegram_channels_save"),
-        ) { Text(if (state.saving) "Joining…" else "Save") }
+        ) { Text(if (state.saving) ui.getString(R.string.ui_joining_6bbb89) else ui.getString(R.string.ui_save_1509f5)) }
     }
 }
 
 /** Each Add is separately gated; Skip never requires accepting the disclaimer. */
 @Composable
 internal fun LibraryBotOptions(bots: LibraryBotRecommendations, onRetry: () -> Unit, onAdd: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val state by bots.state.collectAsState()
     val context = LocalContext.current
     val bot = state.current
     Column(Modifier.maestro("telegram_library_bots"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Optional bots for your library", color = Color.White, style = MaterialTheme.typography.headlineSmall)
-        Text(BOT_HUB_DESCRIPTION, color = VlcMuted)
-        Text(BOT_INDEPENDENCE, color = VlcMuted)
-        Text("Recommendations come from posts in @CablegramBotHubs. You don’t have to join it or add any bot.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-        if (state.added > 0) Text("Added to your library: ${state.added}", color = VlcOrange)
+        Text(ui.getString(R.string.ui_optional_bots_for_your_library_0e5b67), color = Color.White, style = MaterialTheme.typography.headlineSmall)
+        Text(ui.getString(R.string.ui_discover_useful_telegram_bots_that_make_managing_organ_090372), color = VlcMuted)
+        Text(ui.getString(R.string.ui_these_are_independent_third_party_bots_and_are_not_dev_296876), color = VlcMuted)
+        Text(ui.getString(R.string.ui_recommendations_come_from_posts_in_cablegrambothubs_yo_812f39), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        if (state.added > 0) Text(ui.getString(R.string.ui_added_to_your_library_392ec3, (state.added).toString()), color = VlcOrange)
         if (!state.loaded) {
-            if (state.busy) Working("Finding bots in Cablegram Bot Hubs…")
+            if (state.busy) Working(ui.getString(R.string.ui_finding_bots_in_cablegram_bot_hubs_6632c3))
             state.error?.let { Text(it, color = VlcOrange) }
             if (!state.busy) {
-                OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text("Try again") }
-                TextButton(onClick = bots::finish, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_skip_all")) { Text("Skip bots") }
+                OutlinedButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_try_again_d8b839)) }
+                TextButton(onClick = bots::finish, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_skip_all")) { Text(ui.getString(R.string.ui_skip_bots_9e32d8)) }
             }
         } else if (bot == null) {
-            Text("No bots are available to review. You can check Cablegram Bot Hubs in Telegram.", color = VlcMuted)
-            Button(onClick = bots::finish, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_done")) { Text("Continue") }
+            Text(ui.getString(R.string.ui_no_bots_are_available_to_review_you_can_check_cablegra_cffc27), color = VlcMuted)
+            Button(onClick = bots::finish, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_done")) { Text(ui.getString(R.string.ui_continue_31fbef)) }
         } else {
-            Text("Bot ${state.index + 1} of ${state.bots.size}", color = VlcMuted)
+            Text(ui.getString(R.string.ui_bot_of_c8ea8f, (state.index + 1).toString(), (state.bots.size).toString()), color = VlcMuted)
             Text(bot.displayName, color = Color.White, style = MaterialTheme.typography.titleLarge)
             Text("@${bot.username}", color = VlcOrange)
             OutlinedButton(onClick = {
                 runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(bot.url))) }
-            }) { Text("Review bot in Telegram") }
-            Text("Access to your library channel", color = Color.White, style = MaterialTheme.typography.titleMedium)
-            Text(BOT_PERMISSIONS, color = VlcMuted)
-            Text(BOT_DISCLAIMER, color = Color.White, modifier = Modifier.maestro("telegram_bot_disclaimer"))
+            }) { Text(ui.getString(R.string.ui_review_bot_in_telegram_eec873)) }
+            Text(ui.getString(R.string.ui_access_to_your_library_channel_4ecfde), color = Color.White, style = MaterialTheme.typography.titleMedium)
+            Text(ui.getString(R.string.ui_the_bot_will_be_added_to_your_cablegram_library_channe_1d4a14), color = VlcMuted)
+            Text(ui.getString(R.string.ui_this_recommendation_is_shared_for_informational_purpos_02f61b), color = Color.White, modifier = Modifier.maestro("telegram_bot_disclaimer"))
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(
                     value = state.disclaimerAccepted,
@@ -456,16 +458,16 @@ internal fun LibraryBotOptions(bots: LibraryBotRecommendations, onRetry: () -> U
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Checkbox(checked = state.disclaimerAccepted, onCheckedChange = null, enabled = !state.busy)
-                Text("I have reviewed this bot’s permissions and agree to the disclaimer for @${bot.username}.", color = Color.White)
+                Text(ui.getString(R.string.ui_i_have_reviewed_this_bot_s_permissions_and_agree_to_th_07cab6, bot.username), color = Color.White)
             }
             state.error?.let { Text(it, color = VlcOrange) }
             Button(
                 onClick = onAdd,
                 enabled = state.disclaimerAccepted && !state.busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro("telegram_bot_add"),
-            ) { Text(if (state.busy) "Adding…" else "Add to library channel") }
-            OutlinedButton(onClick = bots::skipCurrent, enabled = !state.busy, modifier = Modifier.fillMaxWidth().maestro("telegram_bot_skip")) { Text("Skip this bot") }
-            TextButton(onClick = bots::finish, enabled = !state.busy, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_skip_all")) { Text("Skip remaining bots") }
+            ) { Text(if (state.busy) ui.getString(R.string.ui_adding_c6de6f) else ui.getString(R.string.ui_add_to_library_channel_f72709)) }
+            OutlinedButton(onClick = bots::skipCurrent, enabled = !state.busy, modifier = Modifier.fillMaxWidth().maestro("telegram_bot_skip")) { Text(ui.getString(R.string.ui_skip_this_bot_b287ce)) }
+            TextButton(onClick = bots::finish, enabled = !state.busy, modifier = Modifier.fillMaxWidth().maestro("telegram_bots_skip_all")) { Text(ui.getString(R.string.ui_skip_remaining_bots_89f0a7)) }
         }
     }
 }
@@ -484,6 +486,7 @@ private fun Step(
     secret: Boolean = false,
     onSubmit: () -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     OutlinedTextField(
         value = value,
         onValueChange = onValue,
@@ -499,7 +502,7 @@ private fun Step(
         onClick = onSubmit,
         enabled = enabled && !busy,
         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_SUBMIT),
-    ) { Text(if (busy) "Checking…" else action) }
+    ) { Text(if (busy) ui.getString(R.string.ui_checking_ec963f) else action) }
 }
 
 @Composable
@@ -512,29 +515,30 @@ private fun Working(message: String) {
 
 @Composable
 private fun Done(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val context = LocalContext.current
-    Text("Connected as ${viewModel.telegramLink?.displayName ?: "your account"}.", color = Color.White, style = MaterialTheme.typography.titleMedium)
+    Text(ui.getString(R.string.ui_connected_as_767c2d, viewModel.telegramLink?.displayName ?: ui.getString(R.string.ui_your_account_17a7e5)), color = Color.White, style = MaterialTheme.typography.titleMedium)
     when (viewModel.telegramChannelCreated) {
-        true -> Text("Cablegram created the private channel \"${TelegramSession.LIBRARY_TITLE}\" in your Telegram, with the Cablegram logo.", color = VlcMuted)
-        false -> Text("Cablegram is using the \"${TelegramSession.LIBRARY_TITLE}\" channel that already exists in your Telegram.", color = VlcMuted)
+        true -> Text(ui.getString(R.string.ui_cablegram_created_the_private_channel_in_your_telegram_12ed98, TelegramSession.LIBRARY_TITLE), color = VlcMuted)
+        false -> Text(ui.getString(R.string.ui_cablegram_is_using_the_channel_that_already_exists_in__8a8ad9, TelegramSession.LIBRARY_TITLE), color = VlcMuted)
         null -> Unit
     }
     viewModel.telegramLink?.chatId?.let { chatId ->
         Button(onClick = { openInTelegram(context, chatId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-            Text("Open it in Telegram")
+            Text(ui.getString(R.string.ui_open_it_in_telegram_b012d4))
         }
     }
     Text(
-        "Telegram will show a new-login alert, possibly \"Someone just got access to your messages\". That's Cablegram " +
-            "on \"${PhoneTelegram.deviceModel}\": tap \"Yes, it's me\".",
+        ui.getString(R.string.ui_telegram_will_show_a_new_login_alert_possibly_someone__6a8b3b) +
+            ui.getString(R.string.ui_on_tap_yes_it_s_me_7d75cd, PhoneTelegram.deviceModel),
         color = VlcMuted,
     )
     Text(
-        "In Telegram, share or forward videos into the private channel \"${TelegramSession.LIBRARY_TITLE}\". " +
-            "They appear in Cablegram and play on your TV straight from Telegram.",
+        ui.getString(R.string.ui_in_telegram_share_or_forward_videos_into_the_private_c_ab9acc, TelegramSession.LIBRARY_TITLE) +
+            ui.getString(R.string.ui_they_appear_in_cablegram_and_play_on_your_tv_straight__d414d1),
         color = VlcMuted,
     )
-    OutlinedButton(onClick = viewModel::closeTelegramSheet, modifier = Modifier.fillMaxWidth()) { Text("Done") }
+    OutlinedButton(onClick = viewModel::closeTelegramSheet, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_done_11a676)) }
 }
 
 /** Opens the library channel in the Telegram app, or says Telegram isn't installed. */
@@ -550,32 +554,33 @@ private fun openInTelegram(context: android.content.Context, chatId: Long) {
 /** Import → Telegram → Hidden videos: titles removed from the library, and deletions still waiting for Telegram. */
 @Composable
 private fun HiddenVideosDialog(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val titles = viewModel.hiddenTelegramTitles
     AlertDialog(
         onDismissRequest = { viewModel.showHiddenVideos = false },
-        title = { Text("Hidden videos") },
+        title = { Text(ui.getString(R.string.ui_hidden_videos_e92f75)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 when {
-                    titles == null -> Text("Loading…", color = VlcMuted)
-                    titles.isEmpty() -> Text("Nothing is hidden. Videos you remove from the library appear here, and you can restore them.", color = VlcMuted)
+                    titles == null -> Text(ui.getString(R.string.ui_loading_ba3bbb), color = VlcMuted)
+                    titles.isEmpty() -> Text(ui.getString(R.string.ui_nothing_is_hidden_videos_you_remove_from_the_library_a_1d6be6), color = VlcMuted)
                     else -> titles.forEach { title ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Column(Modifier.weight(1f)) {
                                 Text(title.title, maxLines = 2)
                                 if (title.state == "deleting") {
                                     Text(
-                                        title.lastError?.let { "Deleting from Telegram… retrying ($it)" } ?: "Deleting from Telegram…",
+                                        title.lastError?.let { ui.getString(R.string.ui_deleting_from_telegram_retrying_b48c27, it) } ?: ui.getString(R.string.ui_deleting_from_telegram_230981),
                                         color = VlcMuted, fontSize = 12.sp,
                                     )
                                 }
                             }
-                            if (title.state == "hidden") TextButton(onClick = { viewModel.restoreHiddenVideo(title) }) { Text("Restore") }
+                            if (title.state == "hidden") TextButton(onClick = { viewModel.restoreHiddenVideo(title) }) { Text(ui.getString(R.string.ui_restore_a76e13)) }
                         }
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { viewModel.showHiddenVideos = false }) { Text("Close") } },
+        confirmButton = { TextButton(onClick = { viewModel.showHiddenVideos = false }) { Text(ui.getString(R.string.ui_close_7d9eb7)) } },
     )
 }

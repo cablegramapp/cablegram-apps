@@ -25,7 +25,11 @@ sealed interface LibraryEntry {
         val episodeCount: Int get() = episodes.size
         val seasonCount: Int get() = episodes.mapNotNull { it.seasonNumber }.distinct().size
 
-        fun summary(): String {
+        fun summary(resources: android.content.res.Resources? = null): String {
+            if (resources != null) {
+                val count = resources.getQuantityString(R.plurals.ui_episode_count, episodes.size, episodes.size)
+                return if (seasonCount > 1) resources.getString(R.string.ui_series_summary, resources.getQuantityString(R.plurals.ui_season_count, seasonCount, seasonCount), count) else count
+            }
             val count = if (episodes.size == 1) "1 episode" else "${episodes.size} episodes"
             return if (seasonCount > 1) "$seasonCount seasons · $count" else count
         }

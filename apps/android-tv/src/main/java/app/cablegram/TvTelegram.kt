@@ -99,6 +99,7 @@ class TvTelegram(
     private val api: CablegramApi,
     /** The library changed because of the channel (new or deleted videos): refresh what the TV shows. */
     private val onLibraryChanged: () -> Unit = {},
+    private val resources: () -> android.content.res.Resources? = { null },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _status = MutableStateFlow<TvTelegramStatus>(TvTelegramStatus.Off)
@@ -338,7 +339,7 @@ class TvTelegram(
         if (!waitingForPassword() || checkingPassword) return
         val hint = (_status.value as? TvTelegramStatus.NeedsPassword)?.hint.orEmpty()
         val currentToken = token ?: run {
-            setPhoneRequestError("Pair your phone with this TV to use its keyboard, or choose the TV keyboard.")
+            setPhoneRequestError((resources()?.getString(R.string.ui_pair_your_phone_with_this_tv_to_use_its_keyboard_or_ch_4d91e1) ?: "Pair your phone with this TV to use its keyboard, or choose the TV keyboard."))
             return
         }
         if (passwordJob?.isActive == true && System.currentTimeMillis() - passwordRequestedAt < PHONE_REASK_MS) return
@@ -355,13 +356,13 @@ class TvTelegram(
                 // 409 not linked, 403 temporary TV: this TV is asked in Settings only.
                 PairLog.i("Telegram password not asked from the phone: ${e.error ?: e.statusCode}")
                 setPhoneRequestError(if (e.statusCode == 403 || e.statusCode == 409)
-                    "The phone keyboard isn't available for this TV. Choose the TV keyboard instead."
-                else "Couldn't send the phone prompt. Check your connection, send it again, or choose the TV keyboard.")
+                    (resources()?.getString(R.string.ui_the_phone_keyboard_isn_t_available_for_this_tv_choose__e2ade7) ?: "The phone keyboard isn't available for this TV. Choose the TV keyboard instead.")
+                else (resources()?.getString(R.string.ui_couldn_t_send_the_phone_prompt_check_your_connection_s_97e9ba) ?: "Couldn't send the phone prompt. Check your connection, send it again, or choose the TV keyboard."))
                 return@launch
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Exception) {
-                setPhoneRequestError("Couldn't send the phone prompt. Check your connection, send it again, or choose the TV keyboard.")
+                setPhoneRequestError((resources()?.getString(R.string.ui_couldn_t_send_the_phone_prompt_check_your_connection_s_97e9ba) ?: "Couldn't send the phone prompt. Check your connection, send it again, or choose the TV keyboard."))
                 return@launch
             }
             setPhoneCode(code, System.currentTimeMillis())
@@ -566,7 +567,7 @@ class TvTelegram(
                     // Scanned with a different account than the household's (US2 acceptance 3).
                     signOutAndWipe()
                     _status.value = TvTelegramStatus.Problem(
-                        "This TV was signed in to a different Telegram account than your household's. It signed out again.",
+                        (resources()?.getString(R.string.ui_this_tv_was_signed_in_to_a_different_telegram_account__f97fa9) ?: "This TV was signed in to a different Telegram account than your household's. It signed out again."),
                     )
                     return
                 }
@@ -655,8 +656,8 @@ class TvTelegram(
             PairLog.i("Standalone Telegram link failed: $reason")
             signOutAndWipe()
             _status.value = TvTelegramStatus.Problem(
-                if (taken) "Telegram is already connected for this household. Ask the owner to use the app that connected it."
-                else "Couldn't set up your Telegram library. Check your connection and try again.",
+                if (taken) (resources()?.getString(R.string.ui_telegram_is_already_connected_for_this_household_ask_t_2ca07e) ?: "Telegram is already connected for this household. Ask the owner to use the app that connected it.")
+                else (resources()?.getString(R.string.ui_couldn_t_set_up_your_telegram_library_check_your_conne_793c9c) ?: "Couldn't set up your Telegram library. Check your connection and try again."),
             )
             return false
         }

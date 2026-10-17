@@ -127,8 +127,9 @@ fun PlayerScreen(
     onBack: () -> Unit,
     errorVideoUrl: String? = null,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val context = LocalContext.current
-    val activity = context as? MainActivity
+    val activity = androidx.activity.compose.LocalActivity.current as? MainActivity
     val player = remember(playback.url) { VlcCableGramPlayer(context) }
     var error by remember(playback.url) { mutableStateOf<String?>(null) }
     var lastVolume by remember { mutableFloatStateOf(1f) }
@@ -189,7 +190,7 @@ fun PlayerScreen(
             ?: activePlayback.fallbackResolver?.invoke()?.also { activePlayback = activePlayback.copy(fallbackUrl = it, fallbackResolver = null) }
             ?: return false
         switchingSource = true
-        transition = transitionTo(next)
+        transition = transitionTo(next, resources = ui)
         try {
             val current = activePlayback.url
             val failure = reachableSource(playbackHttp, next, activePlayback.fallbackHeaders, quick = !isRelayUrl(next)) { transportNotice = it }
@@ -467,7 +468,7 @@ fun PlayerScreen(
             val primaryError = reachableSource(playbackHttp, primary, activePlayback.headers, quick = hasFallback) { transportNotice = it }
             if (primaryError != null) {
                 val fallback = activePlayback.fallbackUrl ?: activePlayback.fallbackResolver?.invoke()
-                if (fallback != null) transition = transitionTo(fallback, atStart = true)
+                if (fallback != null) transition = transitionTo(fallback, atStart = true, resources = ui)
                 val fallbackError = fallback?.let {
                     reachableSource(playbackHttp, it, activePlayback.fallbackHeaders, quick = false) { notice -> transportNotice = notice }
                 }
@@ -612,7 +613,7 @@ fun PlayerScreen(
                 startupSwitched = true
                 if (switchSource()) continue
             }
-            error = lastSourceError ?: "Playback didn't start. Check that your phone is online with Cablegram open, then try again."
+            error = lastSourceError ?: ui.getString(R.string.ui_playback_didn_t_start_check_that_your_phone_is_online__af7362)
         }
     }
     // CAB-15: a failed playback stops: no sound or picture left running, and the screen no longer reports "playing".
@@ -744,7 +745,7 @@ fun PlayerScreen(
                     // is changed from the phone.
                     phoneSubtitleShiftMs = ms
                     player.setSubtitleDelayMs(playerSettings.subtitleDelayMs + ms)
-                    transportNotice = "Subtitles ${if (ms < 0) "−" else "+"}${"%.2f".format(kotlin.math.abs(ms) / 1000.0)} s"
+                    transportNotice = ui.getString(R.string.ui_subtitles_s_0c46b8, if (ms < 0) "−" else "+", "%.2f".format(kotlin.math.abs(ms) / 1000.0))
                 }
                 "mute" -> c.payload["muted"]?.jsonPrimitive?.booleanOrNull?.let {
                     if (it) {
@@ -841,7 +842,7 @@ fun PlayerScreen(
                 val delta = hud.seekFlashDeltaMs ?: 0L
                 val seconds = (kotlin.math.abs(delta) / 1000L).toInt()
                 Text(
-                    text = if (delta < 0) "↶  ${seconds} sec" else "${seconds} sec  ↷",
+                    text = if (delta < 0) ui.getString(R.string.ui_sec_7a04a5, seconds) else ui.getString(R.string.ui_sec_7d0a5c, seconds),
                     color = Paper,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -884,23 +885,25 @@ fun PlayerScreen(
                     ) {
                         Text(title, color = Paper, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         if (!isPlaying) {
-                            Text("PAUSED", color = Acid, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(ui.getString(R.string.ui_paused_e159b0), color = Acid, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 20.dp)) {
-                        TransportButton(
-                            label = "◀ 10s",
-                            focused = hud.focus == ControlsFocus.REWIND && !hud.menuOpen,
-                        )
-                        TransportButton(
-                            label = if (isPlaying) "❚❚" else "▶",
-                            focused = hud.focus == ControlsFocus.PLAY_PAUSE && !hud.menuOpen,
-                        )
-                        TransportButton(
-                            label = "10s ▶",
-                            focused = hud.focus == ControlsFocus.FAST_FORWARD && !hud.menuOpen,
-                        )
+                    LtrControls {
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(bottom = 20.dp)) {
+                            TransportButton(
+                                label = "◀ 10s",
+                                focused = hud.focus == ControlsFocus.REWIND && !hud.menuOpen,
+                            )
+                            TransportButton(
+                                label = if (isPlaying) "❚❚" else "▶",
+                                focused = hud.focus == ControlsFocus.PLAY_PAUSE && !hud.menuOpen,
+                            )
+                            TransportButton(
+                                label = "10s ▶",
+                                focused = hud.focus == ControlsFocus.FAST_FORWARD && !hud.menuOpen,
+                            )
+                        }
                     }
 
                     if (hud.timelineActive) {
@@ -916,7 +919,7 @@ fun PlayerScreen(
                         focused = hud.focus == ControlsFocus.TIMELINE && !hud.menuOpen,
                     )
                     Text(
-                        text = "${formatTime(displayPosition)} / ${if (currentDurationMs > 0L) formatTime(currentDurationMs) else "--:--"}",
+                        text = ui.getString(R.string.ui_message_f1c1f8, formatTime(displayPosition), if (currentDurationMs > 0L) formatTime(currentDurationMs) else "--:--"),
                         color = Paper,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
@@ -925,11 +928,11 @@ fun PlayerScreen(
 
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         TransportButton(
-                            label = "Audio / Subtitles",
+                            label = ui.getString(R.string.ui_audio_subtitles_0c57c9),
                             focused = hud.focus == ControlsFocus.AUDIO_SUBTITLES && !hud.menuOpen,
                         )
                         TransportButton(
-                            label = "Player Settings",
+                            label = ui.getString(R.string.ui_player_settings_d9f938),
                             focused = hud.focus == ControlsFocus.PLAYER_SETTINGS && !hud.menuOpen,
                         )
                     }
@@ -960,9 +963,9 @@ fun PlayerScreen(
                     .padding(horizontal = 28.dp, vertical = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Starting playback…", color = Paper, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(ui.getString(R.string.ui_starting_playback_f13f4e), color = Paper, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Opening the video file",
+                    ui.getString(R.string.ui_opening_the_video_file_f25019),
                     color = Paper.copy(alpha = 0.75f),
                     fontSize = 14.sp,
                     modifier = Modifier.padding(top = 6.dp),
@@ -975,7 +978,7 @@ fun PlayerScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     PictureSpinner()
                     Text(
-                        "Getting the picture ready…",
+                        ui.getString(R.string.ui_getting_the_picture_ready_ef0b9b),
                         color = Paper.copy(alpha = 0.85f),
                         fontSize = 18.sp,
                         modifier = Modifier.padding(top = 18.dp),
@@ -985,18 +988,18 @@ fun PlayerScreen(
         }
         error?.let { message ->
             UnhappyScenarioFrame(eventKey = message, modifier = Modifier.align(Alignment.Center), videoUrl = errorVideoUrl) {
-                Text("Playback interrupted", color = Coral, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text(ui.getString(R.string.ui_playback_interrupted_b9de29), color = Coral, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Text(message, color = Paper, fontSize = 17.sp, lineHeight = 24.sp)
                 Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    TransportButton(label = "Retry", focused = recoveryChoice == RecoveryChoice.RETRY)
-                    TransportButton(label = "Back", focused = recoveryChoice == RecoveryChoice.BACK)
+                    TransportButton(label = ui.getString(R.string.ui_retry_942087), focused = recoveryChoice == RecoveryChoice.RETRY)
+                    TransportButton(label = ui.getString(R.string.ui_back_76900f), focused = recoveryChoice == RecoveryChoice.BACK)
                 }
             }
         }
         // Spec 003: while the phone is asked to allow mobile data, show the Cablegram loop and what
         // to do on the phone instead of a frozen frame.
         if (error == null && transportNotice == WAITING_FOR_PHONE_NOTICE) {
-            TransitionOverlay(PHONE_APPROVAL_TRANSITION, Modifier.align(Alignment.Center), videoUrl = errorVideoUrl)
+            TransitionOverlay(phoneApprovalTransition(ui), Modifier.align(Alignment.Center), videoUrl = errorVideoUrl)
         } else if (error == null) {
             transition?.let { TransitionOverlay(it, Modifier.align(Alignment.Center), videoUrl = if (it.warning) errorVideoUrl else null) }
         }
@@ -1022,7 +1025,7 @@ fun PlayerScreen(
                     .padding(horizontal = 36.dp, vertical = 30.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Continue watching?", color = Paper, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text(ui.getString(R.string.ui_continue_watching_908149), color = Paper, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Text(
                     title,
                     color = Muted,
@@ -1048,15 +1051,15 @@ fun PlayerScreen(
                     }
                 }
                 Text(
-                    if (fallbackDurationMs > 0) "Stopped at ${formatTime(resume)} of ${formatTime(fallbackDurationMs)}"
-                    else "Stopped at ${formatTime(resume)}",
+                    if (fallbackDurationMs > 0) ui.getString(R.string.ui_stopped_at_of_29e480, formatTime(resume), formatTime(fallbackDurationMs))
+                    else ui.getString(R.string.ui_stopped_at_59a5a3, formatTime(resume)),
                     color = Paper.copy(alpha = 0.8f),
                     fontSize = 14.sp,
                     modifier = Modifier.padding(top = 10.dp),
                 )
                 Row(Modifier.padding(top = 24.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Button(onClick = { start = resume }, modifier = Modifier.focusRequester(focus)) { Text("Resume") }
-                    Button(onClick = { start = 0L }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Start over") }
+                    Button(onClick = { start = resume }, modifier = Modifier.focusRequester(focus)) { Text(ui.getString(R.string.ui_resume_d640c7)) }
+                    Button(onClick = { start = 0L }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_start_over_5eed7e)) }
                 }
             }
         }
@@ -1072,6 +1075,7 @@ private data class VolumeFeedback(val level: Int, val muted: Boolean)
 
 @Composable
 private fun VolumeFeedbackOverlay(feedback: VolumeFeedback) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val displayedLevel = feedback.level.coerceIn(0, 100)
     Column(
         modifier = Modifier
@@ -1088,13 +1092,13 @@ private fun VolumeFeedbackOverlay(feedback: VolumeFeedback) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (feedback.muted) "Muted" else "Volume",
+                text = if (feedback.muted) ui.getString(R.string.ui_muted_2346f2) else ui.getString(R.string.ui_volume_b10fb9),
                 color = Paper,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = if (feedback.muted) "0%" else "$displayedLevel%",
+                text = if (feedback.muted) "0%" else ui.getString(R.string.ui_message_b6bb55, displayedLevel),
                 color = if (feedback.muted) Coral else Acid,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
@@ -1119,10 +1123,11 @@ private fun VolumeFeedbackOverlay(feedback: VolumeFeedback) {
 
 @Composable
 private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifier) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val (label, tint) = when (health) {
-        StreamHealth.GOOD -> "Stream quality: Good" to Color(0xFF4ADE80)
-        StreamHealth.OK -> "Stream quality: OK" to Color(0xFFFBBF24)
-        StreamHealth.BAD -> "Stream quality: Poor" to Color(0xFFF87171)
+        StreamHealth.GOOD -> ui.getString(R.string.ui_stream_quality_good_4e325d) to Color(0xFF4ADE80)
+        StreamHealth.OK -> ui.getString(R.string.ui_stream_quality_ok_095e1f) to Color(0xFFFBBF24)
+        StreamHealth.BAD -> ui.getString(R.string.ui_stream_quality_poor_7b7238) to Color(0xFFF87171)
     }
     Row(
         modifier = modifier
@@ -1140,13 +1145,14 @@ private fun StreamHealthBadge(health: StreamHealth, modifier: Modifier = Modifie
 
 @Composable
 private fun TransportBadge(transport: Transport, modifier: Modifier = Modifier) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val (label, icon, tint) = when (transport) {
-        Transport.LAN -> Triple("Local LAN", "⌂", Color(0xFF4ADE80))
-        Transport.RELAY -> Triple("Relay", "⇄", Color(0xFFFBBF24))
-        Transport.CLOUD -> Triple("Cloud", "☁", Color(0xFF8B9DF8))
+        Transport.LAN -> Triple(ui.getString(R.string.ui_local_lan_3cd048), "⌂", Color(0xFF4ADE80))
+        Transport.RELAY -> Triple(ui.getString(R.string.ui_relay_c226b0), "⇄", Color(0xFFFBBF24))
+        Transport.CLOUD -> Triple(ui.getString(R.string.ui_cloud_b977b9), "☁", Color(0xFF8B9DF8))
         Transport.TELEGRAM -> Triple("Telegram", "✈", Color(0xFF2AABEE))
-        Transport.TELEGRAM_VIA_PHONE -> Triple("Telegram via phone", "✈", Color(0xFF2AABEE))
-        Transport.LIVE -> Triple("Live", "◉", Color(0xFFF87171))
+        Transport.TELEGRAM_VIA_PHONE -> Triple(ui.getString(R.string.ui_telegram_via_phone_6802a7), "✈", Color(0xFF2AABEE))
+        Transport.LIVE -> Triple(ui.getString(R.string.ui_live_b64ac0), "◉", Color(0xFFF87171))
     }
     Row(
         modifier = modifier
@@ -1255,6 +1261,7 @@ private fun TimelineBar(progressFraction: Float, focused: Boolean) {
 
 @Composable
 private fun TimelinePreview(positionMs: Long, holdMultiplier: Int, scrubbingBack: Boolean) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 12.dp)) {
         Box(
             modifier = Modifier
@@ -1266,11 +1273,11 @@ private fun TimelinePreview(positionMs: Long, holdMultiplier: Int, scrubbingBack
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("PREVIEW", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(ui.getString(R.string.ui_preview_324b13), color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 Text(formatTime(positionMs), color = Paper, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 if (holdMultiplier > 1) {
                     val arrows = if (scrubbingBack) "◀◀" else "▶▶"
-                    Text("$arrows  ${holdMultiplier}x", color = Acid, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(ui.getString(R.string.ui_x_db967f, arrows, (holdMultiplier).toString()), color = Acid, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1279,6 +1286,7 @@ private fun TimelinePreview(positionMs: Long, holdMultiplier: Int, scrubbingBack
 
 @Composable
 private fun AudioSubtitleMenu(ctx: PlaybackHudContext, section: MenuSection, index: Int) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Box(
         Modifier
             .fillMaxSize()
@@ -1294,10 +1302,10 @@ private fun AudioSubtitleMenu(ctx: PlaybackHudContext, section: MenuSection, ind
                 .background(Panel)
                 .padding(28.dp),
         ) {
-            Text("Audio & Subtitles", color = Paper, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(ui.getString(R.string.ui_audio_subtitles_ee0b9b), color = Paper, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(20.dp))
             MenuSectionBlock(
-                title = "Audio",
+                title = ui.getString(R.string.ui_audio_bc1b88),
                 options = menuOptions(MenuSection.AUDIO, ctx),
                 selectedId = ctx.selectedAudioId,
                 focused = section == MenuSection.AUDIO,
@@ -1306,7 +1314,7 @@ private fun AudioSubtitleMenu(ctx: PlaybackHudContext, section: MenuSection, ind
             )
             Spacer(Modifier.height(18.dp))
             MenuSectionBlock(
-                title = "Subtitles",
+                title = ui.getString(R.string.ui_subtitles_0ee695),
                 options = menuOptions(MenuSection.SUBTITLES, ctx),
                 selectedId = ctx.selectedSubtitleId,
                 focused = section == MenuSection.SUBTITLES,
@@ -1320,6 +1328,7 @@ private fun AudioSubtitleMenu(ctx: PlaybackHudContext, section: MenuSection, ind
 
 @Composable
 private fun PlayerSettingsMenu(settings: PlayerSettingsPreference, focusedRow: SettingsRow) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Box(
         Modifier
             .fillMaxSize()
@@ -1334,30 +1343,36 @@ private fun PlayerSettingsMenu(settings: PlayerSettingsPreference, focusedRow: S
                 .background(Panel)
                 .padding(28.dp),
         ) {
-            Text("Player Settings", color = Paper, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text(ui.getString(R.string.ui_player_settings_d9f938), color = Paper, fontSize = 22.sp, fontWeight = FontWeight.Bold)
             Text(
-                "Left / Right to adjust",
+                ui.getString(R.string.ui_left_right_to_adjust_42fa43),
                 color = Muted,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(top = 6.dp, bottom = 20.dp),
             )
             SettingRow(
-                title = "Playback Speed",
+                title = ui.getString(R.string.ui_playback_speed_4b2f5d),
                 value = PlayerSettings.formatSpeed(settings.playbackSpeed),
                 focused = focusedRow == SettingsRow.SPEED,
             )
             SettingRow(
-                title = "Aspect Ratio",
-                value = settings.aspectRatio.label,
+                title = ui.getString(R.string.ui_aspect_ratio_556f85),
+                value = when (settings.aspectRatio) {
+                    app.cablegram.player.PlayerAspectRatio.FIT -> ui.getString(R.string.ui_fit_9f872e)
+                    app.cablegram.player.PlayerAspectRatio.FILL -> ui.getString(R.string.ui_fill_033955)
+                    app.cablegram.player.PlayerAspectRatio.CROP -> ui.getString(R.string.ui_crop_98caf7)
+                    app.cablegram.player.PlayerAspectRatio.ZOOM -> ui.getString(R.string.ui_zoom_509c51)
+                    else -> settings.aspectRatio.label
+                },
                 focused = focusedRow == SettingsRow.ASPECT,
             )
             SettingRow(
-                title = "Audio delay",
+                title = ui.getString(R.string.ui_audio_delay_f1f2f5),
                 value = PlayerSettings.formatDelay(settings.audioDelayMs),
                 focused = focusedRow == SettingsRow.AUDIO_DELAY,
             )
             SettingRow(
-                title = "Subtitle delay",
+                title = ui.getString(R.string.ui_subtitle_delay_825119),
                 value = PlayerSettings.formatDelay(settings.subtitleDelayMs),
                 focused = focusedRow == SettingsRow.SUBTITLE_DELAY,
             )
@@ -1397,6 +1412,7 @@ private fun MenuSectionBlock(
     fillRemaining: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val listState = rememberLazyListState()
     LaunchedEffect(focused, focusedIndex, options.size) {
         if (focused && focusedIndex in options.indices) {
@@ -1416,7 +1432,7 @@ private fun MenuSectionBlock(
                 val isFocused = focused && i == focusedIndex
                 val isSelected = option.id == selectedId
                 Text(
-                    text = "${if (isSelected) "●  " else "    "}${option.label}",
+                    text = ui.getString(R.string.ui_message_6c5b82, if (isSelected) "●  " else "    ", if (option.id == null) ui.getString(R.string.ui_off_ca7981) else option.label),
                     color = if (isFocused) Ink else Paper,
                     fontSize = 16.sp,
                     fontWeight = if (isSelected || isFocused) FontWeight.Bold else FontWeight.Normal,
@@ -1441,7 +1457,7 @@ private fun HoldPlaybackSession(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     DisposableEffect(view, sessionActive) {
-        val window = (view.context as? Activity)?.window
+        val window = generateSequence(view.context) { (it as? android.content.ContextWrapper)?.baseContext }.filterIsInstance<Activity>().firstOrNull()?.window
         if (sessionActive) {
             view.keepScreenOn = true
             window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -1778,42 +1794,44 @@ private fun formatTime(ms: Long): String {
     }
 }
 
+internal val PHONE_APPROVAL_TRANSITION: SourceTransition get() = phoneApprovalTransition()
+
 /** What the TV says while it moves a title between paths (spec 003). */
 internal data class SourceTransition(val eyebrow: String, val title: String, val body: String, val footnote: String? = null, val warning: Boolean = true)
 
-internal val PHONE_APPROVAL_TRANSITION = SourceTransition(
-    eyebrow = "PHONE NOT ON THIS WI‑FI",
-    title = "Allow streaming on your phone",
-    body = "Your phone isn't on the same Wi‑Fi as this TV, so Cablegram can stream through its relay using the phone's mobile data.",
-    footnote = "On your phone, open the Cablegram notification and tap “Allow this time”. Playback continues here right after.",
+internal fun phoneApprovalTransition(resources: android.content.res.Resources? = null) = SourceTransition(
+    eyebrow = (resources?.getString(R.string.ui_phone_not_on_this_wi_fi_f08589) ?: "PHONE NOT ON THIS WI‑FI"),
+    title = (resources?.getString(R.string.ui_allow_streaming_on_your_phone_394ad4) ?: "Allow streaming on your phone"),
+    body = (resources?.getString(R.string.ui_your_phone_isn_t_on_the_same_wi_fi_as_this_tv_so_cable_a08076) ?: "Your phone isn't on the same Wi‑Fi as this TV, so Cablegram can stream through its relay using the phone's mobile data."),
+    footnote = (resources?.getString(R.string.ui_on_your_phone_open_the_cablegram_notification_and_tap__c5d631) ?: "On your phone, open the Cablegram notification and tap “Allow this time”. Playback continues here right after."),
 )
 
-internal fun transitionTo(url: String, atStart: Boolean = false): SourceTransition = when {
+internal fun transitionTo(url: String, atStart: Boolean = false, resources: android.content.res.Resources? = null): SourceTransition = when {
     isTelegramLocalUrl(url) -> SourceTransition(
-        eyebrow = "SWITCHING SOURCE",
-        title = "Continuing straight from Telegram",
-        body = "Playback continues from where you were, using this TV's own Telegram connection.",
+        eyebrow = (resources?.getString(R.string.ui_switching_source_1ede8f) ?: "SWITCHING SOURCE"),
+        title = (resources?.getString(R.string.ui_continuing_straight_from_telegram_fbf398) ?: "Continuing straight from Telegram"),
+        body = (resources?.getString(R.string.ui_playback_continues_from_where_you_were_using_this_tv_s_344891) ?: "Playback continues from where you were, using this TV's own Telegram connection."),
         warning = false,
     )
     isPhoneTelegramUrl(url) -> SourceTransition(
-        eyebrow = "SWITCHING SOURCE",
-        title = "Continuing through your phone",
-        body = "Telegram was too slow on this TV, so your phone fetches the video and sends it here. Playback continues from where you were.",
+        eyebrow = (resources?.getString(R.string.ui_switching_source_1ede8f) ?: "SWITCHING SOURCE"),
+        title = (resources?.getString(R.string.ui_continuing_through_your_phone_bd43fe) ?: "Continuing through your phone"),
+        body = (resources?.getString(R.string.ui_telegram_was_too_slow_on_this_tv_so_your_phone_fetches_ad106b) ?: "Telegram was too slow on this TV, so your phone fetches the video and sends it here. Playback continues from where you were."),
     )
     isRelayUrl(url) && atStart -> SourceTransition(
-        eyebrow = "CONNECTING THROUGH THE RELAY",
-        title = "Reaching your phone over the internet",
-        body = "Your phone and this TV aren't on the same Wi‑Fi, so Cablegram streams through its relay. This takes a few seconds.",
+        eyebrow = (resources?.getString(R.string.ui_connecting_through_the_relay_a3dfc7) ?: "CONNECTING THROUGH THE RELAY"),
+        title = (resources?.getString(R.string.ui_reaching_your_phone_over_the_internet_f54b1f) ?: "Reaching your phone over the internet"),
+        body = (resources?.getString(R.string.ui_your_phone_and_this_tv_aren_t_on_the_same_wi_fi_so_cab_29145c) ?: "Your phone and this TV aren't on the same Wi‑Fi, so Cablegram streams through its relay. This takes a few seconds."),
     )
     isRelayUrl(url) -> SourceTransition(
-        eyebrow = "WI‑FI CONNECTION LOST",
-        title = "Switching to the Cablegram relay",
-        body = "Your phone left this Wi‑Fi. Playback continues through the relay from where you were — this takes a few seconds.",
+        eyebrow = (resources?.getString(R.string.ui_wi_fi_connection_lost_591289) ?: "WI‑FI CONNECTION LOST"),
+        title = (resources?.getString(R.string.ui_switching_to_the_cablegram_relay_79ead3) ?: "Switching to the Cablegram relay"),
+        body = (resources?.getString(R.string.ui_your_phone_left_this_wi_fi_playback_continues_through__120c29) ?: "Your phone left this Wi‑Fi. Playback continues through the relay from where you were — this takes a few seconds."),
     )
     else -> SourceTransition(
-        eyebrow = "BACK ON YOUR WI‑FI",
-        title = "Switching back to your phone",
-        body = "Your phone is on this Wi‑Fi again, so playback continues directly from it.",
+        eyebrow = (resources?.getString(R.string.ui_back_on_your_wi_fi_b6047e) ?: "BACK ON YOUR WI‑FI"),
+        title = (resources?.getString(R.string.ui_switching_back_to_your_phone_56a1f2) ?: "Switching back to your phone"),
+        body = (resources?.getString(R.string.ui_your_phone_is_on_this_wi_fi_again_so_playback_continue_b85633) ?: "Your phone is on this Wi‑Fi again, so playback continues directly from it."),
         warning = false,
     )
 }

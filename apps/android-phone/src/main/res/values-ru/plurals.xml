@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ui_series_summary">%1$s · %2$s</string>
+    <plurals name="ui_episode_count">
+        <item quantity="one">"%1$d серия"</item>
+        <item quantity="few">"%1$d серии"</item>
+        <item quantity="many">"%1$d серий"</item>
+        <item quantity="other">"%1$d серии"</item>
+    </plurals>
+    <plurals name="ui_season_count">
+        <item quantity="one">"%1$d сезон"</item>
+        <item quantity="few">"%1$d сезона"</item>
+        <item quantity="many">"%1$d сезонов"</item>
+        <item quantity="other">"%1$d сезона"</item>
+    </plurals>
+</resources>

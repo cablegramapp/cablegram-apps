@@ -1,5 +1,6 @@
 package app.cablegram.ui
 
+import app.cablegram.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -49,20 +50,21 @@ internal class UnpairConfirmState {
 internal fun UnpairConfirmDialog(
     state: UnpairConfirmState,
     onUnpair: () -> Unit,
-    title: String = "Unpair this TV?",
-    text: String = "This TV will be signed out of Cablegram. To use it again you will need to pair it with your phone again.",
-    confirmLabel: String = "Unpair",
+    title: String? = null,
+    text: String? = null,
+    confirmLabel: String? = null,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (!state.asking) return
     Dialog(onDismissRequest = state::cancel) {
         Column(
             Modifier.width(560.dp).clip(RoundedCornerShape(22.dp)).background(Panel).padding(32.dp),
             horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
         ) {
-            Text(title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(title ?: ui.getString(R.string.ui_unpair_this_tv_d99d68), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             Text(
-                text,
+                text ?: ui.getString(R.string.ui_this_tv_will_be_signed_out_of_cablegram_to_use_it_agai_40c00b),
                 color = Muted,
                 fontSize = 17.sp,
                 lineHeight = 25.sp,
@@ -75,8 +77,8 @@ internal fun UnpairConfirmDialog(
                 runCatching { cancelFocus.requestFocus() }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = state::cancel, modifier = Modifier.focusRequester(cancelFocus)) { Text("Cancel") }
-                Button(onClick = { state.confirm(onUnpair) }, colors = ButtonDefaults.colors(containerColor = Coral)) { Text(confirmLabel) }
+                Button(onClick = state::cancel, modifier = Modifier.focusRequester(cancelFocus)) { Text(ui.getString(R.string.ui_cancel_19766e)) }
+                Button(onClick = { state.confirm(onUnpair) }, colors = ButtonDefaults.colors(containerColor = Coral)) { Text(confirmLabel ?: ui.getString(R.string.ui_unpair_10be2f)) }
             }
         }
     }
