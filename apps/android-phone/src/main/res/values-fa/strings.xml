@@ -535,7 +535,8 @@
     <string name="ui_only_the_subtitle_you_choose_its_language_provider_ref_abd48f" formatted="false">"تنها زیرنویس ای که انتخاب می کنید، زبان، مرجع ارائه دهنده و زمان با خانواده شما برای تلویزیون های جفت شده ذخیره می شود. یک مسیر ذخیره شده را از کنترل های زیرنویس عنوان حذف کنید؛ حذف منبع آن یا حساب شما نیز آن را حذف می کند. حذف یک حساب در اینجا متوقف جستجو می شود اما آهنگ هایی را که قبلا انتخاب کرده اید نگه می دارد."</string>
     <string name="ui_only_the_subtitle_you_pick_is_saved_for_your_tvs_ab5d20" formatted="false">"تنها زیرنویس ای که انتخاب می کنید برای تلویزیون های شما ذخیره می شود."</string>
     <string name="ui_open_a_title_and_tap_find_subtitles_cablegram_finds_su_892bc5" formatted="false">"یک عنوان باز کنید و Subtitles را پیدا کنید. Cablegram زیرنویس را پیدا می کند که با فایل شما مطابقت دارد و یکی را که شما انتخاب می کنید به تلویزیون ارسال می کند."</string>
-    <string name="ui_open_cablegram_on_your_tv_then_enter_the_six_digit_cod_9c081e" formatted="false">"Cablegram را در تلویزیون خود باز کنید، سپس کد شش رقمی را که در آن نشان داده شده است وارد کنید."</string>
+    <string name="pairing_setup_steps" formatted="false">"۱. برنامهٔ تلویزیون Cablegram را روی Android TV یا Google TV خود نصب کنید.\n\n۲. Cablegram را روی تلویزیون باز کنید تا کد QR و پین شش‌رقمی را ببینید.\n\n۳. کد QR را با این گوشی اسکن کنید یا پین را در پایین وارد کنید."</string>
+    <string name="pairing_get_tv_app" formatted="false">"دریافت برنامهٔ تلویزیون"</string>
     <string name="ui_open_cloudflare_sign_up_53c22b" formatted="false">"باز کردن Cloudflare ثبت نام"</string>
     <string name="ui_open_google_f8b2a8" formatted="false">"باز کردن Google"</string>
     <string name="ui_open_in_telegram_700ad9">"باز \"%1$s\" در Telegram"</string>
@@ -977,7 +978,7 @@
     <string name="ui_year_optional_246c90" formatted="false">"سال (اختیاری)"</string>
     <string name="ui_you_can_check_this_ba4981" formatted="false">"شما می توانید این را بررسی کنید"</string>
     <string name="ui_you_can_still_shift_the_timing_684cd9" formatted="false">" شما هنوز هم می توانید زمان را تغییر دهید."</string>
-    <string name="ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486" formatted="false">"شما می توانید Cablegram را در Telegram ببینید - تنظیمات دستگاه ها و می تواند آن را در هر زمان به پایان برساند. اختلال در Cablegram نشانه در همه جا."</string>
+    <string name="ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486" formatted="false">"می‌توانید هر نشست Cablegram را در Telegram ← تنظیمات ← دستگاه‌ها پایان دهید. قطع اتصال Telegram در Cablegram، کتابخانه را قطع می‌کند و از حساب در این گوشی خارج می‌شود. برای پایان دادن به نشست‌های باقی‌ماندهٔ تلویزیون، بخش دستگاه‌ها را بررسی کنید."</string>
     <string name="ui_you_re_all_set_f08920" formatted="false">"همه شما مجموعه هستید"</string>
     <string name="ui_you_re_no_longer_in_the_channel_you_left_it_or_it_was__46af5b">"شما دیگر در کانال \"%1$s\" نیستید (شما آن را ترک کرده اید یا حذف شده اید)، بنابراین Cablegram نمی تواند فیلم های آن را ببیند."</string>
     <string name="ui_you_skipped_the_audio_check_so_matches_aren_t_verified_d4b86d" formatted="false">"شما چک صوتی را رد می کنید، بنابراین بازی ها تایید نمی شوند. از پیش نمایش برای خط زدن زیرنویس توسط گوش یا با چشم استفاده کنید."</string>
@@ -1025,4 +1026,26 @@
     <string name="ui_couldnt_deny_playback">"رد پخش ممکن نشد: %1$s."</string>
     <string name="ui_about_1_minute" formatted="false">"حدود ۱ دقیقه"</string>
     <string name="ui_other_language" formatted="false">"زبان دیگر"</string>
+    <string name="telegram_library_title" formatted="false">"کانال کتابخانهٔ من"</string>
+    <string name="telegram_library_help" formatted="false">"ویدیوها را به این کانال خصوصی Telegram بفرستید یا فوروارد کنید. آن‌ها در کتابخانهٔ Cablegram شما نمایش داده می‌شوند."</string>
+    <string name="telegram_library_open" formatted="false">"باز کردن در Telegram"</string>
+    <string name="telegram_library_copy" formatted="false">"کپی پیوند"</string>
+    <string name="telegram_library_members_link" formatted="false">"این پیوند کانال را فقط برای اعضای فعلی باز می‌کند."</string>
+    <string name="telegram_library_copied" formatted="false">"پیوند کانال کتابخانه کپی شد"</string>
+    <string name="telegram_library_install_telegram" formatted="false">"برای باز کردن کانال کتابخانهٔ خود، Telegram را نصب کنید."</string>
+    <string name="telegram_separate_title" formatted="false">"حساب Telegram جداگانه را ترجیح می‌دهید؟"</string>
+    <string name="telegram_separate_intro" formatted="false">"می‌توانید حساب فعلی Telegram خود را متصل کنید یا برای کتابخانهٔ Cablegram حساب جداگانه‌ای بسازید. استفاده از حساب جداگانه اختیاری است."</string>
+    <string name="telegram_separate_learn" formatted="false">"دربارهٔ حساب‌های جداگانه بیشتر بدانید"</string>
+    <string name="telegram_separate_number_title" formatted="false">"کنترل شمارهٔ خود را حفظ کنید"</string>
+    <string name="telegram_separate_number_body" formatted="false">"حساب جداگانهٔ Telegram به شمارهٔ تلفن دیگری نیاز دارد. سیم‌کارت یا eSIM با پشتیبانی پیامک انتخاب کنید و روش فعال نگه داشتن شماره، دریافت کدهای ورود در آینده و بازیابی شماره در صورت گم شدن گوشی را بررسی کنید. eSIM مسافرتی که فقط اینترنت دارد کافی نیست."</string>
+    <string name="telegram_separate_super_title" formatted="false">"نمونهٔ ارائه‌دهنده: Super"</string>
+    <string name="telegram_separate_super_body" formatted="false">"Super سیم‌کارت و eSIM اعتباری با شمارهٔ تلفن ارائه می‌کند. راهنمای منتشرشدهٔ فعلی آن فعال‌سازی اولیه را به استونی محدود می‌کند و برای حفظ شماره، شارژ با شرایط مشخص لازم است. پیش از خرید، شرایط فعلی فعال‌سازی، رومینگ، تمدید و بازیابی را بررسی کنید. این ارائه‌دهنده مستقل است؛ این مطلب توصیهٔ Cablegram یا تضمین ثبت‌نام موفق در Telegram نیست."</string>
+    <string name="telegram_separate_temporary_title" formatted="false">"شماره‌های مجازی موقت"</string>
+    <string name="telegram_separate_temporary_body" formatted="false">"برخی سرویس‌ها در صورت ناموفق بودن تأیید، وجه را بازمی‌گردانند. این شماره‌ها ممکن است منقضی شوند یا به فرد دیگری واگذار شوند و حساب Telegram شما را در معرض خطر قرار دهند."</string>
+    <string name="telegram_separate_security_title" formatted="false">"از حساب محافظت کنید"</string>
+    <string name="telegram_separate_security_body" formatted="false">"تأیید دومرحله‌ای Telegram را فعال کنید و ایمیل بازیابی تحت کنترل خود اضافه کنید. این موارد جایگزین حفظ دسترسی به شمارهٔ تلفن نیستند. حساب جداگانه به تفکیک فعالیت شخصی کمک می‌کند، اما ناشناس ماندن را تضمین نمی‌کند و دسترسی اعطاشده به Cablegram را تغییر نمی‌دهد."</string>
+    <string name="telegram_separate_super_link" formatted="false">"شرایط فعلی Super را بخوانید"</string>
+    <string name="telegram_separate_telegram_link" formatted="false">"راهنمای حساب‌های Telegram را بخوانید"</string>
+    <string name="telegram_separate_temporary_price" formatted="false">"از حدود ۰٫۴۰ دلار آمریکا برای هر تأیید · فقط دسترسی کوتاه‌مدت"</string>
+    <string name="telegram_separate_provider_disclaimer" formatted="false">"این‌ها سرویس‌های مستقل شخص ثالث هستند. استفاده از شمارهٔ جداگانه اختیاری است. Cablegram نمی‌تواند ثبت‌نام موفق، ادامهٔ دسترسی به شماره یا ناشناس ماندن حساب را تضمین کند."</string>
 </resources>

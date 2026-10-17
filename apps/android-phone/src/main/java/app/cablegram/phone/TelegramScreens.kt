@@ -57,12 +57,54 @@ private const val PRIVACY_URL = "https://cablegram.app/privacy.html#telegram"
 private const val TELEGRAM_CODE_URL =
     "https://github.com/cablegramapp/cablegram-apps/tree/v0.2.2/apps/android-phone/src/main/java/app/cablegram/telegram"
 
+/** A direct route to the household's linked channel, before the other import sources. */
+@Composable
+internal fun TelegramLibraryCard(viewModel: PhoneViewModel) {
+    if (!PhoneTelegram.configured) return
+    val context = LocalContext.current
+    val ui = context.resources
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val link = viewModel.telegramLink
+    val linked = link?.linked == true
+    val chatId = link?.chatId
+    androidx.compose.runtime.LaunchedEffect(linked, chatId) { if (linked) viewModel.checkTelegramHealth() }
+    SectionCard(ui.getString(R.string.telegram_library_title)) {
+        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = VlcOrange, modifier = Modifier.size(32.dp))
+        Text(TelegramSession.LIBRARY_TITLE, color = Color.White, style = MaterialTheme.typography.titleLarge)
+        Text(ui.getString(R.string.telegram_library_help), color = VlcMuted)
+        when {
+            viewModel.telegramHealth == TelegramHealth.ChannelLost && linked -> {
+                Text(ui.getString(R.string.ui_you_re_no_longer_in_the_channel_you_left_it_or_it_was__46af5b, TelegramSession.LIBRARY_TITLE), color = VlcOrange)
+                Button(onClick = viewModel::recreateTelegramChannel, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                    Text(ui.getString(R.string.ui_create_a_new_cb63aa, TelegramSession.LIBRARY_TITLE))
+                }
+            }
+            linked && chatId != null -> {
+                Text(ui.getString(R.string.ui_connected_as_767c2d, link?.displayName ?: ui.getString(R.string.ui_your_account_17a7e5)), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                Button(onClick = { openInTelegram(context, chatId) }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_LIBRARY_OPEN)) {
+                    Text(ui.getString(R.string.telegram_library_open))
+                }
+                OutlinedButton(onClick = {
+                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(PhoneTelegram.channelWebLink(chatId)))
+                    android.widget.Toast.makeText(context, ui.getString(R.string.telegram_library_copied), android.widget.Toast.LENGTH_SHORT).show()
+                }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.TELEGRAM_LIBRARY_COPY)) {
+                    Text(ui.getString(R.string.telegram_library_copy))
+                }
+                Text(ui.getString(R.string.telegram_library_members_link), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+            }
+            else -> Button(onClick = viewModel::openTelegramSheet, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Text(ui.getString(R.string.ui_connect_telegram_00c799))
+            }
+        }
+    }
+}
+
 /**
  * Telegram in Import → Connected storage (spec 004 US1): connect once on the phone, then videos
  * shared into the private "Cablegram library" channel appear in Cablegram.
  */
 @Composable
-internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
+internal fun TelegramStorageEntry(viewModel: PhoneViewModel, onAccountHelp: () -> Unit) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (!PhoneTelegram.configured) return
     val link = viewModel.telegramLink
@@ -70,7 +112,6 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
     val health = viewModel.telegramHealth
     val context = LocalContext.current
     var confirmDisconnect by remember { mutableStateOf(false) }
-    androidx.compose.runtime.LaunchedEffect(linked) { if (linked) viewModel.checkTelegramHealth() }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp).maestro(MaestroIds.TELEGRAM_ENTRY),
         verticalAlignment = Alignment.CenterVertically,
@@ -156,6 +197,9 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel) {
         OutlinedButton(onClick = viewModel::openHiddenVideos, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_hidden_videos_e92f75)) }
     }
     if (viewModel.showHiddenVideos) HiddenVideosDialog(viewModel)
+    TextButton(onClick = onAccountHelp, modifier = Modifier.maestro(MaestroIds.TELEGRAM_ACCOUNT_HELP)) {
+        Text(ui.getString(R.string.telegram_separate_learn), color = VlcOrange)
+    }
     if (linked) {
         OutlinedButton(
             onClick = { confirmDisconnect = true },
@@ -187,6 +231,11 @@ internal fun TelegramConnectSheet(viewModel: PhoneViewModel) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     BackHandler(onBack = viewModel::closeTelegramSheet)
     val started = viewModel.telegramStarted || PhoneTelegram.existing() != null
+    var accountHelpOpen by rememberSaveable { mutableStateOf(false) }
+    if (accountHelpOpen) {
+        TelegramAccountHelp(onBack = { accountHelpOpen = false })
+        return
+    }
     Column(
         Modifier
             .fillMaxSize()
@@ -199,13 +248,13 @@ internal fun TelegramConnectSheet(viewModel: PhoneViewModel) {
         TextButton(onClick = viewModel::closeTelegramSheet) { Text(ui.getString(R.string.ui_close_7d9eb7), color = VlcOrange) }
         // A household that is already linked still needs the intro on a phone that has no session of its own.
         val context = LocalContext.current
-        if (!started && !PhoneTelegram.wasLinked(context)) BeforeYouConnect(viewModel) else SignInSteps(viewModel)
+        if (!started && !PhoneTelegram.wasLinked(context)) BeforeYouConnect(viewModel, onAccountHelp = { accountHelpOpen = true }) else SignInSteps(viewModel)
     }
 }
 
 /** FR-021: what Cablegram gets, what it uses, where credentials go, how to revoke — before any input. */
 @Composable
-private fun BeforeYouConnect(viewModel: PhoneViewModel) {
+private fun BeforeYouConnect(viewModel: PhoneViewModel, onAccountHelp: () -> Unit) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val context = LocalContext.current
     Text(ui.getString(R.string.ui_before_you_connect_telegram_435c06), color = Color.White, style = MaterialTheme.typography.headlineSmall)
@@ -239,6 +288,10 @@ private fun BeforeYouConnect(viewModel: PhoneViewModel) {
         color = VlcMuted,
         style = MaterialTheme.typography.bodySmall,
     )
+    TrustPoint(ui.getString(R.string.telegram_separate_title), ui.getString(R.string.telegram_separate_intro))
+    TextButton(onClick = onAccountHelp, modifier = Modifier.maestro(MaestroIds.TELEGRAM_ACCOUNT_HELP)) {
+        Text(ui.getString(R.string.telegram_separate_learn), color = VlcOrange)
+    }
     Button(
         onClick = viewModel::connectTelegram,
         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_CONTINUE),
@@ -547,7 +600,7 @@ private fun openInTelegram(context: android.content.Context, chatId: Long) {
     try {
         context.startActivity(intent)
     } catch (_: android.content.ActivityNotFoundException) {
-        android.widget.Toast.makeText(context, "Install Telegram to open the channel.", android.widget.Toast.LENGTH_LONG).show()
+        android.widget.Toast.makeText(context, context.getString(R.string.telegram_library_install_telegram), android.widget.Toast.LENGTH_LONG).show()
     }
 }
 

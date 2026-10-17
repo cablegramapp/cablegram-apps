@@ -24,6 +24,38 @@ not delete the original files or remove imported library entries. Videos that re
 access may need selecting again. If you reinstall the app, revoke access, or move a file, use the
 picker again. Android may prevent selecting a storage root; choose a subfolder or individual files.
 
+## Find your Telegram library channel
+
+At the top of **Import**, the **My library channel** card opens the channel linked to your
+Cablegram household. Choose **Open in Telegram**, then send or forward videos into that channel
+to add them to your Cablegram library. The card shows the linked Telegram account to help you
+recognize the destination. If Telegram is not connected yet, choose **Connect Telegram**.
+
+**Copy link** copies a link to that same private channel. It works for existing channel members;
+it is not an invitation and does not grant anyone access. If the channel is no longer available,
+Cablegram offers to create a replacement instead of opening or copying the old destination.
+
+## Use a separate Telegram account (optional)
+
+Before connecting Telegram, **Learn about separate accounts** opens an in-app help page. You can
+keep using your existing account; reading the help page does not start a Telegram session or
+require buying a number. Return with **Back** to continue or choose **Not now** to leave setup.
+The same help is available later under **Import → Connected storage → Telegram**.
+
+A separate account needs another phone number that you can keep and recover. The help page
+explains SMS support, number retention, temporary-number risks, two-step verification, and how
+to end Cablegram sessions. It includes Super as an independent provider example with links to
+its current guidance and the Telegram FAQ. It makes no registration or anonymity guarantee,
+includes Grizzly SMS and 5SIM links with `utm_source=cablegram.app`, an approximate starting
+price of US$0.40 per verification, and a notice that these are independent third-party services.
+Prices, refund availability, registration and continued number access are not guaranteed.
+
+Provider guidance checked on 17 October 2026: [Super](https://www.super.ee/en/esim) states that
+initial activation is limited to Estonia and qualifying top-ups are required to retain the
+number. This does not verify Telegram registration in Germany. Review the provider’s current
+conditions before buying. [Telegram](https://telegram.org/faq) advises retaining control of the
+phone number associated with an account.
+
 ## Add subtitles
 
 In video details on the phone, choose **Attach subtitle file**, then select an `.srt` or `.vtt`

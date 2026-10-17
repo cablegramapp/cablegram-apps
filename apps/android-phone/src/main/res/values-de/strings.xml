@@ -535,7 +535,8 @@
     <string name="ui_only_the_subtitle_you_choose_its_language_provider_ref_abd48f" formatted="false">"Nur der von Ihnen gewählte Untertitel, seine Sprache, der Anbieterreferenz und das Timing werden bei Ihrem Haushalt für gepaarte TVs gespeichert. Entfernen Sie einen gespeicherten Track aus den Untertitel-Kontrollen des Titels; Löschen seiner Quelle oder Ihr Konto gelöscht es auch. Das Entfernen eines Kontos hier stoppt die Suche, hält aber Tracks, die Sie bereits gewählt haben."</string>
     <string name="ui_only_the_subtitle_you_pick_is_saved_for_your_tvs_ab5d20" formatted="false">"Nur der Untertitel, den Sie wählen, wird für Ihre TVs gespeichert."</string>
     <string name="ui_open_a_title_and_tap_find_subtitles_cablegram_finds_su_892bc5" formatted="false">"Öffnen Sie einen Titel und tippen Sie auf Untertitel finden. Cablegram findet Untertitel, die mit Ihrer Datei übereinstimmen und diejenige senden, die Sie für Ihren TV wählen."</string>
-    <string name="ui_open_cablegram_on_your_tv_then_enter_the_six_digit_cod_9c081e" formatted="false">"Öffnen Sie Cablegram auf Ihrem TV, geben Sie dann den sechsstelligen Code dort angezeigt."</string>
+    <string name="pairing_setup_steps" formatted="false">"1. Installieren Sie die Cablegram-TV-App auf Ihrem Android TV oder Google TV.\n\n2. Öffnen Sie Cablegram auf dem TV, um den QR-Code und die sechsstellige PIN zu sehen.\n\n3. Scannen Sie den QR-Code mit diesem Smartphone oder geben Sie die PIN unten ein."</string>
+    <string name="pairing_get_tv_app" formatted="false">"TV-App herunterladen"</string>
     <string name="ui_open_cloudflare_sign_up_53c22b" formatted="false">"Cloudflare Anmeldung öffnen"</string>
     <string name="ui_open_google_f8b2a8" formatted="false">"Google öffnen"</string>
     <string name="ui_open_in_telegram_700ad9">"„%1$s“ in Telegram öffnen"</string>
@@ -977,7 +978,7 @@
     <string name="ui_year_optional_246c90" formatted="false">"Jahr (optional)"</string>
     <string name="ui_you_can_check_this_ba4981" formatted="false">"Sie können das überprüfen"</string>
     <string name="ui_you_can_still_shift_the_timing_684cd9" formatted="false">" Du kannst das Timing immer noch verschieben."</string>
-    <string name="ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486" formatted="false">"Sie sehen Cablegram in Telegram → Einstellungen → Geräte und können es jederzeit beenden. Trennen in Cablegram Zeichen überall."</string>
+    <string name="ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486" formatted="false">"Sie können jede Cablegram-Sitzung unter Telegram → Einstellungen → Geräte beenden. „Telegram trennen“ in Cablegram trennt die Bibliothek und meldet dieses Smartphone ab. Beenden Sie eventuell verbleibende TV-Sitzungen unter Geräte."</string>
     <string name="ui_you_re_all_set_f08920" formatted="false">"Du bist alle eingestellt"</string>
     <string name="ui_you_re_no_longer_in_the_channel_you_left_it_or_it_was__46af5b">"Sie sind nicht mehr im \"%1$s\" Kanal (Sie haben es verlassen oder es wurde gelöscht), so Cablegram kann seine Videos nicht sehen."</string>
     <string name="ui_you_skipped_the_audio_check_so_matches_aren_t_verified_d4b86d" formatted="false">"Du hast den Audio-Check übersprungen, also sind die Spiele nicht verifiziert. Verwenden Sie die Vorschau, um die Untertitel nach oben durch Ohr oder durch Auge."</string>
@@ -1025,4 +1026,26 @@
     <string name="ui_couldnt_deny_playback">"Wiedergabe konnte nicht abgelehnt werden: %1$s."</string>
     <string name="ui_about_1_minute" formatted="false">"etwa 1 Minute"</string>
     <string name="ui_other_language" formatted="false">"andere Sprache"</string>
+    <string name="telegram_library_title" formatted="false">"Mein Bibliothekskanal"</string>
+    <string name="telegram_library_help" formatted="false">"Senden Sie Videos an diesen privaten Telegram-Kanal oder leiten Sie sie dorthin weiter. Sie erscheinen in Ihrer Cablegram-Bibliothek."</string>
+    <string name="telegram_library_open" formatted="false">"In Telegram öffnen"</string>
+    <string name="telegram_library_copy" formatted="false">"Link kopieren"</string>
+    <string name="telegram_library_members_link" formatted="false">"Dieser Link öffnet den Kanal nur für bestehende Mitglieder."</string>
+    <string name="telegram_library_copied" formatted="false">"Link zum Bibliothekskanal kopiert"</string>
+    <string name="telegram_library_install_telegram" formatted="false">"Installieren Sie Telegram, um Ihren Bibliothekskanal zu öffnen."</string>
+    <string name="telegram_separate_title" formatted="false">"Lieber ein separates Telegram-Konto?"</string>
+    <string name="telegram_separate_intro" formatted="false">"Sie können Ihr bestehendes Telegram-Konto verbinden oder ein separates Konto für Ihre Cablegram-Bibliothek erstellen. Ein separates Konto ist optional."</string>
+    <string name="telegram_separate_learn" formatted="false">"Mehr über separate Konten"</string>
+    <string name="telegram_separate_number_title" formatted="false">"Behalten Sie die Kontrolle über Ihre Nummer"</string>
+    <string name="telegram_separate_number_body" formatted="false">"Ein separates Telegram-Konto benötigt eine weitere Telefonnummer. Wählen Sie eine SIM oder eSIM mit SMS-Unterstützung. Prüfen Sie, wie Sie die Nummer aktiv halten, spätere Anmeldecodes empfangen und sie bei Verlust Ihres Telefons wiederherstellen können. Eine reine Daten-eSIM für Reisen reicht nicht aus."</string>
+    <string name="telegram_separate_super_title" formatted="false">"Anbieterbeispiel: Super"</string>
+    <string name="telegram_separate_super_body" formatted="false">"Super bietet Prepaid-SIMs und eSIMs mit Telefonnummer an. Laut den derzeit veröffentlichten Hinweisen ist die Erstaktivierung auf Estland beschränkt. Für den Erhalt der Nummer sind entsprechende Aufladungen erforderlich. Prüfen Sie vor dem Kauf die aktuellen Bedingungen für Aktivierung, Roaming, Verlängerung und Wiederherstellung. Super ist ein unabhängiger Anbieter; dies ist keine Empfehlung von Cablegram und keine Garantie für eine Telegram-Registrierung."</string>
+    <string name="telegram_separate_temporary_title" formatted="false">"Temporäre virtuelle Nummern"</string>
+    <string name="telegram_separate_temporary_body" formatted="false">"Einige Dienste bieten eine Erstattung, wenn die Verifizierung fehlschlägt. Diese Nummern können ablaufen oder neu vergeben werden, wodurch Ihr Telegram-Konto gefährdet wird."</string>
+    <string name="telegram_separate_security_title" formatted="false">"Schützen Sie Ihr Konto"</string>
+    <string name="telegram_separate_security_body" formatted="false">"Aktivieren Sie die zweistufige Bestätigung in Telegram und hinterlegen Sie eine Wiederherstellungs-E-Mail-Adresse, die Sie kontrollieren. Dies ersetzt nicht den dauerhaften Zugriff auf Ihre Telefonnummer. Ein separates Konto trennt persönliche Aktivitäten, garantiert aber keine Anonymität und ändert nicht die Zugriffsrechte von Cablegram."</string>
+    <string name="telegram_separate_super_link" formatted="false">"Aktuelle Bedingungen von Super lesen"</string>
+    <string name="telegram_separate_telegram_link" formatted="false">"Telegrams Hinweise zu Konten lesen"</string>
+    <string name="telegram_separate_temporary_price" formatted="false">"Ab etwa 0,40 US-Dollar pro Verifizierung · Nur kurzfristiger Zugriff"</string>
+    <string name="telegram_separate_provider_disclaimer" formatted="false">"Dies sind unabhängige Drittanbieter. Die Verwendung einer separaten Nummer ist optional. Cablegram kann weder eine erfolgreiche Registrierung noch den dauerhaften Zugriff auf die Nummer oder die Anonymität des Kontos garantieren."</string>
 </resources>
