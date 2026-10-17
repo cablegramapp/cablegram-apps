@@ -10,6 +10,8 @@
     <application
         android:name=".cast.CablegramApplication"
         android:allowBackup="false"
+        android:localeConfig="@xml/locales_config"
+        android:supportsRtl="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
         android:banner="@drawable/app_banner"

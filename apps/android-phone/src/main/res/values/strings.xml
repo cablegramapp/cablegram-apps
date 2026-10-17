@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Cablegram</string>
+    <string name="app_name" translatable="false">Cablegram</string>
 
     <!-- Delete account -->
     <string name="delete_account_entry">Delete account…</string>

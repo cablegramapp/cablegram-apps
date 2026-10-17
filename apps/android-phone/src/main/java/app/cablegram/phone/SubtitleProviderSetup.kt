@@ -36,7 +36,8 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
  * person's login. Inputs are never saveable/restored, prefilled, copied into diagnostics, or shown in screenshots.
  * [requireAccount] is false where the screen is opened from Settings, so Done always leaves it.
  */
-@Composable internal fun SubtitleProviderSetup(viewModel: PhoneViewModel, onDone: () -> Unit, doneLabel: String = "Find subtitles", requireAccount: Boolean = true) {
+@Composable internal fun SubtitleProviderSetup(viewModel: PhoneViewModel, onDone: () -> Unit, doneLabel: String? = null, requireAccount: Boolean = true) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val credentialRevision = viewModel.subtitleCredentialRevision
     val window = LocalContext.current.activity()?.window
     DisposableEffect(window) {
@@ -47,42 +48,42 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
     val subdl = remember(credentialRevision) { viewModel.subtitleProviderConfigured("subdl") }
     val openSubtitles = remember(credentialRevision) { viewModel.subtitleProviderConfigured("opensubtitles") }
 
-    Text("Subtitle accounts", color = Color.White, style = MaterialTheme.typography.titleLarge)
-    Text("Cablegram finds subtitles through your own free account at a subtitle site. One account is enough.", color = VlcMuted)
+    Text(ui.getString(R.string.ui_subtitle_accounts_9602a0), color = Color.White, style = MaterialTheme.typography.titleLarge)
+    Text(ui.getString(R.string.ui_cablegram_finds_subtitles_through_your_own_free_accoun_811b7f), color = VlcMuted)
 
-    SectionCard("SubDL · recommended") {
+    SectionCard(ui.getString(R.string.ui_subdl_recommended_7b58c1)) {
         if (subdl) {
-            ConnectedRow("SubDL is connected.")
+            ConnectedRow(ui.getString(R.string.ui_subdl_is_connected_be1fd7))
             ProviderForm(viewModel, "subdl", connected = true)
         } else {
-            Text("Quickest to set up: it only needs a key.", color = VlcMuted)
-            Step(1, "Sign in or create a free account at SubDL.")
-            Step(2, "Open the API page and copy your API key.")
-            OpenLink("Open SubDL API page", SUBDL_KEY_PAGE)
-            Step(3, "Paste the key here. Don't use your SubDL password.")
+            Text(ui.getString(R.string.ui_quickest_to_set_up_it_only_needs_a_key_1a6632), color = VlcMuted)
+            Step(1, ui.getString(R.string.ui_sign_in_or_create_a_free_account_at_subdl_112b2c))
+            Step(2, ui.getString(R.string.ui_open_the_api_page_and_copy_your_api_key_3d48c9))
+            OpenLink(ui.getString(R.string.ui_open_subdl_api_page_61aa3f), SUBDL_KEY_PAGE)
+            Step(3, ui.getString(R.string.ui_paste_the_key_here_don_t_use_your_subdl_password_26ff9e))
             ProviderForm(viewModel, "subdl", connected = false)
         }
     }
 
     var showOpenSubtitles by remember { mutableStateOf(false) }
-    SectionCard("OpenSubtitles · optional") {
+    SectionCard(ui.getString(R.string.ui_opensubtitles_optional_4070ca)) {
         if (openSubtitles) {
-            ConnectedRow("OpenSubtitles is connected.")
+            ConnectedRow(ui.getString(R.string.ui_opensubtitles_is_connected_8086b6))
             ProviderForm(viewModel, "opensubtitles", connected = true)
         } else {
-            Text("The biggest catalogue, often better for older titles. It finds subtitles made for your exact file.", color = VlcMuted)
+            Text(ui.getString(R.string.ui_the_biggest_catalogue_often_better_for_older_titles_it_9d2b9e), color = VlcMuted)
             TextButton(onClick = { showOpenSubtitles = !showOpenSubtitles }, contentPadding = PaddingValues(0.dp)) {
-                Text(if (showOpenSubtitles) "Hide" else "Add OpenSubtitles too")
+                Text(if (showOpenSubtitles) ui.getString(R.string.ui_hide_ac20a5) else ui.getString(R.string.ui_add_opensubtitles_too_a20dce))
                 Icon(if (showOpenSubtitles) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
             }
             if (showOpenSubtitles) {
-                Text("OpenSubtitles needs two things: an API key for searching, and your OpenSubtitles username and password, " +
-                    "because each download counts against your own account (about 5 to 20 a day on a free account). " +
-                    "Your login stays on this phone.", color = VlcMuted)
-                Step(1, "Create a free account at opensubtitles.com.")
-                Step(2, "Open the API consumers page, create a consumer and copy its API key.")
-                OpenLink("Open OpenSubtitles API page", OPENSUBTITLES_KEY_PAGE)
-                Step(3, "Enter the key with your OpenSubtitles username and password.")
+                Text(ui.getString(R.string.ui_opensubtitles_needs_two_things_an_api_key_for_searchin_6cf012) +
+                    ui.getString(R.string.ui_because_each_download_counts_against_your_own_account__fb8976) +
+                    ui.getString(R.string.ui_your_login_stays_on_this_phone_572eb1), color = VlcMuted)
+                Step(1, ui.getString(R.string.ui_create_a_free_account_at_opensubtitles_com_c1e6ef))
+                Step(2, ui.getString(R.string.ui_open_the_api_consumers_page_create_a_consumer_and_copy_864978))
+                OpenLink(ui.getString(R.string.ui_open_opensubtitles_api_page_9f649e), OPENSUBTITLES_KEY_PAGE)
+                Step(3, ui.getString(R.string.ui_enter_the_key_with_your_opensubtitles_username_and_pas_5e0f85))
                 ProviderForm(viewModel, "opensubtitles", connected = false)
             }
         }
@@ -90,8 +91,8 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
 
     PrivacyAndTerms()
     val anyConnected = subdl || openSubtitles
-    Button(enabled = anyConnected || !requireAccount, onClick = onDone, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(doneLabel) }
-    if (!anyConnected && requireAccount) Text("Connect at least one account to search.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+    Button(enabled = anyConnected || !requireAccount, onClick = onDone, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(doneLabel ?: ui.getString(R.string.ui_find_subtitles_e39ed2)) }
+    if (!anyConnected && requireAccount) Text(ui.getString(R.string.ui_connect_at_least_one_account_to_search_9f3093), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable private fun ConnectedRow(text: String) {
@@ -117,6 +118,7 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
 
 /** Entry for one provider; once connected it collapses to Replace / Remove. */
 @Composable private fun ProviderForm(viewModel: PhoneViewModel, provider: String, connected: Boolean) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val clipboard = LocalClipboardManager.current
     var editing by remember(provider, connected) { mutableStateOf(!connected) }
     var key by remember(provider) { mutableStateOf("") }
@@ -131,20 +133,20 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
     val name = if (needsLogin) "OpenSubtitles" else "SubDL"
 
     if (editing) {
-        OutlinedTextField(key, { key = it.trim() }, label = { Text("$name API key") },
+        OutlinedTextField(key, { key = it.trim() }, label = { Text(ui.getString(R.string.ui_api_key_7757de, name)) },
             visualTransformation = PasswordVisualTransformation(), singleLine = true,
             trailingIcon = {
-                IconButton(onClick = { clipboard.getText()?.text?.trim()?.let { key = it } }) { Icon(Icons.Default.ContentPaste, "Paste key") }
+                IconButton(onClick = { clipboard.getText()?.text?.trim()?.let { key = it } }) { Icon(Icons.Default.ContentPaste, ui.getString(R.string.ui_paste_key_b95819)) }
             },
             modifier = Modifier.fillMaxWidth().maestro("subtitle_${provider}_key"))
         if (needsLogin) {
-            OutlinedTextField(username, { username = it }, label = { Text("OpenSubtitles username") }, singleLine = true,
+            OutlinedTextField(username, { username = it }, label = { Text(ui.getString(R.string.ui_opensubtitles_username_f5e557)) }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().maestro("subtitle_opensubtitles_username"))
-            OutlinedTextField(password, { password = it }, label = { Text("OpenSubtitles password") }, singleLine = true,
+            OutlinedTextField(password, { password = it }, label = { Text(ui.getString(R.string.ui_opensubtitles_password_1ad679)) }, singleLine = true,
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (passwordVisible) "Hide password" else "Show password")
+                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (passwordVisible) ui.getString(R.string.ui_hide_password_a60a56) else ui.getString(R.string.ui_show_password_6aeaa6))
                     }
                 },
                 modifier = Modifier.fillMaxWidth().maestro("subtitle_opensubtitles_password"))
@@ -161,19 +163,19 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
                     note = try {
                         viewModel.saveSubtitleProvider(provider, typed)
                         key = ""; username = ""; password = ""; editing = false
-                        (check as? CredentialCheck.Unchecked)?.message ?: "$name accepted it. You're ready to search."
-                    } catch (_: Exception) { "Couldn't save it securely. Try again." }
+                        (check as? CredentialCheck.Unchecked)?.message ?: ui.getString(R.string.ui_accepted_it_you_re_ready_to_search_e0f65f, name)
+                    } catch (_: Exception) { ui.getString(R.string.ui_couldn_t_save_it_securely_try_again_f85662) }
                 }
             }, modifier = Modifier.maestro("subtitle_${provider}_save")) {
-                if (checking) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)); Text("Checking…") }
-                else Text(if (connected) "Save new details" else "Connect $name")
+                if (checking) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)); Text(ui.getString(R.string.ui_checking_ec963f)) }
+                else Text(if (connected) ui.getString(R.string.ui_save_new_details_7ddcbe) else ui.getString(R.string.ui_connect_5fd5e3, name))
             }
-            if (connected) TextButton(onClick = { editing = false; key = ""; username = ""; password = "" }) { Text("Cancel") }
+            if (connected) TextButton(onClick = { editing = false; key = ""; username = ""; password = "" }) { Text(ui.getString(R.string.ui_cancel_19766e)) }
         }
     } else {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { editing = true; note = null }) { Text(if (needsLogin) "Change details" else "Replace key") }
-            TextButton(onClick = { viewModel.removeSubtitleProvider(provider); note = "$name removed. Subtitles you already chose stay." }) { Text("Remove") }
+            OutlinedButton(onClick = { editing = true; note = null }) { Text(if (needsLogin) ui.getString(R.string.ui_change_details_b71167) else ui.getString(R.string.ui_replace_key_548dca)) }
+            TextButton(onClick = { viewModel.removeSubtitleProvider(provider); note = ui.getString(R.string.ui_removed_subtitles_you_already_chose_stay_ae4157, name) }) { Text(ui.getString(R.string.ui_remove_c3812f)) }
         }
     }
     note?.let { Text(it, color = if (refused) MaterialTheme.colorScheme.error else VlcMuted, style = MaterialTheme.typography.bodySmall,
@@ -181,16 +183,17 @@ private const val OPENSUBTITLES_KEY_PAGE = "https://www.opensubtitles.com/consum
 }
 
 @Composable private fun PrivacyAndTerms() {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var open by remember { mutableStateOf(false) }
-    Text("Searches go straight from this phone to the site you connect, using your own quota. " +
-        "Only the subtitle you pick is saved for your TVs.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+    Text(ui.getString(R.string.ui_searches_go_straight_from_this_phone_to_the_site_you_c_3c8a91) +
+        ui.getString(R.string.ui_only_the_subtitle_you_pick_is_saved_for_your_tvs_ab5d20), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
     TextButton(onClick = { open = !open }, contentPadding = PaddingValues(0.dp)) {
-        Text(if (open) "Hide privacy and terms" else "Privacy and terms")
+        Text(if (open) ui.getString(R.string.ui_hide_privacy_and_terms_942d73) else ui.getString(R.string.ui_privacy_and_terms_9b68c4))
         Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
     }
     if (open) {
-        Text("The subtitle sites see your IP address, the title, file name, identifiers, hash and language choices. Video, audio and activity patterns stay on this phone. Requests and downloads use your personal quota.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-        Text("Only the subtitle you choose, its language, provider reference and timing are stored with your household for paired TVs. Remove a saved track from the title's subtitle controls; deleting its source or your account also deletes it. Removing an account here stops searching but keeps tracks you already chose.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-        Text("Personal keys do not grant copyright permission. Use tracks you have a lawful right to store and share with your household. Provider terms apply: subdl.com/terms and opensubtitles.com. For copyright complaints contact copyright@cablegram.app with the title and track details for removal.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        Text(ui.getString(R.string.ui_the_subtitle_sites_see_your_ip_address_the_title_file__cc820e), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        Text(ui.getString(R.string.ui_only_the_subtitle_you_choose_its_language_provider_ref_abd48f), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        Text(ui.getString(R.string.ui_personal_keys_do_not_grant_copyright_permission_use_tr_003d6d), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
     }
 }

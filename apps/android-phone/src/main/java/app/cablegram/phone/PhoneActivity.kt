@@ -23,7 +23,7 @@ class PhoneActivity : ComponentActivity() {
         if (extra.isNotEmpty()) requestPermissions(extra.toTypedArray(), 0)
         handleIncoming(intent)
         setContent {
-            PhoneTheme { PhoneApp(viewModel) }
+            PhoneLanguage { PhoneTheme { PhoneApp(viewModel) } }
         }
     }
 
@@ -33,6 +33,11 @@ class PhoneActivity : ComponentActivity() {
         viewModel.setCastVisible(true)
         viewModel.refreshStorage()
         viewModel.refreshPendingApprovals()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        viewModel.syncDeviceLanguage()
     }
 
     override fun onPause() {

@@ -1,5 +1,6 @@
 package app.cablegram.ui
 
+import app.cablegram.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
@@ -55,6 +56,7 @@ private val SkyBlue = Cyan
 
 @Composable
 fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onClipStarted: () -> Unit = {}, onStartNow: () -> Unit = {}) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     BackHandler(onBack = onCancel)
     if (screen.awaitingApproval || screen.signatureAttemptId != null || screen.prepareStage == app.cablegram.data.PHONE_OFFLINE_STAGE) {
         SignaturePreparingScreen(screen, onClipStarted, onStartNow)
@@ -76,7 +78,7 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onC
             Text("CABLEGRAM", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
             Spacer(Modifier.height(2.dp))
             Text(
-                if (screen.converting) "Converting Your Movie..." else "Preparing Your Movie...",
+                if (screen.converting) ui.getString(R.string.ui_converting_your_movie_3a5267) else ui.getString(R.string.ui_preparing_your_movie_f22b39),
                 color = Paper,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
@@ -84,16 +86,16 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onC
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                "This usually takes a minute. Playback starts when it's ready.",
+                ui.getString(R.string.ui_this_usually_takes_a_minute_playback_starts_when_it_s__fb7bed),
                 color = Muted,
                 fontSize = 11.sp,
                 modifier = Modifier.padding(top = 2.dp),
             )
             // T075: approval waits and other backend labels surface here so
             // the wait is never silent on the TV.
-            screen.prepareLabel?.takeIf { it.isNotBlank() }?.let { label ->
+            screen.prepareLabel?.takeIf { it.isNotBlank() }?.let {
                 Text(
-                    label,
+                    localizedStageLabel(screen, ui),
                     color = SkyBlue,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 10.dp),
@@ -129,7 +131,7 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onC
             PreparePercentBar(progress)
             Spacer(Modifier.height(10.dp))
             PrepareTimelineList(statuses, Modifier.weight(1f))
-            Text("Press Back to browse library", color = Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(ui.getString(R.string.ui_press_back_to_browse_library_1b206d), color = Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
         }
         Column(
             Modifier.weight(0.4f).fillMaxHeight(),
@@ -147,6 +149,7 @@ fun PrepareStatusScreen(screen: ScreenState.Resolving, onCancel: () -> Unit, onC
 /** Keep the signature video in view while the phone asks for this one-time approval. */
 @Composable
 private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onClipStarted: () -> Unit, onStartNow: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val offline = screen.prepareStage == app.cablegram.data.PHONE_OFFLINE_STAGE
     val visibility by animateFloatAsState(if (screen.fadingOut) 0f else 1f, tween(400), label = "signature-fade")
     Row(
@@ -177,7 +180,7 @@ private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onClipStarte
         ) {
             Text("CABLEGRAM", color = Cyan, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
             Spacer(Modifier.height(20.dp))
-            Text(when { screen.awaitingApproval -> "Waiting for approval"; offline -> "Looking for your phone"; else -> "Preparing your video" }, color = Paper, fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
+            Text(when { screen.awaitingApproval -> ui.getString(R.string.ui_waiting_for_approval_10c573); offline -> ui.getString(R.string.ui_looking_for_your_phone_d386a9); else -> ui.getString(R.string.ui_preparing_your_video_7daf7e) }, color = Paper, fontSize = 26.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp)
             Spacer(Modifier.height(16.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 screen.video.posterModel()?.let { poster ->
@@ -192,15 +195,15 @@ private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onClipStarte
             }
             Spacer(Modifier.height(20.dp))
             Text(
-                when { screen.awaitingApproval -> "Allow this play on your phone"; offline -> "Open Cablegram on your phone"; else -> "Getting your video ready" },
+                when { screen.awaitingApproval -> ui.getString(R.string.ui_allow_this_play_on_your_phone_8a268c); offline -> ui.getString(R.string.ui_open_cablegram_on_your_phone_1bc6dd); else -> ui.getString(R.string.ui_getting_your_video_ready_09b497) },
                 color = Cyan, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, lineHeight = 25.sp,
             )
             Spacer(Modifier.height(10.dp))
             Text(
                 when {
-                    screen.awaitingApproval -> "This title is private. Open Cablegram or its notification on your phone and tap “Allow once”."
-                    offline -> "Connect the phone that has this video to the same Wi-Fi as this TV and keep Cablegram open."
-                    else -> screen.prepareLabel?.takeIf { it.isNotBlank() } ?: "Enjoy a little Cablegram while we prepare your video."
+                    screen.awaitingApproval -> ui.getString(R.string.ui_this_title_is_private_open_cablegram_or_its_notificati_d68ff8)
+                    offline -> ui.getString(R.string.ui_connect_the_phone_that_has_this_video_to_the_same_wi_f_5fe0b3)
+                    else -> screen.prepareStage?.let { localizedStageLabel(screen, ui) } ?: ui.getString(R.string.ui_enjoy_a_little_cablegram_while_we_prepare_your_video_b47aa0)
                 },
                 color = Paper.copy(alpha = 0.88f), fontSize = 16.sp, lineHeight = 23.sp,
             )
@@ -208,23 +211,24 @@ private fun SignaturePreparingScreen(screen: ScreenState.Resolving, onClipStarte
             if (screen.readyToStart) {
                 val startFocus = remember { FocusRequester() }
                 LaunchedEffect(Unit) { withFrameNanos { }; runCatching { startFocus.requestFocus() } }
-                Button(onClick = onStartNow, modifier = Modifier.focusRequester(startFocus)) { Text("Start now") }
+                Button(onClick = onStartNow, modifier = Modifier.focusRequester(startFocus)) { Text(ui.getString(R.string.ui_start_now_9ff3a6)) }
             } else {
-                Text(if (screen.awaitingApproval) "Your title starts automatically after approval." else "Playback starts automatically when your video is ready.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                Text(if (screen.awaitingApproval) ui.getString(R.string.ui_your_title_starts_automatically_after_approval_1cc12a) else ui.getString(R.string.ui_playback_starts_automatically_when_your_video_is_ready_6d9609), color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
             }
             Spacer(Modifier.height(24.dp))
-            Text("Press Back to cancel and return to your library", color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
+            Text(ui.getString(R.string.ui_press_back_to_cancel_and_return_to_your_library_35e34a), color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
         }
     }
 }
 
 @Composable
 private fun PreparePercentBar(progress: Int) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val animatedPercent by animateIntAsState(progress.coerceIn(0, 100), label = "prepare-percent")
     val fraction by animateFloatAsState((progress / 100f).coerceIn(0f, 1f), label = "prepare-bar")
     Column(Modifier.fillMaxWidth()) {
         Text(
-            "$animatedPercent%",
+            ui.getString(R.string.ui_message_b6bb55, (animatedPercent).toString()),
             color = Cyan,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
@@ -297,6 +301,7 @@ private fun PrepareTimelineList(statuses: List<PrepareStepStatus>, modifier: Mod
 
 @Composable
 private fun PrepareTimelineRow(step: PrepareStep, status: PrepareStepStatus) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val active = status == PrepareStepStatus.ACTIVE
     val completed = status == PrepareStepStatus.COMPLETED
     val shape = RoundedCornerShape(8.dp)
@@ -339,7 +344,7 @@ private fun PrepareTimelineRow(step: PrepareStep, status: PrepareStepStatus) {
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                step.title,
+                step.titleRes?.let(ui::getString) ?: step.title,
                 color = when {
                     active -> Paper
                     completed -> Paper.copy(alpha = 0.62f)
@@ -351,7 +356,7 @@ private fun PrepareTimelineRow(step: PrepareStep, status: PrepareStepStatus) {
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                step.rangeLabel,
+                step.rangeRes?.let(ui::getString) ?: step.rangeLabel,
                 color = if (active) Cyan else Muted.copy(alpha = if (completed) 0.8f else 0.45f),
                 fontSize = 9.sp,
             )
@@ -361,6 +366,7 @@ private fun PrepareTimelineRow(step: PrepareStep, status: PrepareStepStatus) {
 
 @Composable
 private fun LoopingPrepareVideoFrame(loadingVideoUrl: String?) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val shape = RoundedCornerShape(18.dp)
     Box(
         modifier = Modifier
@@ -377,7 +383,7 @@ private fun LoopingPrepareVideoFrame(loadingVideoUrl: String?) {
                 .background(Brush.verticalGradient(listOf(Color.Transparent, PrepareBg.copy(alpha = 0.88f))))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
         ) {
-            Text("Playing until your stream is ready", color = Paper.copy(alpha = 0.8f), fontSize = 12.sp)
+            Text(ui.getString(R.string.ui_playing_until_your_stream_is_ready_906bd0), color = Paper.copy(alpha = 0.8f), fontSize = 12.sp)
         }
     }
 }
@@ -389,6 +395,7 @@ internal fun LoopingPrepareVideo(loadingVideoUrl: String?) {
 
 @Composable
 private fun PrepareTipCard() {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val shape = RoundedCornerShape(14.dp)
     Column(
         modifier = Modifier
@@ -399,8 +406,13 @@ private fun PrepareTipCard() {
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Text("KEEP YOUR PHONE NEARBY", color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-        Text("Cablegram is getting the best available stream ready.", color = Paper, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-        Text("You can leave this screen with Back and return to the title later.", color = Muted, fontSize = 11.sp, lineHeight = 15.sp)
+        Text(ui.getString(R.string.ui_keep_your_phone_nearby_2dc5e4), color = Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+        Text(ui.getString(R.string.ui_cablegram_is_getting_the_best_available_stream_ready_52cd87), color = Paper, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(ui.getString(R.string.ui_you_can_leave_this_screen_with_back_and_return_to_the__848751), color = Muted, fontSize = 11.sp, lineHeight = 15.sp)
     }
+}
+
+private fun localizedStageLabel(screen: ScreenState.Resolving, ui: android.content.res.Resources): String {
+    val step = PREPARE_STEPS[resolvePrepareStepIndex(screen.prepareProgress, screen.prepareStage, screen.converting)]
+    return step.titleRes?.let(ui::getString) ?: step.title
 }

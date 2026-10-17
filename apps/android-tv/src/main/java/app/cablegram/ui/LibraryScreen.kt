@@ -1,5 +1,6 @@
 package app.cablegram.ui
 
+import app.cablegram.R
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
@@ -84,7 +85,7 @@ private enum class RailDestination { Home, Player, Library, Settings }
 
 /** Second Back within this window closes the app (see LibraryScreen's BackHandler). */
 private const val EXIT_CONFIRM_MS = 2_500L
-private const val EXIT_HINT = "Press Back again to exit"
+
 
 @Composable
 internal fun LibraryScreen(
@@ -115,6 +116,8 @@ internal fun LibraryScreen(
     onTelegramSignInWithoutPassword: () -> Unit = {},
     onTelegramCancel: () -> Unit = {},
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
+    val exitHint = ui.getString(R.string.ui_press_back_again_to_exit_e12dfa)
     var selectedGenre by remember { mutableStateOf<String?>(null) }
     var selectedShow by remember { mutableStateOf<TvShow?>(null) }
     var focusedEntry by remember { mutableStateOf<LibraryEntry?>(null) }
@@ -156,14 +159,14 @@ internal fun LibraryScreen(
             System.currentTimeMillis() - exitArmedAt < EXIT_CONFIRM_MS -> activity?.finish()
             else -> {
                 exitArmedAt = System.currentTimeMillis()
-                listNotice = EXIT_HINT
+                listNotice = exitHint
             }
         }
     }
     LaunchedEffect(listNotice) {
         val notice = listNotice ?: return@LaunchedEffect
         // The exit hint stays for the whole window in which a second Back exits.
-        delay(if (notice == EXIT_HINT) EXIT_CONFIRM_MS else 1_600)
+        delay(if (notice == exitHint) EXIT_CONFIRM_MS else 1_600)
         listNotice = null
     }
     val genres = remember(videos) { videos.flatMap { it.genres }.distinct().sorted() }
@@ -250,10 +253,10 @@ internal fun LibraryScreen(
             ) {
                 LibraryTopBar(
                     title = when (rail) {
-                        RailDestination.Home -> "Home"
-                        RailDestination.Player -> "Continue watching"
-                        RailDestination.Library -> "My List"
-                        RailDestination.Settings -> "Settings"
+                        RailDestination.Home -> ui.getString(R.string.ui_home_3a7869)
+                        RailDestination.Player -> ui.getString(R.string.ui_continue_watching_81ebbe)
+                        RailDestination.Library -> ui.getString(R.string.ui_my_list_e957f4)
+                        RailDestination.Settings -> ui.getString(R.string.ui_settings_74a883)
                     },
                     selectedType = selectedType,
                     selectedGenre = selectedGenre,
@@ -288,7 +291,7 @@ internal fun LibraryScreen(
                 }
                 if (telegramStatus is app.cablegram.TvTelegramStatus.NeedsPassword) {
                     Text(
-                        "Finish signing in to Telegram: enter your Telegram password in Settings on this TV.",
+                        ui.getString(R.string.ui_finish_signing_in_to_telegram_enter_your_telegram_pass_284439),
                         color = Aqua,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -321,14 +324,14 @@ internal fun LibraryScreen(
                 }
                 HeroHeader(
                     title = hero?.title ?: when (rail) {
-                        RailDestination.Player -> "Nothing in progress"
-                        RailDestination.Library -> "Your list is empty"
-                        else -> "Your library"
+                        RailDestination.Player -> ui.getString(R.string.ui_nothing_in_progress_44a3cc)
+                        RailDestination.Library -> ui.getString(R.string.ui_your_list_is_empty_6a2cf9)
+                        else -> ui.getString(R.string.ui_your_library_1ad842)
                     },
                     metadata = hero?.metadataParts() ?: emptyList(),
                     overview = if (hero != null) hero.overview else when (rail) {
-                        RailDestination.Library -> "Hold OK on any title to save it here."
-                        else -> "Movies and shows from your phone appear here."
+                        RailDestination.Library -> ui.getString(R.string.ui_hold_ok_on_any_title_to_save_it_here_8857f0)
+                        else -> ui.getString(R.string.ui_movies_and_shows_from_your_phone_appear_here_db03ba)
                     },
                     hint = hero?.actionHint(),
                     progress = hero?.progress ?: 0f,
@@ -338,9 +341,9 @@ internal fun LibraryScreen(
                     videos.isEmpty() -> EmptyLibrary(onRefresh, Modifier.weight(1f))
                     shelves.isEmpty() -> EmptySearchResult(
                         message = when (rail) {
-                            RailDestination.Player -> "Titles you start watching show up here."
-                            RailDestination.Library -> "Nothing saved yet. Hold OK on a title to add it."
-                            else -> "No titles match these filters."
+                            RailDestination.Player -> ui.getString(R.string.ui_titles_you_start_watching_show_up_here_5990dd)
+                            RailDestination.Library -> ui.getString(R.string.ui_nothing_saved_yet_hold_ok_on_a_title_to_add_it_00ae6a)
+                            else -> ui.getString(R.string.ui_no_titles_match_these_filters_a0f06f)
                         },
                         modifier = Modifier.weight(1f),
                     )
@@ -359,7 +362,7 @@ internal fun LibraryScreen(
                             val ids = entry.myListVideoIds()
                             val next = !entry.inMyList
                             onToggleMyList(ids, next)
-                            listNotice = if (next) "Added to My List" else "Removed from My List"
+                            listNotice = if (next) ui.getString(R.string.ui_added_to_my_list_c528ea) else ui.getString(R.string.ui_removed_from_my_list_570caa)
                         },
                         onFocused = { entry ->
                             focusedEntry = entry
@@ -468,6 +471,7 @@ private fun LibraryTopBar(
     onTypeSelected: (String) -> Unit,
     onGenreCycle: () -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Row(
         modifier = Modifier.fillMaxWidth().height(44.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -476,11 +480,11 @@ private fun LibraryTopBar(
         Spacer(Modifier.width(28.dp))
         if (showFilters) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterPill("All", selected = selectedType == "all", menuFocus = menuFocus) { onTypeSelected("all") }
-                FilterPill("Movies", selected = selectedType == "movie", menuFocus = menuFocus) { onTypeSelected("movie") }
-                FilterPill("TV Shows", selected = selectedType == "tv", menuFocus = menuFocus) { onTypeSelected("tv") }
+                FilterPill(ui.getString(R.string.ui_all_a52ace), selected = selectedType == "all", menuFocus = menuFocus) { onTypeSelected("all") }
+                FilterPill(ui.getString(R.string.ui_movies_dff924), selected = selectedType == "movie", menuFocus = menuFocus) { onTypeSelected("movie") }
+                FilterPill(ui.getString(R.string.ui_tv_shows_6adcc6), selected = selectedType == "tv", menuFocus = menuFocus) { onTypeSelected("tv") }
                 FilterPill(
-                    label = "Genre: ${selectedGenre ?: "All"}",
+                    label = ui.getString(R.string.ui_genre_8dc737, selectedGenre ?: ui.getString(R.string.ui_all_a52ace)),
                     selected = selectedGenre != null,
                     outlined = true,
                     menuFocus = menuFocus,
@@ -499,6 +503,7 @@ private fun LibraryTopBar(
 @Composable
 private fun Clock() {
     val context = LocalContext.current
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     var now by remember { mutableStateOf(LocalTime.now()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -507,7 +512,7 @@ private fun Clock() {
         }
     }
     val pattern = if (android.text.format.DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm a"
-    Text(now.format(DateTimeFormatter.ofPattern(pattern)), color = Paper.copy(alpha = 0.82f), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+    Text(now.format(DateTimeFormatter.ofPattern(pattern, locale)), color = Paper.copy(alpha = 0.82f), fontSize = 18.sp, fontWeight = FontWeight.Medium)
 }
 
 @Composable
@@ -613,6 +618,7 @@ private fun CollapsedSidebar(
     profileFocusRequester: FocusRequester,
     onFocusChanged: (inSidebar: Boolean, onProfile: Boolean) -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var avatarFocused by remember { mutableStateOf(false) }
     var sidebarHasFocus by remember { mutableStateOf(false) }
     LaunchedEffect(sidebarHasFocus, avatarFocused) { onFocusChanged(sidebarHasFocus, avatarFocused) }
@@ -635,11 +641,11 @@ private fun CollapsedSidebar(
             onFocused = { avatarFocused = it },
         )
         Spacer(Modifier.height(28.dp))
-        RailIconButton(RailIcon.Home, "Home", destination == RailDestination.Home, onHome, homeFocusRequester)
-        RailIconButton(RailIcon.Player, "Continue", destination == RailDestination.Player, onPlayer)
-        RailIconButton(RailIcon.Library, "My List", destination == RailDestination.Library, onLibrary)
+        RailIconButton(RailIcon.Home, ui.getString(R.string.ui_home_3a7869), destination == RailDestination.Home, onHome, homeFocusRequester)
+        RailIconButton(RailIcon.Player, ui.getString(R.string.ui_continue_31fbef), destination == RailDestination.Player, onPlayer)
+        RailIconButton(RailIcon.Library, ui.getString(R.string.ui_my_list_e957f4), destination == RailDestination.Library, onLibrary)
         Spacer(Modifier.weight(1f))
-        RailIconButton(RailIcon.Settings, "Settings", selected = destination == RailDestination.Settings, onClick = onSettings)
+        RailIconButton(RailIcon.Settings, ui.getString(R.string.ui_settings_74a883), selected = destination == RailDestination.Settings, onClick = onSettings)
     }
 }
 
@@ -651,6 +657,7 @@ private fun SidebarAvatar(
     focusRequester: FocusRequester,
     onFocused: (Boolean) -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var focused by remember { mutableStateOf(false) }
     var imageFailed by remember(avatarUrl) { mutableStateOf(false) }
     val scale by animateFloatAsState(if (focused) 1.1f else 1f, tween(140), label = "avatar-scale")
@@ -691,7 +698,7 @@ private fun SidebarAvatar(
             }
         }
         Text(
-            if (focused) "Switch" else profileName,
+            if (focused) ui.getString(R.string.ui_switch_39921a) else profileName,
             color = if (focused) Cyan else Muted,
             fontSize = 11.sp,
             maxLines = 1,
@@ -851,6 +858,7 @@ private fun LibraryShelves(
     onToggleMyList: (LibraryEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var restoreItemId by remember { mutableStateOf<String?>(null) }
     var restoreShelfId by remember { mutableStateOf<String?>(null) }
     var restoreSettled by remember { mutableStateOf(false) }
@@ -870,7 +878,12 @@ private fun LibraryShelves(
     ) {
         items(shelves, key = { it.id }) { shelf ->
             LabeledPosterRow(
-                title = shelf.title,
+                title = when (shelf.id) {
+                    "continue" -> ui.getString(R.string.ui_continue_watching_81ebbe)
+                    "recent" -> ui.getString(R.string.ui_recently_added_96ec5d)
+                    "mylist" -> ui.getString(R.string.ui_my_list_e957f4)
+                    else -> shelf.title
+                },
                 entries = shelf.entries,
                 focusId = if (shelf.id == restoreShelfId) restoreItemId else null,
                 menuFocus = menuFocus,
@@ -983,6 +996,7 @@ private fun EpisodeRow(
     onPlay: (Video) -> Unit,
     onFocused: (Video) -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     BackHandler(onBack = onBack)
     val listState = rememberLazyListState()
     val targetId = focusEpisodeId?.takeIf { id -> show.episodes.any { it.id == id } }
@@ -997,12 +1011,12 @@ private fun EpisodeRow(
         metadata = episode?.metadataParts() ?: ShowEntry(show).metadataParts(),
         overview = episode?.let { listOfNotNull(it.episodeTitle, it.overview).joinToString(" — ").ifBlank { null } }
             ?: ShowEntry(show).overview,
-        hint = "OK to play · Back for all titles",
+        hint = ui.getString(R.string.ui_ok_to_play_back_for_all_titles_df524e),
         progress = hero?.progress ?: 0f,
         remaining = hero?.remainingLabel(),
     )
     Row(verticalAlignment = Alignment.CenterVertically) {
-        FilterPill("‹  All titles", selected = false, outlined = true, menuFocus = menuFocus, onClick = onBack)
+        FilterPill(ui.getString(R.string.ui_all_titles_531868), selected = false, outlined = true, menuFocus = menuFocus, onClick = onBack)
         Text(
             show.seasonSummary(),
             color = Muted,
@@ -1060,6 +1074,7 @@ private fun PosterCard(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var focused by remember { mutableStateOf(false) }
     var imageFailed by remember(poster) { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
@@ -1119,7 +1134,7 @@ private fun PosterCard(
             when {
                 poster != null && !imageFailed -> AsyncImage(
                     model = poster,
-                    contentDescription = "$title poster",
+                    contentDescription = ui.getString(R.string.ui_poster_9ca171, title),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
                     onError = { imageFailed = true },
@@ -1222,6 +1237,7 @@ private fun EmptySearchResult(message: String, modifier: Modifier = Modifier) {
 
 @Composable
 private fun EmptyLibrary(onRefresh: () -> Unit, modifier: Modifier = Modifier) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Box(modifier.fillMaxSize().padding(bottom = 40.dp), contentAlignment = Alignment.Center) {
         Column(
             modifier = Modifier
@@ -1231,21 +1247,21 @@ private fun EmptyLibrary(onRefresh: () -> Unit, modifier: Modifier = Modifier) {
                 .padding(horizontal = 44.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Nothing here yet", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(ui.getString(R.string.ui_nothing_here_yet_49abaf), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Spacer(Modifier.height(10.dp))
             Text(
-                "On your phone, open Cablegram and tap Import to add videos. They appear on this TV within a few seconds.",
+                ui.getString(R.string.ui_on_your_phone_open_cablegram_and_tap_import_to_add_vid_f88e31),
                 color = Muted,
                 fontSize = 16.sp,
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                "Tip: connect Telegram in the phone app (Import › Connected storage) and this TV can play even when your phone is off.",
+                ui.getString(R.string.ui_tip_connect_telegram_in_the_phone_app_import_connected_a039b5),
                 color = Slate,
                 fontSize = 14.sp,
             )
             Spacer(Modifier.height(22.dp))
-            Button(onClick = onRefresh) { Text("Check again") }
+            Button(onClick = onRefresh) { Text(ui.getString(R.string.ui_check_again_fb7099)) }
         }
     }
 }

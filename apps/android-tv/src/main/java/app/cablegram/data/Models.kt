@@ -96,6 +96,7 @@ data class Profile(
     @SerialName("pin_set") val pinSet: Boolean = false,
     @JsonNames("avatar_url")
     @SerialName("avatarUrl") val avatarUrl: String? = null,
+    @SerialName("ui_language") val uiLanguage: String = "en",
 ) {
     fun resolvedAvatarUrl(apiBaseUrl: String = BuildConfig.API_BASE_URL): String? {
         val url = avatarUrl?.trim().orEmpty()

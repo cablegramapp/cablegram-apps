@@ -38,8 +38,10 @@ class MainActivity : ComponentActivity() {
         (application as? app.cablegram.cast.CablegramApplication)?.handleIntent(intent)
         enableEdgeToEdge()
         setContent {
-            CablegramTheme {
-                CablegramApp(viewModel = cablegramViewModel)
+            app.cablegram.ui.TvLanguage(cablegramViewModel.uiLanguage) {
+                CablegramTheme {
+                    CablegramApp(viewModel = cablegramViewModel)
+                }
             }
         }
     }

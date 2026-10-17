@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * backgrounded, with a progress notification. There is no Cablegram-hosted cloud (CAB-38).
  */
 class CloudTransferService : Service() {
+    private fun uiText(id: Int, vararg args: Any?): String = deviceLanguageResources().getString(id, *args)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val queue = ConcurrentLinkedQueue<String>()
     /** Titles queued while the household's own storage was connected; any other title is refused. */
@@ -43,12 +44,12 @@ class CloudTransferService : Service() {
             return START_NOT_STICKY
         }
         if (intent.getBooleanExtra(EXTRA_OWN_R2, false)) ownR2.add(id)
-        val target = intent.getStringExtra(EXTRA_DESTINATION)?.takeIf { it.isNotBlank() } ?: "Cloud"
+        val target = intent.getStringExtra(EXTRA_DESTINATION)?.takeIf { it.isNotBlank() } ?: uiText(R.string.ui_cloud_b977b9)
         destinations[id] = target
         if (!running.get()) destination = target
         queue.add(id)
         val item = store.get(id)
-        startAsForeground(item?.title ?: "Video", 0, item?.fileSizeBytes ?: 0)
+        startAsForeground(item?.title ?: uiText(R.string.ui_video_d534be), 0, item?.fileSizeBytes ?: 0)
         if (running.compareAndSet(false, true)) {
             scope.launch { drainQueue() }
         }
@@ -61,6 +62,7 @@ class CloudTransferService : Service() {
      * titles still waiting are marked failed rather than left showing as queued.
      */
     override fun onTimeout(startId: Int, fgsType: Int) {
+        val ui = this.deviceLanguageResources()
         PairLog.i("Cloud transfer stopped by the system time limit")
         while (true) {
             val id = queue.poll() ?: break
@@ -68,7 +70,7 @@ class CloudTransferService : Service() {
             ownR2.remove(id)
             store.get(id)?.let { store.update(it.copy(transferStatus = TRANSFER_FAILED)) }
         }
-        notifyDone("Saving paused", ok = false, detail = "Android paused saving after a long run. Open Cablegram and save again to continue.")
+        notifyDone(ui.getString(R.string.ui_saving_paused_500b3a), ok = false, detail = ui.getString(R.string.ui_android_paused_saving_after_a_long_run_open_cablegram__736bf1))
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -96,7 +98,7 @@ class CloudTransferService : Service() {
     }
 
     private suspend fun saveOne(id: String) {
-        destination = destinations.remove(id) ?: "Cloud"
+        destination = destinations.remove(id) ?: uiText(R.string.ui_cloud_b977b9)
         val item = store.get(id) ?: return
         store.update(
             item.copy(
@@ -122,12 +124,12 @@ class CloudTransferService : Service() {
         try {
             if (ownR2.remove(id)) {
                 saveToOwnR2(item, progress)
-                notifyDone(item.title, ok = true, detail = "Saved to $destination")
+                notifyDone(item.title, ok = true, detail = uiText(R.string.ui_saved_to_dcdbf0, destination))
                 return
             }
             // Saves go only to the household's own storage (CAB-38); the save sheet never queues one without it.
             store.get(id)?.let { store.update(it.copy(transferStatus = TRANSFER_FAILED)) }
-            notifyDone(item.title, ok = false, detail = "Connect Google Drive or Cloudflare R2 to save to the cloud.")
+            notifyDone(item.title, ok = false, detail = uiText(R.string.ui_connect_google_drive_or_cloudflare_r2_to_save_to_the_c_55c851))
         } catch (error: Throwable) {
             PairLog.e("Save to cloud failed", error)
             store.get(id)?.let { store.update(it.copy(transferStatus = TRANSFER_FAILED)) }
@@ -182,10 +184,11 @@ class CloudTransferService : Service() {
     }
 
     private fun notifyDone(title: String, ok: Boolean, detail: String? = null) {
+        val ui = this.deviceLanguageResources()
         val text = when {
-            ok -> detail ?: "Saved to Cloud"
+            ok -> detail ?: ui.getString(R.string.ui_saved_to_cloud_694e20)
             !detail.isNullOrBlank() -> detail
-            else -> "Could not save to Cloud"
+            else -> ui.getString(R.string.ui_could_not_save_to_cloud_17d590)
         }
         val notification = builder()
             .setContentTitle(title)
@@ -201,18 +204,19 @@ class CloudTransferService : Service() {
     }
 
     private fun progressNotification(title: String, copied: Long, total: Long, bytesPerSec: Long): Notification {
+        val ui = this.deviceLanguageResources()
         val max = 1000
         val progress = if (total > 0) ((copied * max) / total).toInt().coerceIn(0, max) else 0
         val remaining = (total - copied).coerceAtLeast(0)
         val bits = listOf(
-            "${formatBytes(copied)} / ${formatBytes(if (total > 0) total else copied)}",
+            ui.getString(R.string.ui_message_f1c1f8, formatBytes(copied), formatBytes(if (total > 0) total else copied)),
             formatRate(bytesPerSec),
-            etaLabel(remaining, bytesPerSec),
+            etaLabel(remaining, bytesPerSec, ui),
         ).filter { it.isNotBlank() }
         return builder()
-            .setContentTitle("Saving to $destination")
+            .setContentTitle(ui.getString(R.string.ui_saving_to_a516ef, destination))
             .setContentText(title)
-            .setStyle(Notification.BigTextStyle().bigText("$title\n${bits.joinToString(" · ")}"))
+            .setStyle(Notification.BigTextStyle().bigText(ui.getString(R.string.ui_message_6d2437, title, bits.joinToString(" · "))))
             .setSmallIcon(R.drawable.ic_stat_cablegram)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -227,12 +231,13 @@ class CloudTransferService : Service() {
     }
 
     private fun ensureChannel() {
+        val ui = this.deviceLanguageResources()
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Cloud saves",
+            ui.getString(R.string.ui_cloud_saves_4c5413),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Progress while Cablegram copies a title to the cloud"
+            description = ui.getString(R.string.ui_progress_while_cablegram_copies_a_title_to_the_cloud_2e0209)
             setShowBadge(false)
         }
         manager().createNotificationChannel(channel)

@@ -114,10 +114,28 @@ class CablegramViewModel @JvmOverloads constructor(
     application: Application,
     private val signatureUrl: () -> String = ::getRandomLoadingVideoUrl,
 ) : AndroidViewModel(application) {
+    private val supportedLanguages: Set<String> by lazy {
+        getApplication<Application>().resources.getStringArray(R.array.ui_languages).toSet()
+    }
+    /** One configuration context per language; TvTelegram also reads it from background threads. */
+    @Volatile private var uiCache: Pair<String, android.content.res.Resources>? = null
+
+    private fun uiResources(): android.content.res.Resources {
+        val language = uiLanguage
+        uiCache?.let { (cached, resources) -> if (cached == language) return resources }
+        val app = getApplication<Application>()
+        val configuration = android.content.res.Configuration(app.resources.configuration).apply {
+            setLocales(android.os.LocaleList.forLanguageTags(language))
+        }
+        return app.createConfigurationContext(configuration).resources.also { uiCache = language to it }
+    }
+
+    private fun uiText(id: Int, vararg args: Any?): String = uiResources().getString(id, *args)
     private val api = CablegramApi(lanStream = ::lanStreamUrl)
     private val authStore = AuthStore(application)
     /** Spec 004: this TV's Telegram session, approved by the household phone. */
-    val telegram = TvTelegram(application, api, onLibraryChanged = { refreshLibrary() })
+    val telegram = TvTelegram(application, api, onLibraryChanged = { refreshLibrary() },
+        resources = { runCatching { uiResources() }.getOrElse { application.resources } })
 
     /** A phone just paired this TV: the library opens with a one-time "This TV is connected" card. */
     var connectedWelcome by mutableStateOf(false)
@@ -212,7 +230,7 @@ class CablegramViewModel @JvmOverloads constructor(
             val resolving = (screen as? ScreenState.Resolving)?.takeIf { it.signatureAttemptId == id }
             if (resolving != null && wait > 0) {
                 screen = resolving.copy(video = player.video, awaitingApproval = false, readyToStart = true,
-                    prepareLabel = "Your video is ready.")
+                    prepareLabel = uiText(R.string.ui_your_video_is_ready_4f9fb5))
                 delay(wait)
             }
             if (!signatureGate.isCurrent(id) || readyPlayer?.first != id) return@launch
@@ -228,7 +246,7 @@ class CablegramViewModel @JvmOverloads constructor(
     }
 
     private var cachedVideos: List<Video> = emptyList()
-    private var profiles: List<Profile> = emptyList()
+    private var profiles by mutableStateOf<List<Profile>>(emptyList())
     private var activeProfileId: String? = null
     private val profileAccounts = mutableMapOf<String, AccountCredential>()
     private var failedPlaybackVideo: Video? = null
@@ -332,12 +350,22 @@ class CablegramViewModel @JvmOverloads constructor(
 
     val activeProfileName: String
         get() = when {
-            isDemoMode -> "Demo"
+            isDemoMode -> uiText(R.string.ui_demo_8a2cc0)
             else -> profiles.firstOrNull { it.id == activeProfileId }?.name ?: "Cablegram"
         }
 
     val activeProfileAvatarUrl: String?
         get() = profiles.firstOrNull { it.id == activeProfileId }?.resolvedAvatarUrl()
+
+    val uiLanguage: String
+        get() {
+            val beforeSelection = screen is ScreenState.ProfilePicker || screen is ScreenState.Pairing ||
+                screen is ScreenState.Loading || screen is ScreenState.SessionActions
+            val selected = if (beforeSelection) null else profiles.firstOrNull { it.id == activeProfileId }
+            return app.cablegram.ui.tvUiLanguage(
+                profiles.map { it.uiLanguage }, selected?.uiLanguage, supportedLanguages,
+            )
+        }
 
     val hasProfiles: Boolean
         get() = profiles.isNotEmpty()
@@ -589,7 +617,7 @@ class CablegramViewModel @JvmOverloads constructor(
         cachedVideos = emptyList()
         noteUserActivity()
         if (profiles.isNotEmpty()) {
-            screen = ScreenState.ProfilePicker(profiles, message = "This TV wasn't used for a while. Choose who's watching; the account's phone has to allow it again.")
+            screen = ScreenState.ProfilePicker(profiles, message = uiText(R.string.ui_this_tv_wasn_t_used_for_a_while_choose_who_s_watching__9bb395))
         }
         startCommandPolling()
     }
@@ -731,7 +759,7 @@ class CablegramViewModel @JvmOverloads constructor(
             catch (error: CancellationException) { throw error }
             catch (error: Exception) {
                 castApp?.mediaSession?.stop(com.google.android.gms.cast.MediaStatus.IDLE_REASON_ERROR)
-                screen = ScreenState.Error("Can't convert this video", error.userMessage(), convertibleVideo = video, canGoBack = true)
+                screen = ScreenState.Error(uiText(R.string.ui_can_t_convert_this_video_260740), error.userMessage(), convertibleVideo = video, canGoBack = true)
             }
         }
     }
@@ -772,7 +800,7 @@ class CablegramViewModel @JvmOverloads constructor(
                             video = currentVideo,
                             loadingVideoUrl = currentLoadingUrl,
                             signatureAttemptId = attemptId,
-                            prepareLabel = "Waiting for your phone to approve",
+                            prepareLabel = uiText(R.string.ui_waiting_for_your_phone_to_approve_ec56d7),
                             awaitingApproval = true,
                         )
                     },
@@ -786,7 +814,7 @@ class CablegramViewModel @JvmOverloads constructor(
                     currentVideo = currentVideo.copy(
                         ingestProgress = 100,
                         ingestStage = "ready",
-                        ingestLabel = "Ready",
+                        ingestLabel = uiText(R.string.ui_ready_5fa7aa),
                         tier = if (currentVideo.tier == "ingesting" || currentVideo.tier == "evicted") "hot+r2" else currentVideo.tier,
                     )
                     cachedVideos = cachedVideos.map { if (it.id == currentVideo.id) currentVideo else it }
@@ -805,8 +833,8 @@ class CablegramViewModel @JvmOverloads constructor(
                     playbackJob?.cancel()
                     failedPlaybackVideo = currentVideo
                     screen = ScreenState.Error(
-                        "Playback wasn't approved",
-                        playback.prepareLabel ?: "Your phone didn't approve this title. Press Try again to ask once more, or Back to the title.",
+                        uiText(R.string.ui_playback_wasn_t_approved_5cb346),
+                        playback.prepareLabel ?: uiText(R.string.ui_your_phone_didn_t_approve_this_title_press_try_again_t_6fe116),
                         canSignOut = false,
                         removableVideo = null,
                         canGoBack = true,
@@ -840,7 +868,7 @@ class CablegramViewModel @JvmOverloads constructor(
             failedPlaybackVideo = currentVideo
             val removableVideo = if ((error as? ApiException)?.statusCode == 409) video else null
             screen = ScreenState.Error(
-                title = "Can't play this video",
+                title = uiText(R.string.ui_can_t_play_this_video_7cfde0),
                 message = playbackError(error),
                 removableVideo = removableVideo,
                 canGoBack = true,
@@ -859,7 +887,7 @@ class CablegramViewModel @JvmOverloads constructor(
                 screen = ScreenState.Library
                 startLibrarySync()
             } catch (error: Exception) {
-                screen = ScreenState.Error("Can't remove this video", error.userMessage(), canGoBack = true)
+                screen = ScreenState.Error(uiText(R.string.ui_can_t_remove_this_video_51b490), error.userMessage(), canGoBack = true)
             }
         }
     }
@@ -1023,9 +1051,9 @@ class CablegramViewModel @JvmOverloads constructor(
                     // A lockout or network failure used to read "Wrong PIN", so people kept retrying
                     // the right PIN.
                     val message = when (code) {
-                        403 -> "Wrong PIN. Try again."
-                        429 -> "Too many tries. This profile is locked for 15 minutes."
-                        else -> "Couldn't check the PIN. Check the connection and try again."
+                        403 -> uiText(R.string.ui_wrong_pin_try_again_c5ce26)
+                        429 -> uiText(R.string.ui_too_many_tries_this_profile_is_locked_for_15_minutes_21bd30)
+                        else -> uiText(R.string.ui_couldn_t_check_the_pin_check_the_connection_and_try_ag_ce4d77)
                     }
                     screen = ScreenState.ProfilePicker(profiles, pinPromptFor = profile, pinError = message)
                 }
@@ -1056,7 +1084,7 @@ class CablegramViewModel @JvmOverloads constructor(
         token = currentToken
         sessionId = currentSessionId
         withdrawProfileSwitch()
-        screen = ScreenState.ProfilePicker(profiles, pending = true, message = "Opening profile…")
+        screen = ScreenState.ProfilePicker(profiles, pending = true, message = uiText(R.string.ui_opening_profile_08573a))
         profileSwitchJob = viewModelScope.launch {
             suspend fun open() {
                 waitingSwitch = null
@@ -1091,8 +1119,8 @@ class CablegramViewModel @JvmOverloads constructor(
                     }
                     when (status) {
                         "approved" -> return@launch open()
-                        "denied" -> return@launch refuse("Your phone didn't allow ${profile.name}.")
-                        "expired" -> return@launch refuse("Nobody allowed ${profile.name} on a phone in time. Try again.")
+                        "denied" -> return@launch refuse(uiText(R.string.ui_your_phone_didn_t_allow_3272a3, profile.name))
+                        "expired" -> return@launch refuse(uiText(R.string.ui_nobody_allowed_on_a_phone_in_time_try_again_39ef3f, profile.name))
                     }
                 }
             } catch (error: CancellationException) {
@@ -1178,7 +1206,7 @@ class CablegramViewModel @JvmOverloads constructor(
                 ),
             )
             PairLog.e("TV createDeviceSession failed, offline PIN ${PairLog.pinTail(pin)}", error)
-            pairingStatus = "API unreachable. Phone QR still works on this Wi‑Fi."
+            pairingStatus = uiText(R.string.ui_api_unreachable_phone_qr_still_works_on_this_wi_fi_cfb036)
         }
     }
 
@@ -1214,12 +1242,12 @@ class CablegramViewModel @JvmOverloads constructor(
                     // A fresh pairing always goes through "Who's watching?": opening
                     // the library here skipped profile selection (no progress, no
                     // resume) and bypassed profile PINs.
-                    pairingStatus = "Phone paired. Choose who's watching."
+                    pairingStatus = uiText(R.string.ui_phone_paired_choose_who_s_watching_9e5cf5)
                     loadProfiles()
                     return
                 }
                 if (result.status == "paired") {
-                    pairingStatus = "Phone paired. Opening the library."
+                    pairingStatus = uiText(R.string.ui_phone_paired_opening_the_library_3954f7)
                     connectedWelcome = true
                     continueWithPhoneLibrary()
                     return
@@ -1310,7 +1338,7 @@ class CablegramViewModel @JvmOverloads constructor(
                 activeProfileId = null
                 createPairingSession()
             } else {
-                screen = ScreenState.Error("Profiles unavailable", lastErrorMessage ?: "Could not load profiles.", canSignOut = true)
+                screen = ScreenState.Error(uiText(R.string.ui_profiles_unavailable_ea6ad2), lastErrorMessage ?: uiText(R.string.ui_could_not_load_profiles_a6c9d7), canSignOut = true)
             }
             return
         }
@@ -1356,12 +1384,12 @@ class CablegramViewModel @JvmOverloads constructor(
                 activeProfileId = null
                 loadProfiles()
             } else {
-                screen = ScreenState.Error("Library unavailable", error.userMessage(), canSignOut = true)
+                screen = ScreenState.Error(uiText(R.string.ui_library_unavailable_357219), error.userMessage(), canSignOut = true)
             }
         } catch (_: CancellationException) {
             throw CancellationException()
         } catch (error: Exception) {
-            screen = ScreenState.Error("Library unavailable", error.userMessage(), canSignOut = true)
+            screen = ScreenState.Error(uiText(R.string.ui_library_unavailable_357219), error.userMessage(), canSignOut = true)
         } finally {
             isLibraryRefreshing = false
         }
@@ -1486,10 +1514,10 @@ class CablegramViewModel @JvmOverloads constructor(
                     val oldTitle = remoteTitleCommand
                     if (oldTitle != null) finishRemoteTitle("superseded")
                     val title = (command.payload["title"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.take(160)
-                        ?: "this title"
+                        ?: uiText(R.string.ui_this_title_b588b8)
                     val sender = (command.payload["senderName"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.take(80)
-                        ?: "Your phone"
-                    castPickerBanner = "$sender wants to play $title — choose who's watching"
+                        ?: uiText(R.string.ui_your_phone_807163)
+                    castPickerBanner = uiText(R.string.ui_wants_to_play_choose_who_s_watching_dbc0ba, sender, title)
                     return
                 }
                 // This hint is part of an authenticated server command, not Cast customData. It only
@@ -1625,7 +1653,7 @@ class CablegramViewModel @JvmOverloads constructor(
         if ((screen as? ScreenState.Player)?.video?.id != videoId) return
         telegram.releasePlayback()
         failedPlaybackVideo = null
-        screen = ScreenState.Error(title = "This video was deleted", message = "It was removed from your library on the phone.", canGoBack = true)
+        screen = ScreenState.Error(title = uiText(R.string.ui_this_video_was_deleted_1ddf86), message = uiText(R.string.ui_it_was_removed_from_your_library_on_the_phone_5bd088), canGoBack = true)
     }
 
     private fun onProfileGone() {
@@ -1673,10 +1701,19 @@ class CablegramViewModel @JvmOverloads constructor(
     private suspend fun checkSessions() {
         if (isDemoMode) return
         for (account in authStore.getAccounts()) {
-            val failure = runCatching { api.checkSession(account.token) }.exceptionOrNull()
+            val check = runCatching { api.checkSession(account.token) }
+            val failure = check.exceptionOrNull()
             if (failure is CancellationException) throw failure
             // Offline, 5xx or 503 revocation_check_unavailable: not a verdict, so the TV stays as it is.
             if (failure?.isUnauthorized() == true) onAccountRejected(account)
+            // Language can change on the phone while the picker or player is already open.
+            // Keep selection, PIN prompts and playback intact; update only known profiles.
+            val languages = check.getOrNull()
+            if (!languages.isNullOrEmpty()) {
+                profiles = profiles.map { profile ->
+                    languages[profile.id]?.let { profile.copy(uiLanguage = it) } ?: profile
+                }
+            }
         }
     }
 
@@ -1728,11 +1765,11 @@ class CablegramViewModel @JvmOverloads constructor(
 
     private fun playbackError(error: Exception): String = when {
         (error as? ApiException)?.statusCode == 409 ->
-            "This video's source changed on your phone. Open Cablegram on the phone to refresh it."
+            uiText(R.string.ui_this_video_s_source_changed_on_your_phone_open_cablegr_d12a5c)
         else -> error.userMessage()
     }
 
-    private fun Exception.userMessage(): String = message ?: "Check the backend address and network connection."
+    private fun Exception.userMessage(): String = message ?: uiText(R.string.ui_check_the_backend_address_and_network_connection_1548f3)
 
     init {
         // Last in the class: the watch can start checking at once, and everything it uses is set up by now.

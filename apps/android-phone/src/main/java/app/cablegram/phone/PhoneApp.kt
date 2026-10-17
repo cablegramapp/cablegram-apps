@@ -78,6 +78,7 @@ fun PhoneApp(viewModel: PhoneViewModel) {
 
 @Composable
 private fun NameForm(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var name by remember { mutableStateOf(viewModel.householdName) }
     Column(
         Modifier
@@ -89,26 +90,27 @@ private fun NameForm(viewModel: PhoneViewModel) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Name this household", color = Color.White, style = MaterialTheme.typography.headlineSmall)
-        Text("This name is saved on the server. Every paired TV and phone will see the same library.", color = VlcMuted)
+        Text(ui.getString(R.string.ui_name_this_household_a2930a), color = Color.White, style = MaterialTheme.typography.headlineSmall)
+        Text(ui.getString(R.string.ui_this_name_is_saved_on_the_server_every_paired_tv_and_p_0a385b), color = VlcMuted)
         OutlinedTextField(
             value = name,
             onValueChange = { name = it.take(80) },
             modifier = Modifier.fillMaxWidth().maestro(MaestroIds.HOUSEHOLD_NAME),
             singleLine = true,
-            label = { Text("Household name") },
+            label = { Text(ui.getString(R.string.ui_household_name_e4d50a)) },
         )
         Button(
             onClick = { viewModel.saveHouseholdName(name) },
             enabled = name.trim().isNotEmpty() && !viewModel.busy,
             modifier = Modifier.fillMaxWidth().maestro(MaestroIds.HOUSEHOLD_CONTINUE),
-        ) { Text(if (viewModel.busy) "Saving…" else "Continue") }
+        ) { Text(if (viewModel.busy) ui.getString(R.string.ui_saving_23e392) else ui.getString(R.string.ui_continue_31fbef)) }
         viewModel.status?.let { Text(it, color = VlcMuted) }
     }
 }
 
 @Composable
 private fun PairingForm(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val clipboard = LocalClipboardManager.current
     var pin by rememberSaveable { mutableStateOf("") }
     var scanning by rememberSaveable { mutableStateOf(false) }
@@ -118,9 +120,9 @@ private fun PairingForm(viewModel: PhoneViewModel) {
             .verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        TextButton(onClick = viewModel::cancelAddTv, modifier = Modifier.maestro(MaestroIds.PAIRING_NOT_NOW)) { Text("Not now") }
-        ScreenHeading(if (viewModel.paired) "One more big screen." else "Meet your TV.",
-            "Open Cablegram on your TV, then enter the six-digit code shown there.")
+        TextButton(onClick = viewModel::cancelAddTv, modifier = Modifier.maestro(MaestroIds.PAIRING_NOT_NOW)) { Text(ui.getString(R.string.ui_not_now_a0e63d)) }
+        ScreenHeading(if (viewModel.paired) ui.getString(R.string.ui_one_more_big_screen_3514a4) else ui.getString(R.string.ui_meet_your_tv_4d8c97),
+            ui.getString(R.string.ui_open_cablegram_on_your_tv_then_enter_the_six_digit_cod_9c081e))
         Surface(color = VlcPanel, shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(Icons.Default.Tv, null, Modifier.size(40.dp), tint = VlcOrange)
@@ -129,26 +131,26 @@ private fun PairingForm(viewModel: PhoneViewModel) {
                     onValueChange = { pin = it.filter { char -> char in '0'..'9' }.take(6) },
                     modifier = Modifier.fillMaxWidth().maestro(MaestroIds.PAIRING_ENTER_PIN),
                     singleLine = true,
-                    label = { Text("TV code") },
+                    label = { Text(ui.getString(R.string.ui_tv_code_8c33e0)) },
                     placeholder = { Text("000000") },
-                    textStyle = MaterialTheme.typography.headlineMedium.copy(letterSpacing = 8.sp),
+                    textStyle = MaterialTheme.typography.headlineMedium.copy(letterSpacing = 8.sp, textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { if (pin.length == 6 && !viewModel.busy) viewModel.applyPairUri(pin) }),
                 )
                 Button(onClick = { viewModel.applyPairUri(pin) }, enabled = pin.length == 6 && !viewModel.busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Text(if (viewModel.busy) "Connecting…" else "Connect TV")
+                    Text(if (viewModel.busy) ui.getString(R.string.ui_connecting_72021e) else ui.getString(R.string.ui_connect_tv_c9f94c))
                 }
                 TextButton(onClick = { pin = clipboard.getText()?.text.orEmpty().filter { it in '0'..'9' }.take(6) },
-                    enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Paste code") }
+                    enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_paste_code_682909)) }
             }
         }
         OutlinedButton(onClick = { scanning = !scanning }, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text(if (scanning) "Close camera" else "Scan QR code instead")
+            Text(if (scanning) ui.getString(R.string.ui_close_camera_bebcb8) else ui.getString(R.string.ui_scan_qr_code_instead_375856))
         }
         if (scanning) PairingScanner(Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(20.dp)), onQr = viewModel::applyPairUri)
         viewModel.status?.let { StatusNote(it) }
-        Text("Keep your phone and TV on the same Wi-Fi while watching. Your video files stay on your phone.",
+        Text(ui.getString(R.string.ui_keep_your_phone_and_tv_on_the_same_wi_fi_while_watchin_7a397d),
             color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
     }
 }

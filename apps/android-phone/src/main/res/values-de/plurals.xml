@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ui_series_summary">%1$s · %2$s</string>
+    <plurals name="ui_episode_count">
+        <item quantity="one">"%1$d Folge"</item>
+        <item quantity="other">"%1$d Folgen"</item>
+    </plurals>
+    <plurals name="ui_season_count">
+        <item quantity="one">"%1$d Staffel"</item>
+        <item quantity="other">"%1$d Staffeln"</item>
+    </plurals>
+</resources>

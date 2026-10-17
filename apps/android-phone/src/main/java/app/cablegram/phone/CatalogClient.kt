@@ -325,7 +325,26 @@ class CatalogClient(
         }.getOrNull()
     }
 
+    /** Reports this phone's language without changing other accounts on a shared TV. */
+    suspend fun syncDeviceLanguage(token: String, languageTag: String): Boolean = withContext(Dispatchers.IO) {
+        val body = buildJsonObject { put("ui_language", languageTag) }.toString().toRequestBody("application/json".toMediaType())
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/me/language")
+            .header("Authorization", "Bearer $token").put(body).build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }.getOrDefault(false)
+    }
+
     /** Household profiles (owner first); null when offline. */
+    suspend fun setProfileLanguage(token: String, profileId: String, languageTag: String?): Boolean = withContext(Dispatchers.IO) {
+        val body = buildJsonObject { put("ui_language", languageTag?.let(::JsonPrimitive) ?: JsonNull) }
+            .toString().toRequestBody("application/json".toMediaType())
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/profiles/$profileId/language")
+            .header("Authorization", "Bearer $token").patch(body).build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }
+            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }.getOrDefault(false)
+    }
+
     suspend fun profiles(token: String): List<HouseholdProfile>? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("${baseUrl.trimEnd('/')}/api/profiles")

@@ -77,10 +77,11 @@ object TelegramPasswordRequests {
 
     /** Opens the password screen at once when Cablegram is in front; the notification is posted either way. */
     fun ask(context: Context, request: PendingTvPasswordRequest, failed: Boolean = false) {
+        val ui = context.deviceLanguageResources()
         if (PrivateApprovals.appVisible) runCatching { context.startActivity(screen(context, request)) }
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         if (Build.VERSION.SDK_INT >= 26) {
-            manager.createNotificationChannel(NotificationChannel(CHANNEL, "Telegram password for TVs", NotificationManager.IMPORTANCE_HIGH))
+            manager.createNotificationChannel(NotificationChannel(CHANNEL, ui.getString(R.string.ui_telegram_password_for_tvs_3e1cd9), NotificationManager.IMPORTANCE_HIGH))
         }
         val open = PendingIntent.getActivity(context, 31, screen(context, request), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val cancel = PendingIntent.getBroadcast(
@@ -90,7 +91,7 @@ object TelegramPasswordRequests {
         )
         val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, CHANNEL)
         else @Suppress("DEPRECATION") Notification.Builder(context)
-        val title = if (failed) "Couldn't send the password to ${request.tvName}" else "${request.tvName} needs your Telegram password"
+        val title = if (failed) ui.getString(R.string.ui_couldn_t_send_the_password_to_88150f, request.tvName) else ui.getString(R.string.ui_needs_your_telegram_password_15b274, request.tvName)
         // The lock screen shows only that a TV is waiting; the password screen needs the phone unlocked.
         val publicVersion = (if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, CHANNEL) else @Suppress("DEPRECATION") Notification.Builder(context))
             .setSmallIcon(R.drawable.ic_stat_cablegram)
@@ -101,11 +102,11 @@ object TelegramPasswordRequests {
             .setVisibility(Notification.VISIBILITY_PRIVATE)
             .setPublicVersion(publicVersion)
             .setContentTitle(title)
-            .setContentText("Tap to type it in Cablegram. It's encrypted for that TV only.")
+            .setContentText(ui.getString(R.string.ui_tap_to_type_it_in_cablegram_it_s_encrypted_for_that_tv_e9550f))
             .setContentIntent(open)
             .setAutoCancel(true)
-            .addAction(Notification.Action.Builder(null, "Enter password", open).build())
-            .addAction(Notification.Action.Builder(null, "Cancel", cancel).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_enter_password_7014af), open).build())
+            .addAction(Notification.Action.Builder(null, ui.getString(R.string.ui_cancel_19766e), cancel).build())
             .build()
         runCatching { manager.notify(NOTIFICATION_ID, notification) }
     }
@@ -166,7 +167,7 @@ class TelegramPasswordActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         val requestId = intent.getStringExtra(TelegramPasswordRequests.EXTRA_REQUEST) ?: return finish()
         val tvName = intent.getStringExtra(TelegramPasswordRequests.EXTRA_TV_NAME)?.take(64) ?: "your TV"
-        setContent { PhoneTheme { PasswordScreen(requestId, tvName) } }
+        setContent { PhoneLanguage { PhoneTheme { PasswordScreen(requestId, tvName) } } }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -178,6 +179,7 @@ class TelegramPasswordActivity : ComponentActivity() {
 
     @androidx.compose.runtime.Composable
     private fun PasswordScreen(requestId: String, tvName: String) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
         val context = this
         val scope = rememberCoroutineScope()
         var password by remember { mutableStateOf("") }
@@ -217,7 +219,7 @@ class TelegramPasswordActivity : ComponentActivity() {
                 val request = token?.let { TelegramPasswordRequests.requestFor(client.pendingTvPasswordRequests(it), requestId) }
                 if (token == null || request == null) {
                     // Answered elsewhere, withdrawn or expired.
-                    error = "$tvName no longer needs the password."
+                    error = ui.getString(R.string.ui_no_longer_needs_the_password_9cb267, tvName)
                     sending = false
                     return@launch
                 }
@@ -230,7 +232,7 @@ class TelegramPasswordActivity : ComponentActivity() {
                     password = ""
                     close()
                 } else {
-                    error = "Couldn't send it. Check your connection and try again."
+                    error = ui.getString(R.string.ui_couldn_t_send_it_check_your_connection_and_try_again_b8b4ee)
                     sending = false
                 }
             }
@@ -239,17 +241,17 @@ class TelegramPasswordActivity : ComponentActivity() {
             Modifier.fillMaxSize().background(VlcBlack).safeDrawingPadding().padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Telegram password", color = androidx.compose.ui.graphics.Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Text(ui.getString(R.string.ui_telegram_password_65d868), color = androidx.compose.ui.graphics.Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Text(
-                "$tvName is signing in to your Telegram. Type your two-step verification password. It's encrypted for that TV only; Cablegram can't read it.",
+                ui.getString(R.string.ui_is_signing_in_to_your_telegram_type_your_two_step_veri_999fde, tvName),
                 color = VlcMuted, fontSize = 15.sp, lineHeight = 21.sp,
             )
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                label = { Text("Password") },
-                placeholder = hint.takeIf { it.isNotBlank() }?.let { { Text("Hint: $it") } },
+                label = { Text(ui.getString(R.string.ui_password_e7cf3e)) },
+                placeholder = hint.takeIf { it.isNotBlank() }?.let { { Text(ui.getString(R.string.ui_hint_3033f3, it)) } },
                 singleLine = true,
                 enabled = !sending,
                 visualTransformation = PasswordVisualTransformation(),
@@ -257,21 +259,21 @@ class TelegramPasswordActivity : ComponentActivity() {
                 keyboardActions = KeyboardActions(onSend = { send() }),
             )
             code?.let {
-                Text("Check code", color = VlcMuted, fontSize = 13.sp)
+                Text(ui.getString(R.string.ui_check_code_9a5af9), color = VlcMuted, fontSize = 13.sp)
                 Text(it, color = VlcOrange, fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
-                Text("$tvName shows a code too. Send your password only if both codes are the same.", color = VlcMuted, fontSize = 13.sp, lineHeight = 18.sp)
+                Text(ui.getString(R.string.ui_shows_a_code_too_send_your_password_only_if_both_codes_12e5fa, tvName), color = VlcMuted, fontSize = 13.sp, lineHeight = 18.sp)
             }
-            hint.takeIf { it.isNotBlank() }?.let { Text("Hint: $it", color = VlcMuted, fontSize = 14.sp) }
+            hint.takeIf { it.isNotBlank() }?.let { Text(ui.getString(R.string.ui_hint_3033f3, it), color = VlcMuted, fontSize = 14.sp) }
             error?.let { Text(it, color = androidx.compose.ui.graphics.Color(0xFFFF8A80), fontSize = 14.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = ::send, enabled = password.isNotEmpty() && !sending) { Text(if (sending) "Sending…" else "Send to $tvName") }
+                Button(onClick = ::send, enabled = password.isNotEmpty() && !sending) { Text(if (sending) ui.getString(R.string.ui_sending_b8ed52) else ui.getString(R.string.ui_send_to_0ddfbe, tvName)) }
                 OutlinedButton(onClick = {
                     scope.launch {
                         val store = PairingStore(context)
                         store.accountToken?.let { CatalogClient(store.apiBaseUrl, store).cancelTvPassword(it, requestId) }
                         close()
                     }
-                }) { Text("Cancel") }
+                }) { Text(ui.getString(R.string.ui_cancel_19766e)) }
             }
         }
     }

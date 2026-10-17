@@ -1,5 +1,6 @@
 package app.cablegram.ui
 
+import app.cablegram.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -79,6 +80,7 @@ internal fun TelegramPasswordStep(
     onNoPassword: (() -> Unit)? = null,
     extraActions: @Composable ColumnScope.() -> Unit = {},
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val step = PasswordStepState.of(status)
     var mode by remember { mutableStateOf(PasswordKeyboard.CHOOSE) }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -94,30 +96,30 @@ internal fun TelegramPasswordStep(
     BackHandler(enabled = mode != PasswordKeyboard.CHOOSE && !step.busy) { chooseKeyboard() }
 
     TelegramSlide(videoUrl) {
-        Text("Telegram sign-in", color = Paper, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        Text(ui.getString(R.string.ui_telegram_sign_in_f886b3), color = Paper, fontSize = 34.sp, fontWeight = FontWeight.Bold)
         // The password is given: one steady "signing in" until Telegram answers, never the keyboard choice in between
         // (CAB-73). The chosen keyboard is kept, so a rejected password comes back to it with Telegram's message.
         if (step.busy) {
             SigningIn(step)
         } else when (mode) {
             PasswordKeyboard.CHOOSE -> {
-                Text("Where would you like to type your password?", color = Cyan, fontSize = 26.sp, lineHeight = 32.sp)
-                Text("Telegram needs your two-step verification password once to sign in on this TV. Signing in starts only after you've typed it.", color = Muted, fontSize = 18.sp, lineHeight = 25.sp)
+                Text(ui.getString(R.string.ui_where_would_you_like_to_type_your_password_cbc0dc), color = Cyan, fontSize = 26.sp, lineHeight = 32.sp)
+                Text(ui.getString(R.string.ui_telegram_needs_your_two_step_verification_password_onc_fe96c0), color = Muted, fontSize = 18.sp, lineHeight = 25.sp)
                 step.error?.let { Text(it, color = Coral, fontSize = 16.sp) }
                 val focus = remember { FocusRequester() }
                 LaunchedEffect(Unit) { withFrameNanos { }; focus.requestFocus() }
-                Button(onClick = { mode = PasswordKeyboard.PHONE }, modifier = Modifier.focusRequester(focus)) { Text("Phone keyboard (recommended)") }
-                Button(onClick = { mode = PasswordKeyboard.TV }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("TV keyboard") }
-                onNoPassword?.let { Button(onClick = it, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("My Telegram has no password") } }
+                Button(onClick = { mode = PasswordKeyboard.PHONE }, modifier = Modifier.focusRequester(focus)) { Text(ui.getString(R.string.ui_phone_keyboard_recommended_9db367)) }
+                Button(onClick = { mode = PasswordKeyboard.TV }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_tv_keyboard_0fb61f)) }
+                onNoPassword?.let { Button(onClick = it, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_my_telegram_has_no_password_2e003f)) } }
             }
             PasswordKeyboard.TV -> {
-                Text("Type with the TV keyboard", color = Cyan, fontSize = 26.sp)
-                Text("Back on the remote closes the keyboard. Cancel picks another one.", color = Muted, fontSize = 16.sp)
+                Text(ui.getString(R.string.ui_type_with_the_tv_keyboard_b12dad), color = Cyan, fontSize = 26.sp)
+                Text(ui.getString(R.string.ui_back_on_the_remote_closes_the_keyboard_cancel_picks_an_c14dae), color = Muted, fontSize = 16.sp)
                 TvPasswordField(step, onPassword, onCancel = ::chooseKeyboard)
             }
             PasswordKeyboard.PHONE -> PhoneKeyboard(step, onAskPhone, onTvKeyboard = { mode = PasswordKeyboard.TV })
         }
-        Text("Your password goes only to Telegram, encrypted for this TV. Cablegram never sees it.", color = Slate, fontSize = 14.sp, lineHeight = 19.sp)
+        Text(ui.getString(R.string.ui_your_password_goes_only_to_telegram_encrypted_for_this_c23ea4), color = Slate, fontSize = 14.sp, lineHeight = 19.sp)
         extraActions()
     }
 }
@@ -130,6 +132,7 @@ internal fun TelegramPasswordStep(
  */
 @Composable
 private fun PhoneKeyboard(step: PasswordStepState, onAskPhone: () -> Unit, onTvKeyboard: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(step.phoneSentAt) {
         while (step.phoneSentAt != null) {
@@ -143,40 +146,41 @@ private fun PhoneKeyboard(step: PasswordStepState, onAskPhone: () -> Unit, onTvK
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { withFrameNanos { }; runCatching { focus.requestFocus() } }
     Column(Modifier.focusRequester(focus).focusable(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(if (sent || failed) "Type on your phone" else "Sending to your phone…", color = Cyan, fontSize = 26.sp)
+        Text(if (sent || failed) ui.getString(R.string.ui_type_on_your_phone_a4ef92) else ui.getString(R.string.ui_sending_to_your_phone_4c2c7f), color = Cyan, fontSize = 26.sp)
         Text(
             when {
-                failed -> "The password screen didn't reach your phone."
-                sent -> "It's on its way. Cablegram on your phone opens a password screen in a few seconds, or shows a notification to tap. Type the password there; this TV signs in as soon as Telegram accepts it."
-                else -> "Cablegram on your phone will open a password screen."
+                failed -> ui.getString(R.string.ui_the_password_screen_didn_t_reach_your_phone_f88f9e)
+                sent -> ui.getString(R.string.ui_it_s_on_its_way_cablegram_on_your_phone_opens_a_passwo_f216b7)
+                else -> ui.getString(R.string.ui_cablegram_on_your_phone_will_open_a_password_screen_8fe1ea)
             },
             color = Paper, fontSize = 18.sp, lineHeight = 25.sp,
         )
         step.phoneCode?.let { code ->
-            Text("Your phone shows the code", color = Muted, fontSize = 16.sp)
+            Text(ui.getString(R.string.ui_your_phone_shows_the_code_de7f56), color = Muted, fontSize = 16.sp)
             Text(code, color = Cyan, fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 4.sp)
-            Text("Send your password only if the phone shows this same code.", color = Muted, fontSize = 16.sp, lineHeight = 22.sp)
+            Text(ui.getString(R.string.ui_send_your_password_only_if_the_phone_shows_this_same_c_4e8437), color = Muted, fontSize = 16.sp, lineHeight = 22.sp)
         }
-        step.hint.takeIf { it.isNotBlank() }?.let { Text("Hint: $it", color = Muted, fontSize = 16.sp) }
+        step.hint.takeIf { it.isNotBlank() }?.let { Text(ui.getString(R.string.ui_hint_3033f3, it), color = Muted, fontSize = 16.sp) }
         (step.phoneRequestError ?: step.error)?.let { Text(it, color = Coral, fontSize = 16.sp) }
     }
     if (canAskAgain) {
-        if (!failed) Text("Nothing on your phone yet?", color = Muted, fontSize = 16.sp)
-        Button(onClick = onAskPhone, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Ask my phone again") }
+        if (!failed) Text(ui.getString(R.string.ui_nothing_on_your_phone_yet_6a0939), color = Muted, fontSize = 16.sp)
+        Button(onClick = onAskPhone, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_ask_my_phone_again_c2ad29)) }
     }
-    Button(onClick = onTvKeyboard, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Use the TV keyboard instead") }
+    Button(onClick = onTvKeyboard, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_use_the_tv_keyboard_instead_c6c66e)) }
 }
 
 @Composable
 private fun SigningIn(step: PasswordStepState) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val focus = remember { FocusRequester() }
     // Holds focus while the keyboard's buttons are gone, so the remote doesn't lose its place.
     LaunchedEffect(Unit) { withFrameNanos { }; runCatching { focus.requestFocus() } }
     Column(Modifier.focusRequester(focus).focusable(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(if (step.approving) "Waiting for your phone…" else "Signing in…", color = Cyan, fontSize = 26.sp)
+        Text(if (step.approving) ui.getString(R.string.ui_waiting_for_your_phone_3c5ba6) else ui.getString(R.string.ui_signing_in_8b9d3d), color = Cyan, fontSize = 26.sp)
         Text(
-            if (step.approving) "Your phone is letting this TV in to Telegram. If it asks, approve it in the Cablegram notification."
-            else "Telegram is checking your password. This TV continues as soon as it's done.",
+            if (step.approving) ui.getString(R.string.ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_e165e6)
+            else ui.getString(R.string.ui_telegram_is_checking_your_password_this_tv_continues_a_8aca24),
             color = Paper, fontSize = 18.sp, lineHeight = 25.sp,
         )
     }
@@ -184,6 +188,7 @@ private fun SigningIn(step: PasswordStepState) {
 
 @Composable
 private fun TvPasswordField(status: PasswordStepState, onPassword: (String) -> Unit, onCancel: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var password by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -210,12 +215,12 @@ private fun TvPasswordField(status: PasswordStepState, onPassword: (String) -> U
         textStyle = TextStyle(color = Paper, fontSize = 20.sp), cursorBrush = SolidColor(Cyan),
         modifier = Modifier.weight(1f).focusRequester(focus).background(PanelRaised, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 12.dp),
         decorationBox = { inner ->
-            if (password.isEmpty()) Text(status.hint.takeIf { it.isNotBlank() }?.let { "Hint: $it" } ?: "Telegram password", color = Slate, fontSize = 16.sp)
+            if (password.isEmpty()) Text(status.hint.takeIf { it.isNotBlank() }?.let { ui.getString(R.string.ui_hint_3033f3, it) } ?: ui.getString(R.string.ui_telegram_password_65d868), color = Slate, fontSize = 16.sp)
             inner()
         },
     )
-        Button(onClick = ::submit, enabled = !status.busy && password.isNotEmpty(), colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(if (status.busy) "Checking…" else "Sign in") }
-        Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Cancel") }
+        Button(onClick = ::submit, enabled = !status.busy && password.isNotEmpty(), colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(if (status.busy) ui.getString(R.string.ui_checking_ec963f) else ui.getString(R.string.ui_sign_in_bfd402)) }
+        Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_cancel_19766e)) }
     }
     status.error?.let { Text(it, color = Coral, fontSize = 14.sp) }
 }

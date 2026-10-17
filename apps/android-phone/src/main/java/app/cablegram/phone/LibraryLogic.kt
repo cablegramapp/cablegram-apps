@@ -33,15 +33,15 @@ fun storageBadgeLabel(badge: StorageBadge): String = when (badge) {
     StorageBadge.Telegram -> "Cloud · Telegram"
 }
 
-fun storageStatusLine(item: LibraryItem): String = when (storageBadge(item)) {
-    StorageBadge.Local -> "On phone"
-    StorageBadge.Cloud -> "Cloud"
-    StorageBadge.Both -> "Available on phone & cloud"
-    StorageBadge.Saving -> "On phone · Saving…"
-    StorageBadge.Failed -> "Cloud save failed · Open to retry"
-    StorageBadge.Unavailable -> "Source unavailable · Title kept in library"
-    StorageBadge.NotOnPhone -> "In your household library · File not on this phone"
-    StorageBadge.Telegram -> "Cloud · Telegram"
+fun storageStatusLine(item: LibraryItem, resources: android.content.res.Resources): String = when (storageBadge(item)) {
+    StorageBadge.Local -> resources.getString(R.string.ui_on_phone_9557b8)
+    StorageBadge.Cloud -> resources.getString(R.string.ui_cloud_b977b9)
+    StorageBadge.Both -> resources.getString(R.string.ui_available_on_phone_cloud_50eb85)
+    StorageBadge.Saving -> resources.getString(R.string.ui_on_phone_saving_561d79)
+    StorageBadge.Failed -> resources.getString(R.string.ui_cloud_save_failed_open_to_retry_a39bc6)
+    StorageBadge.Unavailable -> resources.getString(R.string.ui_source_unavailable_title_kept_in_library_1c80a2)
+    StorageBadge.NotOnPhone -> resources.getString(R.string.ui_in_your_household_library_file_not_on_this_phone_698618)
+    StorageBadge.Telegram -> resources.getString(R.string.ui_cloud_telegram_798118)
 }
 
 /**
@@ -71,10 +71,10 @@ fun watchFraction(item: LibraryItem): Float {
     return (item.positionSeconds.toFloat() / duration).coerceIn(0f, 1f)
 }
 
-fun remainingLabel(item: LibraryItem): String {
+fun remainingLabel(item: LibraryItem, resources: android.content.res.Resources): String {
     val duration = item.durationSeconds ?: return ""
     val left = (duration - item.positionSeconds).coerceAtLeast(0)
-    return formatDuration(left)?.let { "$it left" }.orEmpty()
+    return formatDuration(left)?.let { resources.getString(R.string.ui_left_bc8cab, it) }.orEmpty()
 }
 
 fun formatDuration(seconds: Int?): String? {
@@ -99,10 +99,10 @@ fun formatRate(bytesPerSec: Long): String {
     return "${formatBytes(bytesPerSec)}/s"
 }
 
-fun etaLabel(remainingBytes: Long, bytesPerSec: Long): String {
+fun etaLabel(remainingBytes: Long, bytesPerSec: Long, resources: android.content.res.Resources): String {
     if (bytesPerSec <= 0) return ""
     val seconds = (remainingBytes / bytesPerSec).toInt().coerceAtLeast(1)
-    return if (seconds < 60) "~$seconds sec remaining" else "~${(seconds + 59) / 60} min remaining"
+    return if (seconds < 60) resources.getString(R.string.ui_sec_remaining_209f74, seconds) else resources.getString(R.string.ui_min_remaining_9ef9c7, (seconds + 59) / 60)
 }
 
 fun transferFraction(item: LibraryItem): Float {

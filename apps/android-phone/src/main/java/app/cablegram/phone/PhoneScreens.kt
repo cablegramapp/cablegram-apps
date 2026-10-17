@@ -1,5 +1,7 @@
 package app.cablegram.phone
 
+import androidx.compose.material3.RadioButton
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
@@ -105,6 +107,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun LibraryShell(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         viewModel.addPickedFiles(uris)
     }
@@ -151,15 +154,15 @@ fun LibraryShell(viewModel: PhoneViewModel) {
             viewModel.removeCloudCopyTarget?.let { RemoveCloudCopyDialog(viewModel, it) }
             if (viewModel.castPickerOpen) AlertDialog(
                 onDismissRequest = viewModel::dismissCastPicker,
-                title = { Text("Play on TV") },
+                title = { Text(ui.getString(R.string.ui_play_on_tv_f47dcd)) },
                 text = { Column {
                     viewModel.castRoutes.forEach { route ->
                         TextButton(onClick = { viewModel.chooseCastRoute(route) }) { Text(route.name) }
                     }
-                    if (viewModel.castRoutes.isEmpty()) Text("Looking for TVs…")
+                    if (viewModel.castRoutes.isEmpty()) Text(ui.getString(R.string.ui_looking_for_tvs_8edf98))
                 } },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = viewModel::dismissCastPicker) { Text("Cancel") } },
+                dismissButton = { TextButton(onClick = viewModel::dismissCastPicker) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
             )
             CloudFlow(viewModel)
             if (viewModel.telegramSheetOpen) TelegramConnectSheet(viewModel)
@@ -169,11 +172,12 @@ fun LibraryShell(viewModel: PhoneViewModel) {
 
 @Composable
 private fun LibraryNav(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val items = listOf(
-        Triple(PhoneTab.Library, Icons.AutoMirrored.Filled.LibraryBooks, "Library"),
-        Triple(PhoneTab.Browse, Icons.Default.Add, "Import"),
-        Triple(PhoneTab.Remote, Icons.Default.Tv, "Remote"),
-        Triple(PhoneTab.Settings, Icons.Default.Settings, "Settings"),
+        Triple(PhoneTab.Library, Icons.AutoMirrored.Filled.LibraryBooks, ui.getString(R.string.ui_library_dc20b3)),
+        Triple(PhoneTab.Browse, Icons.Default.Add, ui.getString(R.string.ui_import_2cff9b)),
+        Triple(PhoneTab.Remote, Icons.Default.Tv, ui.getString(R.string.ui_remote_ffa98e)),
+        Triple(PhoneTab.Settings, Icons.Default.Settings, ui.getString(R.string.ui_settings_74a883)),
     )
     val visibleItems = items.filter { viewModel.legacyRemote || it.first != PhoneTab.Remote }
     NavigationBar(containerColor = VlcBlack, tonalElevation = 0.dp) {
@@ -208,11 +212,12 @@ private fun LibraryNav(viewModel: PhoneViewModel) {
 @Composable
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 private fun LibraryHome(viewModel: PhoneViewModel) {
-    var filter by rememberSaveable { mutableStateOf("All") }
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
+    var filter by rememberSaveable { mutableStateOf("all") }
     val queried = searchLibrary(viewModel.items, viewModel.searchQuery)
     val filtered = when (filter) {
-        "Movies" -> movies(queried)
-        "TV shows" -> tvShows(queried)
+        "movie" -> movies(queried)
+        "tv" -> tvShows(queried)
         else -> queried
     }
     // Pull down to check for new videos, e.g. one just shared into the Telegram channel.
@@ -230,10 +235,10 @@ private fun LibraryHome(viewModel: PhoneViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     BrandMark(compact = true)
-                    ScreenHeading("Your library", modifier = Modifier.maestro(MaestroIds.LIBRARY_TITLE))
+                    ScreenHeading(ui.getString(R.string.ui_your_library_1ad842), modifier = Modifier.maestro(MaestroIds.LIBRARY_TITLE))
                 }
                 Surface(color = VlcPanel, shape = RoundedCornerShape(16.dp)) {
-                    IconButton(onClick = { viewModel.tab = PhoneTab.Browse }) { Icon(Icons.Default.Add, "Import videos", tint = VlcOrange) }
+                    IconButton(onClick = { viewModel.tab = PhoneTab.Browse }) { Icon(Icons.Default.Add, ui.getString(R.string.ui_import_videos_fec728), tint = VlcOrange) }
                 }
             }
         }
@@ -243,39 +248,39 @@ private fun LibraryHome(viewModel: PhoneViewModel) {
                 onValueChange = { viewModel.searchQuery = it },
                 modifier = Modifier.fillMaxWidth().maestro(MaestroIds.LIBRARY_SEARCH),
                 singleLine = true,
-                placeholder = { Text("Search your films and shows") },
+                placeholder = { Text(ui.getString(R.string.ui_search_your_films_and_shows_dac9bc)) },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = if (viewModel.searchQuery.isNotEmpty()) ({
-                    IconButton(onClick = { viewModel.searchQuery = "" }) { Icon(Icons.Default.Close, "Clear search") }
+                    IconButton(onClick = { viewModel.searchQuery = "" }) { Icon(Icons.Default.Close, ui.getString(R.string.ui_clear_search_3b7ea5)) }
                 }) else null,
                 shape = RoundedCornerShape(16.dp),
             )
         }
         item {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("All", "Movies", "TV shows").forEach { label ->
-                    FilterChip(selected = filter == label, onClick = { filter = label }, label = { Text(label) })
+                listOf("all" to R.string.ui_all_a52ace, "movie" to R.string.ui_movies_dff924, "tv" to R.string.ui_tv_shows_222906).forEach { (key, label) ->
+                    FilterChip(selected = filter == key, onClick = { filter = key }, label = { Text(ui.getString(label)) })
                 }
             }
         }
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(if (viewModel.paired) viewModel.tvName else "Made for your big screen", color = Color.White, style = MaterialTheme.typography.titleSmall)
-                    Text(if (viewModel.paired) "Keep your phone on the same Wi-Fi" else "Connect a TV when you're ready to watch", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    Text(if (viewModel.paired) viewModel.tvName else ui.getString(R.string.ui_made_for_your_big_screen_eb0ced), color = Color.White, style = MaterialTheme.typography.titleSmall)
+                    Text(if (viewModel.paired) ui.getString(R.string.ui_keep_your_phone_on_the_same_wi_fi_e373e7) else ui.getString(R.string.ui_connect_a_tv_when_you_re_ready_to_watch_d1ae74), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 }
                 if (!viewModel.paired || viewModel.legacyRemote) TextButton(onClick = if (viewModel.paired) ({ viewModel.tab = PhoneTab.Remote }) else viewModel::startAddTv) {
-                    Text(if (viewModel.paired) "Remote" else "Connect")
+                    Text(if (viewModel.paired) ui.getString(R.string.ui_remote_ffa98e) else ui.getString(R.string.ui_connect_1a2303))
                 }
             }
             TextButton(onClick = viewModel::syncNow, enabled = viewModel.librarySyncState != LibrarySyncState.Running) {
                 Icon(if (viewModel.librarySyncState == LibrarySyncState.Completed) Icons.Default.Check else Icons.Default.Sync, null, Modifier.size(16.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(when (viewModel.librarySyncState) {
-                    LibrarySyncState.Running -> "Syncing library…"
-                    LibrarySyncState.Completed -> "Library synced"
-                    LibrarySyncState.Failed -> "Sync needs attention · Retry"
-                    else -> "Sync library"
+                    LibrarySyncState.Running -> ui.getString(R.string.ui_syncing_library_8e43e6)
+                    LibrarySyncState.Completed -> ui.getString(R.string.ui_library_synced_704162)
+                    LibrarySyncState.Failed -> ui.getString(R.string.ui_sync_needs_attention_retry_f4d943)
+                    else -> ui.getString(R.string.ui_sync_library_dd3492)
                 }, style = MaterialTheme.typography.labelMedium)
             }
         }
@@ -283,17 +288,17 @@ private fun LibraryHome(viewModel: PhoneViewModel) {
         viewModel.status?.let { item { StatusNote(it) } }
         when {
             viewModel.items.isEmpty() -> item {
-                EmptyState(Icons.Default.Movie, "A home for your favorites", "Import a few videos from your phone. Your personal cinema starts here.", "Import videos", { viewModel.tab = PhoneTab.Browse })
+                EmptyState(Icons.Default.Movie, ui.getString(R.string.ui_a_home_for_your_favorites_1b3984), ui.getString(R.string.ui_import_a_few_videos_from_your_phone_your_personal_cine_1f8181), ui.getString(R.string.ui_import_videos_fec728), { viewModel.tab = PhoneTab.Browse })
             }
             filtered.isEmpty() -> item {
-                EmptyState(Icons.Default.Search, "No titles found", "Try another title or clear your filters to see the whole library.", "Clear filters", { viewModel.searchQuery = ""; filter = "All" })
+                EmptyState(Icons.Default.Search, ui.getString(R.string.ui_no_titles_found_2aeb6d), ui.getString(R.string.ui_try_another_title_or_clear_your_filters_to_see_the_who_ab222f), ui.getString(R.string.ui_clear_filters_7179ea), { viewModel.searchQuery = ""; filter = "all" })
             }
-            viewModel.searchQuery.isNotBlank() || filter != "All" -> item { Shelf("${filtered.size} titles", filtered, viewModel) }
+            viewModel.searchQuery.isNotBlank() || filter != "all" -> item { Shelf(ui.getString(R.string.ui_titles_77f1d9, (filtered.size).toString()), filtered, viewModel) }
             else -> {
-                if (continueWatching(filtered).isNotEmpty()) item { Shelf("Continue watching", continueWatching(filtered), viewModel, showProgress = true) }
-                item { Shelf("Recently added", recentlyAdded(filtered), viewModel) }
-                if (movies(filtered).isNotEmpty()) item { Shelf("Movies", movies(filtered), viewModel) }
-                if (tvShows(filtered).isNotEmpty()) item { Shelf("TV shows", tvShows(filtered), viewModel) }
+                if (continueWatching(filtered).isNotEmpty()) item { Shelf(ui.getString(R.string.ui_continue_watching_81ebbe), continueWatching(filtered), viewModel, showProgress = true) }
+                item { Shelf(ui.getString(R.string.ui_recently_added_96ec5d), recentlyAdded(filtered), viewModel) }
+                if (movies(filtered).isNotEmpty()) item { Shelf(ui.getString(R.string.ui_movies_dff924), movies(filtered), viewModel) }
+                if (tvShows(filtered).isNotEmpty()) item { Shelf(ui.getString(R.string.ui_tv_shows_222906), tvShows(filtered), viewModel) }
                 viewModel.collections.forEach { collection ->
                     val collectionItems = filtered.filter { collection.id in it.collectionIds }
                     if (collectionItems.isNotEmpty()) item(key = "collection_${collection.id}") { Shelf(collection.name, collectionItems, viewModel) }
@@ -307,6 +312,7 @@ private fun LibraryHome(viewModel: PhoneViewModel) {
 /** T075: in-app card mirroring the notification, so approvals also work with the app open. */
 @Composable
 fun ApprovalCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     viewModel.pendingApprovals.firstOrNull()?.let { approval ->
         Card(
             colors = CardDefaults.cardColors(containerColor = VlcPanel),
@@ -317,20 +323,20 @@ fun ApprovalCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
             Column(Modifier.padding(14.dp).maestro(MaestroIds.APPROVAL_CARD), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     when {
-                        viewModel.pendingApprovals.size > 1 -> "TV approval · ${viewModel.pendingApprovals.size} requests"
-                        profile -> "${approval.tvName?.takeIf { it.isNotBlank() } ?: "A TV"} wants to open a profile"
-                        else -> "TV playback approval"
+                        viewModel.pendingApprovals.size > 1 -> ui.getString(R.string.ui_tv_approval_requests_f2f42a, (viewModel.pendingApprovals.size).toString())
+                        profile -> ui.getString(R.string.ui_wants_to_open_a_profile_56a29f, approval.tvName?.takeIf { it.isNotBlank() } ?: ui.getString(R.string.ui_a_tv_bf791d))
+                        else -> ui.getString(R.string.ui_tv_playback_approval_4438c0)
                     },
                     color = VlcOrange,
                     style = MaterialTheme.typography.labelMedium,
                 )
                 Text(
-                    approval.title?.takeIf { it.isNotBlank() } ?: if (profile) "A profile" else "A private title wants to play on the TV",
+                    approval.title?.takeIf { it.isNotBlank() } ?: if (profile) ui.getString(R.string.ui_a_profile_c3d18a) else ui.getString(R.string.ui_a_private_title_wants_to_play_on_the_tv_840767),
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 if (profile && approval.sharedTv) {
-                    Text("Other accounts use this TV too. Allow it only if you are at that TV.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    Text(ui.getString(R.string.ui_other_accounts_use_this_tv_too_allow_it_only_if_you_ar_7a66a8), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
@@ -338,10 +344,10 @@ fun ApprovalCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
                         colors = ButtonDefaults.buttonColors(containerColor = VlcOrange),
                         modifier = Modifier.maestro(MaestroIds.APPROVAL_ALLOW),
                     ) {
-                        Text(if (profile) "Allow" else "Allow once", color = VlcBlack)
+                        Text(if (profile) ui.getString(R.string.ui_allow_e213c1) else ui.getString(R.string.ui_allow_once_168511), color = VlcBlack)
                     }
                     OutlinedButton(onClick = { viewModel.respondToApproval(approval, approve = false) }, modifier = Modifier.maestro(MaestroIds.APPROVAL_DENY)) {
-                        Text("Not now", color = Color.White)
+                        Text(ui.getString(R.string.ui_not_now_a0e63d), color = Color.White)
                     }
                 }
             }
@@ -367,6 +373,7 @@ private fun Shelf(title: String, items: List<LibraryItem>, viewModel: PhoneViewM
 
 @Composable
 private fun SeriesCard(series: LibraryEntry.Series, showProgress: Boolean, viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val lead = series.lead
     Column(
         Modifier
@@ -383,7 +390,7 @@ private fun SeriesCard(series: LibraryEntry.Series, showProgress: Boolean, viewM
         ) {
             MediaArtwork(lead, Modifier.fillMaxSize())
             Text(
-                "TV series",
+                ui.getString(R.string.ui_tv_series_e50677),
                 color = Color.White,
                 fontSize = 10.sp,
                 modifier = Modifier
@@ -402,10 +409,10 @@ private fun SeriesCard(series: LibraryEntry.Series, showProgress: Boolean, viewM
             }
         }
         Text(series.title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
-        Text(series.summary(), color = VlcMuted, fontSize = 11.sp, maxLines = 1)
+        Text(series.summary(ui), color = VlcMuted, fontSize = 11.sp, maxLines = 1)
         if (showProgress) {
             Text(
-                listOfNotNull(episodeBadge(lead), remainingLabel(lead).ifBlank { null }).joinToString(" · ").ifBlank { "${(watchFraction(lead) * 100).toInt()}%" },
+                listOfNotNull(episodeBadge(lead), remainingLabel(lead, resources = ui).ifBlank { null }).joinToString(" · ").ifBlank { ui.getString(R.string.ui_message_b6bb55, ((watchFraction(lead) * 100).toInt()).toString()) },
                 color = VlcMuted,
                 fontSize = 11.sp,
             )
@@ -417,6 +424,7 @@ private fun SeriesCard(series: LibraryEntry.Series, showProgress: Boolean, viewM
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     BackHandler(enabled = viewModel.selected == null) { viewModel.closeSeries() }
     val seasons = series.episodes.groupBy { it.seasonNumber }.toSortedMap(compareBy { it ?: Int.MAX_VALUE })
     Column(
@@ -425,18 +433,18 @@ private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series
     ) {
         TextButton(onClick = viewModel::closeSeries) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp)); Text("Library")
+            Spacer(Modifier.width(8.dp)); Text(ui.getString(R.string.ui_library_dc20b3))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
             MediaArtwork(series.lead, Modifier.width(110.dp).height(160.dp))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("TV SHOW", color = VlcOrange, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.5.sp)
+                Text(ui.getString(R.string.ui_tv_show_453862), color = VlcOrange, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.5.sp)
                 Text(series.title, color = Color.White, style = MaterialTheme.typography.headlineSmall)
-                Text(series.summary(), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                Text(series.summary(ui), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
             }
         }
         seasons.forEach { (season, episodes) ->
-            Text(if (season != null) "Season $season" else "Episodes", color = Color.White, style = MaterialTheme.typography.titleMedium)
+            Text(if (season != null) ui.getString(R.string.ui_season_ab5756, season) else ui.getString(R.string.ui_episodes_83f972), color = Color.White, style = MaterialTheme.typography.titleMedium)
             episodes.forEach { episode ->
                 // Tap opens the episode; long-press gives the same menu as a poster (Delete, Save to Telegram…).
                 val rowKey = remember(episode.id) { "episode:${episode.id}:${java.util.UUID.randomUUID()}" }
@@ -451,9 +459,9 @@ private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(episodeBadge(episode) ?: "Episode", color = Color.White)
+                        Text(episodeBadge(episode) ?: ui.getString(R.string.ui_episode_b19c45), color = Color.White)
                         Text(episode.filename.substringBeforeLast('.'), color = VlcMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(storageStatusLine(episode), color = VlcMuted, fontSize = 11.sp, maxLines = 1)
+                        Text(storageStatusLine(episode, resources = ui), color = VlcMuted, fontSize = 11.sp, maxLines = 1)
                         if (episode.positionSeconds > 0) {
                             LinearProgressIndicator(
                                 progress = { watchFraction(episode) },
@@ -466,7 +474,7 @@ private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series
                     TextButton(
                         onClick = { viewModel.playOnTv(episode) },
                         enabled = episode.sourceAvailable != false || episode.cloudObjectPresent || episode.telegramCopy || episode.ownCloudCopy || episode.sourceKind == "telegram",
-                    ) { Text("Play") }
+                    ) { Text(ui.getString(R.string.ui_play_436e61)) }
                     ItemActionMenu(viewModel, episode, viewModel.actionMenuId == rowKey)
                 }
             }
@@ -477,6 +485,7 @@ private fun SeriesOverlay(viewModel: PhoneViewModel, series: LibraryEntry.Series
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     // Flow 2 (legacy parity): a TMDb poster always outranks the extracted
     // still. posterPath is only used when no TMDb artwork was downloaded yet.
     // The same title can sit on several shelves; each card opens only its own menu.
@@ -512,7 +521,7 @@ private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: Phon
             if (item.isPrivate) {
                 Icon(
                     Icons.Default.Lock,
-                    contentDescription = "Private video",
+                    contentDescription = ui.getString(R.string.ui_private_video_f0d5d4),
                     tint = Color.White,
                     modifier = Modifier.align(Alignment.TopStart).padding(6.dp).size(18.dp),
                 )
@@ -528,10 +537,10 @@ private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: Phon
             ItemActionMenu(viewModel, item, menu)
         }
         Text(item.title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp))
-        Text(storageStatusLine(item), color = if (storageBadge(item) == StorageBadge.Failed) Color(0xFFFFB74D) else VlcMuted, fontSize = 11.sp, maxLines = 2)
+        Text(storageStatusLine(item, resources = ui), color = if (storageBadge(item) == StorageBadge.Failed) Color(0xFFFFB74D) else VlcMuted, fontSize = 11.sp, maxLines = 2)
         if (showProgress) {
             Text(
-                remainingLabel(item).ifBlank { "${(watchFraction(item) * 100).toInt()}%" },
+                remainingLabel(item, resources = ui).ifBlank { ui.getString(R.string.ui_message_b6bb55, ((watchFraction(item) * 100).toInt()).toString()) },
                 color = VlcMuted,
                 fontSize = 11.sp,
             )
@@ -543,34 +552,35 @@ private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: Phon
 /** The long-press menu of one title: on a poster, and on an episode inside a series. */
 @Composable
 private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expanded: Boolean) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     DropdownMenu(expanded = expanded, onDismissRequest = { viewModel.actionMenuId = null }) {
-        CompactMenuItem("Play", enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy || item.sourceKind == "telegram") {
+        CompactMenuItem(ui.getString(R.string.ui_play_436e61), enabled = item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy || item.sourceKind == "telegram") {
             viewModel.actionMenuId = null
             viewModel.playOnTv(item)
         }
         if (canSaveToCloud(item)) {
-            CompactMenuItem("Save to Cloud") { viewModel.actionMenuId = null; viewModel.beginSaveToCloud(item) }
+            CompactMenuItem(ui.getString(R.string.ui_save_to_cloud_0fd280)) { viewModel.actionMenuId = null; viewModel.beginSaveToCloud(item) }
         }
         if (canSaveToTelegram(item) && viewModel.telegramLink?.linked == true && PhoneTelegram.configured) {
-            CompactMenuItem("Save to Telegram") { viewModel.actionMenuId = null; viewModel.saveToTelegram(item) }
+            CompactMenuItem(ui.getString(R.string.ui_save_to_telegram_f6c595)) { viewModel.actionMenuId = null; viewModel.saveToTelegram(item) }
         }
         if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) {
-            CompactMenuItem("Download from Cloud") { viewModel.actionMenuId = null; viewModel.downloadFromCloud(item) }
+            CompactMenuItem(ui.getString(R.string.ui_download_from_cloud_14cd0d)) { viewModel.actionMenuId = null; viewModel.downloadFromCloud(item) }
         }
         if (canRemoveLocalCopy(item)) {
-            CompactMenuItem("Free up phone space") { viewModel.actionMenuId = null; viewModel.askFreeUp(item) }
+            CompactMenuItem(ui.getString(R.string.ui_free_up_phone_space_6d089c)) { viewModel.actionMenuId = null; viewModel.askFreeUp(item) }
         }
         if (canRemoveOwnCloudCopy(item)) {
-            CompactMenuItem("Remove cloud copy") { viewModel.actionMenuId = null; viewModel.askRemoveCloudCopy(item) }
+            CompactMenuItem(ui.getString(R.string.ui_remove_cloud_copy_0b8eaf)) { viewModel.actionMenuId = null; viewModel.askRemoveCloudCopy(item) }
         }
         viewModel.collections.forEach { collection ->
-            CompactMenuItem("Move to ${collection.name}") {
+            CompactMenuItem(ui.getString(R.string.ui_move_to_3fa287, collection.name)) {
                 viewModel.actionMenuId = null
                 viewModel.toggleCollection(item, collection.id)
             }
         }
-        CompactMenuItem("Edit details") { viewModel.actionMenuId = null; viewModel.openItem(item); viewModel.editingMetadata = true }
-        CompactMenuItem("Delete") { viewModel.actionMenuId = null; viewModel.askDelete(item) }
+        CompactMenuItem(ui.getString(R.string.ui_edit_details_fd9c61)) { viewModel.actionMenuId = null; viewModel.openItem(item); viewModel.editingMetadata = true }
+        CompactMenuItem(ui.getString(R.string.ui_delete_e2d0a5)) { viewModel.actionMenuId = null; viewModel.askDelete(item) }
     }
 }
 
@@ -597,17 +607,18 @@ private fun BrowseScreen(
     onOpenLocalRoot: () -> Unit,
     onChooseFolder: () -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var webUrl by rememberSaveable { mutableStateOf("") }
     var folderToRemove by remember { mutableStateOf<IndexedFolder?>(null) }
     folderToRemove?.let { folder ->
         AlertDialog(
             onDismissRequest = { folderToRemove = null },
-            title = { Text("Remove ${folder.name}?") },
-            text = { Text("Cablegram will stop remembering access to this folder. Imported videos stay in your library, but videos that rely on this folder may need it selected again to play.") },
+            title = { Text(ui.getString(R.string.ui_remove_e4dd7c, folder.name)) },
+            text = { Text(ui.getString(R.string.ui_cablegram_will_stop_remembering_access_to_this_folder__425a31)) },
             confirmButton = {
-                TextButton(onClick = { viewModel.removeBrowseFolder(folder); folderToRemove = null }) { Text("Remove folder") }
+                TextButton(onClick = { viewModel.removeBrowseFolder(folder); folderToRemove = null }) { Text(ui.getString(R.string.ui_remove_folder_f2a987)) }
             },
-            dismissButton = { TextButton(onClick = { folderToRemove = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { folderToRemove = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
         )
     }
     LaunchedEffect(Unit) {
@@ -623,11 +634,11 @@ private fun BrowseScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!atRoots) {
                     IconButton(onClick = viewModel::browseUp, modifier = Modifier.maestro(MaestroIds.BROWSE_BACK)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = ui.getString(R.string.ui_back_76900f), tint = Color.White)
                     }
                 }
                 Text(
-                    "Import videos",
+                    ui.getString(R.string.ui_import_videos_fec728),
                     color = Color.White,
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.weight(1f).maestro(MaestroIds.BROWSE_TITLE),
@@ -640,18 +651,18 @@ private fun BrowseScreen(
                     fontSize = 13.sp,
                 )
                 Text(
-                    "Select the videos you want to add to your library.",
+                    ui.getString(R.string.ui_select_the_videos_you_want_to_add_to_your_library_896a64),
                     color = VlcOrange,
                     fontSize = 13.sp,
                 )
-                TextButton(onClick = onChooseFolder) { Text("Add or reselect folder", color = VlcOrange) }
+                TextButton(onClick = onChooseFolder) { Text(ui.getString(R.string.ui_add_or_reselect_folder_e5a07e), color = VlcOrange) }
                 val fileCount = entries.count { !it.isDirectory }
                 TextButton(onClick = viewModel::selectAllBrowseFiles, enabled = fileCount > 0) {
                     Text(
                         when {
-                            fileCount == 0 -> "No files in this folder"
-                            viewModel.selectedBrowseIds.isNotEmpty() -> "Clear selection"
-                            else -> "Select all files"
+                            fileCount == 0 -> ui.getString(R.string.ui_no_files_in_this_folder_38c9a3)
+                            viewModel.selectedBrowseIds.isNotEmpty() -> ui.getString(R.string.ui_clear_selection_cea4d2)
+                            else -> ui.getString(R.string.ui_select_all_files_7a4dba)
                         },
                         color = if (fileCount == 0) VlcMuted else VlcOrange,
                     )
@@ -665,14 +676,14 @@ private fun BrowseScreen(
         if (atRoots) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 item {
-                    SectionCard("Play from Web") {
-                        Text("Paste a public video page or direct video URL. Cablegram will add its available title, description, and artwork.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                    SectionCard(ui.getString(R.string.ui_play_from_web_3bf8bf)) {
+                        Text(ui.getString(R.string.ui_paste_a_public_video_page_or_direct_video_url_cablegra_d37a61), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
                         OutlinedTextField(
                             value = webUrl,
                             onValueChange = { webUrl = it.trim().take(4096) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            label = { Text("Video URL") },
+                            label = { Text(ui.getString(R.string.ui_video_url_f094b1)) },
                             placeholder = { Text("https://…") },
                         )
                         Button(
@@ -680,23 +691,23 @@ private fun BrowseScreen(
                             enabled = !viewModel.busy && (webUrl.startsWith("https://") || webUrl.startsWith("http://")),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         ) {
-                            Text(if (viewModel.busy) "Analyzing…" else "Add to library")
+                            Text(if (viewModel.busy) ui.getString(R.string.ui_analyzing_89b633) else ui.getString(R.string.ui_add_to_library_2bf9ea))
                         }
                     }
                 }
                 item {
-                    SectionCard("From your phone") {
+                    SectionCard(ui.getString(R.string.ui_from_your_phone_624fe9)) {
                         Icon(Icons.Default.FolderOpen, null, Modifier.size(36.dp), tint = VlcOrange)
-                        Text("Make it a movie night", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                        Text("Choose videos or add folders with Android's picker, one folder at a time. Your selected folders stay available here until you remove them.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                        Text(ui.getString(R.string.ui_make_it_a_movie_night_95d58f), color = Color.White, style = MaterialTheme.typography.titleLarge)
+                        Text(ui.getString(R.string.ui_choose_videos_or_add_folders_with_android_s_picker_one_af9bf1), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
                         Button(onClick = onOpenLocalRoot, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.BROWSE_PHONE)) {
-                            Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Choose videos")
+                            Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(ui.getString(R.string.ui_choose_videos_7cf642))
                         }
                         OutlinedButton(onClick = onChooseFolder, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.BROWSE_OPEN_FOLDER)) {
-                            Text("Add folder")
+                            Text(ui.getString(R.string.ui_add_folder_5bbfc5))
                         }
                         if (viewModel.folders.isNotEmpty()) {
-                            Text("Selected folders", color = Color.White, style = MaterialTheme.typography.titleSmall)
+                            Text(ui.getString(R.string.ui_selected_folders_52fbae), color = Color.White, style = MaterialTheme.typography.titleSmall)
                         }
                         viewModel.folders.forEach { folder ->
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -704,22 +715,22 @@ private fun BrowseScreen(
                                     Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(folder.name)
                                 }
                                 IconButton(onClick = { folderToRemove = folder }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Remove folder ${folder.name}", tint = VlcMuted)
+                                    Icon(Icons.Default.Close, contentDescription = ui.getString(R.string.ui_remove_folder_1dc4af, folder.name), tint = VlcMuted)
                                 }
                             }
                         }
                     }
                 }
                 item {
-                    SectionCard("Connected storage") {
+                    SectionCard(ui.getString(R.string.ui_connected_storage_ead366)) {
                         TelegramStorageEntry(viewModel)
                         if (cloudRoots.isEmpty()) {
-                            Text("Keep a cloud copy for more ways to watch. You can connect your own storage in Settings.", color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
-                            OutlinedButton(onClick = { viewModel.tab = PhoneTab.Storage }, modifier = Modifier.fillMaxWidth()) { Text("Manage storage") }
+                            Text(ui.getString(R.string.ui_keep_a_cloud_copy_for_more_ways_to_watch_you_can_conne_2f290d), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
+                            OutlinedButton(onClick = { viewModel.tab = PhoneTab.Storage }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_manage_storage_654d16)) }
                         } else cloudRoots.forEach { root -> StorageRootRow(root) { viewModel.openStorageRoot(root) } }
                     }
                 }
-                item { Text("Your videos stay in your own storage. Cablegram keeps your library organized and ready for your TV.", color = VlcMuted, style = MaterialTheme.typography.bodySmall) }
+                item { Text(ui.getString(R.string.ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144), color = VlcMuted, style = MaterialTheme.typography.bodySmall) }
             }
         } else {
             LazyColumn(Modifier.weight(1f).padding(horizontal = 8.dp)) {
@@ -732,7 +743,7 @@ private fun BrowseScreen(
                 }
                 if (!viewModel.browseLoading && entries.isEmpty()) {
                     item {
-                        Text("No videos in this folder. Try another location.", color = VlcMuted, modifier = Modifier.padding(16.dp))
+                        Text(ui.getString(R.string.ui_no_videos_in_this_folder_try_another_location_00ebc6), color = VlcMuted, modifier = Modifier.padding(16.dp))
                     }
                 }
             }
@@ -744,9 +755,9 @@ private fun BrowseScreen(
             ) {
                 Text(
                     when {
-                        selectedCount == 0 -> "Select files to add"
-                        selectedCount == 1 -> "Add 1 file"
-                        else -> "Add $selectedCount files"
+                        selectedCount == 0 -> ui.getString(R.string.ui_select_files_to_add_b8d466)
+                        selectedCount == 1 -> ui.getString(R.string.ui_add_1_file_0328b3)
+                        else -> ui.getString(R.string.ui_add_files_6e3e20, (selectedCount).toString())
                     },
                 )
             }
@@ -780,6 +791,7 @@ private fun StorageRootRow(root: StorageRoot, onClick: () -> Unit) {
 
 @Composable
 private fun BrowseRow(entry: BrowseEntry, selected: Boolean, onClick: () -> Unit) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val icon = when {
         entry.isDirectory -> Icons.Default.Folder
         entry.isVideo -> Icons.Default.Movie
@@ -804,9 +816,9 @@ private fun BrowseRow(entry: BrowseEntry, selected: Boolean, onClick: () -> Unit
         Column(Modifier.weight(1f)) {
             Text(entry.name, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val subtitle = when {
-                entry.isDirectory -> "Folder"
-                entry.isVideo -> listOfNotNull("Video", entry.sizeBytes?.let(::formatBytes)).joinToString(" · ")
-                else -> entry.mime.ifBlank { "File" }
+                entry.isDirectory -> ui.getString(R.string.ui_folder_74ccd4)
+                entry.isVideo -> listOfNotNull(ui.getString(R.string.ui_video_d534be), entry.sizeBytes?.let(::formatBytes)).joinToString(" · ")
+                else -> entry.mime.ifBlank { ui.getString(R.string.ui_file_50009c) }
             }
             Text(subtitle, color = VlcMuted, fontSize = 12.sp)
         }
@@ -815,6 +827,7 @@ private fun BrowseRow(entry: BrowseEntry, selected: Boolean, onClick: () -> Unit
 
 @Composable
 private fun PrepareCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     Column(
         modifier
             .fillMaxWidth()
@@ -824,7 +837,7 @@ private fun PrepareCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier
             .maestro(MaestroIds.PREPARE_CARD),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("Preparing", color = Color.White, style = MaterialTheme.typography.titleMedium)
+        Text(ui.getString(R.string.ui_preparing_cf1aa6), color = Color.White, style = MaterialTheme.typography.titleMedium)
         Text(viewModel.prepareStep.orEmpty(), color = VlcMuted, fontSize = 13.sp)
         LinearProgressIndicator(
             progress = { viewModel.prepareProgress },
@@ -847,39 +860,40 @@ private fun DestinationChoice(label: String, value: String, viewModel: PhoneView
 
 @Composable
 private fun StorageScreen(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val phone = viewModel.phoneStorage
     val usedFraction = if (phone.total > 0) (phone.used.toFloat() / phone.total).coerceIn(0f, 1f) else 0f
     val reclaim = freeUpBytes(viewModel.items)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
         TextButton(onClick = { viewModel.tab = PhoneTab.Settings }) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp)); Text("Settings")
+            Spacer(Modifier.width(8.dp)); Text(ui.getString(R.string.ui_settings_74a883))
         }
-        ScreenHeading("Storage", "Your files, wherever you keep them.", Modifier.maestro(MaestroIds.STORAGE_TITLE))
-        SectionCard("On this phone") {
+        ScreenHeading(ui.getString(R.string.ui_storage_a69c4d), ui.getString(R.string.ui_your_files_wherever_you_keep_them_b9f61b), Modifier.maestro(MaestroIds.STORAGE_TITLE))
+        SectionCard(ui.getString(R.string.ui_on_this_phone_f97da4)) {
             Text(formatBytes(phone.used), color = Color.White, style = MaterialTheme.typography.headlineMedium)
-            Text("of ${formatBytes(phone.total)} used", color = VlcMuted)
+            Text(ui.getString(R.string.ui_of_used_1db5a8, formatBytes(phone.total)), color = VlcMuted)
             LinearProgressIndicator(progress = { usedFraction }, modifier = Modifier.fillMaxWidth().height(6.dp), color = VlcOrange, trackColor = PhoneOutline)
-            StorageMetric("Cablegram media", formatBytes(phone.media))
-            StorageMetric("Other files & apps", formatBytes((phone.used - phone.media).coerceAtLeast(0)))
-            if (reclaim > 0) OutlinedButton(onClick = viewModel::openFreeUp, modifier = Modifier.fillMaxWidth()) { Text("Free up ${formatBytes(reclaim)}") }
+            StorageMetric(ui.getString(R.string.ui_cablegram_media_1fb5f3), formatBytes(phone.media))
+            StorageMetric(ui.getString(R.string.ui_other_files_apps_a4dea1), formatBytes((phone.used - phone.media).coerceAtLeast(0)))
+            if (reclaim > 0) OutlinedButton(onClick = viewModel::openFreeUp, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_free_up_8fe74c, formatBytes(reclaim))) }
         }
-        SectionCard("Cloud storage") {
-            StorageMetric("Media saved", formatBytes(cloudMediaBytes(viewModel.items)))
-            StorageMetric("Available", if (viewModel.cloudConnected) destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable) else "Connect your own storage")
-            if (viewModel.cloudConnected) Text("Connected: ${viewModel.storage?.connection?.displayLabel ?: "your own storage"}", color = Color(0xFF79D6B0))
-            OutlinedButton(onClick = { viewModel.cloudSheet = CloudSheet.Manage }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.STORAGE_MANAGE)) { Text("Manage cloud storage") }
+        SectionCard(ui.getString(R.string.ui_cloud_storage_9644ab)) {
+            StorageMetric(ui.getString(R.string.ui_media_saved_9537f2), formatBytes(cloudMediaBytes(viewModel.items)))
+            StorageMetric(ui.getString(R.string.ui_available_e67444), if (viewModel.cloudConnected) destinationSpaceLine(viewModel.storage, viewModel.cloudAvailable, resources = ui) else ui.getString(R.string.ui_connect_your_own_storage_10a917))
+            if (viewModel.cloudConnected) Text(ui.getString(R.string.ui_connected_96d2ef, viewModel.storage?.connection?.displayLabel ?: ui.getString(R.string.ui_your_own_storage_cc541c)), color = Color(0xFF79D6B0))
+            OutlinedButton(onClick = { viewModel.cloudSheet = CloudSheet.Manage }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.STORAGE_MANAGE)) { Text(ui.getString(R.string.ui_manage_cloud_storage_4ba3e8)) }
         }
-        SectionCard("Saved in the cloud") {
+        SectionCard(ui.getString(R.string.ui_saved_in_the_cloud_dc46d5)) {
             val cloudItems = cloudFiles(viewModel.items)
-            if (cloudItems.isEmpty()) Text("No cloud copies yet. Open a title to save a copy.", color = VlcMuted)
+            if (cloudItems.isEmpty()) Text(ui.getString(R.string.ui_no_cloud_copies_yet_open_a_title_to_save_a_copy_ffe83b), color = VlcMuted)
             cloudItems.forEach { item ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { viewModel.openItem(item) }, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(item.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(item.fileSizeBytes?.let(::formatBytes).orEmpty(), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                     }
-                    Icon(Icons.Default.ChevronRight, "View title", tint = VlcMuted)
+                    Icon(Icons.Default.ChevronRight, ui.getString(R.string.ui_view_title_c9916d), tint = VlcMuted)
                 }
             }
         }
@@ -897,11 +911,12 @@ private fun StorageMetric(label: String, value: String) {
 
 @Composable
 private fun SettingsScreen(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (viewModel.subtitleAccountsOpen) {
         BackHandler { viewModel.subtitleAccountsOpen = false }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            TextButton(onClick = { viewModel.subtitleAccountsOpen = false }) { Text("Back to Settings") }
-            SubtitleProviderSetup(viewModel, onDone = { viewModel.subtitleAccountsOpen = false }, doneLabel = "Done", requireAccount = false)
+            TextButton(onClick = { viewModel.subtitleAccountsOpen = false }) { Text(ui.getString(R.string.ui_back_to_settings_ea37ec)) }
+            SubtitleProviderSetup(viewModel, onDone = { viewModel.subtitleAccountsOpen = false }, doneLabel = ui.getString(R.string.ui_done_11a676), requireAccount = false)
         }
         return
     }
@@ -913,45 +928,46 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
     var confirmSignOut by remember { mutableStateOf(false) }
     var showLegal by remember { mutableStateOf(false) }
     var profileToDelete by remember { mutableStateOf<HouseholdProfile?>(null) }
+    var languageProfile by remember { mutableStateOf<HouseholdProfile?>(null) }
     LaunchedEffect(Unit) {
         viewModel.loadProfiles()
         viewModel.loadProfileLock()
         viewModel.loadRelayUsage()
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(26.dp)) {
-        ScreenHeading("Settings", viewModel.householdName.ifBlank { "Make Cablegram yours." }, Modifier.maestro(MaestroIds.SETTINGS_TITLE))
-        SectionCard("Account") {
+        ScreenHeading(ui.getString(R.string.ui_settings_74a883), viewModel.householdName.ifBlank { ui.getString(R.string.ui_make_cablegram_yours_13baae) }, Modifier.maestro(MaestroIds.SETTINGS_TITLE))
+        SectionCard(ui.getString(R.string.ui_account_7e1b0d)) {
             OutlinedTextField(
                 value = accountNameDraft,
                 onValueChange = { accountNameDraft = it.take(80) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Account name") },
-                supportingText = { Text("Shown on your phones and TVs") },
+                label = { Text(ui.getString(R.string.ui_account_name_a704d8)) },
+                supportingText = { Text(ui.getString(R.string.ui_shown_on_your_phones_and_tvs_b7ea60)) },
             )
             Button(
                 onClick = { viewModel.saveHouseholdName(accountNameDraft) },
                 enabled = accountNameDraft.trim().isNotEmpty() &&
                     accountNameDraft.trim() != viewModel.householdName && !viewModel.busy,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text(if (viewModel.busy) "Saving…" else "Save account name") }
+            ) { Text(if (viewModel.busy) ui.getString(R.string.ui_saving_23e392) else ui.getString(R.string.ui_save_account_name_7c6744)) }
             HorizontalDivider(color = PhoneOutline)
             viewModel.profileLock?.let { locked ->
-                PrefSwitch("Lock account on TVs", locked, viewModel::updateProfileLock, MaestroIds.SETTINGS_PROFILE_LOCK)
+                PrefSwitch(ui.getString(R.string.ui_lock_account_on_tvs_011bbe), locked, viewModel::updateProfileLock, MaestroIds.SETTINGS_PROFILE_LOCK)
             }
             Text(
                 when (viewModel.profileLock) {
-                    true -> "A TV asks this phone before it opens any profile."
-                    false -> "A TV opens profiles without asking, unless other accounts use it too."
-                    null -> "Couldn't load the account lock. Check your connection."
+                    true -> ui.getString(R.string.ui_a_tv_asks_this_phone_before_it_opens_any_profile_a60f8b)
+                    false -> ui.getString(R.string.ui_a_tv_opens_profiles_without_asking_unless_other_accoun_d6d7d4)
+                    null -> ui.getString(R.string.ui_couldn_t_load_the_account_lock_check_your_connection_85acd6)
                 },
                 color = VlcMuted, style = MaterialTheme.typography.bodySmall,
             )
             // CAB-67: a TV shared with other accounts always asks; this is how long an allowed profile stays open unused.
             viewModel.sharedTvIdleMinutes?.let { minutes ->
-                Text("On a TV shared with other accounts, ask again after", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                Text(ui.getString(R.string.ui_on_a_tv_shared_with_other_accounts_ask_again_after_f81d7a), color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(30 to "30 min", 60 to "1 hour", 240 to "4 hours", 720 to "12 hours").forEach { (value, label) ->
+                    listOf(30 to ui.getString(R.string.ui_30_min_f69fa2), 60 to ui.getString(R.string.ui_1_hour_f8b888), 240 to ui.getString(R.string.ui_4_hours_e5bc99), 720 to ui.getString(R.string.ui_12_hours_ff6272)).forEach { (value, label) ->
                         FilterChip(
                             selected = minutes == value,
                             onClick = { viewModel.updateSharedTvIdleMinutes(value) },
@@ -960,87 +976,94 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                         )
                     }
                 }
-                Text("without use. The TV then goes back to Who's watching, and your phone has to allow it again.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                Text(ui.getString(R.string.ui_without_use_the_tv_then_goes_back_to_who_s_watching_an_cef3ab), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
-        OutlinedButton(onClick = { viewModel.subtitleAccountsOpen = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text("Subtitle accounts") }
-        OutlinedButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text("Show the welcome tour") }
-        SectionCard("Your TVs") {
-            if (!viewModel.paired) Text("Connect a TV to enjoy your library on a bigger screen.", color = VlcMuted)
+        OutlinedButton(onClick = { viewModel.subtitleAccountsOpen = true }, modifier = Modifier.fillMaxWidth().maestro("settings_subtitle_accounts")) { Text(ui.getString(R.string.ui_subtitle_accounts_9602a0)) }
+        OutlinedButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text(ui.getString(R.string.ui_show_the_welcome_tour_140eac)) }
+        SectionCard(ui.getString(R.string.ui_your_tvs_427608)) {
+            if (!viewModel.paired) Text(ui.getString(R.string.ui_connect_a_tv_to_enjoy_your_library_on_a_bigger_screen_a1212f), color = VlcMuted)
             viewModel.tvs.forEach { tv ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Default.Tv, null, tint = VlcOrange)
                     Column(Modifier.weight(1f)) {
                         Text(tv.name, color = Color.White)
-                        Text(if (tv == viewModel.tvs.lastOrNull()) "Current TV" else "Paired TV", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(if (tv == viewModel.tvs.lastOrNull()) ui.getString(R.string.ui_current_tv_55310c) else ui.getString(R.string.ui_paired_tv_68fdc7), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                         TvTrustActions(viewModel, tv)
                     }
                     TextButton(onClick = { tvToRemove = tv }, enabled = !viewModel.busy) {
-                        Text("Remove", color = MaterialTheme.colorScheme.error)
+                        Text(ui.getString(R.string.ui_remove_c3812f), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
-            Button(onClick = viewModel::startAddTv, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_ADD_TV)) { Text("Connect a TV") }
+            Button(onClick = viewModel::startAddTv, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_ADD_TV)) { Text(ui.getString(R.string.ui_connect_a_tv_0ff3f5)) }
         }
-        viewModel.relayUsage?.let { usage -> SectionCard("Relay") { RelayUsageCard(usage) } }
-        if (viewModel.profiles.isNotEmpty()) SectionCard("Profiles") {
+        viewModel.relayUsage?.let { usage -> SectionCard(ui.getString(R.string.ui_relay_c226b0)) { RelayUsageCard(usage) } }
+        if (viewModel.profiles.isNotEmpty()) SectionCard(ui.getString(R.string.ui_profiles_535e52)) {
             viewModel.profiles.forEach { profile ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(Modifier.weight(1f)) {
                         Text(profile.name, color = Color.White)
                         Text(
                             when {
-                                profile.sortOrder == 0 -> "Account owner"
-                                profile.pinSet -> "PIN protected"
-                                else -> "Profile"
+                                profile.sortOrder == 0 -> ui.getString(R.string.ui_account_owner_801ba1)
+                                profile.pinSet -> ui.getString(R.string.ui_pin_protected_d6dcf5)
+                                else -> ui.getString(R.string.ui_profile_d696a3)
                             },
                             color = VlcMuted, style = MaterialTheme.typography.bodySmall,
                         )
+                        TextButton(onClick = { languageProfile = profile }, enabled = !viewModel.busy,
+                            modifier = Modifier.maestro("profile_language_${profile.id}")) {
+                            val language = profile.uiLanguageOverride?.let { tag ->
+                                java.util.Locale.forLanguageTag(phoneUiLanguage(listOf(tag), ui.getStringArray(R.array.ui_languages).toSet())).let { it.getDisplayLanguage(it) }
+                            } ?: ui.getString(R.string.ui_follow_phone_language_5b74c6)
+                            Text(ui.getString(R.string.ui_language_a4fe65) + ": " + language)
+                        }
                     }
                     if (profile.sortOrder != 0) {
                         TextButton(onClick = { profileToDelete = profile }, enabled = !viewModel.busy, modifier = Modifier.maestro("profile_delete_${profile.name}")) {
-                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                            Text(ui.getString(R.string.ui_delete_e2d0a5), color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
             }
-            Text("Add profiles on the TV. Deleting one removes its progress and My List.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+            Text(ui.getString(R.string.ui_add_profiles_on_the_tv_deleting_one_removes_its_progre_22f2f3), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
         Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp), onClick = { viewModel.tab = PhoneTab.Storage }, modifier = Modifier.maestro(MaestroIds.NAV_STORAGE)) {
             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Icon(Icons.Default.Storage, null, tint = VlcOrange)
                 Column(Modifier.weight(1f)) {
-                    Text("Storage", color = Color.White, style = MaterialTheme.typography.titleMedium)
-                    Text("Phone space, cloud copies & transfers", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    Text(ui.getString(R.string.ui_storage_a69c4d), color = Color.White, style = MaterialTheme.typography.titleMedium)
+                    Text(ui.getString(R.string.ui_phone_space_cloud_copies_transfers_f4925b), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 }
                 Icon(Icons.Default.ChevronRight, null, tint = VlcMuted)
             }
         }
-        SectionCard("Collections") {
-            OutlinedTextField(viewModel.collectionDraft, { viewModel.collectionDraft = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Collection name") })
-            OutlinedButton(onClick = viewModel::createCollection, enabled = viewModel.collectionDraft.isNotBlank()) { Text("Create collection") }
+        SectionCard(ui.getString(R.string.ui_collections_9f9fea)) {
+            OutlinedTextField(viewModel.collectionDraft, { viewModel.collectionDraft = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(ui.getString(R.string.ui_collection_name_922214)) })
+            OutlinedButton(onClick = viewModel::createCollection, enabled = viewModel.collectionDraft.isNotBlank()) { Text(ui.getString(R.string.ui_create_collection_69152b)) }
             viewModel.collections.forEach { collection ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(collection.name, color = Color.White, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { viewModel.deleteCollection(collection.id) }) { Text("Remove") }
+                    TextButton(onClick = { viewModel.deleteCollection(collection.id) }) { Text(ui.getString(R.string.ui_remove_c3812f)) }
                 }
             }
         }
-        SectionCard("Transfers & privacy") {
-            PrefSwitch("Open TV with Cast", viewModel.castConnect, viewModel::updateCastConnect, MaestroIds.SETTINGS_CAST_CONNECT)
-            PrefSwitch("Show Remote controls", viewModel.legacyRemote, viewModel::updateLegacyRemote, MaestroIds.SETTINGS_LEGACY_REMOTE)
-            PrefSwitch("Transfer on Wi-Fi only", viewModel.wifiOnlyTransfers, viewModel::setWifiOnly)
-            PrefSwitch("Transfer only while charging", viewModel.transferWhileCharging, viewModel::updateChargingOnly)
+        SectionCard(ui.getString(R.string.ui_transfers_privacy_af4a2f)) {
+            PrefSwitch(ui.getString(R.string.ui_open_tv_with_cast_0dd4f2), viewModel.castConnect, viewModel::updateCastConnect, MaestroIds.SETTINGS_CAST_CONNECT)
+            PrefSwitch(ui.getString(R.string.ui_show_remote_controls_b49919), viewModel.legacyRemote, viewModel::updateLegacyRemote, MaestroIds.SETTINGS_LEGACY_REMOTE)
+            PrefSwitch(ui.getString(R.string.ui_transfer_on_wi_fi_only_992dd6), viewModel.wifiOnlyTransfers, viewModel::setWifiOnly)
+            PrefSwitch(ui.getString(R.string.ui_transfer_only_while_charging_645032), viewModel.transferWhileCharging, viewModel::updateChargingOnly)
             HorizontalDivider(color = PhoneOutline)
-            PrefSwitch("Sync library titles", viewModel.syncLibraryToApi, viewModel::updateSyncLibrary)
+            PrefSwitch(ui.getString(R.string.ui_sync_library_titles_b3b6cc), viewModel.syncLibraryToApi, viewModel::updateSyncLibrary)
             HorizontalDivider(color = PhoneOutline)
-            Text("Relay over mobile data", color = Color.White)
+            Text(ui.getString(R.string.ui_relay_over_mobile_data_a8efaa), color = Color.White)
             Text(
-                "When your TV can't reach this phone on Wi‑Fi, Cablegram can stream through its relay. On mobile data this uses your data plan.",
+                ui.getString(R.string.ui_when_your_tv_can_t_reach_this_phone_on_wi_fi_cablegram_b99318),
                 color = VlcMuted, style = MaterialTheme.typography.bodySmall,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(RelayMobileDataPolicy.Ask to "Ask", RelayMobileDataPolicy.Always to "Always", RelayMobileDataPolicy.Never to "Never").forEach { (policy, label) ->
+                listOf(RelayMobileDataPolicy.Ask to ui.getString(R.string.ui_ask_b8c209), RelayMobileDataPolicy.Always to ui.getString(R.string.ui_always_de9f05), RelayMobileDataPolicy.Never to ui.getString(R.string.ui_never_6300ef)).forEach { (policy, label) ->
                     FilterChip(
                         selected = viewModel.relayMobileData == policy,
                         onClick = { viewModel.updateRelayMobileData(policy) },
@@ -1049,25 +1072,25 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                     )
                 }
             }
-            Text("Share your catalog with your household. Your video files stay in your own storage.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+            Text(ui.getString(R.string.ui_share_your_catalog_with_your_household_your_video_file_fc6c1f), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
-        SectionCard("App & connection") {
-            OutlinedButton(onClick = viewModel::clearLocalMetadata, modifier = Modifier.fillMaxWidth()) { Text("Clear artwork cache") }
-            TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "Hide advanced settings" else "Advanced connection settings") }
+        SectionCard(ui.getString(R.string.ui_app_connection_535ee6)) {
+            OutlinedButton(onClick = viewModel::clearLocalMetadata, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_clear_artwork_cache_6b5bf3)) }
+            TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) ui.getString(R.string.ui_hide_advanced_settings_82557c) else ui.getString(R.string.ui_advanced_connection_settings_891724)) }
             if (advanced) {
-                Text("Change these only if you use your own server.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(apiDraft, { apiDraft = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("API server") }, isError = apiDraft.isNotBlank() && !isValidServerUrl(apiDraft))
-                OutlinedTextField(tunnelDraft, { tunnelDraft = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Tunnel URL (optional)") }, isError = tunnelDraft.isNotBlank() && !isValidServerUrl(tunnelDraft))
+                Text(ui.getString(R.string.ui_change_these_only_if_you_use_your_own_server_79f30a), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(apiDraft, { apiDraft = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(ui.getString(R.string.ui_api_server_86067e)) }, isError = apiDraft.isNotBlank() && !isValidServerUrl(apiDraft))
+                OutlinedTextField(tunnelDraft, { tunnelDraft = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(ui.getString(R.string.ui_tunnel_url_optional_b31277)) }, isError = tunnelDraft.isNotBlank() && !isValidServerUrl(tunnelDraft))
                 Button(onClick = { viewModel.updateApiBaseUrl(apiDraft); viewModel.updateTunnelUrl(tunnelDraft) },
-                    enabled = isValidServerUrl(apiDraft) && (tunnelDraft.isBlank() || isValidServerUrl(tunnelDraft))) { Text("Save connection") }
-                Text(viewModel.phoneIps.joinToString(" · ").ifBlank { "No Wi-Fi address" }, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    enabled = isValidServerUrl(apiDraft) && (tunnelDraft.isBlank() || isValidServerUrl(tunnelDraft))) { Text(ui.getString(R.string.ui_save_connection_df24ef)) }
+                Text(viewModel.phoneIps.joinToString(" · ").ifBlank { ui.getString(R.string.ui_no_wi_fi_address_d5b041) }, color = VlcMuted, style = MaterialTheme.typography.bodySmall)
             }
         }
         OutlinedButton(
             onClick = { confirmSignOut = true },
             enabled = !viewModel.busy,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_SIGN_OUT),
-        ) { Text("Sign out", color = MaterialTheme.colorScheme.error) }
+        ) { Text(ui.getString(R.string.ui_sign_out_48f0d3), color = MaterialTheme.colorScheme.error) }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(
                 onClick = viewModel::openDeleteAccount,
@@ -1078,10 +1101,10 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             Text(stringResource(R.string.delete_account_entry_hint), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
         viewModel.status?.let { StatusNote(it) }
-        TextButton(onClick = { showLegal = true }) { Text("Licence and third-party notices") }
+        TextButton(onClick = { showLegal = true }) { Text(ui.getString(R.string.ui_licence_and_third_party_notices_0dcfa5)) }
         val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
         TextButton(onClick = { uriHandler.openUri(DELETE_ACCOUNT_WEB_URL) }) { Text(stringResource(R.string.delete_account_web_link)) }
-        Text("CABLEGRAM  ·  ${BuildConfig.VERSION_NAME}\nYour videos. Your screen. Your space.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        Text(ui.getString(R.string.ui_cablegram_your_videos_your_screen_your_space_b83cca, BuildConfig.VERSION_NAME), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
     }
     if (showLegal) {
         val context = androidx.compose.ui.platform.LocalContext.current
@@ -1089,36 +1112,61 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
         AlertDialog(
             modifier = Modifier.maestroRoot(),
             onDismissRequest = { showLegal = false },
-            title = { Text("Licence and notices") },
+            title = { Text(ui.getString(R.string.ui_licence_and_notices_ded184)) },
             text = { Text(legal, modifier = Modifier.verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall) },
-            confirmButton = { TextButton(onClick = { showLegal = false }) { Text("Close") } },
+            confirmButton = { TextButton(onClick = { showLegal = false }) { Text(ui.getString(R.string.ui_close_7d9eb7)) } },
         )
     }
     tvToRemove?.let { tv ->
         AlertDialog(
             modifier = Modifier.maestroRoot(),
-            onDismissRequest = { tvToRemove = null }, title = { Text("Remove ${tv.name}?") },
-            text = { Text("The TV will be signed out and lose access to your library. Your video files stay on this phone.") },
-            confirmButton = { TextButton(onClick = { viewModel.unpair(tv); tvToRemove = null }) { Text("Remove TV") } },
-            dismissButton = { TextButton(onClick = { tvToRemove = null }) { Text("Cancel") } },
+            onDismissRequest = { tvToRemove = null }, title = { Text(ui.getString(R.string.ui_remove_e4dd7c, tv.name)) },
+            text = { Text(ui.getString(R.string.ui_the_tv_will_be_signed_out_and_lose_access_to_your_libr_699735)) },
+            confirmButton = { TextButton(onClick = { viewModel.unpair(tv); tvToRemove = null }) { Text(ui.getString(R.string.ui_remove_tv_7c437e)) } },
+            dismissButton = { TextButton(onClick = { tvToRemove = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
         )
     }
     if (confirmSignOut) AlertDialog(
         modifier = Modifier.maestroRoot(),
         onDismissRequest = { confirmSignOut = false },
-        title = { Text("Sign out?") },
-        text = { Text("This phone stops sharing and controlling your TVs. Your videos stay on this phone, and your library comes back when you sign in again.") },
-        confirmButton = { TextButton(onClick = { viewModel.signOut(); confirmSignOut = false }) { Text("Sign out") } },
-        dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text("Cancel") } },
+        title = { Text(ui.getString(R.string.ui_sign_out_c1c084)) },
+        text = { Text(ui.getString(R.string.ui_this_phone_stops_sharing_and_controlling_your_tvs_your_960038)) },
+        confirmButton = { TextButton(onClick = { viewModel.signOut(); confirmSignOut = false }) { Text(ui.getString(R.string.ui_sign_out_48f0d3)) } },
+        dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
     )
+    languageProfile?.let { profile ->
+        AlertDialog(
+            onDismissRequest = { languageProfile = null },
+            title = { Text(ui.getString(R.string.ui_language_a4fe65)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    val options = listOf(null to ui.getString(R.string.ui_follow_phone_language_5b74c6)) +
+                        ui.getStringArray(R.array.ui_languages).map { tag ->
+                            tag to java.util.Locale.forLanguageTag(phoneUiLanguage(listOf(tag), ui.getStringArray(R.array.ui_languages).toSet())).let { it.getDisplayLanguage(it) }
+                        }
+                    options.forEach { (tag, label) ->
+                        Row(Modifier.fillMaxWidth().clickable {
+                            viewModel.updateProfileLanguage(profile, tag)
+                            languageProfile = null
+                        }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = if (tag == null) profile.uiLanguageOverride == null else profile.uiLanguageOverride?.let { phoneUiLanguage(listOf(it), ui.getStringArray(R.array.ui_languages).toSet()) == tag } == true, onClick = null)
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { languageProfile = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
+        )
+    }
     profileToDelete?.let { profile ->
         AlertDialog(
             modifier = Modifier.maestroRoot(),
             onDismissRequest = { profileToDelete = null },
-            title = { Text("Delete ${profile.name}?") },
-            text = { Text("Their watch progress and My List are removed from every TV. This can't be undone.") },
-            confirmButton = { TextButton(onClick = { viewModel.deleteProfile(profile); profileToDelete = null }) { Text("Delete profile") } },
-            dismissButton = { TextButton(onClick = { profileToDelete = null }) { Text("Cancel") } },
+            title = { Text(ui.getString(R.string.ui_delete_647459, profile.name)) },
+            text = { Text(ui.getString(R.string.ui_their_watch_progress_and_my_list_are_removed_from_ever_c54b92)) },
+            confirmButton = { TextButton(onClick = { viewModel.deleteProfile(profile); profileToDelete = null }) { Text(ui.getString(R.string.ui_delete_profile_47311a)) } },
+            dismissButton = { TextButton(onClick = { profileToDelete = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
         )
     }
 }
@@ -1135,35 +1183,37 @@ private fun PrefSwitch(label: String, checked: Boolean, onChange: (Boolean) -> U
 /** CAB-29: a cover made on this phone stays here unless the user saves it to the household. */
 @Composable
 private fun HouseholdArtworkRow(viewModel: PhoneViewModel, item: LibraryItem) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (!canSaveArtworkToHousehold(item)) return
     val saved = artworkSavedToHousehold(item)
     var confirm by remember(item.id) { mutableStateOf(false) }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
-            if (saved) "Cover saved to your household" else "Cover kept on this phone. TVs show it while this phone is on the same Wi-Fi.",
+            if (saved) ui.getString(R.string.ui_cover_saved_to_your_household_762369) else ui.getString(R.string.ui_cover_kept_on_this_phone_tvs_show_it_while_this_phone__7b244e),
             color = VlcMuted, style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.weight(1f).maestro("detail_artwork_household_status"),
         )
-        if (saved) TextButton(onClick = { viewModel.keepArtworkOnPhone(item) }, modifier = Modifier.maestro("detail_artwork_remove_household")) { Text("Remove") }
-        else TextButton(onClick = { confirm = true }, modifier = Modifier.maestro("detail_artwork_save_household")) { Text("Save artwork to household") }
+        if (saved) TextButton(onClick = { viewModel.keepArtworkOnPhone(item) }, modifier = Modifier.maestro("detail_artwork_remove_household")) { Text(ui.getString(R.string.ui_remove_c3812f)) }
+        else TextButton(onClick = { confirm = true }, modifier = Modifier.maestro("detail_artwork_save_household")) { Text(ui.getString(R.string.ui_save_artwork_to_household_2be5ad)) }
     }
     if (confirm) AlertDialog(
         modifier = Modifier.maestroRoot(),
         onDismissRequest = { confirm = false },
-        title = { Text("Save artwork to household?") },
+        title = { Text(ui.getString(R.string.ui_save_artwork_to_household_e25fd0)) },
         text = {
-            Text("This cover was made on this phone from your video or your own image. Saving uploads it to Cablegram's server " +
-                "with your household library. Everyone in your household can then see it on their TVs, phones and the web remote, " +
-                "even when this phone is away, and anyone given its link can open it.\n\n" +
-                "It stays on the server until you tap Remove here, change the cover, or make the video private.")
+            Text(ui.getString(R.string.ui_this_cover_was_made_on_this_phone_from_your_video_or_y_640d31) +
+                ui.getString(R.string.ui_with_your_household_library_everyone_in_your_household_90c154) +
+                ui.getString(R.string.ui_even_when_this_phone_is_away_and_anyone_given_its_link_c6c081) +
+                ui.getString(R.string.ui_it_stays_on_the_server_until_you_tap_remove_here_chang_9f0819))
         },
-        confirmButton = { TextButton(onClick = { confirm = false; viewModel.saveArtworkToHousehold(item) }, modifier = Modifier.maestro("artwork_household_confirm")) { Text("Save to household") } },
-        dismissButton = { TextButton(onClick = { confirm = false }) { Text("Keep on phone") } },
+        confirmButton = { TextButton(onClick = { confirm = false; viewModel.saveArtworkToHousehold(item) }, modifier = Modifier.maestro("artwork_household_confirm")) { Text(ui.getString(R.string.ui_save_to_household_f31fbf)) } },
+        dismissButton = { TextButton(onClick = { confirm = false }) { Text(ui.getString(R.string.ui_keep_on_phone_bded0c)) } },
     )
 }
 
 @Composable
 private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val sourceUnavailable = item.sourceAvailable == false && !item.cloudObjectPresent && !item.ownCloudCopy
     val draftBase = remember(item.id, viewModel.editingMetadata) { item }
     var title by remember(item.id, viewModel.editingMetadata) { mutableStateOf(item.title) }
@@ -1175,131 +1225,133 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = { if (viewModel.editingMetadata) viewModel.editingMetadata = false else viewModel.closeItem() }, modifier = Modifier.maestro(MaestroIds.DETAIL_BACK)) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp)); Text(if (viewModel.editingMetadata) "Cancel" else "Library")
+                Spacer(Modifier.width(8.dp)); Text(if (viewModel.editingMetadata) ui.getString(R.string.ui_cancel_19766e) else ui.getString(R.string.ui_library_dc20b3))
             }
             Spacer(Modifier.weight(1f))
             if (!viewModel.editingMetadata) {
-                TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }, modifier = Modifier.maestro("detail_edit_artwork")) { Text("Edit details & cover") }
+                TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }, modifier = Modifier.maestro("detail_edit_artwork")) { Text(ui.getString(R.string.ui_edit_details_cover_134bbc)) }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.CenterVertically) {
             MediaArtwork(item, Modifier.width(130.dp).height(190.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(if (item.mediaType == "tv") "TV SHOW" else "FILM", color = VlcOrange, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.5.sp)
+                Text(if (item.mediaType == "tv") ui.getString(R.string.ui_tv_show_453862) else ui.getString(R.string.ui_movie_941de4), color = VlcOrange, style = MaterialTheme.typography.labelMedium, letterSpacing = 1.5.sp)
                 Text(item.title, color = Color.White, style = MaterialTheme.typography.headlineSmall)
                 Text(listOfNotNull(item.year?.toString(), formatDuration(item.durationSeconds)?.takeIf { it.isNotBlank() }, item.resolution).joinToString(" · "), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
                 if (item.isPrivate) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Lock, null, Modifier.size(16.dp), tint = VlcMuted)
-                    Text("Phone approval required", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    Text(ui.getString(R.string.ui_phone_approval_required_112e8c), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
         if (!viewModel.editingMetadata) HouseholdArtworkRow(viewModel, item)
-        if (item.metadataConflict) Text("Details changed on another device. Your edits are kept on this phone. Review them and save again to use your version.", color = VlcOrange)
-        else if (item.pendingMetadataFields.isNotEmpty()) Text("Details saved on this phone · Waiting to sync", color = VlcMuted)
+        if (item.metadataConflict) Text(ui.getString(R.string.ui_details_changed_on_another_device_your_edits_are_kept__e208b8), color = VlcOrange)
+        else if (item.pendingMetadataFields.isNotEmpty()) Text(ui.getString(R.string.ui_details_saved_on_this_phone_waiting_to_sync_fd7196), color = VlcMuted)
         if (viewModel.editingMetadata) {
-            SectionCard("Edit details") {
-                Text("${if (item.sourceKind == "web") "Original link" else "Original file"}: ${item.filename}", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(title, { title = it.take(500) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Title") })
-                OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Year") })
+            SectionCard(ui.getString(R.string.ui_edit_details_fd9c61)) {
+                Text(ui.getString(R.string.ui_message_13326c, if (item.sourceKind == "web") ui.getString(R.string.ui_original_link_1f7d58) else ui.getString(R.string.ui_original_file_0ee08b), item.filename), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(title, { title = it.take(500) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(ui.getString(R.string.ui_title_7e8cd2)) })
+                OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.fillMaxWidth(), singleLine = true, label = { Text(ui.getString(R.string.ui_year_89f683)) })
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = mediaType != "tv", onClick = { mediaType = "movie" }, label = { Text("Movie") })
-                    FilterChip(selected = mediaType == "tv", onClick = { mediaType = "tv" }, label = { Text("TV show") })
+                    FilterChip(selected = mediaType != "tv", onClick = { mediaType = "movie" }, label = { Text(ui.getString(R.string.ui_movie_941de4)) })
+                    FilterChip(selected = mediaType == "tv", onClick = { mediaType = "tv" }, label = { Text(ui.getString(R.string.ui_tv_show_0f6684)) })
                 }
-                OutlinedTextField(overview, { overview = it.take(10000) }, Modifier.fillMaxWidth(), minLines = 3, maxLines = 8, label = { Text("Summary") })
-                Button(onClick = { viewModel.saveMetadata(draftBase, title.trim(), year.toIntOrNull(), mediaType, overview) }, enabled = title.isNotBlank() && (year.isBlank() || year.toIntOrNull() in 1..9999) && !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text("Save changes") }
+                OutlinedTextField(overview, { overview = it.take(10000) }, Modifier.fillMaxWidth(), minLines = 3, maxLines = 8, label = { Text(ui.getString(R.string.ui_summary_8e76a9)) })
+                Button(onClick = { viewModel.saveMetadata(draftBase, title.trim(), year.toIntOrNull(), mediaType, overview) }, enabled = title.isNotBlank() && (year.isBlank() || year.toIntOrNull() in 1..9999) && !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_save_changes_dd0ae7)) }
             }
         } else {
             if (item.positionSeconds > 0) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     LinearProgressIndicator(progress = { watchFraction(item) }, modifier = Modifier.fillMaxWidth().height(4.dp), color = VlcOrange, trackColor = PhoneOutline)
-                    Text(remainingLabel(item), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                    Text(remainingLabel(item, resources = ui), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                 }
             }
             Button(onClick = { viewModel.playOnTv(item) }, enabled = !sourceUnavailable && !viewModel.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro(MaestroIds.DETAIL_PLAY_TV)) {
                 Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp))
-                Text(if (sourceUnavailable) "Source unavailable" else if (viewModel.paired) "Play on TV" else "Connect a TV to play")
+                Text(if (sourceUnavailable) ui.getString(R.string.ui_source_unavailable_a3feb8) else if (viewModel.paired) ui.getString(R.string.ui_play_on_tv_f47dcd) else ui.getString(R.string.ui_connect_a_tv_to_play_c4ff0b))
             }
             // What the TV did with the tap ("Starting on…", "Done on…", or why not), right where it was made.
             viewModel.remoteStatus?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodySmall) }
             if (sourceUnavailable) {
                 Text(
-                    if (item.householdOnly) "This title is in your household library, but its file isn't on this phone. Import the same file here to play it from this phone."
-                    else "Reconnect the original storage or restore the file on your phone, then check again. Your title and watch progress are kept.",
+                    if (item.householdOnly) ui.getString(R.string.ui_this_title_is_in_your_household_library_but_its_file_i_7fef21)
+                    else ui.getString(R.string.ui_reconnect_the_original_storage_or_restore_the_file_on__42719e),
                     color = VlcMuted, style = MaterialTheme.typography.bodyMedium,
                 )
-                OutlinedButton(onClick = viewModel::syncNow, enabled = viewModel.librarySyncState != LibrarySyncState.Running) { Text("Check source again") }
+                OutlinedButton(onClick = viewModel::syncNow, enabled = viewModel.librarySyncState != LibrarySyncState.Running) { Text(ui.getString(R.string.ui_check_source_again_115706)) }
             }
             item.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodyLarge) }
             LaunchedEffect(item.id) { viewModel.refreshSubtitleStatus(item) }
-            if (viewModel.savedSubtitle != null) TextButton(onClick = { viewModel.removeSavedSubtitle(item) }, modifier = Modifier.fillMaxWidth()) { Text("Remove saved subtitle") }
+            if (viewModel.savedSubtitle != null) TextButton(onClick = { viewModel.removeSavedSubtitle(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_remove_saved_subtitle_4ed88f)) }
             OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
-                Text(viewModel.savedSubtitle?.let { "Subtitles: $it · Find another" } ?: "Find Subtitles")
+                Text(viewModel.savedSubtitle?.let { ui.getString(R.string.ui_subtitles_find_another_59ba49, it) } ?: ui.getString(R.string.ui_find_subtitles_8a4dbc))
             }
             if (viewModel.savedSubtitle != null) SavedSubtitleTimingButton(viewModel, item, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null)
             LocalSubtitleAttachmentButton(viewModel, item, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null)
-            SectionCard("Your copy") {
-                StorageMetric("Location", storageStatusLine(item))
-                item.fileSizeBytes?.let { StorageMetric("File size", formatBytes(it)) }
+            SectionCard(ui.getString(R.string.ui_your_copy_c7710a)) {
+                StorageMetric("Location", storageStatusLine(item, resources = ui))
+                item.fileSizeBytes?.let { StorageMetric(ui.getString(R.string.ui_file_size_ff0442), formatBytes(it)) }
                 if (item.transferStatus == TRANSFER_FAILED && item.webTransferError == TELEGRAM_SAVE_FAILED && !sourceUnavailable) {
-                    OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Retry saving to Telegram") }
-                } else if (item.transferStatus == TRANSFER_FAILED && !sourceUnavailable && item.sourceKind != "web") OutlinedButton(onClick = { viewModel.retrySave(item) }, modifier = Modifier.fillMaxWidth()) { Text("Retry cloud save") }
-                else if (canSaveToCloud(item)) OutlinedButton(onClick = { viewModel.beginSaveToCloud(item) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.DETAIL_SAVE_CLOUD)) { Text("Save a cloud copy") }
+                    OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_retry_saving_to_telegram_eed237)) }
+                } else if (item.transferStatus == TRANSFER_FAILED && !sourceUnavailable && item.sourceKind != "web") OutlinedButton(onClick = { viewModel.retrySave(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_retry_cloud_save_6ac597)) }
+                else if (canSaveToCloud(item)) OutlinedButton(onClick = { viewModel.beginSaveToCloud(item) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.DETAIL_SAVE_CLOUD)) { Text(ui.getString(R.string.ui_save_a_cloud_copy_dbaf92)) }
                 if (viewModel.telegramLink?.linked == true && PhoneTelegram.configured && canSaveToTelegram(item) && item.webTransferError != TELEGRAM_SAVE_FAILED) {
-                    OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text("Save to Telegram") }
+                    OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_save_to_telegram_f6c595)) }
                 }
-                if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text("Download to phone") }
-                if (canRemoveLocalCopy(item)) TextButton(onClick = { viewModel.askFreeUp(item) }) { Text("Free up phone space") }
-                if (canRemoveOwnCloudCopy(item)) TextButton(onClick = { viewModel.askRemoveCloudCopy(item) }) { Text("Remove cloud copy") }
+                if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_download_to_phone_6265e3)) }
+                if (canRemoveLocalCopy(item)) TextButton(onClick = { viewModel.askFreeUp(item) }) { Text(ui.getString(R.string.ui_free_up_phone_space_6d089c)) }
+                if (canRemoveOwnCloudCopy(item)) TextButton(onClick = { viewModel.askRemoveCloudCopy(item) }) { Text(ui.getString(R.string.ui_remove_cloud_copy_0b8eaf)) }
             }
-            if (viewModel.collections.isNotEmpty()) SectionCard("Collections") {
+            if (viewModel.collections.isNotEmpty()) SectionCard(ui.getString(R.string.ui_collections_9f9fea)) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     viewModel.collections.forEach { collection ->
                         FilterChip(selected = collection.id in item.collectionIds, onClick = { viewModel.toggleCollection(item, collection.id) }, label = { Text(collection.name) })
                     }
                 }
             }
-            TextButton(onClick = { viewModel.askDelete(item) }) { Text("Remove title…", color = MaterialTheme.colorScheme.error) }
+            TextButton(onClick = { viewModel.askDelete(item) }) { Text(ui.getString(R.string.ui_remove_title_0a053b), color = MaterialTheme.colorScheme.error) }
         }
     }
 }
 
 @Composable
 private fun RemoveCloudCopyDialog(viewModel: PhoneViewModel, item: LibraryItem) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     AlertDialog(
         modifier = Modifier.maestroRoot(),
         onDismissRequest = { viewModel.removeCloudCopyTarget = null },
-        title = { Text("Remove the cloud copy?") },
+        title = { Text(ui.getString(R.string.ui_remove_the_cloud_copy_bd936f)) },
         text = { Text(removeCopyQuestion(item.title, viewModel.saveDestinationName)) },
         confirmButton = {
-            TextButton(onClick = { viewModel.removeCloudCopy(item) }) { Text("Remove copy", color = Color(0xFFFF8A80)) }
+            TextButton(onClick = { viewModel.removeCloudCopy(item) }) { Text(ui.getString(R.string.ui_remove_copy_63d1ae), color = Color(0xFFFF8A80)) }
         },
-        dismissButton = { TextButton(onClick = { viewModel.removeCloudCopyTarget = null }) { Text("Keep it") } },
+        dismissButton = { TextButton(onClick = { viewModel.removeCloudCopyTarget = null }) { Text(ui.getString(R.string.ui_keep_it_fdce5d)) } },
     )
 }
 
 @Composable
 private fun DeleteDialog(viewModel: PhoneViewModel, item: LibraryItem) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (item.sourceKind == "telegram") {
         AlertDialog(
             modifier = Modifier.maestroRoot(),
             onDismissRequest = { viewModel.deleteTarget = null },
-            title = { Text("Remove ${item.title}?") },
+            title = { Text(ui.getString(R.string.ui_remove_e4dd7c, item.title)) },
             text = {
                 Text(
-                    "This video is stored in your Telegram channel, not on this phone. Remove from library hides it " +
-                        "on the phone and every TV, and you can restore it later. Delete permanently also deletes it " +
-                        "from the channel in Telegram, and can't be undone.",
+                    ui.getString(R.string.ui_this_video_is_stored_in_your_telegram_channel_not_on_t_c9f607) +
+                        ui.getString(R.string.ui_on_the_phone_and_every_tv_and_you_can_restore_it_later_69a576) +
+                        ui.getString(R.string.ui_from_the_channel_in_telegram_and_can_t_be_undone_732b94),
                 )
             },
             // One column in the confirm slot: the dialog's own button row would space two slots apart and clip the third.
             confirmButton = {
                 StackedDialogButtons {
                     TextButton(onClick = { viewModel.removeTelegramTitle(item, permanently = true) }) {
-                        Text("Delete permanently", color = Color(0xFFFF8A80))
+                        Text(ui.getString(R.string.ui_delete_permanently_280b10), color = Color(0xFFFF8A80))
                     }
-                    TextButton(onClick = { viewModel.removeTelegramTitle(item, permanently = false) }) { Text("Remove from library") }
-                    TextButton(onClick = { viewModel.deleteTarget = null }) { Text("Cancel") }
+                    TextButton(onClick = { viewModel.removeTelegramTitle(item, permanently = false) }) { Text(ui.getString(R.string.ui_remove_from_library_8e7161)) }
+                    TextButton(onClick = { viewModel.deleteTarget = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) }
                 }
             },
         )
@@ -1308,13 +1360,13 @@ private fun DeleteDialog(viewModel: PhoneViewModel, item: LibraryItem) {
     AlertDialog(
         modifier = Modifier.maestroRoot(),
         onDismissRequest = { viewModel.deleteTarget = null },
-        title = { Text("Remove ${item.title}?") },
-        text = { Text("Remove from library keeps the file. Delete file permanently removes Cablegram’s copy.") },
+        title = { Text(ui.getString(R.string.ui_remove_e4dd7c, item.title)) },
+        text = { Text(ui.getString(R.string.ui_remove_from_library_keeps_the_file_delete_file_permane_9b57b7)) },
         confirmButton = {
             StackedDialogButtons {
-                TextButton(onClick = { viewModel.deleteFilePermanently(item) }) { Text("Delete file permanently") }
-                TextButton(onClick = { viewModel.removeFromLibrary(item) }) { Text("Remove from library") }
-                TextButton(onClick = { viewModel.deleteTarget = null }) { Text("Cancel") }
+                TextButton(onClick = { viewModel.deleteFilePermanently(item) }) { Text(ui.getString(R.string.ui_delete_file_permanently_7afb48)) }
+                TextButton(onClick = { viewModel.removeFromLibrary(item) }) { Text(ui.getString(R.string.ui_remove_from_library_8e7161)) }
+                TextButton(onClick = { viewModel.deleteTarget = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) }
             }
         },
     )
@@ -1328,6 +1380,7 @@ private fun StackedDialogButtons(content: @Composable androidx.compose.foundatio
 
 @Composable
 private fun RemoteBar(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val lines = miniPlayerLines(viewModel.nowPlaying?.title, viewModel.startingTitle, viewModel.tvName, viewModel.remoteStatus) ?: return
     Row(
         modifier
@@ -1346,24 +1399,25 @@ private fun RemoteBar(viewModel: PhoneViewModel, modifier: Modifier = Modifier) 
             Text(lines.caption, color = VlcMuted, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         if (lines.canToggle) IconButton(onClick = viewModel::togglePlayPause) {
-            Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = if (viewModel.paused) "Resume playback" else "Pause playback", tint = Color.White)
+            Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = if (viewModel.paused) ui.getString(R.string.ui_resume_playback_b19825) else ui.getString(R.string.ui_pause_playback_65a4a8), tint = Color.White)
         }
     }
 }
 
 @Composable
 private fun RemoteControls(viewModel: PhoneViewModel) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val item = viewModel.nowPlaying ?: return
-    Text("${viewModel.tvName} · ${item.title}", color = VlcMuted)
+    Text(ui.getString(R.string.ui_message_fed2d9, viewModel.tvName, item.title), color = VlcMuted)
     LinearProgressIndicator(progress = { watchFraction(item) }, modifier = Modifier.fillMaxWidth(), color = VlcOrange, trackColor = Color(0xFF333333))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = { viewModel.skipSeconds(-CastRemoteReceiver.SEEK_SECONDS) }) { Text("-${CastRemoteReceiver.SEEK_SECONDS}") }
+        TextButton(onClick = { viewModel.skipSeconds(-CastRemoteReceiver.SEEK_SECONDS) }) { Text(ui.getString(R.string.ui_message_a4d4c7, (CastRemoteReceiver.SEEK_SECONDS).toString())) }
         IconButton(onClick = viewModel::togglePlayPause) {
             Icon(if (viewModel.paused) Icons.Default.PlayArrow else Icons.Default.Pause, null, tint = Color.White)
         }
-        TextButton(onClick = { viewModel.skipSeconds(CastRemoteReceiver.SEEK_SECONDS) }) { Text("+${CastRemoteReceiver.SEEK_SECONDS}") }
+        TextButton(onClick = { viewModel.skipSeconds(CastRemoteReceiver.SEEK_SECONDS) }) { Text(ui.getString(R.string.ui_message_9262e3, (CastRemoteReceiver.SEEK_SECONDS).toString())) }
     }
-    TextButton(onClick = viewModel::stopCast) { Text("Stop casting") }
+    TextButton(onClick = viewModel::stopCast) { Text(ui.getString(R.string.ui_stop_casting_0f1360)) }
 }
 
 internal fun displayName(context: android.content.Context, uri: Uri): String? {
@@ -1374,13 +1428,14 @@ internal fun displayName(context: android.content.Context, uri: Uri): String? {
 /** Spec 003 US4: this month's relay traffic against the plan, with the 80 % warning. */
 @Composable
 private fun RelayUsageCard(usage: RelayUsage) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     fun gb(bytes: Long) = "%.1f".format(bytes / 1_073_741_824.0)
     val quota = usage.quotaBytes
     val resets = usage.resetsAt?.take(10)
     Text(
         when {
-            quota == null -> "Unlimited relay · ${gb(usage.usedBytes)} GB used this month"
-            else -> "${gb(usage.usedBytes)} of ${gb(quota)} GB used this month"
+            quota == null -> ui.getString(R.string.ui_unlimited_relay_gb_used_this_month_3d67d0, gb(usage.usedBytes))
+            else -> ui.getString(R.string.ui_of_gb_used_this_month_0cb41d, gb(usage.usedBytes), gb(quota))
         },
         color = Color.White,
     )
@@ -1393,12 +1448,12 @@ private fun RelayUsageCard(usage: RelayUsage) {
             trackColor = PhoneOutline,
         )
         val note = when {
-            usage.limitedReason == "relay_email_unverified" -> "Confirm your email (above) to use free relay."
+            usage.limitedReason == "relay_email_unverified" -> ui.getString(R.string.ui_confirm_your_email_above_to_use_free_relay_73d5f0)
             usage.limitedReason == "relay_free_device_limit" ->
-                "Free relay isn't available here: this phone already gives free relay to other Cablegram accounts."
-            fraction >= 1f -> "This month's free relay traffic is used up${resets?.let { " (resets $it)" } ?: ""}. Same Wi‑Fi still works."
-            fraction >= 0.8f -> "You've used ${(fraction * 100).toInt()}% of this month's free relay traffic."
-            else -> "The relay is used when your TV can't reach this phone on Wi‑Fi${resets?.let { ". Resets $it" } ?: ""}."
+                ui.getString(R.string.ui_free_relay_isn_t_available_here_this_phone_already_giv_decf4c)
+            fraction >= 1f -> ui.getString(R.string.ui_this_month_s_free_relay_traffic_is_used_up_same_wi_fi__ef740a, resets?.let { " (resets $it)" } ?: "")
+            fraction >= 0.8f -> ui.getString(R.string.ui_you_ve_used_of_this_month_s_free_relay_traffic_f1430c, (fraction * 100).toInt())
+            else -> ui.getString(R.string.ui_the_relay_is_used_when_your_tv_can_t_reach_this_phone__b14902, resets?.let { ui.getString(R.string.ui_resets_ecf9e5, it) } ?: "")
         }
         Text(note, color = if (fraction >= 0.8f) Color(0xFFFFB74D) else VlcMuted, style = MaterialTheme.typography.bodySmall)
     }

@@ -62,6 +62,7 @@ internal fun AboutSettingsPanel(
     onTelegramCancel: () -> Unit = {},
     onTelegramSignInWithoutPassword: () -> Unit = {},
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     // The password step opens over Settings, but never locks the viewer out of the rest of it (sign-out, pairing).
     var passwordStepOpen by remember { mutableStateOf(true) }
     // A linked household's TV that isn't signed in: the keyboard slide opens only when the viewer chooses to connect.
@@ -78,9 +79,9 @@ internal fun AboutSettingsPanel(
             telegramStatus, onTelegramPassword, onTelegramAskPhone, onTelegramCancelPasswordRequest,
             onNoPassword = if (notSignedIn != null && notSignedIn.twoStep == null) onTelegramSignInWithoutPassword else null,
         ) {
-            Button(onClick = ::backToSettings, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Back to Settings") }
+            Button(onClick = ::backToSettings, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_back_to_settings_ea37ec)) }
             if (telegramStatus is app.cablegram.TvTelegramStatus.NeedsPassword && telegramViaPhone) {
-                Button(onClick = { onTelegramViaPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Use this TV for Telegram playback") }
+                Button(onClick = { onTelegramViaPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_use_this_tv_for_telegram_playback_051438)) }
             }
         }
         return
@@ -102,7 +103,7 @@ internal fun AboutSettingsPanel(
                 .padding(28.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("About Cablegram", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(ui.getString(R.string.ui_about_cablegram_8eeae9), color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.app_tagline), color = Cyan, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 stringResource(R.string.legal_disclaimer),
@@ -112,7 +113,7 @@ internal fun AboutSettingsPanel(
             )
             if (isDemoMode) {
                 Text(
-                    "Demo mode · royalty-free sample streams",
+                    ui.getString(R.string.ui_demo_mode_royalty_free_sample_streams_9e36b2),
                     color = Cyan,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -126,7 +127,7 @@ internal fun AboutSettingsPanel(
                 },
                 colors = ButtonDefaults.colors(containerColor = PanelRaised),
             ) {
-                Text("Open privacy policy")
+                Text(ui.getString(R.string.ui_open_privacy_policy_c90fcb))
             }
             Text(PRIVACY_POLICY_URL, color = Slate, fontSize = 12.sp)
             var showLegal by remember { mutableStateOf(false) }
@@ -134,7 +135,7 @@ internal fun AboutSettingsPanel(
                 onClick = { showLegal = !showLegal },
                 colors = ButtonDefaults.colors(containerColor = PanelRaised),
             ) {
-                Text(if (showLegal) "Hide licence and notices" else "Licence and notices")
+                Text(if (showLegal) ui.getString(R.string.ui_hide_licence_and_notices_35e525) else ui.getString(R.string.ui_licence_and_notices_ded184))
             }
             if (showLegal) {
                 val notice = remember { LegalText.notice(context) }
@@ -156,12 +157,12 @@ internal fun AboutSettingsPanel(
                 .padding(28.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text("Connection", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            SettingValue("This TV", tvLanIp ?: "Waiting for Wi-Fi", monospace = true)
-            SettingValue("Media source", "Your paired phone")
-            SettingValue("Playback path", "Wi‑Fi first, relay when away")
+            Text(ui.getString(R.string.ui_connection_639a40), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            SettingValue(ui.getString(R.string.ui_this_tv_3e2400), tvLanIp ?: ui.getString(R.string.ui_waiting_for_wi_fi_72c813), monospace = true)
+            SettingValue(ui.getString(R.string.ui_media_source_de4006), ui.getString(R.string.ui_your_paired_phone_7e4f9a))
+            SettingValue(ui.getString(R.string.ui_playback_path_5cecee), ui.getString(R.string.ui_wi_fi_first_relay_when_away_4ab75e))
             Text(
-                "Same Wi‑Fi gives the fastest start and best quality. Elsewhere, Cablegram streams through its relay.",
+                ui.getString(R.string.ui_same_wi_fi_gives_the_fastest_start_and_best_quality_el_50f729),
                 color = Muted,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
@@ -211,6 +212,7 @@ private fun TelegramSettingsSection(
     onOpenPassword: () -> Unit = {},
     onSignIn: (twoStep: Boolean?) -> Unit = {},
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     if (status == app.cablegram.TvTelegramStatus.Off) return
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(status) {
@@ -220,39 +222,39 @@ private fun TelegramSettingsSection(
         }
     }
     Text("Telegram", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-    Text("Cablegram is an unofficial app, not made or endorsed by Telegram. It uses your own Telegram account.", color = Muted, fontSize = 13.sp, lineHeight = 18.sp)
+    Text(ui.getString(R.string.ui_cablegram_is_an_unofficial_app_not_made_or_endorsed_by_5de578), color = Muted, fontSize = 13.sp, lineHeight = 18.sp)
     when (status) {
-        app.cablegram.TvTelegramStatus.Connecting -> Text("Connecting to Telegram…", color = Muted, fontSize = 14.sp)
+        app.cablegram.TvTelegramStatus.Connecting -> Text(ui.getString(R.string.ui_connecting_to_telegram_06a2ff), color = Muted, fontSize = 14.sp)
         is app.cablegram.TvTelegramStatus.NotSignedIn -> {
             Text(
-                "Your household's Telegram is connected, but this TV isn't signed in. Sign it in to stream Telegram videos straight from Telegram, without your phone.",
+                ui.getString(R.string.ui_your_household_s_telegram_is_connected_but_this_tv_isn_90d748),
                 color = Muted,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )
-            Button(onClick = { onSignIn(status.twoStep) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Connect this TV") }
+            Button(onClick = { onSignIn(status.twoStep) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_connect_this_tv_8474b0)) }
         }
         app.cablegram.TvTelegramStatus.ThroughPhone ->
-            Text("Telegram videos play through your phone on this TV. Nothing from Telegram is stored here.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(ui.getString(R.string.ui_telegram_videos_play_through_your_phone_on_this_tv_not_e75ff6), color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
         is app.cablegram.TvTelegramStatus.Connected ->
-            SettingValue("Signed in as", status.name)
+            SettingValue(ui.getString(R.string.ui_signed_in_as_abc50e), status.name)
         is app.cablegram.TvTelegramStatus.Problem -> Text(status.message, color = Coral, fontSize = 14.sp, lineHeight = 20.sp)
         app.cablegram.TvTelegramStatus.CanConnect -> {
             Text(
-                "Telegram isn't connected for this household yet. You can connect it from this TV: scan a code with the Telegram app on your phone.",
+                ui.getString(R.string.ui_telegram_isn_t_connected_for_this_household_yet_you_ca_634c79),
                 color = Muted,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
             )
-            Button(onClick = onConnect, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Connect Telegram on this TV") }
+            Button(onClick = onConnect, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_connect_telegram_on_this_tv_461bf0)) }
         }
         is app.cablegram.TvTelegramStatus.WaitingForPhone -> {
             if (!status.standalone) {
-                Text("Waiting for your phone to let this TV use your Telegram…", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+                Text(ui.getString(R.string.ui_waiting_for_your_phone_to_let_this_tv_use_your_telegra_6296ca), color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
             }
             if (status.standalone || now - status.since > 20_000) {
                 Text(
-                    "Scan this code in Telegram on your phone: Settings → Devices → Link Desktop Device.",
+                    ui.getString(R.string.ui_scan_this_code_in_telegram_on_your_phone_settings_devi_1df732),
                     color = Muted,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -260,17 +262,17 @@ private fun TelegramSettingsSection(
                 val qr = remember(status.link) { createQrBitmap(status.link, 360).asImageBitmap() }
                 Image(
                     bitmap = qr,
-                    contentDescription = "Telegram login QR code",
+                    contentDescription = ui.getString(R.string.ui_telegram_login_qr_code_b413de),
                     modifier = Modifier.size(180.dp),
                 )
             }
             if (status.standalone) {
-                Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Cancel") }
+                Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_cancel_19766e)) }
             }
         }
         is app.cablegram.TvTelegramStatus.NeedsPassword -> {
-            Text("Telegram needs your two-step verification password to finish signing in on this TV.", color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
-            Button(onClick = onOpenPassword, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Enter Telegram password") }
+            Text(ui.getString(R.string.ui_telegram_needs_your_two_step_verification_password_to__2f2be0), color = Muted, fontSize = 14.sp, lineHeight = 20.sp)
+            Button(onClick = onOpenPassword, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_enter_telegram_password_7844e5)) }
         }
         app.cablegram.TvTelegramStatus.Off -> Unit
     }
@@ -293,6 +295,7 @@ internal fun TelegramPasswordScreen(
     onSignInWithoutPassword: () -> Unit = {},
     passwordVideoUrl: String = app.cablegram.data.TELEGRAM_PASSWORD_VIDEO_URL,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var connectChosen by rememberSaveable { mutableStateOf(false) }
     // Back from slide 2 returns to the question; from slide 1 it leaves.
     androidx.activity.compose.BackHandler { if (connectChosen) connectChosen = false else onBack() }
@@ -304,7 +307,7 @@ internal fun TelegramPasswordScreen(
         return
     }
     val previous: @Composable ColumnScope.() -> Unit = {
-        Button(onClick = { connectChosen = false }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Back") }
+        Button(onClick = { connectChosen = false }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_back_76900f)) }
     }
     val notSignedIn = status as? app.cablegram.TvTelegramStatus.NotSignedIn
     // An account without two-step verification signs in right away: approving on the phone finishes it.
@@ -323,23 +326,23 @@ internal fun TelegramPasswordScreen(
         return
     }
     TelegramSlide(passwordVideoUrl) {
-        Text("Connecting Telegram", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        Text(ui.getString(R.string.ui_connecting_telegram_ed3dc8), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
         when (status) {
             is app.cablegram.TvTelegramStatus.Problem -> Text(status.message, color = Coral, fontSize = 18.sp, lineHeight = 25.sp)
             is app.cablegram.TvTelegramStatus.WaitingForPhone ->
                 Text(
-                    if (status.standalone) "Finish signing in from Settings → Telegram on this TV."
-                    else "Your phone is letting this TV in to Telegram. If it asks, approve it in the Cablegram notification. The video starts as soon as it's done.",
+                    if (status.standalone) ui.getString(R.string.ui_finish_signing_in_from_settings_telegram_on_this_tv_d69b81)
+                    else ui.getString(R.string.ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_a75585),
                     color = Muted,
                     fontSize = 18.sp,
                     lineHeight = 25.sp,
                 )
-            is app.cablegram.TvTelegramStatus.NeedsPassword -> Text("Checking your password…", color = Muted, fontSize = 18.sp)
-            else -> Text("Signing in…", color = Muted, fontSize = 18.sp)
+            is app.cablegram.TvTelegramStatus.NeedsPassword -> Text(ui.getString(R.string.ui_checking_your_password_06c20d), color = Muted, fontSize = 18.sp)
+            else -> Text(ui.getString(R.string.ui_signing_in_8b9d3d), color = Muted, fontSize = 18.sp)
         }
         val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) { withFrameNanos { }; focus.requestFocus() }
-        Button(onClick = { connectChosen = false }, modifier = Modifier.focusRequester(focus)) { Text("Back") }
+        Button(onClick = { connectChosen = false }, modifier = Modifier.focusRequester(focus)) { Text(ui.getString(R.string.ui_back_76900f)) }
     }
 }
 
@@ -351,24 +354,25 @@ private fun TelegramConnectQuestion(
     onPlayThroughPhone: (always: Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
     TelegramSlide(videoUrl) {
-        Text("Watch Telegram on this TV?", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
-        Text("Connect your Telegram to this TV once, and your library plays straight from Telegram.", color = Cyan, fontSize = 20.sp, lineHeight = 26.sp)
+        Text(ui.getString(R.string.ui_watch_telegram_on_this_tv_b79cf0), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+        Text(ui.getString(R.string.ui_connect_your_telegram_to_this_tv_once_and_your_library_f3e103), color = Cyan, fontSize = 20.sp, lineHeight = 26.sp)
         listOf(
-            "Starts faster and seeks smoothly: the video comes straight from Telegram.",
-            "Your phone can sleep or leave home; it uses no battery or data.",
-            "This TV gets its own session. End it any time in Telegram → Settings → Devices.",
-            "Cablegram reads only your \"Cablegram library\" channel, never your chats.",
+            ui.getString(R.string.ui_starts_faster_and_seeks_smoothly_the_video_comes_strai_bd5209),
+            ui.getString(R.string.ui_your_phone_can_sleep_or_leave_home_it_uses_no_battery__dec30b),
+            ui.getString(R.string.ui_this_tv_gets_its_own_session_end_it_any_time_in_telegr_ad0e0a),
+            ui.getString(R.string.ui_cablegram_reads_only_your_cablegram_library_channel_ne_359f98),
         ).forEach { Text("•  $it", color = Paper, fontSize = 16.sp, lineHeight = 22.sp) }
         val focus = remember { FocusRequester() }
         LaunchedEffect(Unit) { withFrameNanos { }; focus.requestFocus() }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onConnect, modifier = Modifier.focusRequester(focus)) { Text("Connect this TV") }
-            Button(onClick = onBack, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Back to library") }
+            Button(onClick = onConnect, modifier = Modifier.focusRequester(focus)) { Text(ui.getString(R.string.ui_connect_this_tv_8474b0)) }
+            Button(onClick = onBack, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_back_to_library_008e42)) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { onPlayThroughPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Play through my phone this time") }
-            Button(onClick = { onPlayThroughPhone(true) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Always use my phone") }
+            Button(onClick = { onPlayThroughPhone(false) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_play_through_my_phone_this_time_389f1f)) }
+            Button(onClick = { onPlayThroughPhone(true) }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_always_use_my_phone_ce2492)) }
         }
     }
 }
