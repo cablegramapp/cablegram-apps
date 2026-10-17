@@ -471,7 +471,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { ads = catalog().ads() }
         refreshStorage()
         recoverSharedImports()
-        resumePendingWebImports()
+        viewModelScope.launch(Dispatchers.IO) { store.discardPendingWebImports() }
         clearRetiredWebSaves()
         if (paired) {
             // Also watches for TV private-playback approvals while paired (T075 / R-5).
@@ -820,7 +820,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         pairing.refreshToken = result.refreshToken
         householdName = result.displayName.orEmpty()
         pairing.displayName = householdName
-        resumePendingWebImports()
+        viewModelScope.launch(Dispatchers.IO) { store.discardPendingWebImports() }
         clearRetiredWebSaves()
         needsAccount = false
         needsName = result.needsName
@@ -2019,59 +2019,6 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 uiText(R.string.ui_could_not_finish_importing_the_file_is_no_longer_avail_63e50e, dropped.joinToString { it.displayName })
             } else {
                 uiText(R.string.ui_finished_importing_6d8eef, results.filterIsInstance<LibraryStore.SharedImportResult.Imported>().joinToString { it.item.title })
-            }
-        }
-    }
-
-    fun importWeb(url: String, caption: String? = null) {
-        sharedImportSucceeded = null
-        val pending = store.queueWebImport(url, caption)
-        submitPendingWebImport(pending, announce = true)
-    }
-
-    private fun resumePendingWebImports() {
-        if (pairing.accountToken.isNullOrBlank()) return
-        // A link the server rejected for good (kept by older versions) is dropped, not sent again.
-        val (rejected, retryable) = store.snapshot().pendingWebImports.partition { isPermanentWebImportError(it.lastError) }
-        rejected.forEach { store.completeWebImport(it.id) }
-        retryable.forEach { submitPendingWebImport(it, announce = false) }
-    }
-
-    private fun submitPendingWebImport(pending: PendingWebImport, announce: Boolean) {
-        viewModelScope.launch {
-            val token = pairing.accountToken
-            if (token.isNullOrBlank()) {
-                if (announce) status = uiText(R.string.ui_link_saved_sign_in_to_finish_adding_it_72ef94)
-                return@launch
-            }
-            if (announce) {
-                busy = true
-                status = uiText(R.string.ui_analyzing_link_c9a741)
-            }
-            try {
-                val response = catalog().importWeb(pending.url, pending.caption, token, pending.id)
-                val item = withContext(Dispatchers.IO) { store.registerWeb(response) }
-                withContext(Dispatchers.IO) { store.completeWebImport(pending.id) }
-                refresh()
-                selectedId = item.id
-                status = uiText(R.string.ui_added_to_your_library_17f3b0, item.title)
-                if (announce) sharedImportSucceeded = true
-            } catch (error: Exception) {
-                PairLog.e("Web import failed", error)
-                if (announce) sharedImportSucceeded = false
-                withContext(Dispatchers.IO) {
-                    // Only a transient failure stays queued for the next launch.
-                    if (isPermanentWebImportError(error.message)) store.completeWebImport(pending.id)
-                    else store.failWebImport(pending.id, error.message ?: "web_import_failed")
-                }
-                status = when (error.message) {
-                    "unsupported_site" -> uiText(R.string.ui_cablegram_cannot_extract_video_from_this_site_yet_52c56b)
-                    "no_video" -> uiText(R.string.ui_no_playable_video_was_found_at_that_link_f4972b)
-                    "unsafe_url", "invalid_url" -> uiText(R.string.ui_that_is_not_a_supported_public_web_link_847418)
-                    else -> error.message ?: uiText(R.string.ui_could_not_add_that_link_f63312)
-                }
-            } finally {
-                if (announce) busy = false
             }
         }
     }

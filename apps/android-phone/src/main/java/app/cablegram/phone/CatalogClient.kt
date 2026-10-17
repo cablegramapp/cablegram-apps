@@ -53,27 +53,6 @@ class CatalogClient(
         }
     }
 
-    suspend fun importWeb(url: String, caption: String?, token: String, idempotencyKey: String): WebImportResponse = withContext(Dispatchers.IO) {
-        val body = json.encodeToString(buildJsonObject {
-            put("url", url)
-            caption?.takeIf { it.isNotBlank() }?.let { put("caption", it) }
-            put("idempotency_key", "android:$idempotencyKey")
-        })
-        val request = Request.Builder()
-            .url("${baseUrl.trimEnd('/')}/api/library/web-imports")
-            .header("Authorization", "Bearer $token")
-            .post(body.toRequestBody("application/json".toMediaType()))
-            .build()
-        client.newCall(request).execute().use { response ->
-            val text = response.body?.string().orEmpty()
-            check(response.isSuccessful) {
-                runCatching { json.decodeFromString<ApiError>(text).error }.getOrNull()
-                    ?: "Could not analyze that link (${response.code})"
-            }
-            json.decodeFromString<WebImportResponse>(text)
-        }
-    }
-
     suspend fun suggestTitles(query: String, token: String?): List<TitleSuggestion> = withContext(Dispatchers.IO) {
         if (token.isNullOrBlank() || query.trim().length < 2) return@withContext emptyList()
         val request = Request.Builder()

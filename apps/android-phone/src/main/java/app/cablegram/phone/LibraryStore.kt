@@ -57,24 +57,11 @@ class LibraryStore private constructor(private val context: Context) {
     @Synchronized
     fun folders(): List<IndexedFolder> = snapshot().folders
 
+    /** CAB-80: links queued by earlier versions are dropped; this release does not import web videos. */
     @Synchronized
-    fun queueWebImport(url: String, caption: String?): PendingWebImport {
-        val pending = PendingWebImport(UUID.randomUUID().toString(), url, caption, Instant.now().toString())
+    fun discardPendingWebImports() {
         val file = snapshot()
-        save(file.copy(pendingWebImports = file.pendingWebImports + pending))
-        return pending
-    }
-
-    @Synchronized
-    fun completeWebImport(id: String) {
-        val file = snapshot()
-        save(file.copy(pendingWebImports = file.pendingWebImports.filterNot { it.id == id }))
-    }
-
-    @Synchronized
-    fun failWebImport(id: String, error: String) {
-        val file = snapshot()
-        save(file.copy(pendingWebImports = file.pendingWebImports.map { if (it.id == id) it.copy(lastError = error) else it }))
+        if (file.pendingWebImports.isNotEmpty()) save(file.copy(pendingWebImports = emptyList()))
     }
 
     @Synchronized

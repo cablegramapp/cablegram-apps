@@ -56,8 +56,6 @@
     <string name="ui_already_have_one_skip_to_step_2_55c7ad" formatted="false">"Already have one? Skip to step 2."</string>
     <string name="ui_always_allow_977618" formatted="false">"Always allow"</string>
     <string name="ui_always_de9f05" formatted="false">"Always"</string>
-    <string name="ui_analyzing_89b633" formatted="false">"Analyzing…"</string>
-    <string name="ui_analyzing_link_c9a741" formatted="false">"Analyzing link…"</string>
     <string name="ui_android_paused_saving_after_a_long_run_open_cablegram__736bf1" formatted="false">"Android paused saving after a long run. Open Cablegram and save again to continue."</string>
     <string name="ui_another_language_e901fd" formatted="false">"Another language"</string>
     <string name="ui_api_announce_failed_check_the_api_server_in_settings_576e6b" formatted="false">"API announce failed. Check the API server in Settings."</string>
@@ -86,7 +84,6 @@
     <string name="ui_bot_of_c8ea8f">"Bot %1$s of %2$s"</string>
     <string name="ui_bucket_name_800f2e" formatted="false">"Bucket name"</string>
     <string name="ui_cablegram_can_only_reach_the_files_it_creates_never_th_69bc5f" formatted="false">"Cablegram can only reach the files it creates, never the rest of your Drive."</string>
-    <string name="ui_cablegram_cannot_extract_video_from_this_site_yet_52c56b" formatted="false">"Cablegram cannot extract video from this site yet."</string>
     <string name="ui_cablegram_created_the_private_channel_in_your_telegram_12ed98">"Cablegram created the private channel \"%1$s\" in your Telegram, with the Cablegram logo."</string>
     <string name="ui_cablegram_finds_subtitles_through_your_own_free_accoun_811b7f" formatted="false">"Cablegram finds subtitles through your own free account at a subtitle site. One account is enough."</string>
     <string name="ui_cablegram_folder_updated_in_telegram_acc08b" formatted="false">"Cablegram folder updated in Telegram."</string>
@@ -192,7 +189,6 @@
     <string name="ui_controlling_2084c5" formatted="false">"CONTROLLING"</string>
     <string name="ui_copy_each_value_from_the_page_cloudflare_showed_you_sp_bb099b" formatted="false">"Copy each value from the page Cloudflare showed you. Spaces around them are ignored."</string>
     <string name="ui_copying_26b256">"Copying %1$s…"</string>
-    <string name="ui_could_not_add_that_link_f63312" formatted="false">"Could not add that link"</string>
     <string name="ui_could_not_connect_check_your_connection_and_try_the_tv_d77e1c" formatted="false">"Could not connect. Check your connection and try the TV code again."</string>
     <string name="ui_could_not_disconnect_storage_a23494" formatted="false">"Could not disconnect storage."</string>
     <string name="ui_could_not_finish_importing_the_file_is_no_longer_avail_63e50e">"Could not finish importing %1$s: the file is no longer available."</string>
@@ -416,7 +412,6 @@
     <string name="ui_likely_match_not_verified_3f4c43" formatted="false">"Likely match · not verified"</string>
     <string name="ui_likely_match_partly_checked_e71ab3" formatted="false">"Likely match · partly checked"</string>
     <string name="ui_line_it_up_on_your_tv_bedcd2" formatted="false">"Line it up on your TV"</string>
-    <string name="ui_link_saved_sign_in_to_finish_adding_it_72ef94" formatted="false">"Link saved. Sign in to finish adding it."</string>
     <string name="ui_listening_for_dialogue_15adbe" formatted="false">"Listening for dialogue…"</string>
     <string name="ui_listening_for_dialogue_of_c5b5bb">"Listening for dialogue… (%1$s of %2$s)"</string>
     <string name="ui_live_on_your_tv_from_what_it_loaded_tap_save_timing_wh_600c3a">"Live on your TV · %1$s from what it loaded. Tap Save timing when it matches."</string>
@@ -466,7 +461,6 @@
     <string name="ui_no_files_in_this_folder_38c9a3" formatted="false">"No files in this folder"</string>
     <string name="ui_no_longer_needs_the_password_9cb267">"%1$s no longer needs the password."</string>
     <string name="ui_no_play_freely_on_the_tv_ea1f0c" formatted="false">"No, play freely on the TV"</string>
-    <string name="ui_no_playable_video_was_found_at_that_link_f4972b" formatted="false">"No playable video was found at that link."</string>
     <string name="ui_no_subtitle_could_be_confirmed_against_your_video_revi_f74e63" formatted="false">"No subtitle could be confirmed against your video. Review the options below."</string>
     <string name="ui_no_subtitles_were_found_for_this_title_aa5d5c">"No %1$s subtitles were found for this title."</string>
     <string name="ui_no_subtitles_were_found_for_this_title_in_your_languag_d2a72f" formatted="false">"No subtitles were found for this title in your languages."</string>
@@ -541,7 +535,6 @@
     <string name="ui_paired_but_this_phone_has_no_wi_fi_address_yet_5134d1" formatted="false">"Paired, but this phone has no Wi‑Fi address yet."</string>
     <string name="ui_paired_tv_68fdc7" formatted="false">"Paired TV"</string>
     <string name="ui_password_e7cf3e" formatted="false">"Password"</string>
-    <string name="ui_paste_a_public_video_page_or_direct_video_url_cablegra_d37a61" formatted="false">"Paste a public video page or direct video URL. Cablegram will add its available title, description, and artwork."</string>
     <string name="ui_paste_code_682909" formatted="false">"Paste code"</string>
     <string name="ui_paste_key_b95819" formatted="false">"Paste key"</string>
     <string name="ui_paste_the_endpoint_address_cloudflare_showed_or_just_t_6ee22f" formatted="false">"Paste the Endpoint address Cloudflare showed, or just the 32-character account ID in it."</string>
@@ -558,7 +551,6 @@
     <string name="ui_pick_video_files_to_add_95b421" formatted="false">"Pick video files to add"</string>
     <string name="ui_pin_protected_d6dcf5" formatted="false">"PIN protected"</string>
     <string name="ui_play_436e61" formatted="false">"Play"</string>
-    <string name="ui_play_from_web_3bf8bf" formatted="false">"Play from Web"</string>
     <string name="ui_play_on_tv_and_adjust_there_43cf9e" formatted="false">"Play on TV and adjust there"</string>
     <string name="ui_play_on_tv_f47dcd" formatted="false">"Play on TV"</string>
     <string name="ui_play_to_a_line_near_the_start_tap_the_line_you_are_hea_1a15b0" formatted="false">"Play to a line near the start, tap the line you are hearing, then do the same near the end."</string>
@@ -808,9 +800,8 @@
     <string name="ui_that_code_expired_or_was_tried_too_often_ask_for_a_new_0aa93e" formatted="false">"That code expired or was tried too often. Ask for a new one."</string>
     <string name="ui_that_code_expired_scan_the_new_code_on_the_tv_or_type__1c6e7a" formatted="false">"That code expired. Scan the new code on the TV, or type the new PIN."</string>
     <string name="ui_that_code_isn_t_right_check_the_email_and_try_again_38ed4a" formatted="false">"That code isn\'t right. Check the email and try again."</string>
-    <string name="ui_that_is_not_a_supported_public_web_link_847418" formatted="false">"That is not a supported public web link."</string>
     <string name="ui_that_pack_does_not_identify_one_exact_episode_choose_a_deb1db" formatted="false">"That pack does not identify one exact episode. Choose another subtitle."</string>
-    <string name="ui_that_share_did_not_include_a_video_or_web_link_496fff" formatted="false">"That share did not include a video or web link."</string>
+    <string name="ui_that_share_did_not_include_a_video_or_web_link_496fff" formatted="false">"That share did not include a video."</string>
     <string name="ui_that_subtitle_file_is_damaged_or_in_the_wrong_language_711e0a" formatted="false">"That subtitle file is damaged or in the wrong language."</string>
     <string name="ui_that_took_too_long_start_again_8a44f3" formatted="false">"That took too long. Start again."</string>
     <string name="ui_the_account_owner_s_profile_can_t_be_deleted_2f8068" formatted="false">"The account owner\'s profile can\'t be deleted."</string>
@@ -917,7 +908,6 @@
     <string name="ui_video_frame_a4a3c5">"Video frame %1$s"</string>
     <string name="ui_video_frame_selected_0e54db" formatted="false">"Video frame selected"</string>
     <string name="ui_video_shift_ca726e">"Video %1$s · Shift %2$s"</string>
-    <string name="ui_video_url_f094b1" formatted="false">"Video URL"</string>
     <string name="ui_videos_added_3d5b7a" formatted="false">"Videos added"</string>
     <string name="ui_videos_added_cbf82e">"%1$s videos added"</string>
     <string name="ui_view_title_c9916d" formatted="false">"View title"</string>

@@ -31,15 +31,11 @@ class ShareReceiverActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val uri = shareUri()
-        val webUrl = if (uri == null) shareWebUrl() else null
         val name = uri?.let { displayName(it) } ?: "video.mp4"
         val caption = listOfNotNull(intent.getStringExtra(Intent.EXTRA_TEXT), intent.getStringExtra(Intent.EXTRA_SUBJECT))
             .firstOrNull { !isWeakCatalogLabel(it) }
-        if (savedInstanceState == null) {
-            when {
-                uri != null -> viewModel.importShared(uri, name, playNow = viewModel.paired, caption = caption)
-                webUrl != null -> viewModel.importWeb(webUrl, caption)
-            }
+        if (savedInstanceState == null && uri != null) {
+            viewModel.importShared(uri, name, playNow = viewModel.paired, caption = caption)
         }
         setContent {
             PhoneLanguage {
@@ -61,7 +57,6 @@ class ShareReceiverActivity : ComponentActivity() {
                             viewModel.status
                                 ?: when {
                                     uri != null -> ui.getString(R.string.ui_copying_26b256, name)
-                                    webUrl != null -> ui.getString(R.string.ui_analyzing_link_c9a741)
                                     else -> ui.getString(R.string.ui_that_share_did_not_include_a_video_or_web_link_496fff)
                                 },
                             style = MaterialTheme.typography.bodyMedium,
@@ -105,16 +100,6 @@ class ShareReceiverActivity : ComponentActivity() {
             intent.getParcelableExtra(Intent.EXTRA_STREAM)
         }
         return extra ?: intent.clipData?.getItemAt(0)?.uri
-    }
-
-    private fun shareWebUrl(): String? {
-        val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-        val urls = Regex("https?://[^\\s<>]+", RegexOption.IGNORE_CASE)
-            .findAll(text)
-            .map { it.value.trimEnd('.', ',', ')', ']', '}') }
-            .distinct()
-            .toList()
-        return urls.singleOrNull()
     }
 
     private fun displayName(uri: Uri): String {
