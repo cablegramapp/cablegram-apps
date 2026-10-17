@@ -42,11 +42,16 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         # Anything but a pull request (push to main, manual run) always runs the Android tests.
         run: |
-          if [ "$EVENT" != pull_request ] || git diff --name-only "$BASE_SHA" HEAD | grep -qE '^(apps/android-(phone|tv)/|scripts/release/|\.github/workflows/(ci|release)\.yml$)'; then
-            echo "android=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "android=false" >> "$GITHUB_OUTPUT"
+          android=true
+          if [ "$EVENT" = pull_request ]; then
+            # Capture first: diff errors must fail the job, and grep -q must not give git SIGPIPE
+            # on large PRs (under pipefail that could incorrectly skip the Android tests).
+            changed_files=$(git diff --name-only "$BASE_SHA" HEAD)
+            if ! grep -qE '^(apps/android-(phone|tv)/|scripts/release/|\.github/workflows/(ci|release)\.yml$)' <<< "$changed_files"; then
+              android=false
+            fi
           fi
+          echo "android=$android" >> "$GITHUB_OUTPUT"
 
   android:
     needs: changes
