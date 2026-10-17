@@ -63,7 +63,7 @@
     <string name="ui_add_1_file_0328b3" formatted="false">"اضافه کردن 1 فایل"</string>
     <string name="ui_add_a_subtitle_account_ba3be8" formatted="false">"Add a Subtitle account"</string>
     <string name="ui_add_files_6e3e20">"اضافه کردن فایل های %1$s"</string>
-    <string name="ui_add_folder_5bbfc5" formatted="false">"Add folder"</string>
+    <string name="ui_add_folder_5bbfc5" formatted="false">"افزودن پوشه"</string>
     <string name="ui_add_more_tvs_whenever_you_like_46dfbc" formatted="false">"تلویزیون های بیشتری را هر زمان که دوست دارید اضافه کنید."</string>
     <string name="ui_add_opensubtitles_too_a20dce" formatted="false">"اضافه کردن OpenSubtitles"</string>
     <string name="ui_add_or_reselect_folder_e5a07e" formatted="false">"Add or Reselect folder"</string>
@@ -184,7 +184,7 @@
     <string name="ui_cloud_storage_2ec3eb" formatted="false">"فضای ابری"</string>
     <string name="ui_cloud_storage_9644ab" formatted="false">"فضای ابری"</string>
     <string name="ui_cloud_storage_connected_fe282c" formatted="false">"Cloud Storage متصل"</string>
-    <string name="ui_cloud_telegram_798118" formatted="false">"Cloud · Telegram"</string>
+    <string name="ui_cloud_telegram_798118" formatted="false">"فضای ابری · Telegram"</string>
     <string name="ui_cloudflare_now_shows_an_access_key_id_a_secret_access__5639c8" formatted="false">"Cloudflare در حال حاضر یک شناسه کلید دسترسی، یک کلید دسترسی مخفی و یک نقطه پایانی را نشان می دهد. این راز فقط یک بار نشان داده می شود، بنابراین آن صفحه را باز نگه دارید."</string>
     <string name="ui_code_340f46" formatted="false">"کد"</string>
     <string name="ui_collection_name_922214" formatted="false">"نام سریال Collection"</string>
@@ -241,7 +241,6 @@
     <string name="ui_could_not_start_cloud_save_8b3f61" formatted="false">"نمی تواند شروع به ذخیره سازی ابری کند"</string>
     <string name="ui_could_not_sync_source_availability_863b58" formatted="false">"نمی تواند دسترسی به منبع را همگام سازی کند"</string>
     <string name="ui_could_not_update_the_language_check_your_connection_an_ce45e9" formatted="false">"نمی تواند زبان را به روز کند. ارتباط خود را بررسی کنید و دوباره امتحان کنید."</string>
-    <string name="ui_couldn_t_abc5d3">"نمی توان %1$s %2$s: %3$s"</string>
     <string name="ui_couldn_t_add_the_telegram_copy_to_your_library_try_sav_5406b8" formatted="false">"نمی توانید نسخه Telegram را به کتابخانه خود اضافه کنید. دوباره پس انداز کنید."</string>
     <string name="ui_couldn_t_be_added_android_limits_how_many_f88239">"%1$s %2$s نمی توان اضافه کرد: Android محدودیت های چند "</string>
     <string name="ui_couldn_t_change_that_setting_check_your_connection_and_8516e4" formatted="false">"نمی تواند این تنظیمات را تغییر دهد. ارتباط خود را بررسی کنید و دوباره امتحان کنید."</string>
@@ -351,7 +350,7 @@
     <string name="ui_finding_bots_in_cablegram_bot_hubs_6632c3" formatted="false">"پیدا کردن ربات ها در Cablegram Bot Hub"</string>
     <string name="ui_finish_signing_in_with_google_then_come_back_ecbd97" formatted="false">"ثبت نام در گوگل، سپس بازگشت."</string>
     <string name="ui_finished_importing_6d8eef">"واردات %1$s را متوقف کرد."</string>
-    <string name="ui_folder_74ccd4" formatted="false">"Folder"</string>
+    <string name="ui_folder_74ccd4" formatted="false">"پوشه"</string>
     <string name="ui_folder_access_could_not_be_saved_choose_the_folder_aga_68a028" formatted="false">"دسترسی به پوشه ها نمی تواند نجات یابد. دوباره پوشه را انتخاب کنید."</string>
     <string name="ui_folder_access_is_unavailable_choose_the_folder_again_2e4497" formatted="false">"دسترسی Folder در دسترس نیست. دوباره پوشه را انتخاب کنید."</string>
     <string name="ui_follow_phone_language_5b74c6" formatted="false">"استفاده از زبان تلفن"</string>
@@ -461,7 +460,7 @@
     <string name="ui_lock_account_on_tvs_011bbe" formatted="false">"حساب قفل در تلویزیون"</string>
     <string name="ui_login_code_95e717" formatted="false">"کد ورود"</string>
     <string name="ui_looking_at_your_video_15f7c9" formatted="false">"نگاهی به ویدیو شما ..."</string>
-    <string name="ui_looking_for_subtitles_81ebff">"به دنبال زیرنویس های %1$s ..."</string>
+    <string name="ui_looking_for_subtitles_81ebff">"در حال جست‌وجوی زیرنویس (%1$s)…"</string>
     <string name="ui_looking_for_tvs_8edf98" formatted="false">"به دنبال تلویزیون ..."</string>
     <string name="ui_made_for_your_big_screen_eb0ced" formatted="false">"ساخته شده برای صفحه نمایش بزرگ شما"</string>
     <string name="ui_make_cablegram_yours_13baae" formatted="false">"Cablegram خود را بسازید."</string>
@@ -542,10 +541,10 @@
     <string name="ui_open_in_telegram_700ad9">"باز \"%1$s\" در Telegram"</string>
     <string name="ui_open_it_in_telegram_b012d4" formatted="false">"آن را در Telegram باز کنید"</string>
     <string name="ui_open_library_24974a" formatted="false">"کتابخانه باز"</string>
-    <string name="ui_open_opensubtitles_api_page_9f649e" formatted="false">"Open OpenSubtitles API page"</string>
+    <string name="ui_open_opensubtitles_api_page_9f649e" formatted="false">"باز کردن صفحهٔ API در OpenSubtitles"</string>
     <string name="ui_open_r2_41969b" formatted="false">"باز R2"</string>
     <string name="ui_open_r2_cloudflare_asks_you_to_subscribe_to_r2_once_it_10d8f5" formatted="false">"باز R2 Cloudflare از شما می خواهد که یک بار R2 را به اشتراک بگذارید؛ شروع آن رایگان است و ممکن است درخواست کارت پرداخت داشته باشد."</string>
-    <string name="ui_open_subdl_api_page_61aa3f" formatted="false">"Open SubDL API page"</string>
+    <string name="ui_open_subdl_api_page_61aa3f" formatted="false">"باز کردن صفحهٔ API در SubDL"</string>
     <string name="ui_open_the_api_consumers_page_create_a_consumer_and_copy_864978" formatted="false">"صفحه مصرف کنندگان API را باز کنید، یک مصرف کننده ایجاد کنید و کلید API آن را کپی کنید."</string>
     <string name="ui_open_the_api_page_and_copy_your_api_key_3d48c9" formatted="false">"صفحه API را باز کنید و کلید API خود را کپی کنید."</string>
     <string name="ui_open_tv_with_cast_0dd4f2" formatted="false">"تلویزیون باز با کاست"</string>
@@ -588,7 +587,6 @@
     <string name="ui_phone_approval_required_112e8c" formatted="false">"مجوز تلفن مورد نیاز"</string>
     <string name="ui_phone_number_306f1b" formatted="false">"شماره تلفن"</string>
     <string name="ui_phone_space_cloud_copies_transfers_f4925b" formatted="false">"فضای تلفن، نسخه های ابری و انتقال"</string>
-    <string name="ui_phone_unpaired_one_tv_remaining_360447">"تلفن بدون وقفه یک تلویزیون باقی مانده است=%1$s"</string>
     <string name="ui_pick_a_title_on_your_phone_and_it_plays_on_the_tv_8e206a" formatted="false">"یک عنوان را بر روی تلفن خود انتخاب کنید و در تلویزیون بازی می کند."</string>
     <string name="ui_pick_video_files_to_add_95b421" formatted="false">"انتخاب فایل های ویدئویی برای اضافه کردن"</string>
     <string name="ui_pin_protected_d6dcf5" formatted="false">"PIN محافظت شده"</string>
@@ -685,10 +683,8 @@
     <string name="ui_save_titles_to_the_cloud_first_then_you_can_remove_the_a6c5d3" formatted="false">"ابتدا عناوین را به ابر ذخیره کنید. سپس می توانید نسخه های تلفن را حذف کنید."</string>
     <string name="ui_save_to_48c64f">"صرفه جویی در %1$s"</string>
     <string name="ui_save_to_cloud_0fd280" formatted="false">"ذخیره سازی Cloud"</string>
-    <string name="ui_save_to_cloud_screen_failed_48cdcd" formatted="false">"Save to Cloud Screen شکست خورد"</string>
     <string name="ui_save_to_household_f31fbf" formatted="false">"صرفه جویی در خانه"</string>
     <string name="ui_save_to_telegram_f6c595" formatted="false">"صرفه جویی در Telegram"</string>
-    <string name="ui_save_to_telegram_failed_a6512c">"نجات از Telegram شکست خورد: %1$s: %2$s"</string>
     <string name="ui_saved_in_the_cloud_dc46d5" formatted="false">"ذخیره شده در ابر"</string>
     <string name="ui_saved_it_will_be_used_on_your_tv_96182e" formatted="false">"نجات داده شده در تلویزیون شما استفاده خواهد شد."</string>
     <string name="ui_saved_to_cloud_694e20" formatted="false">"ذخیره شده به Cloud"</string>
@@ -857,7 +853,7 @@
     <string name="ui_the_cover_will_be_removed_from_your_household_on_the_n_135e1a" formatted="false">"این پوشش از خانه شما در همگام سازی بعدی حذف خواهد شد."</string>
     <string name="ui_the_cover_will_be_saved_to_your_household_on_the_next__87cda3" formatted="false">"این پوشش برای خانواده شما در همگام سازی بعدی ذخیره خواهد شد"</string>
     <string name="ui_the_name_you_gave_the_bucket_2ae9c0" formatted="false">"نامی که به سطل داده اید."</string>
-    <string name="ui_the_profile_31580c" formatted="false">"مشخصات"</string>
+    <string name="ui_the_profile_31580c" formatted="false">"نمایه"</string>
     <string name="ui_the_relay_is_used_when_your_tv_can_t_reach_this_phone__b14902">"این دستگاه زمانی مورد استفاده قرار می گیرد که تلویزیون شما نمی تواند به این گوشی در Wi‑Fi %1$s برسد."</string>
     <string name="ui_the_request_was_not_accepted_refresh_and_try_again_35aa7e" formatted="false">"درخواست پذیرفته نشد. بازسازی و دوباره تلاش کنید"</string>
     <string name="ui_the_sign_in_expired_start_again_683df5" formatted="false">"امضایی که منقضی شده است دوباره شروع کنید."</string>
@@ -915,7 +911,7 @@
     <string name="ui_transfers_privacy_af4a2f" formatted="false">"انتقال و حریم خصوصی"</string>
     <string name="ui_transfers_wait_for_wi_fi_bdb4ad" formatted="false">"انتقال منتظر برای Wi‑Fi..."</string>
     <string name="ui_transfers_wait_until_this_phone_is_charging_be1621" formatted="false">"انتقال صبر می کند تا این تلفن شارژ شود."</string>
-    <string name="ui_try_again_5b5ded" formatted="false">"تلاش دوباره"</string>
+    <string name="ui_try_again_5b5ded" formatted="false">"دوباره امتحان کنید"</string>
     <string name="ui_try_again_d8b839" formatted="false">"تلاش دوباره"</string>
     <string name="ui_try_another_title_or_clear_your_filters_to_see_the_who_ab222f" formatted="false">"یک عنوان دیگر را امتحان کنید یا فیلترهای خود را روشن کنید تا کل کتابخانه را ببینید."</string>
     <string name="ui_tunnel_url_optional_b31277" formatted="false">"URL تونل (اختیاری)"</string>
@@ -1023,4 +1019,10 @@
     <string name="ui_your_videos_stay_in_storage_you_own_cablegram_doesn_t__0ccf72" formatted="false">"فیلم های شما در ذخیره سازی شما باقی می مانند. Cablegram فیلم ارائه نمی دهد."</string>
     <string name="ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144" formatted="false">"فیلم های شما در ذخیره سازی خود باقی می مانند. Cablegram کتابخانه خود را سازماندهی و آماده برای تلویزیون خود نگه می دارد."</string>
     <string name="ui_your_videos_your_big_screen_b7a07b" formatted="false">"فیلم های شما\nصفحه نمایش بزرگ شما"</string>
+    <string name="ui_couldnt_allow_profile">"اجازه به %1$s ممکن نشد: %2$s."</string>
+    <string name="ui_couldnt_deny_profile">"رد %1$s ممکن نشد: %2$s."</string>
+    <string name="ui_couldnt_allow_playback">"اجازهٔ پخش ممکن نشد: %1$s."</string>
+    <string name="ui_couldnt_deny_playback">"رد پخش ممکن نشد: %1$s."</string>
+    <string name="ui_about_1_minute" formatted="false">"حدود ۱ دقیقه"</string>
+    <string name="ui_other_language" formatted="false">"زبان دیگر"</string>
 </resources>

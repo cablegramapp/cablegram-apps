@@ -1,11 +1,17 @@
 package app.cablegram.phone
 
+import androidx.test.core.app.ApplicationProvider
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
 class LibraryLogicTest {
+    private val res = ApplicationProvider.getApplicationContext<android.content.Context>().resources
+
     @Test fun `imported videos are ready without mandatory artwork editing`() {
         assertEquals(ImportMetadataAction.Ready, importMetadataAction(item(title = "38", filename = "38.mp4")))
         assertEquals(ImportMetadataAction.Ready, importMetadataAction(item(title = "a1b2c3d4e5f6", filename = "a1b2c3d4e5f6.mp4")))
@@ -42,7 +48,7 @@ class LibraryLogicTest {
         val unavailable = item().copy(sourceAvailable = false)
         assertEquals(listOf(unavailable), movies(listOf(unavailable)))
         assertEquals(StorageBadge.Unavailable, storageBadge(unavailable))
-        assertEquals("Source unavailable · Title kept in library", storageStatusLine(unavailable))
+        assertEquals("Source unavailable · Title kept in library", storageStatusLine(unavailable, resources = res))
         assertEquals(StorageBadge.Cloud, storageBadge(unavailable.copy(cloudObjectPresent = true)))
         assertEquals(StorageBadge.Local, storageBadge(unavailable.copy(sourceAvailable = true)))
         assertEquals(StorageBadge.NotOnPhone, storageBadge(unavailable.copy(householdOnly = true)))
@@ -198,10 +204,10 @@ class LibraryLogicTest {
         val saving = item(title = "Saving", status = TRANSFER_SAVING)
         val both = item(copied = true, cloud = true)
         val failed = item(title = "Fail", status = TRANSFER_FAILED)
-        assertEquals("On phone", storageStatusLine(local))
-        assertEquals("On phone · Saving…", storageStatusLine(saving))
-        assertEquals("Available on phone & cloud", storageStatusLine(both))
-        assertEquals("Cloud save failed · Open to retry", storageStatusLine(failed))
+        assertEquals("On phone", storageStatusLine(local, resources = res))
+        assertEquals("On phone · Saving…", storageStatusLine(saving, resources = res))
+        assertEquals("Available on phone & cloud", storageStatusLine(both, resources = res))
+        assertEquals("Cloud save failed · Open to retry", storageStatusLine(failed, resources = res))
         assertTrue(canSaveToCloud(local))
         assertFalse(canSaveToCloud(saving))
     }

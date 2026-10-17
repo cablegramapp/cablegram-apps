@@ -241,7 +241,6 @@
     <string name="ui_try_again_d8b839" formatted="false">"Попробовать ещё раз"</string>
     <string name="ui_tuning_2abeef" formatted="false">"тюнинг"</string>
     <string name="ui_tv_keyboard_0fb61f" formatted="false">"Телевизионная клавиатура"</string>
-    <string name="ui_tv_pairing_expired_410_new_pin_ff7100" formatted="false">"Срок действия ТВ-пар истек (410), новый PIN-код"</string>
     <string name="ui_tv_session_dca893" formatted="false">"Телевизионная сессия"</string>
     <string name="ui_tv_shows_6adcc6" formatted="false">"Сериалы"</string>
     <string name="ui_type_on_your_phone_a4ef92" formatted="false">"Тип на вашем телефоне"</string>

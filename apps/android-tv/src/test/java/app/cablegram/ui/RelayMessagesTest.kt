@@ -1,10 +1,16 @@
 package app.cablegram.ui
 
+import androidx.test.core.app.ApplicationProvider
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
 class RelayMessagesTest {
+    private val res = ApplicationProvider.getApplicationContext<android.content.Context>().resources
+
     @Test fun `relay URLs are recognised and announced`() {
         assertTrue(isRelayUrl("https://api.cablegram.app/relay/v1/p/abc/media/x?token=t&rt=r"))
         assertTrue(!isRelayUrl("http://192.168.1.4:8765/media/x?token=t"))
@@ -58,6 +64,6 @@ class RelayMessagesTest {
         assertTrue(transportNoticeFor(viaRelay).contains("relay"))
         assertTrue(stallSwitchSeconds(own) > stallSwitchSeconds(viaPhone))
         assertTrue(lostSourceMessage(own).contains("Telegram"))
-        assertTrue(transitionTo(viaPhone).title.contains("phone") && transitionTo(own).title.contains("Telegram"))
+        assertTrue(transitionTo(viaPhone, resources = res).title.contains("phone") && transitionTo(own, resources = res).title.contains("Telegram"))
     }
 }

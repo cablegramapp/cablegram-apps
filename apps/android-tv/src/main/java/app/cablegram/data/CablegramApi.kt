@@ -333,7 +333,10 @@ class CablegramApi(
     }
 
     /** A cheap authenticated call: fails with 401 once this TV's session is revoked or its account deleted (CAB-37). */
-    suspend fun checkSession(token: String) = executeNoContent(authenticatedRequest("api/me", token).get().build())
+    /** Throws on a rejected session; returns each profile's effective UI language (null from servers before languages). */
+    suspend fun checkSession(token: String): Map<String, String>? =
+        execute<MeSessionDto>(authenticatedRequest("api/me", token).get().build())
+            .profileLanguages?.associate { it.id to it.uiLanguage }
 
     /** CAB-67: minutes an approved profile of this account stays open without use on a shared TV (default 240). */
     suspend fun sharedTvIdleMinutes(token: String): Int =
@@ -1038,6 +1041,17 @@ private data class CatalogProgressDto(
 
 @Serializable
 private data class MeDto(val devices: List<DeviceHintDto> = emptyList())
+
+@Serializable
+private data class MeSessionDto(
+    @kotlinx.serialization.SerialName("profile_languages") val profileLanguages: List<ProfileLanguageDto>? = null,
+)
+
+@Serializable
+private data class ProfileLanguageDto(
+    val id: String,
+    @kotlinx.serialization.SerialName("ui_language") val uiLanguage: String = "en",
+)
 
 @Serializable
 private data class MeHouseholdDto(val household: HouseholdSettingsDto? = null)

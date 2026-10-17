@@ -19,6 +19,15 @@ class UiLanguageTest {
         }
     }
 
+    @Test fun `reported tag keeps the region of the shown language and unsupported first choices`() {
+        val supported = setOf("en", "de", "ar", "fa", "ru", "es", "it")
+        assertEquals("de-AT", phoneLanguageTag(listOf("de-AT", "en-US"), supported))
+        assertEquals("de-DE", phoneLanguageTag(listOf("ja-JP", "de-DE"), supported))
+        assertEquals("fr-FR", phoneLanguageTag(listOf("fr-FR"), supported))
+        assertEquals("en", phoneLanguageTag(emptyList(), supported))
+        assertEquals("en", phoneLanguageTag(listOf("und"), supported))
+    }
+
     @Test fun `profile override and inheritance use separate authenticated updates`() = runBlocking {
         MockWebServer().use { server ->
             server.start()

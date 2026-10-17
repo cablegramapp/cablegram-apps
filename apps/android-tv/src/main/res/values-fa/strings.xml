@@ -241,12 +241,11 @@
     <string name="ui_try_again_d8b839" formatted="false">"تلاش دوباره"</string>
     <string name="ui_tuning_2abeef" formatted="false">"تونسی"</string>
     <string name="ui_tv_keyboard_0fb61f" formatted="false">"صفحه کلید تلویزیون"</string>
-    <string name="ui_tv_pairing_expired_410_new_pin_ff7100" formatted="false">"جفت بندی تلویزیونی منقضی شده (410)، PIN جدید"</string>
     <string name="ui_tv_session_dca893" formatted="false">"جلسه تلویزیونی"</string>
     <string name="ui_tv_shows_6adcc6" formatted="false">"سریال‌ها"</string>
     <string name="ui_type_on_your_phone_a4ef92" formatted="false">"نوع تلفن شما"</string>
     <string name="ui_type_with_the_tv_keyboard_b12dad" formatted="false">"نوع صفحه کلید تلویزیون"</string>
-    <string name="ui_unpair_10be2f" formatted="false">"Unpair"</string>
+    <string name="ui_unpair_10be2f" formatted="false">"لغو جفت‌سازی"</string>
     <string name="ui_unpair_this_tv_c7796b" formatted="false">"این تلویزیون را خاموش کنید"</string>
     <string name="ui_unpair_this_tv_d99d68" formatted="false">"این تلویزیون را خراب کنید؟"</string>
     <string name="ui_unpair_tv_fbd044" formatted="false">"تلویزیون بدون وقفه"</string>

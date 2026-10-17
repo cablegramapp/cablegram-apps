@@ -211,7 +211,7 @@ class CloudTransferService : Service() {
         val bits = listOf(
             ui.getString(R.string.ui_message_f1c1f8, formatBytes(copied), formatBytes(if (total > 0) total else copied)),
             formatRate(bytesPerSec),
-            etaLabel(remaining, bytesPerSec),
+            etaLabel(remaining, bytesPerSec, ui),
         ).filter { it.isNotBlank() }
         return builder()
             .setContentTitle(ui.getString(R.string.ui_saving_to_a516ef, destination))

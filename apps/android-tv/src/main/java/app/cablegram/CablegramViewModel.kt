@@ -114,12 +114,20 @@ class CablegramViewModel @JvmOverloads constructor(
     application: Application,
     private val signatureUrl: () -> String = ::getRandomLoadingVideoUrl,
 ) : AndroidViewModel(application) {
+    private val supportedLanguages: Set<String> by lazy {
+        getApplication<Application>().resources.getStringArray(R.array.ui_languages).toSet()
+    }
+    /** One configuration context per language; TvTelegram also reads it from background threads. */
+    @Volatile private var uiCache: Pair<String, android.content.res.Resources>? = null
+
     private fun uiResources(): android.content.res.Resources {
+        val language = uiLanguage
+        uiCache?.let { (cached, resources) -> if (cached == language) return resources }
         val app = getApplication<Application>()
         val configuration = android.content.res.Configuration(app.resources.configuration).apply {
-            setLocales(android.os.LocaleList.forLanguageTags(uiLanguage))
+            setLocales(android.os.LocaleList.forLanguageTags(language))
         }
-        return app.createConfigurationContext(configuration).resources
+        return app.createConfigurationContext(configuration).resources.also { uiCache = language to it }
     }
 
     private fun uiText(id: Int, vararg args: Any?): String = uiResources().getString(id, *args)
@@ -127,7 +135,7 @@ class CablegramViewModel @JvmOverloads constructor(
     private val authStore = AuthStore(application)
     /** Spec 004: this TV's Telegram session, approved by the household phone. */
     val telegram = TvTelegram(application, api, onLibraryChanged = { refreshLibrary() },
-        resources = { runCatching { uiResources() }.getOrNull() })
+        resources = { runCatching { uiResources() }.getOrElse { application.resources } })
 
     /** A phone just paired this TV: the library opens with a one-time "This TV is connected" card. */
     var connectedWelcome by mutableStateOf(false)
@@ -355,8 +363,7 @@ class CablegramViewModel @JvmOverloads constructor(
                 screen is ScreenState.Loading || screen is ScreenState.SessionActions
             val selected = if (beforeSelection) null else profiles.firstOrNull { it.id == activeProfileId }
             return app.cablegram.ui.tvUiLanguage(
-                profiles.map { it.uiLanguage }, selected?.uiLanguage,
-                getApplication<Application>().resources.getStringArray(R.array.ui_languages).toSet(),
+                profiles.map { it.uiLanguage }, selected?.uiLanguage, supportedLanguages,
             )
         }
 
@@ -1259,7 +1266,7 @@ class CablegramViewModel @JvmOverloads constructor(
                 throw error
             } catch (error: ApiException) {
                 if (error.statusCode == 410) {
-                    PairLog.w(uiText(R.string.ui_tv_pairing_expired_410_new_pin_ff7100))
+                    PairLog.w("TV pairing expired (410), new PIN")
                     createPairingSession()
                     return
                 }
@@ -1694,16 +1701,15 @@ class CablegramViewModel @JvmOverloads constructor(
     private suspend fun checkSessions() {
         if (isDemoMode) return
         for (account in authStore.getAccounts()) {
-            val failure = runCatching { api.checkSession(account.token) }.exceptionOrNull()
+            val check = runCatching { api.checkSession(account.token) }
+            val failure = check.exceptionOrNull()
             if (failure is CancellationException) throw failure
             // Offline, 5xx or 503 revocation_check_unavailable: not a verdict, so the TV stays as it is.
             if (failure?.isUnauthorized() == true) onAccountRejected(account)
-            if (failure == null && profiles.isNotEmpty()) {
-                // Language can change on the phone while the picker or player is already open.
-                // Keep selection, PIN prompts and playback intact; update only known profiles.
-                val latest = runCatching { api.getProfiles(account.token).profiles }
-                    .onFailure { if (it is CancellationException) throw it }.getOrNull()
-                val languages = latest?.associate { it.id to it.uiLanguage }.orEmpty()
+            // Language can change on the phone while the picker or player is already open.
+            // Keep selection, PIN prompts and playback intact; update only known profiles.
+            val languages = check.getOrNull()
+            if (!languages.isNullOrEmpty()) {
                 profiles = profiles.map { profile ->
                     languages[profile.id]?.let { profile.copy(uiLanguage = it) } ?: profile
                 }

@@ -1,5 +1,8 @@
 package app.cablegram.phone
 
+import androidx.test.core.app.ApplicationProvider
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -7,7 +10,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
 class StorageProvidersTest {
+    private val res = ApplicationProvider.getApplicationContext<android.content.Context>().resources
+
     private val drive = StorageProviderInfo("google_drive", "Google Drive", "oauth", true)
     private val r2 = StorageProviderInfo("cloudflare_r2", "Cloudflare R2", "keys", true)
 
@@ -25,19 +31,19 @@ class StorageProvidersTest {
     // ---- the provider list ----
 
     @Test fun `with nothing connected both configured providers are offered, in the server's order`() {
-        val rows = providerRows(status())
+        val rows = providerRows(status(), resources = res)
         assertEquals(listOf("google_drive", "cloudflare_r2"), rows.map { it.id })
         assertTrue(rows.all { it.state == ProviderState.Available && it.note == null })
         assertEquals("Sign in with Google", rows[0].summary)
         assertEquals("about 1 minute", rows[0].duration)
         assertEquals("Use your own bucket and keys", rows[1].summary)
         assertTrue(rows[1].duration.contains("advanced users"))
-        assertEquals(listOf("cloudflare_r2", "google_drive"), providerRows(status(providers = listOf(r2, drive))).map { it.id })
+        assertEquals(listOf("cloudflare_r2", "google_drive"), providerRows(status(providers = listOf(r2, drive)), resources = res).map { it.id })
     }
 
     @Test fun `a provider the server is not set up for is not listed`() {
-        assertEquals(listOf("cloudflare_r2"), providerRows(status(providers = listOf(drive.copy(configured = false), r2))).map { it.id })
-        assertTrue(providerRows(status(providers = listOf(drive.copy(configured = false), r2.copy(configured = false)))).isEmpty())
+        assertEquals(listOf("cloudflare_r2"), providerRows(status(providers = listOf(drive.copy(configured = false), r2)), resources = res).map { it.id })
+        assertTrue(providerRows(status(providers = listOf(drive.copy(configured = false), r2.copy(configured = false))), resources = res).isEmpty())
         assertFalse(hasOwnStorageProvider(status(providers = emptyList())))
         assertFalse(hasOwnStorageProvider(null))
         assertTrue(hasOwnStorageProvider(status()))
@@ -45,61 +51,61 @@ class StorageProvidersTest {
 
     @Test fun `a provider this build does not know is left out, not shown broken`() {
         val dropbox = StorageProviderInfo("dropbox", "Dropbox", "oauth", true)
-        assertEquals(listOf("google_drive"), providerRows(status(providers = listOf(drive, dropbox))).map { it.id })
+        assertEquals(listOf("google_drive"), providerRows(status(providers = listOf(drive, dropbox)), resources = res).map { it.id })
     }
 
     @Test fun `while one is connected it is marked and the others are turned off with a reason`() {
-        val rows = providerRows(status(connection = driveActive))
+        val rows = providerRows(status(connection = driveActive), resources = res)
         assertEquals(ProviderState.Connected, rows.first { it.id == "google_drive" }.state)
         val r2Row = rows.first { it.id == "cloudflare_r2" }
         assertEquals(ProviderState.Locked, r2Row.state)
         assertEquals("Disconnect Google Drive to switch", r2Row.note)
-        val other = providerRows(status(connection = StorageConnection(provider = "cloudflare_r2", status = "active")))
+        val other = providerRows(status(connection = StorageConnection(provider = "cloudflare_r2", status = "active")), resources = res)
         assertEquals("Disconnect Cloudflare R2 to switch", other.first { it.id == "google_drive" }.note)
     }
 
     @Test fun `a connection that needs signing in again is marked on its own row and nothing is locked`() {
         val broken = driveActive.copy(status = "error", lastError = "reauthorization_required", quota = null)
-        val rows = providerRows(status(connection = null, connections = listOf(broken)))
+        val rows = providerRows(status(connection = null, connections = listOf(broken)), resources = res)
         assertEquals(ProviderState.NeedsSignIn, rows.first { it.id == "google_drive" }.state)
         assertEquals("Sign in again to keep using it", rows.first { it.id == "google_drive" }.note)
         assertEquals(ProviderState.Available, rows.first { it.id == "cloudflare_r2" }.state)
     }
 
     @Test fun `no status yet lists nothing`() {
-        assertTrue(providerRows(null).isEmpty())
+        assertTrue(providerRows(null, resources = res).isEmpty())
     }
 
     // ---- the connected card ----
 
     @Test fun `the connected card shows the account and the free space`() {
-        assertEquals("Google Drive · me@gmail.com · 12.5 GB free", connectedSummary(driveActive))
+        assertEquals("Google Drive · me@gmail.com · 12.5 GB free", connectedSummary(driveActive, resources = res))
         assertEquals(13_421_772_800L, freeSpace(driveActive.quota))
     }
 
     @Test fun `a provider with no reported limit shows no free space`() {
         val r2Active = StorageConnection(provider = "cloudflare_r2", status = "active", displayLabel = "R2 · my-movies", quota = StorageQuota(5, null))
-        assertEquals("R2 · my-movies", connectedSummary(r2Active))
+        assertEquals("R2 · my-movies", connectedSummary(r2Active, resources = res))
         assertNull(freeSpace(null))
         assertNull(freeSpace(StorageQuota(10, null)))
         assertEquals(0L, freeSpace(StorageQuota(20, 10)))
-        assertEquals("Google Drive", connectedSummary(StorageConnection(provider = "google_drive", status = "active"), status()))
+        assertEquals("Google Drive", connectedSummary(StorageConnection(provider = "google_drive", status = "active"), status(), resources = res))
     }
 
     // ---- the words on the save sheets ----
 
     @Test fun `save sheets name the destination`() {
-        assertEquals("your own storage", saveDestination(status()))
-        assertEquals("your own storage", saveDestination(null))
-        assertEquals("Google Drive", saveDestination(status(connection = driveActive)))
-        assertEquals("Cloudflare R2", saveDestination(status(connection = StorageConnection(provider = "cloudflare_r2", status = "active"))))
-        assertEquals("your own storage", saveDestination(status(connection = null, connections = listOf(driveActive.copy(status = "error")))))
+        assertEquals("your own storage", saveDestination(status(), resources = res))
+        assertEquals("your own storage", saveDestination(null, resources = res))
+        assertEquals("Google Drive", saveDestination(status(connection = driveActive), resources = res))
+        assertEquals("Cloudflare R2", saveDestination(status(connection = StorageConnection(provider = "cloudflare_r2", status = "active")), resources = res))
+        assertEquals("your own storage", saveDestination(status(connection = null, connections = listOf(driveActive.copy(status = "error"))), resources = res))
     }
 
     @Test fun `the space line is the provider's free space, not an absurd cloud figure`() {
-        assertEquals("12.5 GB free", destinationSpaceLine(status(connection = driveActive), cablegramAvailable = Long.MAX_VALUE / 4))
-        assertEquals("In your own storage", destinationSpaceLine(status(connection = StorageConnection(provider = "cloudflare_r2", status = "active")), Long.MAX_VALUE / 4))
-        assertEquals("5.0 GB available", destinationSpaceLine(status(), 5L * 1024 * 1024 * 1024))
+        assertEquals("12.5 GB free", destinationSpaceLine(status(connection = driveActive), cablegramAvailable = Long.MAX_VALUE / 4, resources = res))
+        assertEquals("In your own storage", destinationSpaceLine(status(connection = StorageConnection(provider = "cloudflare_r2", status = "active")), Long.MAX_VALUE / 4, resources = res))
+        assertEquals("5.0 GB available", destinationSpaceLine(status(), 5L * 1024 * 1024 * 1024, resources = res))
     }
 
     // ---- the link back from the sign-in ----
@@ -118,7 +124,7 @@ class StorageProvidersTest {
     }
 
     @Test fun `every result has its own message and none repeats what the link said`() {
-        fun msg(result: String) = storageReturnMessage(StorageReturn("google_drive", result), status())
+        fun msg(result: String) = storageReturnMessage(StorageReturn("google_drive", result), status(), resources = res)
         assertEquals("Connected to Google Drive.", msg("connected"))
         assertTrue(msg("denied").startsWith("Not connected"))
         assertTrue(msg("scope_missing").contains("access wasn't granted"))
@@ -132,17 +138,17 @@ class StorageProvidersTest {
     }
 
     @Test fun `a sign-in that could not start says why in words`() {
-        assertEquals("Google Drive isn't set up on this server.", googleStartMessage("provider_not_configured"))
-        assertTrue(googleStartMessage("storage_already_connected").contains("already connected"))
-        assertTrue(googleStartMessage("offline").contains("connection"))
-        assertEquals("Couldn't start the Google sign-in.", googleStartMessage("http_500"))
+        assertEquals("Google Drive isn't set up on this server.", googleStartMessage("provider_not_configured", resources = res))
+        assertTrue(googleStartMessage("storage_already_connected", resources = res).contains("already connected"))
+        assertTrue(googleStartMessage("offline", resources = res).contains("connection"))
+        assertEquals("Couldn't start the Google sign-in.", googleStartMessage("http_500", resources = res))
     }
 
     @Test fun `disconnecting says where the files stay`() {
-        assertEquals("Google Drive disconnected. Your files stay in your Drive.", disconnectMessage("google_drive"))
-        assertTrue(disconnectMessage("cloudflare_r2").contains("bucket"))
-        assertTrue(disconnectMessage("cloudflare_r2").contains("Cloudflare"))
-        assertFalse(disconnectMessage("google_drive").contains("Cloudflare"))
+        assertEquals("Google Drive disconnected. Your files stay in your Drive.", disconnectMessage("google_drive", resources = res))
+        assertTrue(disconnectMessage("cloudflare_r2", resources = res).contains("bucket"))
+        assertTrue(disconnectMessage("cloudflare_r2", resources = res).contains("Cloudflare"))
+        assertFalse(disconnectMessage("google_drive", resources = res).contains("Cloudflare"))
     }
 
     // ---- what the server sends ----
@@ -157,9 +163,9 @@ class StorageProvidersTest {
         )
         assertEquals("me@gmail.com", parsed.connection?.accountLabel)
         assertEquals(16_106_127_360L, parsed.connection?.quota?.limitBytes)
-        assertEquals(listOf("google_drive"), providerRows(parsed.copy(connection = null)).map { it.id })
+        assertEquals(listOf("google_drive"), providerRows(parsed.copy(connection = null), resources = res).map { it.id })
         val old = json.decodeFromString<StorageStatusResponse>("""{"configured":true,"connection":null,"connections":[]}""")
-        assertTrue(providerRows(old).isEmpty())
+        assertTrue(providerRows(old, resources = res).isEmpty())
     }
 
     // ---- reading a copy back ----
@@ -248,7 +254,7 @@ class StorageProvidersTest {
     }
 
     @Test fun `before Google opens the app says which box to tick, and that nothing else of the Drive is reached`() {
-        val note = googleSignInPreparation()
+        val note = googleSignInPreparation(resources = res)
         assertTrue(note.contains(DRIVE_PERMISSION_TEXT))
         assertTrue(note.contains("Tick it"))
         assertTrue(note.contains("never the rest of your Drive"))

@@ -14,14 +14,21 @@ import java.util.Locale
 internal fun phoneUiLanguage(preferredTags: List<String>, supported: Set<String>): String =
     preferredTags.map { Locale.forLanguageTag(it).language }.firstOrNull { it in supported } ?: "en"
 
+/**
+ * The tag reported to the server: the device preference this app shows, with its region kept, or the
+ * first preference when none is bundled, so TVs that ship more translations than this phone can use it.
+ */
+internal fun phoneLanguageTag(preferredTags: List<String>, supported: Set<String>): String =
+    preferredTags.firstOrNull { Locale.forLanguageTag(it).language in supported }
+        ?: preferredTags.firstOrNull { Locale.forLanguageTag(it).language.isNotEmpty() }
+        ?: "en"
+
+internal fun Configuration.languageTags(): List<String> = (0 until locales.size()).map { locales[it].toLanguageTag() }
+
 /** Background notifications use the same language selection as the foreground app. */
 internal fun android.content.Context.deviceLanguageResources(): android.content.res.Resources {
     val current = resources.configuration
-    val locales = current.locales
-    val language = phoneUiLanguage(
-        (0 until locales.size()).map { locales[it].toLanguageTag() },
-        resources.getStringArray(R.array.ui_languages).toSet(),
-    )
+    val language = phoneUiLanguage(current.languageTags(), resources.getStringArray(R.array.ui_languages).toSet())
     val configuration = Configuration(current).apply { setLocales(LocaleList.forLanguageTags(language)) }
     return createConfigurationContext(configuration).resources
 }
@@ -31,8 +38,7 @@ internal fun PhoneLanguage(content: @Composable () -> Unit) {
     val base = LocalContext.current
     val deviceConfiguration = LocalConfiguration.current
     val supported = base.resources.getStringArray(R.array.ui_languages).toSet()
-    val locales = deviceConfiguration.locales
-    val language = phoneUiLanguage((0 until locales.size()).map { locales[it].toLanguageTag() }, supported)
+    val language = phoneUiLanguage(deviceConfiguration.languageTags(), supported)
     val configuration = remember(deviceConfiguration, language) {
         Configuration(deviceConfiguration).apply { setLocales(LocaleList.forLanguageTags(language)) }
     }

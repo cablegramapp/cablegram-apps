@@ -1,5 +1,8 @@
 package app.cablegram.phone
 
+import androidx.test.core.app.ApplicationProvider
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -10,7 +13,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
 class SignInControllerTest {
+    private val res = ApplicationProvider.getApplicationContext<android.content.Context>().resources
+
     private lateinit var server: MockWebServer
     private val signedIn = mutableListOf<PhonePairResponse>()
 
@@ -28,6 +34,7 @@ class SignInControllerTest {
     private fun controller() = SignInController(
         client = { CatalogClient(server.url("/").toString(), null) },
         signedIn = { signedIn += it },
+        resources = { res },
     )
 
     private fun json(status: Int, body: String) = MockResponse().setResponseCode(status).setBody(body)

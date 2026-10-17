@@ -118,6 +118,8 @@ paths:
             open and takes remote commands (an open command socket, or a command poll in the last 15 s). A phone sends
             "Play on TV" to the TV that is on when the selected one isn't and exactly one other is; older control
             planes omit the field.
+            `profile_languages` lists each household profile's effective `ui_language` (`[{id, ui_language}]`); TVs
+            read it during their session check. Control planes before migration 046 omit it.
   /api/account/delete:
     post:
       summary: Phone deletes the signed-in account and all its data (Google Play account deletion)

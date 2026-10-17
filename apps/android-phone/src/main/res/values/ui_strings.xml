@@ -207,7 +207,6 @@
     <string name="ui_could_not_start_cloud_save_8b3f61" formatted="false">"Could not start cloud save"</string>
     <string name="ui_could_not_sync_source_availability_863b58" formatted="false">"Could not sync source availability"</string>
     <string name="ui_could_not_update_the_language_check_your_connection_an_ce45e9" formatted="false">"Could not update the language. Check your connection and try again."</string>
-    <string name="ui_couldn_t_abc5d3">"Couldn\'t %1$s %2$s: %3$s."</string>
     <string name="ui_couldn_t_add_the_telegram_copy_to_your_library_try_sav_5406b8" formatted="false">"Couldn\'t add the Telegram copy to your library. Try saving again."</string>
     <string name="ui_couldn_t_be_added_android_limits_how_many_f88239">"%1$s %2$s couldn\'t be added: Android limits how many "</string>
     <string name="ui_couldn_t_change_that_setting_check_your_connection_and_8516e4" formatted="false">"Couldn\'t change that setting. Check your connection and try again."</string>
@@ -427,7 +426,7 @@
     <string name="ui_lock_account_on_tvs_011bbe" formatted="false">"Lock account on TVs"</string>
     <string name="ui_login_code_95e717" formatted="false">"Login code"</string>
     <string name="ui_looking_at_your_video_15f7c9" formatted="false">"Looking at your video…"</string>
-    <string name="ui_looking_for_subtitles_81ebff">"Looking for %1$s subtitles…"</string>
+    <string name="ui_looking_for_subtitles_81ebff">"Looking for subtitles (%1$s)…"</string>
     <string name="ui_looking_for_tvs_8edf98" formatted="false">"Looking for TVs…"</string>
     <string name="ui_made_for_your_big_screen_eb0ced" formatted="false">"Made for your big screen"</string>
     <string name="ui_make_cablegram_yours_13baae" formatted="false">"Make Cablegram yours."</string>
@@ -554,7 +553,6 @@
     <string name="ui_phone_approval_required_112e8c" formatted="false">"Phone approval required"</string>
     <string name="ui_phone_number_306f1b" formatted="false">"Phone number"</string>
     <string name="ui_phone_space_cloud_copies_transfers_f4925b" formatted="false">"Phone space, cloud copies &amp; transfers"</string>
-    <string name="ui_phone_unpaired_one_tv_remaining_360447">"Phone unpaired one TV remaining=%1$s"</string>
     <string name="ui_pick_a_title_on_your_phone_and_it_plays_on_the_tv_8e206a" formatted="false">"Pick a title on your phone and it plays on the TV."</string>
     <string name="ui_pick_video_files_to_add_95b421" formatted="false">"Pick video files to add"</string>
     <string name="ui_pin_protected_d6dcf5" formatted="false">"PIN protected"</string>
@@ -651,10 +649,8 @@
     <string name="ui_save_titles_to_the_cloud_first_then_you_can_remove_the_a6c5d3" formatted="false">"Save titles to the cloud first. Then you can remove the phone copies."</string>
     <string name="ui_save_to_48c64f">"Save to %1$s"</string>
     <string name="ui_save_to_cloud_0fd280" formatted="false">"Save to Cloud"</string>
-    <string name="ui_save_to_cloud_screen_failed_48cdcd" formatted="false">"Save to Cloud screen failed"</string>
     <string name="ui_save_to_household_f31fbf" formatted="false">"Save to household"</string>
     <string name="ui_save_to_telegram_f6c595" formatted="false">"Save to Telegram"</string>
-    <string name="ui_save_to_telegram_failed_a6512c">"Save to Telegram failed: %1$s: %2$s"</string>
     <string name="ui_saved_in_the_cloud_dc46d5" formatted="false">"Saved in the cloud"</string>
     <string name="ui_saved_it_will_be_used_on_your_tv_96182e" formatted="false">"Saved. It will be used on your TV."</string>
     <string name="ui_saved_to_cloud_694e20" formatted="false">"Saved to Cloud"</string>
@@ -989,4 +985,10 @@
     <string name="ui_your_videos_stay_in_storage_you_own_cablegram_doesn_t__0ccf72" formatted="false">"Your videos stay in storage you own. Cablegram doesn\'t provide movies."</string>
     <string name="ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144" formatted="false">"Your videos stay in your own storage. Cablegram keeps your library organized and ready for your TV."</string>
     <string name="ui_your_videos_your_big_screen_b7a07b" formatted="false">"Your videos.\nYour big screen."</string>
+    <string name="ui_couldnt_allow_profile">"Couldn\'t allow %1$s: %2$s."</string>
+    <string name="ui_couldnt_deny_profile">"Couldn\'t deny %1$s: %2$s."</string>
+    <string name="ui_couldnt_allow_playback">"Couldn\'t allow playback: %1$s."</string>
+    <string name="ui_couldnt_deny_playback">"Couldn\'t deny playback: %1$s."</string>
+    <string name="ui_about_1_minute" formatted="false">"about 1 minute"</string>
+    <string name="ui_other_language" formatted="false">"other language"</string>
 </resources>

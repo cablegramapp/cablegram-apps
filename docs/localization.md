@@ -13,8 +13,11 @@ Unsupported languages fall back to English, including English layout direction.
 Android 13+ also exposes these languages in the system's per-app language settings.
 No translation service is called at runtime.
 
-After sign-in and on foreground refresh, the phone reports its selected language
-to `PUT /api/me/language`. Failed updates retry on the next refresh. The account
+After sign-in and on foreground refresh, the phone reports its language to
+`PUT /api/me/language`: the full tag of the device preference it shows (for example
+`de-AT`), or the first preference when no bundled translation matches, so TVs that
+ship more languages than the phone can still use it. Failed updates retry on the
+next refresh. The account
 owner's language is inherited by profiles without an override. In **Settings →
 Profiles → Language**, choose another language for a profile or **Follow phone
 language** to restore inheritance. These preferences do not change subtitle or
@@ -34,8 +37,9 @@ includes profiles from different accounts paired to one TV. PIN entry and phone
 approval keep that preselection language until a profile opens. Initial pairing
 without known profiles uses English.
 
-While in the foreground, the TV refreshes known profile languages during its
-session check (every 30 seconds), preserving playback and profile selection.
+While in the foreground, the TV refreshes known profile languages from the
+`profile_languages` list in its session check (`GET /api/me`, every 30 seconds),
+without an extra request, preserving playback and profile selection.
 Returning to the picker restores the preselection language. Regional variants,
 such as `de-DE` and `de-AT`, share the same bundled base translation.
 
@@ -59,7 +63,13 @@ runtime dependency ship in the apps. See the [Argos documentation](https://argos
 for the offline generation approach.
 
 Run `python3 scripts/localization/check.py` from the apps repository to verify
-language coverage, XML, format arguments and required plural forms. Android unit
+language coverage, XML, format arguments, required plural forms and untranslated
+leftovers. A translation identical to English fails unless its key and language are
+listed in `SAME_AS_ENGLISH` (names and words the language shares).
+
+Messages exist once, in the resource files. Functions that build user-facing text take
+a required `Resources`; unit tests that check those messages run under Robolectric
+and read the bundled English strings. Diagnostic logs stay in English. Android unit
 tests cover language selection, regional fallback, profile mixing and API calls;
 control-plane contract tests cover inheritance, overrides, invalid tags and account
 isolation. Build and lint both apps after changing translations.

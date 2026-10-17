@@ -36,18 +36,20 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 
 class PhoneViewModel(application: Application) : AndroidViewModel(application) {
+    private val supportedLanguages: Set<String> by lazy {
+        getApplication<Application>().resources.getStringArray(R.array.ui_languages).toSet()
+    }
+    /** One configuration context per language: status text and composition getters ask for it often. */
+    @Volatile private var uiCache: Pair<String, android.content.res.Resources>? = null
+
     private fun uiResources(): android.content.res.Resources {
         val app = getApplication<Application>()
-        val resources = app.resources
-        val locales = resources.configuration.locales
-        val language = phoneUiLanguage(
-            (0 until locales.size()).map { locales[it].toLanguageTag() },
-            resources.getStringArray(R.array.ui_languages).toSet(),
-        )
-        val configuration = android.content.res.Configuration(resources.configuration).apply {
+        val language = phoneUiLanguage(app.resources.configuration.languageTags(), supportedLanguages)
+        uiCache?.let { (cached, resources) -> if (cached == language) return resources }
+        val configuration = android.content.res.Configuration(app.resources.configuration).apply {
             setLocales(android.os.LocaleList.forLanguageTags(language))
         }
-        return app.createConfigurationContext(configuration).resources
+        return app.createConfigurationContext(configuration).resources.also { uiCache = language to it }
     }
 
     private fun uiText(id: Int, vararg args: Any?): String = uiResources().getString(id, *args)
@@ -578,18 +580,25 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         PrivateApprovals.cancelNotification(app, approval.attemptId)
         PrivateApprovals.pending.value = PrivateApprovals.pending.value.filterNot { it.attemptId == approval.attemptId }
         viewModelScope.launch {
-            val what = if (approval.kind == ApprovalKind.Profile) approval.title ?: uiText(R.string.ui_the_profile_31580c) else "playback"
+            val profile = approval.kind == ApprovalKind.Profile
+            val what = approval.title ?: uiText(R.string.ui_the_profile_31580c)
             runCatching {
                 check(catalog().answerApproval(token, approval, approve)) { uiText(R.string.ui_the_request_was_not_accepted_refresh_and_try_again_35aa7e) }
             }.onSuccess {
                 status = when {
-                    approval.kind == ApprovalKind.Profile && approve -> uiText(R.string.ui_can_open_3f1941, approval.tvName ?: uiText(R.string.ui_the_tv_adfd45), what)
-                    approval.kind == ApprovalKind.Profile -> uiText(R.string.ui_won_t_open_b1de63, approval.tvName ?: uiText(R.string.ui_the_tv_adfd45), what)
+                    profile && approve -> uiText(R.string.ui_can_open_3f1941, approval.tvName ?: uiText(R.string.ui_the_tv_adfd45), what)
+                    profile -> uiText(R.string.ui_won_t_open_b1de63, approval.tvName ?: uiText(R.string.ui_the_tv_adfd45), what)
                     approve -> uiText(R.string.ui_playback_allowed_for_this_attempt_2fcc98)
                     else -> uiText(R.string.ui_playback_denied_270488)
                 }
             }.onFailure {
-                status = uiText(R.string.ui_couldn_t_abc5d3, if (approve) "allow" else "deny", what, it.message ?: uiText(R.string.ui_try_again_5b5ded))
+                val reason = it.message ?: uiText(R.string.ui_try_again_5b5ded)
+                status = when {
+                    profile && approve -> uiText(R.string.ui_couldnt_allow_profile, what, reason)
+                    profile -> uiText(R.string.ui_couldnt_deny_profile, what, reason)
+                    approve -> uiText(R.string.ui_couldnt_allow_playback, reason)
+                    else -> uiText(R.string.ui_couldnt_deny_playback, reason)
+                }
                 refreshPendingApprovals()
             }
         }
@@ -604,12 +613,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Retry failures on the next foreground refresh, including after account changes. */
     fun syncDeviceLanguage() {
         val token = pairing.accountToken ?: return
-        val resources = getApplication<Application>().resources
-        val locales = resources.configuration.locales
-        val tag = phoneUiLanguage(
-            (0 until locales.size()).map { locales[it].toLanguageTag() },
-            resources.getStringArray(R.array.ui_languages).toSet(),
-        )
+        val tag = phoneLanguageTag(getApplication<Application>().resources.configuration.languageTags(), supportedLanguages)
         val target = token to tag
         if (target == syncedLanguage || (target == languageSyncTarget && languageSyncJob?.isActive == true)) return
         languageSyncJob?.cancel()
@@ -1653,7 +1657,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateProfileLanguage(profile: HouseholdProfile, language: String?) {
-        if (busy || (language != null && language !in uiResources().getStringArray(R.array.ui_languages))) return
+        if (busy || (language != null && language !in supportedLanguages)) return
         val token = pairing.accountToken ?: return
         viewModelScope.launch {
             busy = true
@@ -1727,7 +1731,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             tvName = pairing.tvName
             status = uiText(R.string.ui_removed_this_tv_still_paired_4ec21c, pairing.tvs.size)
         }
-        PairLog.i(uiText(R.string.ui_phone_unpaired_one_tv_remaining_360447, pairing.tvs.size))
+        PairLog.i("Phone unpaired one TV remaining=${pairing.tvs.size}")
     }
 
     fun syncNow() {
@@ -2825,7 +2829,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 throw cancelled
             } catch (error: Exception) {
                 // Our own messages (size, verification, registration) say which step failed; no secrets in them.
-                PairLog.w(uiText(R.string.ui_save_to_telegram_failed_a6512c, error.javaClass.simpleName, error.message))
+                PairLog.w("Save to Telegram failed: ${error.javaClass.simpleName}: ${error.message}")
                 store.updateItem(item.id) { it.copy(transferStatus = TRANSFER_FAILED, webTransferError = TELEGRAM_SAVE_FAILED) }
                 status = (error as? app.cablegram.telegram.TgException)?.let(app.cablegram.telegram.TelegramSession::describe)
                     ?: error.message ?: uiText(R.string.ui_couldn_t_save_to_telegram_234f31, item.title)
@@ -2844,7 +2848,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
             // Saves go only to the household's own storage (CAB-38): without one, the sheet leads to connecting it.
             cloudSheet = if (cloudConnected) CloudSheet.Confirm else CloudSheet.Setup
         }.onFailure {
-            PairLog.e(uiText(R.string.ui_save_to_cloud_screen_failed_48cdcd), it)
+            PairLog.e("Save to Cloud screen failed", it)
             status = it.message ?: uiText(R.string.ui_could_not_open_save_to_cloud_3f5142)
         }
     }

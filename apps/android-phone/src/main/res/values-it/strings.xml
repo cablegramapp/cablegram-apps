@@ -130,7 +130,7 @@
     <string name="ui_cablegram_is_using_the_channel_that_already_exists_in__8a8ad9">"Cablegram sta usando il canale \"%1$s\" che esiste già nel vostro Telegram."</string>
     <string name="ui_cablegram_keeps_the_keys_encrypted_and_uses_them_only__5e4393" formatted="false">"Cablegram mantiene le chiavi crittografate e le utilizza solo per la vostra libreria. Per rimuovere l\'accesso in seguito, eliminare il token in Cloudflare."</string>
     <string name="ui_cablegram_library_is_on_your_tv_f2b773" formatted="false">"Cablegram biblioteca è sulla tua TV"</string>
-    <string name="ui_cablegram_media_1fb5f3" formatted="false">"Cablegram media"</string>
+    <string name="ui_cablegram_media_1fb5f3" formatted="false">"Contenuti Cablegram"</string>
     <string name="ui_cablegram_only_uses_its_own_private_channel_never_your_dd2890" formatted="false">"Cablegram utilizza solo il proprio canale privato, mai le vostre chat o contatti. Il tuo numero e il tuo codice di accesso vanno solo a Telegram."</string>
     <string name="ui_cablegram_passes_your_password_to_telegram_to_sign_in__0bb35c" formatted="false">"Cablegram passa la tua password a Telegram per accedere, e non memorizzarla mai o inviarla altrove."</string>
     <string name="ui_cablegram_signs_out_of_telegram_on_this_phone_and_on_y_73f0dc" formatted="false">"Cablegram segni su Telegram su questo telefono e sui vostri TV. I video rimangono nel tuo "</string>
@@ -149,7 +149,7 @@
     <string name="ui_changes_are_saved_only_when_you_tap_save_changes_3d07da" formatted="false">"Le modifiche vengono salvate solo quando si tocca Salva le modifiche."</string>
     <string name="ui_changes_saved_16bf14" formatted="false">"Modifiche salvate"</string>
     <string name="ui_channel_they_disappear_from_cablegram_until_you_connec_2ef282">"Canale \"%1$s\"; scompaiono da Cablegram fino a quando si collega di nuovo."</string>
-    <string name="ui_check_bot_hub_d194d2" formatted="false">"Check Bot Hub"</string>
+    <string name="ui_check_bot_hub_d194d2" formatted="false">"Controlla Bot Hub"</string>
     <string name="ui_check_code_9a5af9" formatted="false">"Codice di controllo"</string>
     <string name="ui_check_source_again_115706" formatted="false">"Controllare la fonte di nuovo"</string>
     <string name="ui_check_the_email_address_and_try_again_5e6910" formatted="false">"Controlla l\'indirizzo e-mail e riprova."</string>
@@ -241,7 +241,6 @@
     <string name="ui_could_not_start_cloud_save_8b3f61" formatted="false">"Non potrebbe avviare il cloud salvare"</string>
     <string name="ui_could_not_sync_source_availability_863b58" formatted="false">"Non è possibile sincronizzare la disponibilità di sorgenti"</string>
     <string name="ui_could_not_update_the_language_check_your_connection_an_ce45e9" formatted="false">"Non poteva aggiornare la lingua. Controlla la tua connessione e riprova."</string>
-    <string name="ui_couldn_t_abc5d3">"%1$s %2$s: %3$s."</string>
     <string name="ui_couldn_t_add_the_telegram_copy_to_your_library_try_sav_5406b8" formatted="false">"Non ho potuto aggiungere la copia Telegram alla tua biblioteca. Prova a salvare di nuovo."</string>
     <string name="ui_couldn_t_be_added_android_limits_how_many_f88239">"%1$s %2$s non poteva essere aggiunto: Android limita quanti "</string>
     <string name="ui_couldn_t_change_that_setting_check_your_connection_and_8516e4" formatted="false">"Non ho potuto cambiare l\'impostazione. Controlla la tua connessione e riprova."</string>
@@ -461,7 +460,7 @@
     <string name="ui_lock_account_on_tvs_011bbe" formatted="false">"Bloccare l\'account su TV"</string>
     <string name="ui_login_code_95e717" formatted="false">"Codice di accesso"</string>
     <string name="ui_looking_at_your_video_15f7c9" formatted="false">"Guarda il tuo video..."</string>
-    <string name="ui_looking_for_subtitles_81ebff">"Alla ricerca di %1$s sottotitoli..."</string>
+    <string name="ui_looking_for_subtitles_81ebff">"Ricerca dei sottotitoli (%1$s)…"</string>
     <string name="ui_looking_for_tvs_8edf98" formatted="false">"Alla ricerca di TV..."</string>
     <string name="ui_made_for_your_big_screen_eb0ced" formatted="false">"Realizzato per il tuo grande schermo"</string>
     <string name="ui_make_cablegram_yours_13baae" formatted="false">"Fai Cablegram tuoi."</string>
@@ -555,7 +554,7 @@
     <string name="ui_opensubtitles_is_connected_8086b6" formatted="false">"OpenSubtitles è collegato."</string>
     <string name="ui_opensubtitles_needs_two_things_an_api_key_for_searchin_6cf012" formatted="false">"OpenSubtitles ha bisogno di due cose: una chiave API per la ricerca, e il tuo nome utente e password OpenSubtitles, "</string>
     <string name="ui_opensubtitles_optional_4070ca" formatted="false">"OpenSubtitles · opzionale"</string>
-    <string name="ui_opensubtitles_password_1ad679" formatted="false">"OpenSubtitles password"</string>
+    <string name="ui_opensubtitles_password_1ad679" formatted="false">"Password di OpenSubtitles"</string>
     <string name="ui_opensubtitles_username_f5e557" formatted="false">"OpenSubtitles nome utente"</string>
     <string name="ui_optional_bots_for_your_library_0e5b67" formatted="false">"Bottiglie opzionali per la tua libreria"</string>
     <string name="ui_or_717551" formatted="false">"oppure"</string>
@@ -582,13 +581,12 @@
     <string name="ui_paste_the_key_here_don_t_use_your_subdl_password_26ff9e" formatted="false">"Incolla la chiave qui. Non usare la password di SubDL."</string>
     <string name="ui_pause_858e4b" formatted="false">"Pausa"</string>
     <string name="ui_pause_playback_65a4a8" formatted="false">"Riproduzione Pausa"</string>
-    <string name="ui_paused_on_a7fb4a" formatted="false">"Paused on "</string>
+    <string name="ui_paused_on_a7fb4a" formatted="false">"In pausa su "</string>
     <string name="ui_permission_object_read_write_apply_it_to_a_specific_bu_ac52d4" formatted="false">"Permesso: Object Read &amp; Write. Applicarlo a un secchio specifico e scegliere quello dal passaggio 2. Quindi toccare Crea."</string>
     <string name="ui_personal_keys_do_not_grant_copyright_permission_use_tr_003d6d" formatted="false">"Le chiavi personali non concedono il permesso del copyright. Usa le tracce che hai un diritto legale di memorizzare e condividere con la tua famiglia. Si applicano i termini del fornitore: subdl.com/terms e opensubtitles.com. Per le denunce sul copyright contattare copyright@cablegram.app con il titolo e tracciare i dettagli per la rimozione."</string>
     <string name="ui_phone_approval_required_112e8c" formatted="false">"L\'approvazione del telefono richiesto"</string>
     <string name="ui_phone_number_306f1b" formatted="false">"Numero di telefono"</string>
     <string name="ui_phone_space_cloud_copies_transfers_f4925b" formatted="false">"Spazio telefonico, copie cloud e trasferimenti"</string>
-    <string name="ui_phone_unpaired_one_tv_remaining_360447">"Telefono unpaired uno TV rimanente=%1$s"</string>
     <string name="ui_pick_a_title_on_your_phone_and_it_plays_on_the_tv_8e206a" formatted="false">"Scegli un titolo sul tuo telefono e gioca in TV."</string>
     <string name="ui_pick_video_files_to_add_95b421" formatted="false">"Scegliere i file video per aggiungere"</string>
     <string name="ui_pin_protected_d6dcf5" formatted="false">"Protezione PIN"</string>
@@ -659,7 +657,7 @@
     <string name="ui_require_phone_approval_to_play_6ebd73" formatted="false">"Richiedere l\'approvazione del telefono per giocare?"</string>
     <string name="ui_reset_point_1_51c411" formatted="false">"Punto di partenza 1"</string>
     <string name="ui_reset_point_2_a016cf" formatted="false">"Punto di partenza 2"</string>
-    <string name="ui_resets_ecf9e5">". Resets %1$s"</string>
+    <string name="ui_resets_ecf9e5">". Si azzera il %1$s"</string>
     <string name="ui_restart_on_tv_32b64b" formatted="false">"Riavviare in TV"</string>
     <string name="ui_restore_a76e13" formatted="false">"Ripristino"</string>
     <string name="ui_restored_160ebf">"Restaurato %1$s."</string>
@@ -685,10 +683,8 @@
     <string name="ui_save_titles_to_the_cloud_first_then_you_can_remove_the_a6c5d3" formatted="false">"Salva i titoli al cloud per primo. Quindi è possibile rimuovere le copie del telefono."</string>
     <string name="ui_save_to_48c64f">"Salva a %1$s"</string>
     <string name="ui_save_to_cloud_0fd280" formatted="false">"Risparmiare su Cloud"</string>
-    <string name="ui_save_to_cloud_screen_failed_48cdcd" formatted="false">"Salvare la schermata Cloud non è riuscito"</string>
     <string name="ui_save_to_household_f31fbf" formatted="false">"Risparmiare a casa"</string>
     <string name="ui_save_to_telegram_f6c595" formatted="false">"Salva a Telegram"</string>
-    <string name="ui_save_to_telegram_failed_a6512c">"Risparmia Telegram falliti: %1$s: %2$s"</string>
     <string name="ui_saved_in_the_cloud_dc46d5" formatted="false">"Salvata nel cloud"</string>
     <string name="ui_saved_it_will_be_used_on_your_tv_96182e" formatted="false">"Salvata. Sarà utilizzato sulla vostra TV."</string>
     <string name="ui_saved_to_cloud_694e20" formatted="false">"Salvataggio a Cloud"</string>
@@ -828,7 +824,7 @@
     <string name="ui_telegram_disconnected_some_tvs_may_still_be_signed_in__3b14d3" formatted="false">"Telegram scollegato. Alcuni TV possono ancora essere firmati in: aperto Telegram → Impostazioni → Dispositivi e terminare qualsiasi sessione \"Cablegram\" che non riconoscete."</string>
     <string name="ui_telegram_disconnected_your_tvs_are_signed_out_of_teleg_5f064d" formatted="false">"Telegram scollegato. Anche i tuoi televisori sono firmati da Telegram."</string>
     <string name="ui_telegram_isn_t_set_up_in_this_version_of_the_app_4d3c36" formatted="false">"Telegram non è impostato in questa versione dell\'app."</string>
-    <string name="ui_telegram_password_65d868" formatted="false">"Telegram password"</string>
+    <string name="ui_telegram_password_65d868" formatted="false">"Password di Telegram"</string>
     <string name="ui_telegram_password_for_tvs_3e1cd9" formatted="false">"Telegram password per TV"</string>
     <string name="ui_telegram_s_message_says_not_to_give_this_code_to_anyon_7277cb" formatted="false">"Il messaggio di Telegram dice di non dare questo codice a nessuno. Non lo stai dando a una persona: "</string>
     <string name="ui_telegram_sent_a_login_code_to_your_telegram_app_or_by__0317af" formatted="false">"Telegram ha inviato un codice di accesso all\'app Telegram (o tramite SMS). Entrate qui."</string>
@@ -915,7 +911,7 @@
     <string name="ui_transfers_privacy_af4a2f" formatted="false">"Trasferimenti e privacy"</string>
     <string name="ui_transfers_wait_for_wi_fi_bdb4ad" formatted="false">"I trasferimenti aspettano Wi‑Fi."</string>
     <string name="ui_transfers_wait_until_this_phone_is_charging_be1621" formatted="false">"Trasferimenti aspettare fino a quando questo telefono è in carica."</string>
-    <string name="ui_try_again_5b5ded" formatted="false">"Riprova"</string>
+    <string name="ui_try_again_5b5ded" formatted="false">"riprova"</string>
     <string name="ui_try_again_d8b839" formatted="false">"Riprova"</string>
     <string name="ui_try_another_title_or_clear_your_filters_to_see_the_who_ab222f" formatted="false">"Prova un altro titolo o cancella i filtri per vedere l\'intera libreria."</string>
     <string name="ui_tunnel_url_optional_b31277" formatted="false">"URL tunnel (opzionale)"</string>
@@ -951,9 +947,9 @@
     <string name="ui_video_added_08c7ee" formatted="false">"Video aggiunto"</string>
     <string name="ui_video_and_timing_patterns_stay_on_this_phone_searches__db1095" formatted="false">"I modelli video e i tempi rimangono su questo telefono. Le ricerche vanno direttamente ai vostri fornitori utilizzando la vostra quota personale."</string>
     <string name="ui_video_d534be" formatted="false">"Video"</string>
-    <string name="ui_video_frame_a4a3c5">"Video frame %1$s"</string>
+    <string name="ui_video_frame_a4a3c5">"Fotogramma del video %1$s"</string>
     <string name="ui_video_frame_selected_0e54db" formatted="false">"Video frame selezionato"</string>
-    <string name="ui_video_shift_ca726e">"Video %1$s · Shift %2$s"</string>
+    <string name="ui_video_shift_ca726e">"Video %1$s · Spostamento %2$s"</string>
     <string name="ui_video_url_f094b1" formatted="false">"URL del video"</string>
     <string name="ui_videos_added_3d5b7a" formatted="false">"Video aggiunti"</string>
     <string name="ui_videos_added_cbf82e">"%1$s video aggiunti"</string>
@@ -1023,4 +1019,10 @@
     <string name="ui_your_videos_stay_in_storage_you_own_cablegram_doesn_t__0ccf72" formatted="false">"I tuoi video rimangono nella tua memoria. Cablegram non fornisce film."</string>
     <string name="ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144" formatted="false">"I tuoi video rimangono nella tua memoria. Cablegram mantiene la vostra biblioteca organizzata e pronta per la vostra TV."</string>
     <string name="ui_your_videos_your_big_screen_b7a07b" formatted="false">"I tuoi video.\nIl tuo grande schermo."</string>
+    <string name="ui_couldnt_allow_profile">"Impossibile consentire %1$s: %2$s."</string>
+    <string name="ui_couldnt_deny_profile">"Impossibile negare %1$s: %2$s."</string>
+    <string name="ui_couldnt_allow_playback">"Impossibile consentire la riproduzione: %1$s."</string>
+    <string name="ui_couldnt_deny_playback">"Impossibile negare la riproduzione: %1$s."</string>
+    <string name="ui_about_1_minute" formatted="false">"circa 1 minuto"</string>
+    <string name="ui_other_language" formatted="false">"altra lingua"</string>
 </resources>

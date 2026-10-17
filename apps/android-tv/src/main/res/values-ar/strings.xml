@@ -46,7 +46,7 @@
     <string name="ui_choose_the_digits_then_ok_30a667" formatted="false">"اختر الأرقام، حسناً."</string>
     <string name="ui_choose_your_profile_a946b9" formatted="false">"اختر ملفك الشخصي"</string>
     <string name="ui_chose_use_the_qr_code_on_your_tv_on_your_own_phone_all_ce22eb" formatted="false">"إختارت \"استخدم رمز \"كيو آر على تلفازك\" على هاتفك الخاص السماح بذلك الهاتف وصول كامل إلى Telegram الخاص بك."</string>
-    <string name="ui_cloud_b977b9" formatted="false">"Cloud"</string>
+    <string name="ui_cloud_b977b9" formatted="false">"السحابة"</string>
     <string name="ui_connect_telegram_on_this_tv_461bf0" formatted="false">"القناة Telegram على هذا التلفاز"</string>
     <string name="ui_connect_the_phone_that_has_this_video_to_the_same_wi_f_5fe0b3" formatted="false">"اتصلي بالهاتف الذي يحتوي على هذا الفيديو إلى نفس الـ Wi-Fi كما هو الحال في التلفاز وابقي Cablegram مفتوحاً"</string>
     <string name="ui_connect_this_tv_8474b0" formatted="false">"إربط هذا التلفاز"</string>
@@ -54,7 +54,7 @@
     <string name="ui_connecting_telegram_ed3dc8" formatted="false">"وصلة Telegram"</string>
     <string name="ui_connecting_through_the_relay_a3dfc7" formatted="false">"الاستمرار في الحياة عن طريق الحق"</string>
     <string name="ui_connecting_to_telegram_06a2ff" formatted="false">"الإتصال بـ Telegram"</string>
-    <string name="ui_connection_639a40" formatted="false">"Connection"</string>
+    <string name="ui_connection_639a40" formatted="false">"الاتصال"</string>
     <string name="ui_continue_31fbef" formatted="false">"متابعة"</string>
     <string name="ui_continue_watching_81ebbe" formatted="false">"متابعة المشاهدة"</string>
     <string name="ui_continue_watching_908149" formatted="false">"تابعي المشاهده؟"</string>
@@ -68,26 +68,26 @@
     <string name="ui_couldn_t_set_up_your_telegram_library_check_your_conne_793c9c" formatted="false">"لم أستطع إنشاء مكتبة Telegram الخاصة بك. تحقق من اتصالك وحاول مرة أخرى"</string>
     <string name="ui_cover_fa8d84" formatted="false">"التغطية"</string>
     <string name="ui_crop_98caf7" formatted="false">"اقتصاص"</string>
-    <string name="ui_demo_8a2cc0" formatted="false">"Demo"</string>
+    <string name="ui_demo_8a2cc0" formatted="false">"عرض توضيحي"</string>
     <string name="ui_demo_mode_royalty_free_sample_streams_9e36b2" formatted="false">"أسلوب ديمو؛ مجاري العينة الخالية من الملكية"</string>
     <string name="ui_don_t_allow_9803bd" formatted="false">"عدم السماح"</string>
     <string name="ui_done_11a676" formatted="false">"تم"</string>
     <string name="ui_downloading_37b345" formatted="false">"تحميل"</string>
     <string name="ui_downloading_your_video_4a7a5a" formatted="false">"تحميل الفيديو الخاص بك"</string>
     <string name="ui_enjoy_a_little_cablegram_while_we_prepare_your_video_b47aa0" formatted="false">"استمتع بـ Cablegram بينما نجهز الفيديو الخاص بك"</string>
-    <string name="ui_enter_pin_f246c7" formatted="false">"Enter PIN"</string>
+    <string name="ui_enter_pin_f246c7" formatted="false">"أدخل رمز PIN"</string>
     <string name="ui_enter_telegram_password_7844e5" formatted="false">"Telegram كلمة سر"</string>
     <string name="ui_fill_033955" formatted="false">"ملء"</string>
     <string name="ui_finding_the_movie_515229" formatted="false">"العثور على الفيلم"</string>
     <string name="ui_finish_signing_in_from_settings_telegram_on_this_tv_d69b81" formatted="false">"انهي التوقيع من ستينغز Telegram على هذا التلفاز"</string>
     <string name="ui_finish_signing_in_to_telegram_enter_your_telegram_pass_284439" formatted="false">"أنهي التوقيع إلى Telegram أدخل كلمة المرور الخاصة بك Telegram في ستينغز على هذا التلفاز"</string>
     <string name="ui_fit_9f872e" formatted="false">"ملاءمة"</string>
-    <string name="ui_genre_8dc737">"Genre: %1$s"</string>
+    <string name="ui_genre_8dc737">"النوع: %1$s"</string>
     <string name="ui_getting_it_ready_for_tv_f762f4" formatted="false">"جهزه للتلفزيون"</string>
     <string name="ui_getting_the_picture_ready_ef0b9b" formatted="false">"الحصول على الصورة جاهزة..."</string>
     <string name="ui_getting_your_video_ready_09b497" formatted="false">"جهز الفيديو الخاص بك"</string>
     <string name="ui_hide_licence_and_notices_35e525" formatted="false">"الترخيص بالاختباء والإخطارات"</string>
-    <string name="ui_hint_3033f3">"Hint: %1$s"</string>
+    <string name="ui_hint_3033f3">"تلميح: %1$s"</string>
     <string name="ui_hold_ok_on_any_title_to_save_it_here_8857f0" formatted="false">"لا بأس في أي عنوان لإنقاذه هنا"</string>
     <string name="ui_home_3a7869" formatted="false">"الرئيسية"</string>
     <string name="ui_it_s_on_its_way_cablegram_on_your_phone_opens_a_passwo_f216b7" formatted="false">"إنها في طريقها Cablegram على هاتفك يفتح شاشة كلمة السر خلال ثواني قليلة أو يظهر إشعاراً بالاستفادة قومي بتصنيع كلمة السر هناك، هذه اللوحات التلفزيونية في أقرب وقت قبل Telegram"</string>
@@ -111,7 +111,7 @@
     <string name="ui_muted_2346f2" formatted="false">"مكتوم"</string>
     <string name="ui_my_list_e957f4" formatted="false">"قائمتي"</string>
     <string name="ui_my_telegram_has_no_password_2e003f" formatted="false">"Telegram لا كلمة سر"</string>
-    <string name="ui_new_pin_6d8849" formatted="false">"New PIN"</string>
+    <string name="ui_new_pin_6d8849" formatted="false">"رمز PIN جديد"</string>
     <string name="ui_no_titles_match_these_filters_a0f06f" formatted="false">"لا توجد ألقاب تطابق هذه المرشّحات"</string>
     <string name="ui_no_wi_fi_address_yet_614231" formatted="false">"No Wi‑Fi address yet"</string>
     <string name="ui_nobody_allowed_on_a_phone_in_time_try_again_39ef3f">"لم يسمح أحد بـ %1$s على الهاتف في الوقت المناسب حاول مرة أخرى."</string>
@@ -158,7 +158,7 @@
     <string name="ui_press_back_to_cancel_and_return_to_your_library_35e34a" formatted="false">"اضغط مرة أخرى لإلغاء والعودة إلى مكتبتك"</string>
     <string name="ui_preview_324b13" formatted="false">"معاينة"</string>
     <string name="ui_profiles_unavailable_ea6ad2" formatted="false">"موجزات غير متاحة"</string>
-    <string name="ui_queued_661ff4" formatted="false">"Queued"</string>
+    <string name="ui_queued_661ff4" formatted="false">"في قائمة الانتظار"</string>
     <string name="ui_reaching_your_phone_over_the_internet_f54b1f" formatted="false">"الوصول إلى هاتفك عبر الإنترنت"</string>
     <string name="ui_ready_5fa7aa" formatted="false">"جاهز"</string>
     <string name="ui_ready_to_play_6dbc08" formatted="false">"مستعد للعب"</string>
@@ -203,7 +203,7 @@
     <string name="ui_subtitle_delay_825119" formatted="false">"التأجيل"</string>
     <string name="ui_subtitles_0ee695" formatted="false">"الترجمة"</string>
     <string name="ui_subtitles_s_0c46b8">"ترجمة: %1$s%2$s s"</string>
-    <string name="ui_switch_39921a" formatted="false">"Switch"</string>
+    <string name="ui_switch_39921a" formatted="false">"تبديل"</string>
     <string name="ui_switch_profile_c1e0da" formatted="false">"تبديل الملف الشخصي"</string>
     <string name="ui_switching_back_to_your_phone_56a1f2" formatted="false">"ارجع الى هاتفك"</string>
     <string name="ui_switching_source_1ede8f" formatted="false">"SWITING SOURCE"</string>
@@ -211,11 +211,11 @@
     <string name="ui_telegram_is_already_connected_for_this_household_ask_t_2ca07e" formatted="false">"Telegram متصل بالفعل لهذه الأسرة. أطلب من المالك أن يستخدم التطبيق الذي ربطه"</string>
     <string name="ui_telegram_is_checking_your_password_this_tv_continues_a_8aca24" formatted="false">"Telegram هو التحقق من كلمة المرور الخاصة بك. هذا التلفاز يستمر حالما ينتهي"</string>
     <string name="ui_telegram_isn_t_connected_for_this_household_yet_you_ca_634c79" formatted="false">"Telegram ليس متصلاً بهذه العائلة بعد يمكنك ربطه من هذا التلفزيون: مسح رمز مع Telegram تطبيق على هاتفك."</string>
-    <string name="ui_telegram_login_qr_code_b413de" formatted="false">"Telegram login QR code"</string>
+    <string name="ui_telegram_login_qr_code_b413de" formatted="false">"رمز QR لتسجيل الدخول إلى Telegram"</string>
     <string name="ui_telegram_needs_your_two_step_verification_password_onc_fe96c0" formatted="false">"Telegram يحتاج إلى كلمتك الخاصة بالتحقق من خطوتين للتوقيع على هذا التلفاز التوقيع في البداية فقط بعد أن قمت بكتابته"</string>
     <string name="ui_telegram_needs_your_two_step_verification_password_to__2f2be0" formatted="false">"Telegram يحتاج إلى كلمتك السرية للتحقق من خطوتين لإنهاء التوقيع على هذا التلفزيون."</string>
     <string name="ui_telegram_password_65d868" formatted="false">"Telegram كلمة سر"</string>
-    <string name="ui_telegram_sign_in_f886b3" formatted="false">"Telegram sign-in"</string>
+    <string name="ui_telegram_sign_in_f886b3" formatted="false">"تسجيل الدخول إلى Telegram"</string>
     <string name="ui_telegram_via_phone_6802a7" formatted="false">"Telegram عبر الهاتف"</string>
     <string name="ui_telegram_videos_play_through_your_phone_on_this_tv_not_e75ff6" formatted="false">"Telegram فيديو تلعب عبر هاتفك على هذا التلفزيون. لا شيء من Telegram مخزن هنا."</string>
     <string name="ui_telegram_was_too_slow_on_this_tv_so_your_phone_fetches_ad106b" formatted="false">"Telegram كان بطيئا جدا على هذا التلفزيون، لذلك هاتفك يدق الفيديو ويرسله هنا. (بلايباك) يستمر من حيث كنت"</string>
@@ -239,17 +239,16 @@
     <string name="ui_titles_you_start_watching_show_up_here_5990dd" formatted="false">"العناوين تبدأ بمشاهدتها تظهر هنا"</string>
     <string name="ui_too_many_tries_this_profile_is_locked_for_15_minutes_21bd30" formatted="false">"الكثير من المحاولات هذا الملف مغلق لمدة 15 دقيقة"</string>
     <string name="ui_try_again_d8b839" formatted="false">"المحاولة مجددًا"</string>
-    <string name="ui_tuning_2abeef" formatted="false">"Tuning"</string>
+    <string name="ui_tuning_2abeef" formatted="false">"اللمسات الأخيرة"</string>
     <string name="ui_tv_keyboard_0fb61f" formatted="false">"لوحة مفاتيح تلفزيونية"</string>
-    <string name="ui_tv_pairing_expired_410_new_pin_ff7100" formatted="false">"انقضت الأزواج التلفزيونية (410)، PIN الجديد"</string>
     <string name="ui_tv_session_dca893" formatted="false">"جلسة تلفزيونية"</string>
     <string name="ui_tv_shows_6adcc6" formatted="false">"مسلسلات"</string>
     <string name="ui_type_on_your_phone_a4ef92" formatted="false">"نوع على هاتفك"</string>
     <string name="ui_type_with_the_tv_keyboard_b12dad" formatted="false">"نوع مع لوحة المفاتيح التلفزيونية"</string>
-    <string name="ui_unpair_10be2f" formatted="false">"Unpair"</string>
+    <string name="ui_unpair_10be2f" formatted="false">"إلغاء الاقتران"</string>
     <string name="ui_unpair_this_tv_c7796b" formatted="false">"أفتح هذا التلفاز"</string>
     <string name="ui_unpair_this_tv_d99d68" formatted="false">"أبطل هذا التلفاز؟"</string>
-    <string name="ui_unpair_tv_fbd044" formatted="false">"Unpair TV"</string>
+    <string name="ui_unpair_tv_fbd044" formatted="false">"إلغاء اقتران التلفاز"</string>
     <string name="ui_use_the_tv_keyboard_instead_c6c66e" formatted="false">"استخدم لوحة المفاتيح التلفزيونية بدلاً من ذلك"</string>
     <string name="ui_use_this_tv_for_telegram_playback_051438" formatted="false">"استخدم هذا التلفاز لـ Telegram مسرحية"</string>
     <string name="ui_volume_b10fb9" formatted="false">"مستوى الصوت"</string>

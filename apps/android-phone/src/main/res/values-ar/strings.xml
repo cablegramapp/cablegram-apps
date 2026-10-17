@@ -108,7 +108,7 @@
     <string name="ui_automatically_synchronized_a65429">"متزامنة تلقائياً؛ %1$s"</string>
     <string name="ui_automatically_use_verified_matches_3642f5" formatted="false">"المطابقات المتحقق منها للاستخدام الآلي"</string>
     <string name="ui_available_9ffcbc">"%1$s متاح"</string>
-    <string name="ui_available_e67444" formatted="false">"Available"</string>
+    <string name="ui_available_e67444" formatted="false">"متاح"</string>
     <string name="ui_available_on_phone_cloud_50eb85" formatted="false">"متاحة على سحابة الهاتف"</string>
     <string name="ui_back_76900f" formatted="false">"رجوع"</string>
     <string name="ui_back_seconds_fa7e12">"%1$s ثانية"</string>
@@ -117,7 +117,7 @@
     <string name="ui_before_you_connect_telegram_435c06" formatted="false">"قبل أن تصل Telegram"</string>
     <string name="ui_bot_hub_6dcb6e" formatted="false">"Bot Hub"</string>
     <string name="ui_bot_hub_review_complete_check_again_any_time_for_curre_700291" formatted="false">"اكتمل استعراض (بوت هوب) تحقق مرة أخرى من أي وقت من أجل التوصيات الحالية."</string>
-    <string name="ui_bot_of_c8ea8f">"Bot %1$s of %2$s"</string>
+    <string name="ui_bot_of_c8ea8f">"البوت %1$s من %2$s"</string>
     <string name="ui_bucket_name_800f2e" formatted="false">"اسم باكت"</string>
     <string name="ui_cablegram_can_only_reach_the_files_it_creates_never_th_69bc5f" formatted="false">"Cablegram يمكن أن تصل فقط الملفات التي تخلقها، أبداً بقيّة سيارتك."</string>
     <string name="ui_cablegram_cannot_extract_video_from_this_site_yet_52c56b" formatted="false">"Cablegram لا يمكن استخراج الفيديو من هذا الموقع حتى الآن."</string>
@@ -164,7 +164,7 @@
     <string name="ui_choose_an_srt_or_vtt_file_then_check_its_language_and__609d6c" formatted="false">"اختر ملف شركة SRT أو VTT، ثم تفقد لغتها ومراجعتها قبل إرفاقها بها."</string>
     <string name="ui_choose_another_storage_10ef3b" formatted="false">"اختر مخزنا آخر"</string>
     <string name="ui_choose_points_at_least_a_minute_apart_in_order_421ffd" formatted="false">"اختر نقاطاً على الأقل دقيقة، حسب الترتيب."</string>
-    <string name="ui_choose_srt_vtt_file_6633f6" formatted="false">"Choose SRT/VTT file"</string>
+    <string name="ui_choose_srt_vtt_file_6633f6" formatted="false">"اختر ملف SRT/VTT"</string>
     <string name="ui_choose_this_folder_with_the_system_picker_665188" formatted="false">"اختر هذه الملفّة بمخلّص النظام."</string>
     <string name="ui_choose_tv_07f8b4" formatted="false">"تليفزيون مختار"</string>
     <string name="ui_choose_videos_7cf642" formatted="false">"أشرطة فيديو مختارة"</string>
@@ -178,7 +178,7 @@
     <string name="ui_close_bot_hub_855e5a" formatted="false">"Set Hub"</string>
     <string name="ui_close_camera_bebcb8" formatted="false">"أغلق الكاميرا"</string>
     <string name="ui_close_review_337f91" formatted="false">"الاستعراض الدقيق"</string>
-    <string name="ui_cloud_b977b9" formatted="false">"Cloud"</string>
+    <string name="ui_cloud_b977b9" formatted="false">"السحابة"</string>
     <string name="ui_cloud_save_failed_open_to_retry_a39bc6" formatted="false">"السحابة الفاشلة مفتوحة للإعادة"</string>
     <string name="ui_cloud_saves_4c5413" formatted="false">"السحاب ينقذ"</string>
     <string name="ui_cloud_storage_2ec3eb" formatted="false">"التخزين السحابي"</string>
@@ -192,8 +192,8 @@
     <string name="ui_commands_use_your_household_connection_keep_the_tv_con_b044c4" formatted="false">"الاوامر تستخدم اتصالك المنزلي أبقي التلفاز متصلاً بالإنترنت"</string>
     <string name="ui_confirm_your_email_above_to_use_free_relay_73d5f0" formatted="false">"تأكد من بريدك الإلكتروني (فوق) لاستخدام النقل المجاني."</string>
     <string name="ui_connect_1a2303" formatted="false">"اتصال"</string>
-    <string name="ui_connect_5fd5e3">"Connect %1$s"</string>
-    <string name="ui_connect_a_free_subdl_or_opensubtitles_account_to_searc_402905" formatted="false">"Connect a free SubDL or OpenSubtitles account to search."</string>
+    <string name="ui_connect_5fd5e3">"ربط %1$s"</string>
+    <string name="ui_connect_a_free_subdl_or_opensubtitles_account_to_searc_402905" formatted="false">"اربط حسابًا مجانيًا في SubDL أو OpenSubtitles للبحث."</string>
     <string name="ui_connect_a_tv_0ff3f5" formatted="false">"توصيل تلفزيون"</string>
     <string name="ui_connect_a_tv_to_browse_play_and_pause_from_your_phone_e98866" formatted="false">"اتصلي بتلفزيون لتتصفّحي، اعزفي، واتوقفي من هاتفك."</string>
     <string name="ui_connect_a_tv_to_enjoy_your_library_on_a_bigger_screen_a1212f" formatted="false">"اتصل بتلفزيون لتستمتع بمكتبتك على شاشة أكبر"</string>
@@ -202,9 +202,9 @@
     <string name="ui_connect_a_tv_when_you_re_ready_to_watch_d1ae74" formatted="false">"اتصل بتلفزيون عندما تكون مستعداً للمشاهدة"</string>
     <string name="ui_connect_another_tv_c29c2b" formatted="false">"اتصل بتلفزيون آخر"</string>
     <string name="ui_connect_at_least_one_account_to_search_9f3093" formatted="false">"إجمع حساب واحد على الأقل للبحث"</string>
-    <string name="ui_connect_google_drive_4406cf" formatted="false">"Connect Google Drive"</string>
+    <string name="ui_connect_google_drive_4406cf" formatted="false">"ربط Google Drive"</string>
     <string name="ui_connect_google_drive_or_cloudflare_r2_to_save_to_the_c_55c851" formatted="false">"اتصل بـ Google Drive أو Cloudflare R2 لإنقاذ السحابة"</string>
-    <string name="ui_connect_telegram_00c799" formatted="false">"Connect Telegram"</string>
+    <string name="ui_connect_telegram_00c799" formatted="false">"ربط Telegram"</string>
     <string name="ui_connect_telegram_on_this_phone_first_import_telegram_41f79b" formatted="false">"Connect Telegram on this phone first: Import  ⁇  Telegram."</string>
     <string name="ui_connect_tv_c9f94c" formatted="false">"توصيل التلفزيون"</string>
     <string name="ui_connect_your_own_storage_10a917" formatted="false">"إجمعوا مخزنكم الخاص"</string>
@@ -241,7 +241,6 @@
     <string name="ui_could_not_start_cloud_save_8b3f61" formatted="false">"لا يمكن أن تبدأ السحابة"</string>
     <string name="ui_could_not_sync_source_availability_863b58" formatted="false">"لا يمكن أن يتزامن توافر المصدر"</string>
     <string name="ui_could_not_update_the_language_check_your_connection_an_ce45e9" formatted="false">"لا يمكن تحديث اللغة. تحقق من اتصالك وحاول مرة أخرى"</string>
-    <string name="ui_couldn_t_abc5d3">"لا يمكن %1$s %2$s: %3$s"</string>
     <string name="ui_couldn_t_add_the_telegram_copy_to_your_library_try_sav_5406b8" formatted="false">"لا يمكن إضافة Telegram نسخة إلى مكتبتك. حاول أنقاذ مرة أخرى."</string>
     <string name="ui_couldn_t_be_added_android_limits_how_many_f88239">"%1$s %2$s لا يمكن إضافة: Android حدود كم عدد "</string>
     <string name="ui_couldn_t_change_that_setting_check_your_connection_and_8516e4" formatted="false">"لم أستطع تغيير هذا الوضع تحقق من اتصالك وحاول مرة أخرى"</string>
@@ -288,7 +287,7 @@
     <string name="ui_delete_permanently_280b10" formatted="false">"تحذف بصفة دائمة"</string>
     <string name="ui_delete_profile_47311a" formatted="false">"حذف الملف الشخصي"</string>
     <string name="ui_deleted_afb6f5">"حذف %1$s."</string>
-    <string name="ui_deleted_from_telegram_4e587f">"Deleted %1$s from Telegram."</string>
+    <string name="ui_deleted_from_telegram_4e587f">"تم حذف %1$s من Telegram."</string>
     <string name="ui_deleted_from_this_phone_b74440">"حذف %1$s من هذا الهاتف."</string>
     <string name="ui_deleting_from_telegram_230981" formatted="false">"التخلي عن Telegram..."</string>
     <string name="ui_deleting_from_telegram_8a441e">"حذف %1$s من Telegram..."</string>
@@ -299,11 +298,11 @@
     <string name="ui_didn_t_answer_open_cablegram_on_the_tv_and_check_setti_5aa87a">"%1$s لم يجيب. افتح Cablegram على التلفاز وتفقد (ستينغز) Telegram يظهر أنه وقع "</string>
     <string name="ui_didn_t_confirm_check_the_tv_e508b0">"%1$s لم يؤكد. تحقق من التلفاز"</string>
     <string name="ui_discard_changes_85bcf4" formatted="false">"تغيرات التخلّص؟"</string>
-    <string name="ui_discard_eb1a70" formatted="false">"Discard"</string>
-    <string name="ui_disconnect_7d073a">"Disconnect %1$s"</string>
+    <string name="ui_discard_eb1a70" formatted="false">"تجاهل"</string>
+    <string name="ui_disconnect_7d073a">"قطع الاتصال بـ %1$s"</string>
     <string name="ui_disconnect_acfc5b" formatted="false">"قطع الاتصال"</string>
     <string name="ui_disconnect_it_first_or_sign_in_with_that_account_693723" formatted="false">"أفصله أولاً، أو أوقع على ذلك الحساب."</string>
-    <string name="ui_disconnect_telegram_3896d7" formatted="false">"Disconnect Telegram"</string>
+    <string name="ui_disconnect_telegram_3896d7" formatted="false">"قطع الاتصال بـ Telegram"</string>
     <string name="ui_disconnect_telegram_eb9ab8" formatted="false">"فصل Telegram؟"</string>
     <string name="ui_disconnect_to_switch_5d456e">"قطع %1$s للتبديل"</string>
     <string name="ui_disconnected_your_files_stay_where_they_are_fb9447">"تم فصل %1$s ملفاتك تبقى حيث هي."</string>
@@ -317,7 +316,7 @@
     <string name="ui_download_to_phone_6265e3" formatted="false">"تحميل على الهاتف"</string>
     <string name="ui_downloaded_3b7cff">"تحميل %1$s"</string>
     <string name="ui_downloading_b81bc3">"تحميل %1$s..."</string>
-    <string name="ui_drag_to_set_the_volume_to_448bd2">"Drag to set the volume to %1$s%%"</string>
+    <string name="ui_drag_to_set_the_volume_to_448bd2">"اسحب لضبط مستوى الصوت على %1$s%%"</string>
     <string name="ui_edit_details_cover_134bbc" formatted="false">"تفاصيل التعليم &amp;quot; غطاء &amp;quot;"</string>
     <string name="ui_edit_details_fd9c61" formatted="false">"تفاصيل إيديت"</string>
     <string name="ui_edit_video_fa924e" formatted="false">"فيديو إيديت"</string>
@@ -326,9 +325,9 @@
     <string name="ui_email_me_a_code_88d420" formatted="false">"إرسال رمز إلى بريدي"</string>
     <string name="ui_endpoint_or_account_id_dce8d2" formatted="false">"نقطة النهاية أو الحساب"</string>
     <string name="ui_enhance_failed_for_this_file_f4b261" formatted="false">"التحسينات فشلت في هذا الملف"</string>
-    <string name="ui_enhanced_43febe">"Enhanced %1$s"</string>
+    <string name="ui_enhanced_43febe">"تم تحسين %1$s"</string>
     <string name="ui_enhancing_keeping_primary_audio_5ef242">"Enhancing %1$s (keeping primary audio)..."</string>
-    <string name="ui_enter_a_valid_http_or_https_server_address_cbfe30" formatted="false">"Enter a valid http:// or https:// server address."</string>
+    <string name="ui_enter_a_valid_http_or_https_server_address_cbfe30" formatted="false">"أدخل عنوان خادم صالحًا يبدأ بـ http:// أو https://."</string>
     <string name="ui_enter_a_valid_tunnel_address_or_leave_it_empty_773859" formatted="false">"أدخل عنوان نفق صالح أو أتركه فارغاً"</string>
     <string name="ui_enter_password_7014af" formatted="false">"كلمة السر للدخول"</string>
     <string name="ui_enter_the_6_digit_code_we_sent_to_it_expires_in_15_min_89e634">"أدخل رمز 6 أرقام أرسلناه إلى %1$s تنتهي بعد 15 دقيقة"</string>
@@ -342,7 +341,7 @@
     <string name="ui_extend_a_day_c30370" formatted="false">"تمديد اليوم"</string>
     <string name="ui_fetched_mb_from_telegram_so_far_827c43">"التقطت %1$s MB من Telegram حتى الآن"</string>
     <string name="ui_fetching_your_video_from_telegram_c2795c" formatted="false">"ألتقط فيديوك من Telegram"</string>
-    <string name="ui_file_50009c" formatted="false">"File"</string>
+    <string name="ui_file_50009c" formatted="false">"ملف"</string>
     <string name="ui_file_size_ff0442" formatted="false">"حجم الطائرة"</string>
     <string name="ui_find_it_later_bcf629" formatted="false">"جدها لاحقاً"</string>
     <string name="ui_find_movie_or_series_23295b" formatted="false">"ابحث عن فيلم أو سلسلة"</string>
@@ -351,7 +350,7 @@
     <string name="ui_finding_bots_in_cablegram_bot_hubs_6632c3" formatted="false">"العثور على الأحذية في Cablegram بوت هوبز"</string>
     <string name="ui_finish_signing_in_with_google_then_come_back_ecbd97" formatted="false">"أنهى التوقيع مع جوجل ثم عودي"</string>
     <string name="ui_finished_importing_6d8eef">"أنهيت استيراد %1$s."</string>
-    <string name="ui_folder_74ccd4" formatted="false">"Folder"</string>
+    <string name="ui_folder_74ccd4" formatted="false">"مجلد"</string>
     <string name="ui_folder_access_could_not_be_saved_choose_the_folder_aga_68a028" formatted="false">"لم يكن من الممكن إنقاذ الوصول للطائرات اختر الملف مرة أخرى"</string>
     <string name="ui_folder_access_is_unavailable_choose_the_folder_again_2e4497" formatted="false">"الوصول للطائرات غير متاح. اختر الملف مرة أخرى"</string>
     <string name="ui_follow_phone_language_5b74c6" formatted="false">"اتباع لغة الهاتف"</string>
@@ -359,8 +358,8 @@
     <string name="ui_for_your_videos_it_reads_and_manages_one_private_chann_a5212a">"لفيديوك، يقرأ ويدير قناة خاصة واحدة، \"%1$s\". بعد التواصل يمكنك أيضاً أن تختار الإنضمام Cablegramالقنوات الاختيارية. إنه ينظّم مكتبتك، إنضممت Cablegram القنوات، الدعم، والأحذية الإضافية في Cablegram الملف Telegram. إنه ينضم فقط للقنوات التي تم اختيارها عندما تقوم بإنقاذها ثم يقرأ التوصيات الصادرة عن الجمهور Cablegram قناة (بوت هوبز) و تعرض على طرف ثالث ضربة واحدة في كل مرة إضافة حزمة إلى مكتبتك يتطلب اتفاقك المنفصل على إذنه والمنصرف. لا يقرأ أبداً دردشاتك الأخرى أو اتصالاتك الشيء الوحيد الذي يرسله هو الفيديو الذي تختاره لتنقذه بـ \"سافي إلى Telegram\" في تلك القناة"</string>
     <string name="ui_forward_seconds_55855b">"%1$s ثانية"</string>
     <string name="ui_found_your_cablegram_library_channel_in_telegram_again_a824e9" formatted="false">"وجدت قناة \"Cablegram مكتبة\" في Telegram مرة أخرى."</string>
-    <string name="ui_frame_edb914">"Frame %1$s"</string>
-    <string name="ui_frame_selected_7bd944">"Frame %1$s · Selected"</string>
+    <string name="ui_frame_edb914">"الإطار %1$s"</string>
+    <string name="ui_frame_selected_7bd944">"الإطار %1$s · محدد"</string>
     <string name="ui_frames_aren_t_available_for_this_video_on_this_phone_y_09701f" formatted="false">"لا توجد فطور لهذا الفيديو على هذا الهاتف. يمكنك الاحتفاظ بالغطاء أو البحث في الكاتالوج"</string>
     <string name="ui_free_97e1da">"%1$s مجانا"</string>
     <string name="ui_free_relay_isn_t_available_here_this_phone_already_giv_decf4c" formatted="false">"هذا الهاتف يعطي نقل مجاني لـ Cablegram حساب آخر"</string>
@@ -388,7 +387,7 @@
     <string name="ui_hide_password_a60a56" formatted="false">"إخفاء كلمة المرور"</string>
     <string name="ui_hide_privacy_and_terms_942d73" formatted="false">"إخفاء الخصوصية والمصطلحات"</string>
     <string name="ui_hide_subtitle_preferences_245035" formatted="false">"إخفاء أفضليات الحقل الفرعي"</string>
-    <string name="ui_hint_3033f3">"Hint: %1$s"</string>
+    <string name="ui_hint_3033f3">"تلميح: %1$s"</string>
     <string name="ui_household_name_e4d50a" formatted="false">"اسم الأسرة"</string>
     <string name="ui_how_cablegram_uses_your_data_89560e" formatted="false">"كيف يستخدم Cablegram بياناتك: "</string>
     <string name="ui_how_this_works_bdbd77" formatted="false">"كيف يعمل هذا"</string>
@@ -416,7 +415,7 @@
     <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"إنه يوقع على مكتبة Telegram خاصتك ويبقى مقترناً"</string>
     <string name="ui_it_stays_on_the_server_until_you_tap_remove_here_chang_9f0819" formatted="false">"يبقى على الخادم حتى تلتقط ريمو هنا، تغيير الغطاء، أو جعل الفيديو الخاص."</string>
     <string name="ui_it_will_be_unpaired_4f9898">"سيكون غير مدفوع الأجر %1$s"</string>
-    <string name="ui_join_cablegram_channels_d35d5f" formatted="false">"Join Cablegram channels"</string>
+    <string name="ui_join_cablegram_channels_d35d5f" formatted="false">"الانضمام إلى قنوات Cablegram"</string>
     <string name="ui_joined_69318b" formatted="false">"انضموا"</string>
     <string name="ui_joined_cablegram_channels_your_library_support_and_add_30d764" formatted="false">"انضموا Cablegram القنوات، مكتبتك، الدعم، والأحذية الإضافية تم تنظيمها في Cablegram الملف Telegram. يمكنك ترك القنوات أو إدارة الملف هناك في أي وقت."</string>
     <string name="ui_joining_6bbb89" formatted="false">"الانضمام..."</string>
@@ -461,7 +460,7 @@
     <string name="ui_lock_account_on_tvs_011bbe" formatted="false">"حساب القفل على التلفاز"</string>
     <string name="ui_login_code_95e717" formatted="false">"رمز لوجين"</string>
     <string name="ui_looking_at_your_video_15f7c9" formatted="false">"النظر إلى الفيديو الخاص بك..."</string>
-    <string name="ui_looking_for_subtitles_81ebff">"أبحث عن %1$s عنوان فرعي..."</string>
+    <string name="ui_looking_for_subtitles_81ebff">"جارٍ البحث عن ترجمة (%1$s)…"</string>
     <string name="ui_looking_for_tvs_8edf98" formatted="false">"أبحث عن التلفاز..."</string>
     <string name="ui_made_for_your_big_screen_eb0ced" formatted="false">"صنعت لشاشتك الكبيرة"</string>
     <string name="ui_make_cablegram_yours_13baae" formatted="false">"جعل Cablegram لك."</string>
@@ -507,7 +506,7 @@
     <string name="ui_no_subtitles_were_found_for_this_title_in_your_languag_d2a72f" formatted="false">"لم يتم العثور على أي عنوان فرعي لهذا العنوان بلغاتك"</string>
     <string name="ui_no_titles_found_2aeb6d" formatted="false">"لم يتم العثور على عناوين"</string>
     <string name="ui_no_videos_in_this_folder_try_another_location_00ebc6" formatted="false">"لا أشرطة فيديو في هذا الملف جرب مكان آخر"</string>
-    <string name="ui_no_wi_fi_address_d5b041" formatted="false">"No Wi-Fi address"</string>
+    <string name="ui_no_wi_fi_address_d5b041" formatted="false">"لا يوجد عنوان Wi-Fi"</string>
     <string name="ui_normal_a7248e" formatted="false">"المعيار"</string>
     <string name="ui_not_available_on_this_server_210147" formatted="false">"غير متاح على هذا الخادم"</string>
     <string name="ui_not_available_yet_telegram_only_lets_cablegram_end_a_t_cc8d89" formatted="false">"غير متاح بعد: Telegram فقط دعونا Cablegram إنهاء دورة التلفزيون 24 ساعة بعد اتصالك. حتى ذلك الحين هذا التلفزيون يلعب Telegram فيديو من خلال هذا الهاتف."</string>
@@ -538,14 +537,14 @@
     <string name="ui_open_a_title_and_tap_find_subtitles_cablegram_finds_su_892bc5" formatted="false">"افتحي عنواناً وابحثي عن عنوان فرعي Cablegram يجد عنواناً فرعياً يطابق ملفك ويرسل الشخص الذي تختاره إلى تلفازك"</string>
     <string name="ui_open_cablegram_on_your_tv_then_enter_the_six_digit_cod_9c081e" formatted="false">"افتح Cablegram على تلفازك ثم أدخل رمز 6 أرقام هناك"</string>
     <string name="ui_open_cloudflare_sign_up_53c22b" formatted="false">"فتح Cloudflare توقيع"</string>
-    <string name="ui_open_google_f8b2a8" formatted="false">"Open Google"</string>
+    <string name="ui_open_google_f8b2a8" formatted="false">"فتح Google"</string>
     <string name="ui_open_in_telegram_700ad9">"إفتح \"%1$s\" في Telegram"</string>
     <string name="ui_open_it_in_telegram_b012d4" formatted="false">"إفتحه في Telegram"</string>
     <string name="ui_open_library_24974a" formatted="false">"المكتبة المفتوحة"</string>
-    <string name="ui_open_opensubtitles_api_page_9f649e" formatted="false">"Open OpenSubtitles API page"</string>
+    <string name="ui_open_opensubtitles_api_page_9f649e" formatted="false">"فتح صفحة API في OpenSubtitles"</string>
     <string name="ui_open_r2_41969b" formatted="false">"مفتوح R2"</string>
     <string name="ui_open_r2_cloudflare_asks_you_to_subscribe_to_r2_once_it_10d8f5" formatted="false">"فتح R2. Cloudflare يطلب منكم الانضمام إلى R2 مرة واحدة؛ وهو حر في البدء، وقد يطلب بطاقة دفع."</string>
-    <string name="ui_open_subdl_api_page_61aa3f" formatted="false">"Open SubDL API page"</string>
+    <string name="ui_open_subdl_api_page_61aa3f" formatted="false">"فتح صفحة API في SubDL"</string>
     <string name="ui_open_the_api_consumers_page_create_a_consumer_and_copy_864978" formatted="false">"(ب) فتح صفحة المستهلكين للتحالف، وخلق مستهلك، ونسخ مفتاحه."</string>
     <string name="ui_open_the_api_page_and_copy_your_api_key_3d48c9" formatted="false">"افتحي الصفحة ونسخي مفتاحك"</string>
     <string name="ui_open_tv_with_cast_0dd4f2" formatted="false">"التلفاز المفتوح مع (كاستي)"</string>
@@ -563,7 +562,7 @@
     <string name="ui_organize_telegram_folder_84e271" formatted="false">"تنظيم Telegram ملف"</string>
     <string name="ui_organizing_564f6b" formatted="false">"تنظيم..."</string>
     <string name="ui_original_file_0ee08b" formatted="false">"الملف الأصلي"</string>
-    <string name="ui_original_file_9088ed">"Original file: %1$s"</string>
+    <string name="ui_original_file_9088ed">"الملف الأصلي: %1$s"</string>
     <string name="ui_original_link_1f7d58" formatted="false">"الرابط الأصلي"</string>
     <string name="ui_other_accounts_use_this_tv_too_allow_it_only_if_you_ar_7a66a8" formatted="false">"حسابات أخرى تستخدم هذا التلفزيون أيضا. لا تسمح إلا إذا كنت في ذلك التلفزيون."</string>
     <string name="ui_other_files_apps_a4dea1" formatted="false">"ملفات أخرى"</string>
@@ -573,7 +572,7 @@
     <string name="ui_page_of_8b9ffa">"الصفحة %1$s من %2$s"</string>
     <string name="ui_pair_a_tv_first_so_cablegram_can_attach_storage_to_thi_cf1a07" formatted="false">"أرفع تلفازاً أولاً حتى يتمكن Cablegram من إرفاق المخزن لهذه العائلة"</string>
     <string name="ui_paired_but_this_phone_has_no_wi_fi_address_yet_5134d1" formatted="false">"(بيرد)، لكن هذا الهاتف لا يملك عنوان Wi‑Fi بعد."</string>
-    <string name="ui_paired_tv_68fdc7" formatted="false">"Paired TV"</string>
+    <string name="ui_paired_tv_68fdc7" formatted="false">"التلفاز المقترن"</string>
     <string name="ui_password_e7cf3e" formatted="false">"كلمة المرور"</string>
     <string name="ui_paste_a_public_video_page_or_direct_video_url_cablegra_d37a61" formatted="false">"قَدّمَ a صفحة فيديو عامة أَو فيديو مباشر URL. Cablegram سيضيف العنوان والوصف والأعمال الفنية المتاحة له."</string>
     <string name="ui_paste_code_682909" formatted="false">"لصق الرمز"</string>
@@ -588,7 +587,6 @@
     <string name="ui_phone_approval_required_112e8c" formatted="false">"طلب الموافقة على الهاتف"</string>
     <string name="ui_phone_number_306f1b" formatted="false">"رقم الهاتف"</string>
     <string name="ui_phone_space_cloud_copies_transfers_f4925b" formatted="false">"فضاء للهواتف، ونُقل نسخ سحابية"</string>
-    <string name="ui_phone_unpaired_one_tv_remaining_360447">"Phone unpaired one TV remaining=%1$s"</string>
     <string name="ui_pick_a_title_on_your_phone_and_it_plays_on_the_tv_8e206a" formatted="false">"اختر عنواناً على هاتفك وهو يلعب على التلفاز"</string>
     <string name="ui_pick_video_files_to_add_95b421" formatted="false">"اختر ملفات الفيديو لتضيف"</string>
     <string name="ui_pin_protected_d6dcf5" formatted="false">"PIN محمية"</string>
@@ -634,8 +632,8 @@
     <string name="ui_relay_over_mobile_data_a8efaa" formatted="false">"الإنفاق على البيانات المتنقلة"</string>
     <string name="ui_remote_ffa98e" formatted="false">"جهاز التحكم"</string>
     <string name="ui_remove_c3812f" formatted="false">"إزالة"</string>
-    <string name="ui_remove_cloud_copy_0b8eaf" formatted="false">"Remove cloud copy"</string>
-    <string name="ui_remove_copy_63d1ae" formatted="false">"Remove copy"</string>
+    <string name="ui_remove_cloud_copy_0b8eaf" formatted="false">"إزالة النسخة السحابية"</string>
+    <string name="ui_remove_copy_63d1ae" formatted="false">"إزالة النسخة"</string>
     <string name="ui_remove_e4dd7c">"إزالة %1$s؟"</string>
     <string name="ui_remove_folder_1dc4af">"نقل الملفات %1$s"</string>
     <string name="ui_remove_folder_f2a987" formatted="false">"إزالة الملفات"</string>
@@ -646,7 +644,7 @@
     <string name="ui_remove_saved_subtitle_4ed88f" formatted="false">"ارحلوا من هنا"</string>
     <string name="ui_remove_the_cloud_copy_bd936f" formatted="false">"إزالة نسخة السحابة؟"</string>
     <string name="ui_remove_title_0a053b" formatted="false">"إلغاء العنوان..."</string>
-    <string name="ui_remove_tv_7c437e" formatted="false">"Remove TV"</string>
+    <string name="ui_remove_tv_7c437e" formatted="false">"إزالة التلفاز"</string>
     <string name="ui_removed_from_selected_folders_cb882a">"نقل %1$s من ملفات مختارة."</string>
     <string name="ui_removed_from_the_library_the_file_is_still_on_the_phon_8401e9">"نقل %1$s من المكتبة. الملف لا يزال على الهاتف."</string>
     <string name="ui_removed_restore_it_from_import_telegram_hidden_videos_7f17e6">"نقل %1$s. أعدها من الإستيراد Telegram أشرطة فيديو مخفية"</string>
@@ -659,12 +657,12 @@
     <string name="ui_require_phone_approval_to_play_6ebd73" formatted="false">"طلب الموافقة على الهاتف للعب؟"</string>
     <string name="ui_reset_point_1_51c411" formatted="false">"النقطة 1"</string>
     <string name="ui_reset_point_2_a016cf" formatted="false">"النقطة 2"</string>
-    <string name="ui_resets_ecf9e5">". Resets %1$s"</string>
+    <string name="ui_resets_ecf9e5">". يُعاد التعيين في %1$s"</string>
     <string name="ui_restart_on_tv_32b64b" formatted="false">"إعادة تشغيل التلفزيون"</string>
-    <string name="ui_restore_a76e13" formatted="false">"Restore"</string>
+    <string name="ui_restore_a76e13" formatted="false">"استعادة"</string>
     <string name="ui_restored_160ebf">"إعادة %1$s."</string>
     <string name="ui_resume_d640c7" formatted="false">"استئناف"</string>
-    <string name="ui_resume_playback_b19825" formatted="false">"Resume playback"</string>
+    <string name="ui_resume_playback_b19825" formatted="false">"متابعة التشغيل"</string>
     <string name="ui_retry_cloud_save_6ac597" formatted="false">"سحابة العودة"</string>
     <string name="ui_retry_saving_to_telegram_eed237" formatted="false">"إنقاذ العودة إلى Telegram"</string>
     <string name="ui_review_bot_in_telegram_eec873" formatted="false">"أحذية الاستعراض في Telegram"</string>
@@ -685,10 +683,8 @@
     <string name="ui_save_titles_to_the_cloud_first_then_you_can_remove_the_a6c5d3" formatted="false">"وفروا ألقاب السحابة أولاً ثم يمكنك إزالة نسخ الهاتف."</string>
     <string name="ui_save_to_48c64f">"انقذ %1$s"</string>
     <string name="ui_save_to_cloud_0fd280" formatted="false">"أنقذ كلود"</string>
-    <string name="ui_save_to_cloud_screen_failed_48cdcd" formatted="false">"إنقاذ الشاشة السحابية فشلت"</string>
     <string name="ui_save_to_household_f31fbf" formatted="false">"إنقاذ الأسرة المعيشية"</string>
     <string name="ui_save_to_telegram_f6c595" formatted="false">"انقذ Telegram"</string>
-    <string name="ui_save_to_telegram_failed_a6512c">"أنقذْ Telegram فاشل: %1$s: %2$s"</string>
     <string name="ui_saved_in_the_cloud_dc46d5" formatted="false">"منقذة في السحابة"</string>
     <string name="ui_saved_it_will_be_used_on_your_tv_96182e" formatted="false">"منقذ. سيستخدم على تلفازك"</string>
     <string name="ui_saved_to_cloud_694e20" formatted="false">"أنقذ كلود"</string>
@@ -708,8 +704,8 @@
     <string name="ui_searches_go_straight_from_your_phone_to_that_site_f137b0" formatted="false">"التفتيشات تذهب مباشرة من هاتفك إلى ذلك الموقع"</string>
     <string name="ui_searching_c31723" formatted="false">"جارٍ البحث…"</string>
     <string name="ui_searching_for_subtitles_5b7af2" formatted="false">"البحث عن الحقائب..."</string>
-    <string name="ui_season_ab5756">"Season %1$s"</string>
-    <string name="ui_season_bad2b8" formatted="false">"Season"</string>
+    <string name="ui_season_ab5756">"الموسم %1$s"</string>
+    <string name="ui_season_bad2b8" formatted="false">"الموسم"</string>
     <string name="ui_sec_remaining_209f74">"%1$s ثانية متبقية"</string>
     <string name="ui_secret_access_key_d2aeac" formatted="false">"مفتاح الدخول السري"</string>
     <string name="ui_seek_seconds_at_a_time_43ffed">"الساعه %1$s ثانيه في الوقت"</string>
@@ -724,9 +720,9 @@
     <string name="ui_send_code_66a5b4" formatted="false">"رمز إرسال"</string>
     <string name="ui_send_to_0ddfbe">"إرسال إلى %1$s"</string>
     <string name="ui_sending_b8ed52" formatted="false">"إرسال..."</string>
-    <string name="ui_sent_not_confirmed_by_tv_feac62" formatted="false">"Sent (not confirmed by TV)"</string>
+    <string name="ui_sent_not_confirmed_by_tv_feac62" formatted="false">"تم الإرسال (لم يؤكده التلفاز)"</string>
     <string name="ui_sent_to_29ea5e">"أرسلت إلى %1$s..."</string>
-    <string name="ui_sent_to_not_confirmed_by_tv_8cbf56">"Sent %1$s to %2$s (not confirmed by TV)"</string>
+    <string name="ui_sent_to_not_confirmed_by_tv_8cbf56">"تم إرسال %1$s إلى %2$s (لم يؤكده التلفاز)"</string>
     <string name="ui_series_a8295e" formatted="false">"سلسلة"</string>
     <string name="ui_set_point_1_ba1872" formatted="false">"النقطة 1"</string>
     <string name="ui_set_point_2_eb0411" formatted="false">"النقطة 2"</string>
@@ -774,7 +770,7 @@
     <string name="ui_skip_28d035" formatted="false">"تخطٍّ"</string>
     <string name="ui_skip_bots_9e32d8" formatted="false">"Skip bot"</string>
     <string name="ui_skip_i_ll_line_it_up_myself_ce9dae" formatted="false">"(سكيب) سأصفها بنفسي"</string>
-    <string name="ui_skip_remaining_bots_89f0a7" formatted="false">"Skip remaining bots"</string>
+    <string name="ui_skip_remaining_bots_89f0a7" formatted="false">"تخطي البوتات المتبقية"</string>
     <string name="ui_skip_this_bot_b287ce" formatted="false">"اضرب هذا الزر"</string>
     <string name="ui_some_subtitle_sources_were_unavailable_0c879f" formatted="false">"بعض مصادر الترجمة الغير متاحة."</string>
     <string name="ui_something_went_wrong_try_again_in_a_moment_156a12" formatted="false">"حدث شيء خاطئ. حاول مرة أخرى في لحظة."</string>
@@ -857,7 +853,7 @@
     <string name="ui_the_cover_will_be_removed_from_your_household_on_the_n_135e1a" formatted="false">"الغطّاء سيُزال من بيتك على المزامنة التالية"</string>
     <string name="ui_the_cover_will_be_saved_to_your_household_on_the_next__87cda3" formatted="false">"سيتم توفير الغطاء لبيتك على المزامنة التالية"</string>
     <string name="ui_the_name_you_gave_the_bucket_2ae9c0" formatted="false">"الاسم الذي أعطيته الدلو"</string>
-    <string name="ui_the_profile_31580c" formatted="false">"لمحة عامة"</string>
+    <string name="ui_the_profile_31580c" formatted="false">"الملف الشخصي"</string>
     <string name="ui_the_relay_is_used_when_your_tv_can_t_reach_this_phone__b14902">"النفقة تستخدم عندما تلفزيونك لا يمكن الوصول إلى هذا الهاتف على Wi‑Fi%1$s."</string>
     <string name="ui_the_request_was_not_accepted_refresh_and_try_again_35aa7e" formatted="false">"ولم يُقبل الطلب. التكرار والمحاولة مرة أخرى"</string>
     <string name="ui_the_sign_in_expired_start_again_683df5" formatted="false">"اللافتة انتهت ابدأ من جديد"</string>
@@ -882,7 +878,7 @@
     <string name="ui_this_file_changed_so_the_saved_subtitle_no_longer_appl_af0270" formatted="false">"هذا الملف تغيّر، لذا لم يعد الكتاب المقدّس مطبقاً. ابحث مرة أخرى."</string>
     <string name="ui_this_file_has_no_usable_subtitle_cues_or_has_invalid_t_f01576" formatted="false">"هذا الملف ليس له عنوان فرعي قابل للاستخدام أو لديه توقيت غير صحيح. اختر ملفاً آخر لـ (ستارت) و(في تي)"</string>
     <string name="ui_this_file_is_larger_than_your_available_storage_e6fe5f" formatted="false">"هذا الملف أكبر من مخزنك المتاح"</string>
-    <string name="ui_this_household_already_uses_the_telegram_account_of_7d8c2e">"This household already uses the Telegram account of %1$s. "</string>
+    <string name="ui_this_household_already_uses_the_telegram_account_of_7d8c2e">"تستخدم هذه الأسرة بالفعل حساب Telegram الخاص بـ %1$s. "</string>
     <string name="ui_this_month_s_free_relay_traffic_is_used_up_same_wi_fi__ef740a">"حركة النقل المجانية هذا الشهر تستخدم أكثر من %1$s نفس الـWi‑Fi لا يزال يعمل"</string>
     <string name="ui_this_name_is_saved_on_the_server_every_paired_tv_and_p_0a385b" formatted="false">"هذا الاسم محتفظ به على الخادم كل تلفاز و هاتف سيرى نفس المكتبة"</string>
     <string name="ui_this_phone_is_on_the_same_wi_fi_as_the_tv_4eb203">"هذا الهاتف هو %1$s على نفس Wi‑Fi مثل التلفزيون."</string>
@@ -915,10 +911,10 @@
     <string name="ui_transfers_privacy_af4a2f" formatted="false">"نقل الخصوصية"</string>
     <string name="ui_transfers_wait_for_wi_fi_bdb4ad" formatted="false">"التحويلات تنتظر Wi‑Fi."</string>
     <string name="ui_transfers_wait_until_this_phone_is_charging_be1621" formatted="false">"التحويلات تنتظر حتى يشحن هذا الهاتف."</string>
-    <string name="ui_try_again_5b5ded" formatted="false">"المحاولة مجددًا"</string>
+    <string name="ui_try_again_5b5ded" formatted="false">"حاول مرة أخرى"</string>
     <string name="ui_try_again_d8b839" formatted="false">"المحاولة مجددًا"</string>
     <string name="ui_try_another_title_or_clear_your_filters_to_see_the_who_ab222f" formatted="false">"جرب لقب آخر أو نظف مرشحيك لرؤية المكتبة بأكملها"</string>
-    <string name="ui_tunnel_url_optional_b31277" formatted="false">"Tunnel URL (optional)"</string>
+    <string name="ui_tunnel_url_optional_b31277" formatted="false">"عنوان URL للنفق (اختياري)"</string>
     <string name="ui_turn_on_r2_and_make_a_bucket_2479a0" formatted="false">"اقلبي ار2 واجعلي دلو"</string>
     <string name="ui_tv_approval_requests_f2f42a">"الموافقة التلفزيونية %1$s طلب"</string>
     <string name="ui_tv_can_use_if_lan_does_not_match_3a3e2d">"يمكن للتلفزيون أن يستخدم %1$s إذا لم يتطابق لون الخط = \"# D900D9\""</string>
@@ -948,14 +944,14 @@
     <string name="ui_use_your_own_telegram_account_as_cloud_storage_share_v_0d5978" formatted="false">"استخدم حسابك الخاص بـ Telegram كمخزن سحابي نتشارك الفيديو في قناة خاصة ونشاهدهم على تلفازك"</string>
     <string name="ui_uses_telegram_directly_f552f4" formatted="false">" :: استخدام Telegram بشكل مباشر"</string>
     <string name="ui_uses_your_own_free_account_at_subdl_or_opensubtitles_o_35b12b" formatted="false">"يستخدم حسابك المجاني في SubDL أو OpenSubtitles واحد يكفي."</string>
-    <string name="ui_video_added_08c7ee" formatted="false">"Video added"</string>
+    <string name="ui_video_added_08c7ee" formatted="false">"تمت إضافة الفيديو"</string>
     <string name="ui_video_and_timing_patterns_stay_on_this_phone_searches__db1095" formatted="false">"أنماط الفيديو والتوقيت تبقى على هذا الهاتف. البحث يذهب مباشرة إلى مقدميك باستخدام حصصك الشخصية."</string>
-    <string name="ui_video_d534be" formatted="false">"Video"</string>
+    <string name="ui_video_d534be" formatted="false">"فيديو"</string>
     <string name="ui_video_frame_a4a3c5">"إطار فيديو %1$s"</string>
     <string name="ui_video_frame_selected_0e54db" formatted="false">"إطار فيديو مختار"</string>
     <string name="ui_video_shift_ca726e">"Video %1$s ; Shift %2$s"</string>
-    <string name="ui_video_url_f094b1" formatted="false">"Video URL"</string>
-    <string name="ui_videos_added_3d5b7a" formatted="false">"Videos added"</string>
+    <string name="ui_video_url_f094b1" formatted="false">"عنوان URL للفيديو"</string>
+    <string name="ui_videos_added_3d5b7a" formatted="false">"تمت إضافة مقاطع الفيديو"</string>
     <string name="ui_videos_added_cbf82e">"أضيف %1$s شريط فيديو"</string>
     <string name="ui_view_title_c9916d" formatted="false">"العنوان الافتراضي"</string>
     <string name="ui_waiting_for_your_tv_to_approve_keep_cablegram_open_on__785c22" formatted="false">"انتظر تلفازك لإقراره أبق Cablegram مفتوح على التلفاز"</string>
@@ -973,7 +969,7 @@
     <string name="ui_when_your_tv_can_t_reach_this_phone_on_wi_fi_cablegram_b99318" formatted="false">"عندما لا يستطيع تلفازك الوصول إلى هذا الهاتف في Wi‑Fi، Cablegram يمكن أن تتدفق من خلال نقلها. على البيانات المتحركة هذا يستخدم خطة بياناتك"</string>
     <string name="ui_where_your_details_go_c282bf" formatted="false">"أين تذهب تفاصيلك"</string>
     <string name="ui_wi_fi_only_ca99bb" formatted="false">"Wi-Fi فقط"</string>
-    <string name="ui_with_country_code_e_g_31_6_1234_5678_f10939" formatted="false">"With country code, e.g. +31 6 1234 5678"</string>
+    <string name="ui_with_country_code_e_g_31_6_1234_5678_f10939" formatted="false">"مع رمز الدولة، مثال: +31 6 1234 5678"</string>
     <string name="ui_with_your_household_library_everyone_in_your_household_90c154" formatted="false">"مع مكتبة منزلك كل من في بيتك يستطيع رؤيته على تلفازاتهم وهواتفهم وجهاز التحكم بالشبكة "</string>
     <string name="ui_without_use_the_tv_then_goes_back_to_who_s_watching_an_cef3ab" formatted="false">"بدون استخدام. التليفزيون ثم يعود إلى من يراقب، وهاتفك يجب أن يسمح بذلك مرة أخرى."</string>
     <string name="ui_won_t_open_b1de63">"%1$s لن يفتح %2$s"</string>
@@ -1023,4 +1019,10 @@
     <string name="ui_your_videos_stay_in_storage_you_own_cablegram_doesn_t__0ccf72" formatted="false">"الفيديو الخاص بك يبقى في التخزين الخاص بك. Cablegram لا يقدم الأفلام."</string>
     <string name="ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144" formatted="false">"الفيديو الخاص بك البقاء في تخزين الخاص بك. Cablegram يبقي مكتبتك منظمة وجاهزة لتلفازك"</string>
     <string name="ui_your_videos_your_big_screen_b7a07b" formatted="false">"الفيديو الخاص بك.\nشاشتك الكبيرة"</string>
+    <string name="ui_couldnt_allow_profile">"تعذّر السماح بـ %1$s: %2$s."</string>
+    <string name="ui_couldnt_deny_profile">"تعذّر رفض %1$s: %2$s."</string>
+    <string name="ui_couldnt_allow_playback">"تعذّر السماح بالتشغيل: %1$s."</string>
+    <string name="ui_couldnt_deny_playback">"تعذّر رفض التشغيل: %1$s."</string>
+    <string name="ui_about_1_minute" formatted="false">"دقيقة واحدة تقريبًا"</string>
+    <string name="ui_other_language" formatted="false">"لغة أخرى"</string>
 </resources>

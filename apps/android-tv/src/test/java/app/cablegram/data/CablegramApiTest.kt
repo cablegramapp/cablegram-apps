@@ -637,4 +637,15 @@ class CablegramApiTest {
         val error = runCatching { runBlocking { api.getVideosIfChanged("tv-token", null, null, "\"abc\"") } }.exceptionOrNull() as ApiException
         assertEquals(401, error.statusCode)
     }
+
+    @Test
+    fun `session check returns profile languages without a second request`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"household":{},"profile_languages":[{"id":"p1","ui_language":"de-DE"},{"id":"p2","ui_language":"fa"}]}"""))
+        server.enqueue(MockResponse().setBody("""{"household":{}}"""))
+
+        assertEquals(mapOf("p1" to "de-DE", "p2" to "fa"), api.checkSession("tv-token"))
+        assertEquals(null, api.checkSession("tv-token"))
+        assertEquals("/api/me", server.takeRequest().path)
+        assertEquals(2, server.requestCount)
+    }
 }

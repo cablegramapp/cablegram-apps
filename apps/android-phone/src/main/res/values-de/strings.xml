@@ -241,7 +241,6 @@
     <string name="ui_could_not_start_cloud_save_8b3f61" formatted="false">"Könnte nicht starten, Cloud-Support"</string>
     <string name="ui_could_not_sync_source_availability_863b58" formatted="false">"Konnte die Verfügbarkeit von Quellen nicht synchronisieren"</string>
     <string name="ui_could_not_update_the_language_check_your_connection_an_ce45e9" formatted="false">"Könnte die Sprache nicht aktualisieren. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut."</string>
-    <string name="ui_couldn_t_abc5d3">"%1$s %2$s: %3$s."</string>
     <string name="ui_couldn_t_add_the_telegram_copy_to_your_library_try_sav_5406b8" formatted="false">"Konnte die Telegram Kopie nicht in Ihre Bibliothek einfügen. Versuchen Sie, wieder zu retten."</string>
     <string name="ui_couldn_t_be_added_android_limits_how_many_f88239">"%1$s %2$s konnte nicht hinzugefügt werden: Android limitiert wie viele "</string>
     <string name="ui_couldn_t_change_that_setting_check_your_connection_and_8516e4" formatted="false">"Ich konnte diese Einstellung nicht ändern. Überprüfen Sie Ihre Verbindung und versuchen Sie es erneut."</string>
@@ -299,7 +298,7 @@
     <string name="ui_didn_t_answer_open_cablegram_on_the_tv_and_check_setti_5aa87a">"%1$s antworteten nicht. Öffnen Sie Cablegram im TV und überprüfen Sie die Einstellungen → Telegram zeigt es signiert in, "</string>
     <string name="ui_didn_t_confirm_check_the_tv_e508b0">"%1$s haben nicht bestätigt. Sehen Sie sich den Fernseher an."</string>
     <string name="ui_discard_changes_85bcf4" formatted="false">"Dekarieren Sie Änderungen?"</string>
-    <string name="ui_discard_eb1a70" formatted="false">"Discard"</string>
+    <string name="ui_discard_eb1a70" formatted="false">"Verwerfen"</string>
     <string name="ui_disconnect_7d073a">"Verbindung %1$s"</string>
     <string name="ui_disconnect_acfc5b" formatted="false">"Trennen"</string>
     <string name="ui_disconnect_it_first_or_sign_in_with_that_account_693723" formatted="false">"Trennen Sie es zuerst, oder melden Sie sich mit diesem Konto an."</string>
@@ -461,7 +460,7 @@
     <string name="ui_lock_account_on_tvs_011bbe" formatted="false">"Sperren Sie Konto auf TVs"</string>
     <string name="ui_login_code_95e717" formatted="false">"Login-Code"</string>
     <string name="ui_looking_at_your_video_15f7c9" formatted="false">"Sehen Sie sich Ihr Video an..."</string>
-    <string name="ui_looking_for_subtitles_81ebff">"Suche nach %1$s Untertiteln..."</string>
+    <string name="ui_looking_for_subtitles_81ebff">"Suche nach Untertiteln (%1$s)…"</string>
     <string name="ui_looking_for_tvs_8edf98" formatted="false">"Suche nach TVs..."</string>
     <string name="ui_made_for_your_big_screen_eb0ced" formatted="false">"Hergestellt für Ihren großen Bildschirm"</string>
     <string name="ui_make_cablegram_yours_13baae" formatted="false">"Machen Sie Cablegram Ihrer."</string>
@@ -539,11 +538,11 @@
     <string name="ui_open_cablegram_on_your_tv_then_enter_the_six_digit_cod_9c081e" formatted="false">"Öffnen Sie Cablegram auf Ihrem TV, geben Sie dann den sechsstelligen Code dort angezeigt."</string>
     <string name="ui_open_cloudflare_sign_up_53c22b" formatted="false">"Cloudflare Anmeldung öffnen"</string>
     <string name="ui_open_google_f8b2a8" formatted="false">"Google öffnen"</string>
-    <string name="ui_open_in_telegram_700ad9">"Open \"%1$s\" in Telegram"</string>
+    <string name="ui_open_in_telegram_700ad9">"„%1$s“ in Telegram öffnen"</string>
     <string name="ui_open_it_in_telegram_b012d4" formatted="false">"Öffne es Telegram"</string>
     <string name="ui_open_library_24974a" formatted="false">"Open Library"</string>
     <string name="ui_open_opensubtitles_api_page_9f649e" formatted="false">"OpenSubtitles API-Seite öffnen"</string>
-    <string name="ui_open_r2_41969b" formatted="false">"Open R2"</string>
+    <string name="ui_open_r2_41969b" formatted="false">"R2 öffnen"</string>
     <string name="ui_open_r2_cloudflare_asks_you_to_subscribe_to_r2_once_it_10d8f5" formatted="false">"Öffnen Sie R2. Cloudflare bittet Sie, R2 einmal zu abonnieren; es ist kostenlos zu starten, und es kann für eine Zahlungskarte fragen."</string>
     <string name="ui_open_subdl_api_page_61aa3f" formatted="false">"SubDL API-Seite öffnen"</string>
     <string name="ui_open_the_api_consumers_page_create_a_consumer_and_copy_864978" formatted="false">"Öffnen Sie die API Verbraucherseite, erstellen Sie einen Verbraucher und kopieren Sie seinen API-Schlüssel."</string>
@@ -564,7 +563,7 @@
     <string name="ui_organizing_564f6b" formatted="false">"Organisieren..."</string>
     <string name="ui_original_file_0ee08b" formatted="false">"Original-Datei"</string>
     <string name="ui_original_file_9088ed">"Original-Datei: %1$s"</string>
-    <string name="ui_original_link_1f7d58" formatted="false">"Original link"</string>
+    <string name="ui_original_link_1f7d58" formatted="false">"Originallink"</string>
     <string name="ui_other_accounts_use_this_tv_too_allow_it_only_if_you_ar_7a66a8" formatted="false">"Andere Konten nutzen diesen Fernseher auch. Lassen Sie es nur, wenn Sie in diesem TV sind."</string>
     <string name="ui_other_files_apps_a4dea1" formatted="false">"Andere Dateien und Apps"</string>
     <string name="ui_other_matches_e79832">"Andere Spiele (%1$s)"</string>
@@ -588,7 +587,6 @@
     <string name="ui_phone_approval_required_112e8c" formatted="false">"Telefonzulassung erforderlich"</string>
     <string name="ui_phone_number_306f1b" formatted="false">"Telefonnummer"</string>
     <string name="ui_phone_space_cloud_copies_transfers_f4925b" formatted="false">"Telefonraum, Cloud Kopien &amp; Transfers"</string>
-    <string name="ui_phone_unpaired_one_tv_remaining_360447">"Telefon unbeeinträchtigt ein TV übrig=%1$s"</string>
     <string name="ui_pick_a_title_on_your_phone_and_it_plays_on_the_tv_8e206a" formatted="false">"Wählen Sie einen Titel auf Ihrem Handy und es spielt auf dem TV."</string>
     <string name="ui_pick_video_files_to_add_95b421" formatted="false">"Wählen Sie Videodateien hinzufügen"</string>
     <string name="ui_pin_protected_d6dcf5" formatted="false">"PIN geschützt"</string>
@@ -661,13 +659,13 @@
     <string name="ui_reset_point_2_a016cf" formatted="false">"Zurück zur Übersicht"</string>
     <string name="ui_resets_ecf9e5">". Zurücksetzen %1$s"</string>
     <string name="ui_restart_on_tv_32b64b" formatted="false">"Neustart im TV"</string>
-    <string name="ui_restore_a76e13" formatted="false">"Restore"</string>
+    <string name="ui_restore_a76e13" formatted="false">"Wiederherstellen"</string>
     <string name="ui_restored_160ebf">"Restauriert %1$s."</string>
     <string name="ui_resume_d640c7" formatted="false">"Fortsetzen"</string>
     <string name="ui_resume_playback_b19825" formatted="false">"Resum-Wiedergabe"</string>
     <string name="ui_retry_cloud_save_6ac597" formatted="false">"Retry Cloud speichern"</string>
     <string name="ui_retry_saving_to_telegram_eed237" formatted="false">"Retry Sparen auf Telegram"</string>
-    <string name="ui_review_bot_in_telegram_eec873" formatted="false">"Review bot in Telegram"</string>
+    <string name="ui_review_bot_in_telegram_eec873" formatted="false">"Bot in Telegram prüfen"</string>
     <string name="ui_review_free_space_0a228f" formatted="false">"Bewertung &amp; freier Raum"</string>
     <string name="ui_review_videos_70f10f" formatted="false">"Videos ansehen"</string>
     <string name="ui_safely_stored_in_f9eee7">"Sicher in %1$s gespeichert"</string>
@@ -685,10 +683,8 @@
     <string name="ui_save_titles_to_the_cloud_first_then_you_can_remove_the_a6c5d3" formatted="false">"Speichern Sie zuerst Titel in die Cloud. Dann können Sie die Telefonkopien entfernen."</string>
     <string name="ui_save_to_48c64f">"Sparen Sie %1$s"</string>
     <string name="ui_save_to_cloud_0fd280" formatted="false">"Speichern in Cloud"</string>
-    <string name="ui_save_to_cloud_screen_failed_48cdcd" formatted="false">"Speichern Sie auf Cloud-Bildschirm gescheitert"</string>
     <string name="ui_save_to_household_f31fbf" formatted="false">"Sparen Sie den Haushalt"</string>
     <string name="ui_save_to_telegram_f6c595" formatted="false">"Sparen Sie Telegram"</string>
-    <string name="ui_save_to_telegram_failed_a6512c">"Sparen Sie Telegram gescheitert: %1$s: %2$s"</string>
     <string name="ui_saved_in_the_cloud_dc46d5" formatted="false">"Gespeichert in der Cloud"</string>
     <string name="ui_saved_it_will_be_used_on_your_tv_96182e" formatted="false">"Gespart. Es wird auf Ihrem TV verwendet werden."</string>
     <string name="ui_saved_to_cloud_694e20" formatted="false">"Gespeichert nach Cloud"</string>
@@ -915,10 +911,10 @@
     <string name="ui_transfers_privacy_af4a2f" formatted="false">"Transfers &amp; Datenschutz"</string>
     <string name="ui_transfers_wait_for_wi_fi_bdb4ad" formatted="false">"Transfers warten auf Wi‑Fi."</string>
     <string name="ui_transfers_wait_until_this_phone_is_charging_be1621" formatted="false">"Transfers warten, bis dieses Telefon geladen ist."</string>
-    <string name="ui_try_again_5b5ded" formatted="false">"Erneut versuchen"</string>
+    <string name="ui_try_again_5b5ded" formatted="false">"versuchen Sie es erneut"</string>
     <string name="ui_try_again_d8b839" formatted="false">"Erneut versuchen"</string>
     <string name="ui_try_another_title_or_clear_your_filters_to_see_the_who_ab222f" formatted="false">"Versuchen Sie einen anderen Titel oder löschen Sie Ihre Filter, um die gesamte Bibliothek zu sehen."</string>
-    <string name="ui_tunnel_url_optional_b31277" formatted="false">"Tunnel URL (optional)"</string>
+    <string name="ui_tunnel_url_optional_b31277" formatted="false">"Tunnel-URL (optional)"</string>
     <string name="ui_turn_on_r2_and_make_a_bucket_2479a0" formatted="false">"Schalten Sie R2 ein und machen Sie einen Eimer"</string>
     <string name="ui_tv_approval_requests_f2f42a">"TV-Zulassung · %1$s Anfragen"</string>
     <string name="ui_tv_can_use_if_lan_does_not_match_3a3e2d">"TV kann %1$s verwenden, wenn LAN nicht passt."</string>
@@ -953,7 +949,7 @@
     <string name="ui_video_d534be" formatted="false">"Video"</string>
     <string name="ui_video_frame_a4a3c5">"Videorahmen %1$s"</string>
     <string name="ui_video_frame_selected_0e54db" formatted="false">"Videorahmen ausgewählt"</string>
-    <string name="ui_video_shift_ca726e">"Video %1$s · Shift %2$s"</string>
+    <string name="ui_video_shift_ca726e">"Video %1$s · Versatz %2$s"</string>
     <string name="ui_video_url_f094b1" formatted="false">"Video-URL"</string>
     <string name="ui_videos_added_3d5b7a" formatted="false">"Videos hinzugefügt"</string>
     <string name="ui_videos_added_cbf82e">"%1$s Videos hinzugefügt"</string>
@@ -1023,4 +1019,10 @@
     <string name="ui_your_videos_stay_in_storage_you_own_cablegram_doesn_t__0ccf72" formatted="false">"Ihre Videos bleiben im eigenen Speicher. Cablegram liefert keine Filme."</string>
     <string name="ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144" formatted="false">"Ihre Videos bleiben in Ihrem eigenen Speicher. Cablegram hält Ihre Bibliothek organisiert und bereit für Ihren Fernseher."</string>
     <string name="ui_your_videos_your_big_screen_b7a07b" formatted="false">"Deine Videos.\nDein großer Bildschirm."</string>
+    <string name="ui_couldnt_allow_profile">"%1$s konnte nicht erlaubt werden: %2$s."</string>
+    <string name="ui_couldnt_deny_profile">"%1$s konnte nicht abgelehnt werden: %2$s."</string>
+    <string name="ui_couldnt_allow_playback">"Wiedergabe konnte nicht erlaubt werden: %1$s."</string>
+    <string name="ui_couldnt_deny_playback">"Wiedergabe konnte nicht abgelehnt werden: %1$s."</string>
+    <string name="ui_about_1_minute" formatted="false">"etwa 1 Minute"</string>
+    <string name="ui_other_language" formatted="false">"andere Sprache"</string>
 </resources>

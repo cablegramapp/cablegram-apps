@@ -1794,44 +1794,42 @@ private fun formatTime(ms: Long): String {
     }
 }
 
-internal val PHONE_APPROVAL_TRANSITION: SourceTransition get() = phoneApprovalTransition()
-
 /** What the TV says while it moves a title between paths (spec 003). */
 internal data class SourceTransition(val eyebrow: String, val title: String, val body: String, val footnote: String? = null, val warning: Boolean = true)
 
-internal fun phoneApprovalTransition(resources: android.content.res.Resources? = null) = SourceTransition(
-    eyebrow = (resources?.getString(R.string.ui_phone_not_on_this_wi_fi_f08589) ?: "PHONE NOT ON THIS WI‑FI"),
-    title = (resources?.getString(R.string.ui_allow_streaming_on_your_phone_394ad4) ?: "Allow streaming on your phone"),
-    body = (resources?.getString(R.string.ui_your_phone_isn_t_on_the_same_wi_fi_as_this_tv_so_cable_a08076) ?: "Your phone isn't on the same Wi‑Fi as this TV, so Cablegram can stream through its relay using the phone's mobile data."),
-    footnote = (resources?.getString(R.string.ui_on_your_phone_open_the_cablegram_notification_and_tap__c5d631) ?: "On your phone, open the Cablegram notification and tap “Allow this time”. Playback continues here right after."),
+internal fun phoneApprovalTransition(resources: android.content.res.Resources) = SourceTransition(
+    eyebrow = resources.getString(R.string.ui_phone_not_on_this_wi_fi_f08589),
+    title = resources.getString(R.string.ui_allow_streaming_on_your_phone_394ad4),
+    body = resources.getString(R.string.ui_your_phone_isn_t_on_the_same_wi_fi_as_this_tv_so_cable_a08076),
+    footnote = resources.getString(R.string.ui_on_your_phone_open_the_cablegram_notification_and_tap__c5d631),
 )
 
-internal fun transitionTo(url: String, atStart: Boolean = false, resources: android.content.res.Resources? = null): SourceTransition = when {
+internal fun transitionTo(url: String, atStart: Boolean = false, resources: android.content.res.Resources): SourceTransition = when {
     isTelegramLocalUrl(url) -> SourceTransition(
-        eyebrow = (resources?.getString(R.string.ui_switching_source_1ede8f) ?: "SWITCHING SOURCE"),
-        title = (resources?.getString(R.string.ui_continuing_straight_from_telegram_fbf398) ?: "Continuing straight from Telegram"),
-        body = (resources?.getString(R.string.ui_playback_continues_from_where_you_were_using_this_tv_s_344891) ?: "Playback continues from where you were, using this TV's own Telegram connection."),
+        eyebrow = resources.getString(R.string.ui_switching_source_1ede8f),
+        title = resources.getString(R.string.ui_continuing_straight_from_telegram_fbf398),
+        body = resources.getString(R.string.ui_playback_continues_from_where_you_were_using_this_tv_s_344891),
         warning = false,
     )
     isPhoneTelegramUrl(url) -> SourceTransition(
-        eyebrow = (resources?.getString(R.string.ui_switching_source_1ede8f) ?: "SWITCHING SOURCE"),
-        title = (resources?.getString(R.string.ui_continuing_through_your_phone_bd43fe) ?: "Continuing through your phone"),
-        body = (resources?.getString(R.string.ui_telegram_was_too_slow_on_this_tv_so_your_phone_fetches_ad106b) ?: "Telegram was too slow on this TV, so your phone fetches the video and sends it here. Playback continues from where you were."),
+        eyebrow = resources.getString(R.string.ui_switching_source_1ede8f),
+        title = resources.getString(R.string.ui_continuing_through_your_phone_bd43fe),
+        body = resources.getString(R.string.ui_telegram_was_too_slow_on_this_tv_so_your_phone_fetches_ad106b),
     )
     isRelayUrl(url) && atStart -> SourceTransition(
-        eyebrow = (resources?.getString(R.string.ui_connecting_through_the_relay_a3dfc7) ?: "CONNECTING THROUGH THE RELAY"),
-        title = (resources?.getString(R.string.ui_reaching_your_phone_over_the_internet_f54b1f) ?: "Reaching your phone over the internet"),
-        body = (resources?.getString(R.string.ui_your_phone_and_this_tv_aren_t_on_the_same_wi_fi_so_cab_29145c) ?: "Your phone and this TV aren't on the same Wi‑Fi, so Cablegram streams through its relay. This takes a few seconds."),
+        eyebrow = resources.getString(R.string.ui_connecting_through_the_relay_a3dfc7),
+        title = resources.getString(R.string.ui_reaching_your_phone_over_the_internet_f54b1f),
+        body = resources.getString(R.string.ui_your_phone_and_this_tv_aren_t_on_the_same_wi_fi_so_cab_29145c),
     )
     isRelayUrl(url) -> SourceTransition(
-        eyebrow = (resources?.getString(R.string.ui_wi_fi_connection_lost_591289) ?: "WI‑FI CONNECTION LOST"),
-        title = (resources?.getString(R.string.ui_switching_to_the_cablegram_relay_79ead3) ?: "Switching to the Cablegram relay"),
-        body = (resources?.getString(R.string.ui_your_phone_left_this_wi_fi_playback_continues_through__120c29) ?: "Your phone left this Wi‑Fi. Playback continues through the relay from where you were — this takes a few seconds."),
+        eyebrow = resources.getString(R.string.ui_wi_fi_connection_lost_591289),
+        title = resources.getString(R.string.ui_switching_to_the_cablegram_relay_79ead3),
+        body = resources.getString(R.string.ui_your_phone_left_this_wi_fi_playback_continues_through__120c29),
     )
     else -> SourceTransition(
-        eyebrow = (resources?.getString(R.string.ui_back_on_your_wi_fi_b6047e) ?: "BACK ON YOUR WI‑FI"),
-        title = (resources?.getString(R.string.ui_switching_back_to_your_phone_56a1f2) ?: "Switching back to your phone"),
-        body = (resources?.getString(R.string.ui_your_phone_is_on_this_wi_fi_again_so_playback_continue_b85633) ?: "Your phone is on this Wi‑Fi again, so playback continues directly from it."),
+        eyebrow = resources.getString(R.string.ui_back_on_your_wi_fi_b6047e),
+        title = resources.getString(R.string.ui_switching_back_to_your_phone_56a1f2),
+        body = resources.getString(R.string.ui_your_phone_is_on_this_wi_fi_again_so_playback_continue_b85633),
         warning = false,
     )
 }

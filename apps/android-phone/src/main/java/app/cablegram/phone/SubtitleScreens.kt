@@ -278,7 +278,7 @@ private fun ResultsContent(
     }
 
     if (loadingOthers) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        CircularProgressIndicator(Modifier.width(20.dp).height(20.dp), color = VlcOrange); Text(ui.getString(R.string.ui_looking_for_subtitles_81ebff, language?.let(::languageName) ?: "other"), color = Color.White)
+        CircularProgressIndicator(Modifier.width(20.dp).height(20.dp), color = VlcOrange); Text(ui.getString(R.string.ui_looking_for_subtitles_81ebff, language?.let { languageName(it, ui) } ?: ui.getString(R.string.ui_other_language)), color = Color.White)
     }
     othersNote?.let { StatusNote(it) }
     if (!loadingOthers && othersNote == null && language != null && inView.isEmpty()) StatusNote(ui.getString(R.string.ui_no_subtitles_were_found_for_this_title_aa5d5c, languageName(language, resources = ui)))
@@ -390,7 +390,7 @@ internal fun ColumnScope.AdjustContent(
         opening = false
     }
     var audioNote by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(input) { input?.let { i -> audioNote = withContext(kotlinx.coroutines.Dispatchers.IO) { LocalSubtitleAnalysis.unsupportedAudio(i) }?.let(::unsupportedAudioNote) } }
+    LaunchedEffect(input) { input?.let { i -> audioNote = withContext(kotlinx.coroutines.Dispatchers.IO) { LocalSubtitleAnalysis.unsupportedAudio(i) }?.let { unsupportedAudioNote(it, ui) } } }
     LaunchedEffect(input) { while (true) { fetchedBytes = input?.bytesFetched ?: 0L; delay(500) } }
     // A video that never starts (a slow Telegram read) must not leave a black box with no explanation.
     LaunchedEffect(input) { if (input?.remote == true) { delay(45_000); if (!playback.ready && playback.error == null && message == null) message = ui.getString(R.string.ui_this_video_is_taking_too_long_to_open_from_telegram_so_c2df43) } }

@@ -241,7 +241,6 @@
     <string name="ui_could_not_start_cloud_save_8b3f61" formatted="false">"Невозможно начать облачную экономию"</string>
     <string name="ui_could_not_sync_source_availability_863b58" formatted="false">"Не удалось синхронизировать доступность источника"</string>
     <string name="ui_could_not_update_the_language_check_your_connection_an_ce45e9" formatted="false">"Не удалось обновить язык. Проверьте свою связь и попробуйте еще раз."</string>
-    <string name="ui_couldn_t_abc5d3">"Не мог %1$s %2$s: %3$s."</string>
     <string name="ui_couldn_t_add_the_telegram_copy_to_your_library_try_sav_5406b8" formatted="false">"Не могу добавить Telegram копий в вашу библиотеку. Попробуй снова спасти."</string>
     <string name="ui_couldn_t_be_added_android_limits_how_many_f88239">"%1$s %2$s не может быть добавлено: Android ограничивает количество "</string>
     <string name="ui_couldn_t_change_that_setting_check_your_connection_and_8516e4" formatted="false">"Я не мог изменить эту обстановку. Проверьте свою связь и попробуйте еще раз."</string>
@@ -461,7 +460,7 @@
     <string name="ui_lock_account_on_tvs_011bbe" formatted="false">"Заблокировать аккаунт на телевизорах"</string>
     <string name="ui_login_code_95e717" formatted="false">"Код входа"</string>
     <string name="ui_looking_at_your_video_15f7c9" formatted="false">"Посмотрев ваше видео..."</string>
-    <string name="ui_looking_for_subtitles_81ebff">"В поисках %1$s субтитры..."</string>
+    <string name="ui_looking_for_subtitles_81ebff">"Поиск субтитров (%1$s)…"</string>
     <string name="ui_looking_for_tvs_8edf98" formatted="false">"В поисках телевизоров..."</string>
     <string name="ui_made_for_your_big_screen_eb0ced" formatted="false">"Сделано для вашего большого экрана"</string>
     <string name="ui_make_cablegram_yours_13baae" formatted="false">"Сделай Cablegram своими."</string>
@@ -588,7 +587,6 @@
     <string name="ui_phone_approval_required_112e8c" formatted="false">"Одобрение телефона требуется"</string>
     <string name="ui_phone_number_306f1b" formatted="false">"Телефонный номер"</string>
     <string name="ui_phone_space_cloud_copies_transfers_f4925b" formatted="false">"Телефонное пространство, облачные копии и передачи"</string>
-    <string name="ui_phone_unpaired_one_tv_remaining_360447">"Телефон неспаренный, один телевизор остался = %1$s"</string>
     <string name="ui_pick_a_title_on_your_phone_and_it_plays_on_the_tv_8e206a" formatted="false">"Выберите заголовок на телефоне, и он будет воспроизводиться по телевизору."</string>
     <string name="ui_pick_video_files_to_add_95b421" formatted="false">"Выберите видеофайлы для добавления"</string>
     <string name="ui_pin_protected_d6dcf5" formatted="false">"PIN-код защищен"</string>
@@ -685,10 +683,8 @@
     <string name="ui_save_titles_to_the_cloud_first_then_you_can_remove_the_a6c5d3" formatted="false">"Сначала сохраните заголовки в облаке. Затем вы можете удалить копии телефона."</string>
     <string name="ui_save_to_48c64f">"Экономия до %1$s"</string>
     <string name="ui_save_to_cloud_0fd280" formatted="false">"Сохранить в облаке"</string>
-    <string name="ui_save_to_cloud_screen_failed_48cdcd" formatted="false">"Экран Save to Cloud провалился"</string>
     <string name="ui_save_to_household_f31fbf" formatted="false">"Экономить на домашнем хозяйстве"</string>
     <string name="ui_save_to_telegram_f6c595" formatted="false">"Экономия до Telegram"</string>
-    <string name="ui_save_to_telegram_failed_a6512c">"Спасти Telegram не удалось: %1$s: %2$s"</string>
     <string name="ui_saved_in_the_cloud_dc46d5" formatted="false">"Спасенные в облаке"</string>
     <string name="ui_saved_it_will_be_used_on_your_tv_96182e" formatted="false">"Спасён. Он будет использоваться на вашем телевизоре."</string>
     <string name="ui_saved_to_cloud_694e20" formatted="false">"Сохраняется в облаке"</string>
@@ -915,7 +911,7 @@
     <string name="ui_transfers_privacy_af4a2f" formatted="false">"Трансферы и конфиденциальность"</string>
     <string name="ui_transfers_wait_for_wi_fi_bdb4ad" formatted="false">"Трансферы ждут Wi‑Fi."</string>
     <string name="ui_transfers_wait_until_this_phone_is_charging_be1621" formatted="false">"Трансферы ждут, пока этот телефон заряжается."</string>
-    <string name="ui_try_again_5b5ded" formatted="false">"Попробовать ещё раз"</string>
+    <string name="ui_try_again_5b5ded" formatted="false">"попробуйте ещё раз"</string>
     <string name="ui_try_again_d8b839" formatted="false">"Попробовать ещё раз"</string>
     <string name="ui_try_another_title_or_clear_your_filters_to_see_the_who_ab222f" formatted="false">"Попробуйте другой заголовок или очистите фильтры, чтобы увидеть всю библиотеку."</string>
     <string name="ui_tunnel_url_optional_b31277" formatted="false">"Туннель URL (необязательно)"</string>
@@ -1023,4 +1019,10 @@
     <string name="ui_your_videos_stay_in_storage_you_own_cablegram_doesn_t__0ccf72" formatted="false">"Ваши видео остаются на складе, которым вы владеете. Cablegram не предоставляют фильмы."</string>
     <string name="ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144" formatted="false">"Ваши видео хранятся в вашем собственном хранилище. Cablegram держит вашу библиотеку организованной и готовой для вашего телевизора."</string>
     <string name="ui_your_videos_your_big_screen_b7a07b" formatted="false">"Твои видео.\nТвой большой экран."</string>
+    <string name="ui_couldnt_allow_profile">"Не удалось разрешить %1$s: %2$s."</string>
+    <string name="ui_couldnt_deny_profile">"Не удалось отклонить %1$s: %2$s."</string>
+    <string name="ui_couldnt_allow_playback">"Не удалось разрешить воспроизведение: %1$s."</string>
+    <string name="ui_couldnt_deny_playback">"Не удалось отклонить воспроизведение: %1$s."</string>
+    <string name="ui_about_1_minute" formatted="false">"около 1 минуты"</string>
+    <string name="ui_other_language" formatted="false">"другой язык"</string>
 </resources>

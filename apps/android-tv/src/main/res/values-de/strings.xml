@@ -158,7 +158,7 @@
     <string name="ui_press_back_to_cancel_and_return_to_your_library_35e34a" formatted="false">"Zurück zu stornieren und zurück zu Ihrer Bibliothek"</string>
     <string name="ui_preview_324b13" formatted="false">"Vorschau"</string>
     <string name="ui_profiles_unavailable_ea6ad2" formatted="false">"Nicht verfügbare Profile"</string>
-    <string name="ui_queued_661ff4" formatted="false">"Queued"</string>
+    <string name="ui_queued_661ff4" formatted="false">"In Warteschlange"</string>
     <string name="ui_reaching_your_phone_over_the_internet_f54b1f" formatted="false">"Ihr Telefon über das Internet erreichen"</string>
     <string name="ui_ready_5fa7aa" formatted="false">"Fertig"</string>
     <string name="ui_ready_to_play_6dbc08" formatted="false">"Bereit zu spielen"</string>
@@ -239,17 +239,16 @@
     <string name="ui_titles_you_start_watching_show_up_here_5990dd" formatted="false">"Titel, die du hier auftauchst."</string>
     <string name="ui_too_many_tries_this_profile_is_locked_for_15_minutes_21bd30" formatted="false">"Zu viele Versuche. Dieses Profil ist für 15 Minuten gesperrt."</string>
     <string name="ui_try_again_d8b839" formatted="false">"Erneut versuchen"</string>
-    <string name="ui_tuning_2abeef" formatted="false">"Tuning"</string>
+    <string name="ui_tuning_2abeef" formatted="false">"Feinschliff"</string>
     <string name="ui_tv_keyboard_0fb61f" formatted="false">"Fernsehtastatur"</string>
-    <string name="ui_tv_pairing_expired_410_new_pin_ff7100" formatted="false">"TV-Paar abgelaufen (410), neue PIN"</string>
     <string name="ui_tv_session_dca893" formatted="false">"TV-Sitzung"</string>
     <string name="ui_tv_shows_6adcc6" formatted="false">"Serien"</string>
     <string name="ui_type_on_your_phone_a4ef92" formatted="false">"Geben Sie Ihr Telefon ein"</string>
     <string name="ui_type_with_the_tv_keyboard_b12dad" formatted="false">"Typ mit TV-Tastatur"</string>
     <string name="ui_unpair_10be2f" formatted="false">"Unzulänglichkeiten"</string>
-    <string name="ui_unpair_this_tv_c7796b" formatted="false">"Unpair this TV"</string>
+    <string name="ui_unpair_this_tv_c7796b" formatted="false">"Kopplung dieses Fernsehers aufheben"</string>
     <string name="ui_unpair_this_tv_d99d68" formatted="false">"Haben Sie diesen Fernseher nicht beeinträchtigt?"</string>
-    <string name="ui_unpair_tv_fbd044" formatted="false">"Unpair TV"</string>
+    <string name="ui_unpair_tv_fbd044" formatted="false">"Fernseher entkoppeln"</string>
     <string name="ui_use_the_tv_keyboard_instead_c6c66e" formatted="false">"Verwenden Sie stattdessen die TV-Tastatur"</string>
     <string name="ui_use_this_tv_for_telegram_playback_051438" formatted="false">"Verwenden Sie diesen TV für Telegram Wiedergabe"</string>
     <string name="ui_volume_b10fb9" formatted="false">"Lautstärke"</string>

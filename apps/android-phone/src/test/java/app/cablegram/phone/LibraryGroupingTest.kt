@@ -1,10 +1,16 @@
 package app.cablegram.phone
 
+import androidx.test.core.app.ApplicationProvider
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@RunWith(RobolectricTestRunner::class)
 class LibraryGroupingTest {
+    private val res = ApplicationProvider.getApplicationContext<android.content.Context>().resources
+
     private fun item(
         id: String,
         title: String,
@@ -33,7 +39,7 @@ class LibraryGroupingTest {
         assertEquals(listOf("tmdb:136315", "m"), entries.map { it.key })
         val series = entries[0] as LibraryEntry.Series
         assertEquals("ordered by season then episode", listOf("b", "a", "c"), series.episodes.map { it.id })
-        assertEquals("2 seasons · 3 episodes", series.summary())
+        assertEquals("2 seasons · 3 episodes", series.summary(resources = res))
         assertTrue(entries[1] is LibraryEntry.Film)
     }
 
