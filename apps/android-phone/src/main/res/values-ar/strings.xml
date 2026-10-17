@@ -535,7 +535,8 @@
     <string name="ui_only_the_subtitle_you_choose_its_language_provider_ref_abd48f" formatted="false">"فقط العنوان الفرعي الذي تختاره، لغته، مرجع المزود والتوقيت مخزن مع منزلك للتلفزيون المختلط. أزيلوا مساراً منقذاً من مراقبة العنوان الفرعي وحذف مصدره أو حسابكم أيضاً يحذفه تغيير الحساب هنا يتوقف عن البحث لكن يُبقي المسارات التي اخترتها بالفعل"</string>
     <string name="ui_only_the_subtitle_you_pick_is_saved_for_your_tvs_ab5d20" formatted="false">"فقط العنوان الفرعي الذي تختاره يتم إنقاذه من أجل تلفازاتك"</string>
     <string name="ui_open_a_title_and_tap_find_subtitles_cablegram_finds_su_892bc5" formatted="false">"افتحي عنواناً وابحثي عن عنوان فرعي Cablegram يجد عنواناً فرعياً يطابق ملفك ويرسل الشخص الذي تختاره إلى تلفازك"</string>
-    <string name="ui_open_cablegram_on_your_tv_then_enter_the_six_digit_cod_9c081e" formatted="false">"افتح Cablegram على تلفازك ثم أدخل رمز 6 أرقام هناك"</string>
+    <string name="pairing_setup_steps" formatted="false">"١. ثبّت تطبيق Cablegram للتلفزيون على جهاز Android TV أو Google TV.\n\n٢. افتح Cablegram على التلفزيون لعرض رمز QR ورمز PIN المكوّن من ستة أرقام.\n\n٣. امسح رمز QR بهذا الهاتف أو أدخل رمز PIN أدناه."</string>
+    <string name="pairing_get_tv_app" formatted="false">"تنزيل تطبيق التلفزيون"</string>
     <string name="ui_open_cloudflare_sign_up_53c22b" formatted="false">"فتح Cloudflare توقيع"</string>
     <string name="ui_open_google_f8b2a8" formatted="false">"فتح Google"</string>
     <string name="ui_open_in_telegram_700ad9">"إفتح \"%1$s\" في Telegram"</string>
@@ -977,7 +978,7 @@
     <string name="ui_year_optional_246c90" formatted="false">"السنة (الاختيارية)"</string>
     <string name="ui_you_can_check_this_ba4981" formatted="false">"يمكنك التحقق من هذا"</string>
     <string name="ui_you_can_still_shift_the_timing_684cd9" formatted="false">" لا يزال يمكنك تغيير التوقيت."</string>
-    <string name="ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486" formatted="false">"سترى Cablegram في Telegram سيستينغز فواتير ويمكنك إنهاءها هناك في أي وقت انفصلوا عن Cablegram علامة في كل مكان"</string>
+    <string name="ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486" formatted="false">"يمكنك إنهاء كل جلسة Cablegram من Telegram ← الإعدادات ← الأجهزة. يؤدي فصل Telegram في Cablegram إلى فصل المكتبة وتسجيل الخروج من هذا الهاتف. تحقق من الأجهزة لإنهاء أي جلسات تلفزيون لا تزال نشطة."</string>
     <string name="ui_you_re_all_set_f08920" formatted="false">"جميعكم جاهزون"</string>
     <string name="ui_you_re_no_longer_in_the_channel_you_left_it_or_it_was__46af5b">"أنت لم تعد في قناة \"%1$s\" (تركته أو تم حذفه)، لذا Cablegram لا يمكن أن ترى فيديوهات."</string>
     <string name="ui_you_skipped_the_audio_check_so_matches_aren_t_verified_d4b86d" formatted="false">"لقد تخطيت الشيك الصوتي لذا الثقاب لم يتم التحقق منه استخدمي العرض التمهيدي لتصفي العنوان الفرعي بالأذن أو بالعين"</string>
@@ -1025,4 +1026,26 @@
     <string name="ui_couldnt_deny_playback">"تعذّر رفض التشغيل: %1$s."</string>
     <string name="ui_about_1_minute" formatted="false">"دقيقة واحدة تقريبًا"</string>
     <string name="ui_other_language" formatted="false">"لغة أخرى"</string>
+    <string name="telegram_library_title" formatted="false">"قناة مكتبتي"</string>
+    <string name="telegram_library_help" formatted="false">"أرسل مقاطع الفيديو أو أعد توجيهها إلى قناة Telegram الخاصة هذه. ستظهر في مكتبتك في Cablegram."</string>
+    <string name="telegram_library_open" formatted="false">"فتح في Telegram"</string>
+    <string name="telegram_library_copy" formatted="false">"نسخ الرابط"</string>
+    <string name="telegram_library_members_link" formatted="false">"يفتح هذا الرابط القناة للأعضاء الحاليين فقط."</string>
+    <string name="telegram_library_copied" formatted="false">"تم نسخ رابط قناة المكتبة"</string>
+    <string name="telegram_library_install_telegram" formatted="false">"ثبّت Telegram لفتح قناة مكتبتك."</string>
+    <string name="telegram_separate_title" formatted="false">"هل تفضّل حساب Telegram منفصلًا؟"</string>
+    <string name="telegram_separate_intro" formatted="false">"يمكنك ربط حسابك الحالي في Telegram أو إنشاء حساب منفصل لمكتبة Cablegram. الحساب المنفصل اختياري."</string>
+    <string name="telegram_separate_learn" formatted="false">"تعرّف على الحسابات المنفصلة"</string>
+    <string name="telegram_separate_number_title" formatted="false">"احتفظ بالتحكم في رقمك"</string>
+    <string name="telegram_separate_number_body" formatted="false">"يتطلب حساب Telegram المنفصل رقم هاتف آخر. اختر شريحة SIM أو eSIM تدعم الرسائل النصية، وتحقق من كيفية إبقاء الرقم نشطًا واستقبال رموز الدخول لاحقًا واستعادته إذا فقدت هاتفك. شريحة السفر التي توفر البيانات فقط لا تكفي."</string>
+    <string name="telegram_separate_super_title" formatted="false">"مثال لمزوّد: Super"</string>
+    <string name="telegram_separate_super_body" formatted="false">"يوفر Super شرائح SIM وeSIM مسبقة الدفع مع رقم هاتف. تقصر إرشاداته المنشورة حاليًا التفعيل الأول على إستونيا، وتشترط عمليات شحن تستوفي شروطه للاحتفاظ بالرقم. تحقق من شروط التفعيل والتجوال والتجديد والاستعادة الحالية قبل الشراء. إنه مزوّد مستقل؛ هذا ليس توصية من Cablegram ولا ضمانًا لنجاح التسجيل في Telegram."</string>
+    <string name="telegram_separate_temporary_title" formatted="false">"أرقام افتراضية مؤقتة"</string>
+    <string name="telegram_separate_temporary_body" formatted="false">"تقدم بعض الخدمات استردادًا للأموال إذا فشل التحقق. قد تنتهي صلاحية هذه الأرقام أو تُعاد إلى مستخدم آخر، مما يعرّض حسابك في Telegram للخطر."</string>
+    <string name="telegram_separate_security_title" formatted="false">"احمِ الحساب"</string>
+    <string name="telegram_separate_security_body" formatted="false">"فعّل التحقق بخطوتين في Telegram وأضف بريدًا إلكترونيًا للاستعادة تتحكم فيه. لا تغني هذه الحماية عن الاحتفاظ بالوصول إلى رقم هاتفك. يساعد الحساب المنفصل على فصل نشاطك الشخصي، لكنه لا يضمن إخفاء الهوية ولا يغيّر صلاحيات الوصول الممنوحة لـ Cablegram."</string>
+    <string name="telegram_separate_super_link" formatted="false">"اقرأ شروط Super الحالية"</string>
+    <string name="telegram_separate_telegram_link" formatted="false">"اقرأ إرشادات حسابات Telegram"</string>
+    <string name="telegram_separate_temporary_price" formatted="false">"من نحو 0.40 دولار أمريكي لكل عملية تحقق · وصول قصير الأجل فقط"</string>
+    <string name="telegram_separate_provider_disclaimer" formatted="false">"هذه خدمات مستقلة تابعة لأطراف ثالثة. استخدام رقم منفصل اختياري. لا يضمن Cablegram نجاح التسجيل أو استمرار الوصول إلى الرقم أو إخفاء هوية الحساب."</string>
 </resources>

@@ -114,6 +114,11 @@ fun LibraryShell(viewModel: PhoneViewModel) {
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { viewModel.openBrowseFolder(it) }
     }
+    var accountHelpOpen by rememberSaveable { mutableStateOf(false) }
+    if (accountHelpOpen) {
+        TelegramAccountHelp(onBack = { accountHelpOpen = false })
+        return
+    }
     BackHandler(enabled = viewModel.selected != null || viewModel.openSeriesKey != null || viewModel.tab != PhoneTab.Library) {
         if (viewModel.selected != null) viewModel.closeItem()
         else if (viewModel.openSeriesKey != null) viewModel.closeSeries()
@@ -141,7 +146,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 Box(Modifier.weight(1f)) {
                     when (viewModel.tab) {
                         PhoneTab.Library -> LibraryHome(viewModel)
-                        PhoneTab.Browse -> BrowseScreen(viewModel, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) }, onChooseFolder = { pickFolder.launch(null) })
+                        PhoneTab.Browse -> BrowseScreen(viewModel, onTelegramAccountHelp = { accountHelpOpen = true }, onOpenLocalRoot = { pickFiles.launch(arrayOf("video/*")) }, onChooseFolder = { pickFolder.launch(null) })
                         PhoneTab.Remote -> if (viewModel.legacyRemote) RemoteScreen(viewModel) else LibraryHome(viewModel)
                         PhoneTab.Storage -> StorageScreen(viewModel)
                         PhoneTab.Settings -> SettingsScreen(viewModel)
@@ -604,6 +609,7 @@ private fun CompactMenuItem(label: String, enabled: Boolean = true, onClick: () 
 @Composable
 private fun BrowseScreen(
     viewModel: PhoneViewModel,
+    onTelegramAccountHelp: () -> Unit,
     onOpenLocalRoot: () -> Unit,
     onChooseFolder: () -> Unit,
 ) {
@@ -675,6 +681,7 @@ private fun BrowseScreen(
         }
         if (atRoots) {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                item { TelegramLibraryCard(viewModel) }
                 item {
                     SectionCard(ui.getString(R.string.ui_play_from_web_3bf8bf)) {
                         Text(ui.getString(R.string.ui_paste_a_public_video_page_or_direct_video_url_cablegra_d37a61), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
@@ -723,7 +730,7 @@ private fun BrowseScreen(
                 }
                 item {
                     SectionCard(ui.getString(R.string.ui_connected_storage_ead366)) {
-                        TelegramStorageEntry(viewModel)
+                        TelegramStorageEntry(viewModel, onAccountHelp = onTelegramAccountHelp)
                         if (cloudRoots.isEmpty()) {
                             Text(ui.getString(R.string.ui_keep_a_cloud_copy_for_more_ways_to_watch_you_can_conne_2f290d), color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
                             OutlinedButton(onClick = { viewModel.tab = PhoneTab.Storage }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_manage_storage_654d16)) }

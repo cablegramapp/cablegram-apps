@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -112,6 +113,7 @@ private fun NameForm(viewModel: PhoneViewModel) {
 private fun PairingForm(viewModel: PhoneViewModel) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val clipboard = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
     var pin by rememberSaveable { mutableStateOf("") }
     var scanning by rememberSaveable { mutableStateOf(false) }
     BackHandler { viewModel.cancelAddTv() }
@@ -122,7 +124,10 @@ private fun PairingForm(viewModel: PhoneViewModel) {
     ) {
         TextButton(onClick = viewModel::cancelAddTv, modifier = Modifier.maestro(MaestroIds.PAIRING_NOT_NOW)) { Text(ui.getString(R.string.ui_not_now_a0e63d)) }
         ScreenHeading(if (viewModel.paired) ui.getString(R.string.ui_one_more_big_screen_3514a4) else ui.getString(R.string.ui_meet_your_tv_4d8c97),
-            ui.getString(R.string.ui_open_cablegram_on_your_tv_then_enter_the_six_digit_cod_9c081e))
+            ui.getString(R.string.pairing_setup_steps))
+        TextButton(onClick = { uriHandler.openUri("https://cablegram.app/#downloads") }) {
+            Text(ui.getString(R.string.pairing_get_tv_app))
+        }
         Surface(color = VlcPanel, shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(Icons.Default.Tv, null, Modifier.size(40.dp), tint = VlcOrange)
