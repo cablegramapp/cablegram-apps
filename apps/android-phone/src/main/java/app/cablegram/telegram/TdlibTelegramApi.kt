@@ -1,5 +1,17 @@
 package app.cablegram.telegram
 
+import dev.g000sha256.tdl.dto.ChatAdministratorRights
+import dev.g000sha256.tdl.dto.ChatMemberStatusAdministrator
+import dev.g000sha256.tdl.dto.ChatTypePrivate
+import dev.g000sha256.tdl.dto.MessageSenderUser
+import dev.g000sha256.tdl.dto.UserTypeBot
+import dev.g000sha256.tdl.dto.ReplyMarkupInlineKeyboard
+import dev.g000sha256.tdl.dto.InlineKeyboardButtonTypeUrl
+import dev.g000sha256.tdl.dto.TextEntityTypeTextUrl
+import dev.g000sha256.tdl.dto.ChatFolder
+import dev.g000sha256.tdl.dto.ChatListArchive
+import dev.g000sha256.tdl.dto.ChatFolderInfo
+import kotlinx.coroutines.flow.MutableStateFlow
 import dev.g000sha256.tdl.TdlClient
 import dev.g000sha256.tdl.TdlResult
 import dev.g000sha256.tdl.dto.AuthorizationState
@@ -52,11 +64,25 @@ import kotlinx.coroutines.flow.map
 /** [TelegramApi] over TDLib (`dev.g000sha256:tdl-coroutines-android`). */
 class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : TelegramApi {
 
+    private val knownFolders = MutableStateFlow<List<ChatFolderInfo>?>(null)
+    private val folderOrganizer = CablegramFolderOrganizer(object : CablegramFolderStore {
+        override suspend fun folders(): List<ChatFolderInfo> = knownFolders.first { it != null }!!
+        override suspend fun folder(id: Int): ChatFolder = client.getChatFolder(id).ok()
+        override suspend fun create(folder: ChatFolder) {
+            val created = client.createChatFolder(folder).ok()
+            // The native update may arrive after this call; cache the result before another merge.
+            knownFolders.value = knownFolders.value.orEmpty().filter { it.id != created.id } + created
+        }
+        override suspend fun edit(id: Int, folder: ChatFolder) { client.editChatFolder(id, folder).ok() }
+    })
+
     /**
      * Updates only report changes, so a late subscriber would miss the current state: subscribe first,
      * then ask for the current one; duplicates of the same state are dropped.
      */
     override val authStates: Flow<TgAuthState> = channelFlow {
+        // Subscribe before TDLib parameters are supplied so initial folder metadata cannot be missed.
+        launch { client.chatFoldersUpdates.collect { knownFolders.value = it.chatFolders.toList() } }
         launch { client.authorizationStateUpdates.collect { send(toAuthState(it.authorizationState)) } }
         yield()
         (client.getAuthorizationState() as? TdlResult.Success)?.let { send(toAuthState(it.result)) }
@@ -101,6 +127,130 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
                 if (client.close() is TdlResult.Success) closed.await() else closed.cancel()
             }
         }
+    }
+
+    override suspend fun joinCommunityChannel(channel: CablegramChannel) {
+        val chat = client.searchPublicChat(channel.username).ok()
+        require(chat.type is ChatTypeSupergroup) { "The Cablegram channel is unavailable" }
+        if (!isMember(chat.type)) client.joinChat(chat.id).ok()
+    }
+
+    private var discoveredLibraryBotIds: Set<Long> = emptySet()
+
+    override suspend fun recommendedLibraryBots(): List<RecommendedLibraryBot> {
+        discoveredLibraryBotIds = emptySet()
+        val hub = client.searchPublicChat(CablegramChannel.BotHubs.username).ok()
+        require(hub.type is ChatTypeSupergroup && client.getSupergroup((hub.type as ChatTypeSupergroup).supergroupId).ok().isChannel) {
+            "Cablegram Bot Hubs is unavailable"
+        }
+        val candidates = linkedSetOf<String>()
+        var from = 0L
+        while (true) {
+            val messages = client.getChatHistory(hub.id, from, 0, 100, false).ok().messages.filterNotNull()
+            if (messages.isEmpty()) break
+            for (message in messages) {
+                val formatted = when (val content = message.content) {
+                    is MessageText -> content.text
+                    is MessagePhoto -> content.caption
+                    is MessageVideo -> content.caption
+                    is MessageDocument -> content.caption
+                    is MessageAnimation -> content.caption
+                    else -> null
+                }
+                val links = formatted?.entities.orEmpty().mapNotNull { (it.type as? TextEntityTypeTextUrl)?.url } +
+                    (message.replyMarkup as? ReplyMarkupInlineKeyboard)?.rows.orEmpty().flatMap { row ->
+                        row.mapNotNull { (it.type as? InlineKeyboardButtonTypeUrl)?.url }
+                    }
+                candidates += BotHubLinks.usernames(formatted?.text.orEmpty(), links)
+            }
+            val next = messages.last().id
+            if (next == from) break
+            from = next
+        }
+        val bots = mutableListOf<RecommendedLibraryBot>()
+        for (username in candidates) {
+            val chat = when (val result = client.searchPublicChat(username)) {
+                is TdlResult.Success -> result.result
+                is TdlResult.Failure -> if (result.code == 400 || result.code == 404) continue else throw TgException(result.code, result.message)
+            }
+            val privateChat = chat.type as? ChatTypePrivate ?: continue
+            val user = client.getUser(privateChat.userId).ok()
+            val bot = user.type as? UserTypeBot ?: continue
+            if (!bot.canJoinGroups) continue
+            bots += RecommendedLibraryBot(user.id, user.usernames?.activeUsernames?.firstOrNull() ?: username, chat.title)
+        }
+        return bots.distinctBy { it.id }.also { discoveredLibraryBotIds = it.map { bot -> bot.id }.toSet() }
+    }
+
+    override suspend fun addRecommendedBotToLibrary(libraryChatId: Long, botUserId: Long) {
+        require(botUserId in discoveredLibraryBotIds) { "The bot was not discovered in Cablegram Bot Hubs" }
+        val user = client.getUser(botUserId).ok()
+        require((user.type as? UserTypeBot)?.canJoinGroups == true) { "This account is not an available bot" }
+        val library = client.getChat(libraryChatId).ok()
+        val type = library.type as? ChatTypeSupergroup ?: error("The library is not a channel")
+        require(client.getSupergroup(type.supergroupId).ok().isChannel) { "The library is not a channel" }
+        val status = when (val result = client.getChatMember(libraryChatId, MessageSenderUser(botUserId))) {
+            is TdlResult.Success -> result.result.status
+            is TdlResult.Failure -> if (result.code == 400 && result.message == "USER_NOT_PARTICIPANT") null
+                else throw TgException(result.code, result.message)
+        }
+        // Never demote or overwrite a bot the owner already configured.
+        if (status is ChatMemberStatusAdministrator) return
+        client.setChatMemberStatus(
+            libraryChatId, MessageSenderUser(botUserId),
+            ChatMemberStatusAdministrator(canBeEdited = true, rights = libraryBotPostingRights()),
+        ).ok()
+    }
+
+    override suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray): TgFolderResult {
+        // TDLib needs dialog-list metadata before it can put existing chats into a folder. No
+        // unrelated chat objects or histories are read by the app; loadChats returns only Ok.
+        for (list in listOf(ChatListMain(), ChatListArchive())) {
+            while (true) {
+                when (val result = client.loadChats(list, 100)) {
+                    is TdlResult.Success -> Unit
+                    is TdlResult.Failure -> if (result.code == 404) break else throw TgException(result.code, result.message)
+                }
+            }
+        }
+        val unlistedBots = mutableListOf<String>()
+        val library = client.getChat(libraryChatId).ok()
+        val libraryType = library.type as? ChatTypeSupergroup ?: error("The library is not a channel")
+        require(client.getSupergroup(libraryType.supergroupId).ok().isChannel && isMember(libraryType)) {
+            "The library channel is unavailable"
+        }
+        val chats = linkedSetOf(libraryChatId)
+        for (channel in CablegramChannel.entries) {
+            val resolved = when (val result = client.searchPublicChat(channel.username)) {
+                is TdlResult.Success -> result.result
+                is TdlResult.Failure -> if (result.code == 400 || result.code == 404) continue else throw TgException(result.code, result.message)
+            }
+            val type = resolved.type as? ChatTypeSupergroup ?: continue
+            if (isMember(type)) chats += resolved.id
+        }
+        // Resolving a bot chat does not start it or send /start.
+        val support = client.searchPublicChat(CABLEGRAM_SUPPORT_BOT).ok()
+        val supportType = support.type as? ChatTypePrivate ?: error("The Cablegram support bot is unavailable")
+        require(client.getUser(supportType.userId).ok().type is UserTypeBot) { "The Cablegram support account is not a bot" }
+        val supportChat = client.createPrivateChat(supportType.userId, false).ok()
+        if (supportChat.positions.any { it.order != 0L }) chats += supportChat.id
+        else unlistedBots += "@$CABLEGRAM_SUPPORT_BOT"
+        for (botId in reviewedBotUserIds.distinct()) {
+            val user = client.getUser(botId).ok()
+            if (user.type !is UserTypeBot) continue
+            val member = when (val result = client.getChatMember(libraryChatId, MessageSenderUser(botId))) {
+                is TdlResult.Success -> result.result
+                is TdlResult.Failure -> if (result.code == 400 && result.message == "USER_NOT_PARTICIPANT") continue
+                    else throw TgException(result.code, result.message)
+            }
+            if (member.status is ChatMemberStatusAdministrator) {
+                val botChat = client.createPrivateChat(botId, false).ok()
+                if (botChat.positions.any { it.order != 0L }) chats += botChat.id
+                else unlistedBots += user.usernames?.activeUsernames?.firstOrNull()?.let { "@$it" } ?: user.firstName
+            }
+        }
+        folderOrganizer.include(chats.toLongArray())
+        return TgFolderResult(unlistedBots.distinct())
     }
 
     override suspend fun me(): TgUser {
@@ -288,3 +438,12 @@ class TdlibTelegramApi(private val client: TdlClient = TdlClient.create()) : Tel
         }
     }
 }
+
+/** Posting plus Telegram's implied administrator access; no extra optional privileges. */
+internal fun libraryBotPostingRights() = ChatAdministratorRights(
+    canManageChat = true, canChangeInfo = false, canPostMessages = true, canEditMessages = false,
+    canDeleteMessages = false, canInviteUsers = false, canRestrictMembers = false, canPinMessages = false,
+    canManageTopics = false, canPromoteMembers = false, canManageVideoChats = false, canPostStories = false,
+    canEditStories = false, canDeleteStories = false, canManageDirectMessages = false, canManageTags = false,
+    canSendWelcomeMessages = false, isAnonymous = false,
+)

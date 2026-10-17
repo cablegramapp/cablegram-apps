@@ -6,9 +6,9 @@ import org.junit.Test
 // Shared by apps/android-phone and apps/android-tv tests (spec 004). Keep both copies identical.
 
 /**
- * FR-022: Cablegram tells users it only uses the "Cablegram library" channel, never reads chats or lists
- * contacts, and sends nothing except a video the owner chose to save into that channel. This pins what the Telegram layer can do. Adding a call here
- * needs a review against that promise (and the privacy page), not just a green build.
+ * Pins the Telegram surface to library management, device sign-in, and joining the fixed Cablegram
+ * channels after an explicit Save, and bot recommendations confirmed individually. No reading other chats, listing contacts, or messaging people.
+ * Adding a call needs review against the README and privacy claims.
  */
 class TelegramApiSurfaceTest {
     private val allowed = setOf(
@@ -19,6 +19,13 @@ class TelegramApiSurfaceTest {
         // Save to Telegram (T011): the only call that sends anything. It sends one video the owner chose,
         // into the library channel, and nothing else; uploadLimitBytes only reads the account's size limit.
         "uploadVideo", "uploadLimitBytes",
+        // Optional fixed Cablegram channels: only joined after the owner taps Save.
+        "joinCommunityChannel",
+        // Read only the fixed Bot Hubs recommendation feed; add only verified discovered bots after
+        // a separate per-bot opt-in and explicit permission/disclaimer confirmation.
+        "recommendedLibraryBots", "addRecommendedBotToLibrary",
+        // Merge Cablegram-related chats into the named folder; no unrelated histories or contacts.
+        "organizeCablegramFolder",
         // Files of those videos.
         "file", "download", "readPart", "cancelDownload", "deleteLocalFile",
         // Ending Cablegram's own TV sessions (spec 004 US8).

@@ -59,6 +59,29 @@ object PhoneTelegram {
         prefs(context).edit().putBoolean(PREF_LINKED, linked).apply()
     }
 
+    /** Choice completion belongs to this Telegram account, never to another account on the phone. */
+    fun communityChannelsCompleted(context: Context, userId: Long): Boolean =
+        prefs(context).getBoolean("community_channels_v1_$userId", false)
+
+    fun completeCommunityChannels(context: Context, userId: Long) {
+        prefs(context).edit().putBoolean("community_channels_v1_$userId", true).apply()
+    }
+
+    fun libraryBotsCompleted(context: Context, userId: Long, chatId: Long): Boolean =
+        prefs(context).getBoolean("library_bots_v1_${userId}_$chatId", false)
+
+    fun completeLibraryBots(context: Context, userId: Long, chatId: Long) {
+        prefs(context).edit().putBoolean("library_bots_v1_${userId}_$chatId", true).apply()
+    }
+
+    fun handledLibraryBots(context: Context, userId: Long, chatId: Long): Set<Long> =
+        prefs(context).getStringSet("library_bot_decisions_v1_${userId}_$chatId", emptySet()).orEmpty().mapNotNull { it.toLongOrNull() }.toSet()
+
+    fun recordLibraryBotDecision(context: Context, userId: Long, chatId: Long, botId: Long) {
+        val ids = handledLibraryBots(context, userId, chatId) + botId
+        prefs(context).edit().putStringSet("library_bot_decisions_v1_${userId}_$chatId", ids.map { it.toString() }.toSet()).apply()
+    }
+
     /** After log-out: drop the session and delete its database, pieces and key. */
     fun forget(context: Context) = synchronized(this) {
         current = null

@@ -142,7 +142,7 @@ class TelegramSession(
     /**
      * The household's library channel. Opened by id when the household link already has one
      * ([knownChatId]); otherwise found by title, or created when [allowCreate] (phone only, US1).
-     * Only this channel is ever read (FR-005).
+     * Media sync reads only this channel; the optional bot picker separately reads public Bot Hubs posts.
      *
      * With [logoPath], a channel Cablegram creates gets the Cablegram logo, and so does an existing
      * one without a photo; a photo the owner chose is never replaced. A failed photo upload doesn't

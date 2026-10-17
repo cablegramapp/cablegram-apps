@@ -27,6 +27,17 @@ interface TelegramApi {
     /** Closes the client and waits until its database is released, without signing out: another client may then open it. */
     suspend fun close()
 
+    /** Join one of the fixed Cablegram community channels, only after the owner saves their selection. */
+    suspend fun joinCommunityChannel(channel: CablegramChannel)
+
+    /** Read recommendations from the fixed public @CablegramBotHubs channel; never joins it. */
+    suspend fun recommendedLibraryBots(): List<RecommendedLibraryBot>
+    /** Only discovered, Telegram-verified bots, after separate permission/disclaimer confirmation. */
+    suspend fun addRecommendedBotToLibrary(libraryChatId: Long, botUserId: Long)
+
+    /** Organize only the library, joined Cablegram channels, support bot, and confirmed library bots. */
+    suspend fun organizeCablegramFolder(libraryChatId: Long, reviewedBotUserIds: LongArray): TgFolderResult
+
     suspend fun me(): TgUser
     suspend fun chat(chatId: Long): TgChat?
     suspend fun findChatByTitle(title: String): Long?

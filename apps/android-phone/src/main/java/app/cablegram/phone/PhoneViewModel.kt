@@ -1163,6 +1163,135 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Continue was chosen on "Before you connect" in this app run (or Telegram was already running). */
     var telegramStarted by mutableStateOf(false)
         private set
+    var telegramCommunityChannels by mutableStateOf<app.cablegram.telegram.CommunityChannels?>(null)
+        private set
+    var telegramLibraryBots by mutableStateOf<app.cablegram.telegram.LibraryBotRecommendations?>(null)
+        private set
+    var telegramBotHubOnly by mutableStateOf(false)
+        private set
+    var telegramFolderBusy by mutableStateOf(false)
+        private set
+    var telegramFolderMessage by mutableStateOf<String?>(null)
+        private set
+    private var telegramFolderJob: Job? = null
+    private var telegramLibraryBotsJob: Job? = null
+    private var telegramCommunityLibraryId: Long? = null
+    private var telegramCommunityUserId: Long? = null
+    private var telegramCommunitySession: app.cablegram.telegram.TelegramSession? = null
+    private var telegramCommunitySaveJob: Job? = null
+
+    private fun prepareCommunityChannels(session: app.cablegram.telegram.TelegramSession, userId: Long) {
+        val chatId = telegramLink?.chatId ?: return
+        if (telegramCommunityUserId == userId && telegramCommunityLibraryId == chatId && telegramCommunitySession === session) return
+        telegramLibraryBotsJob?.cancel()
+        telegramCommunityLibraryId = chatId
+        telegramCommunitySaveJob?.cancel()
+        telegramCommunityUserId = userId
+        telegramCommunitySession = session
+        telegramLibraryBots = if (PhoneTelegram.libraryBotsCompleted(getApplication(), userId, chatId)) null
+        else createLibraryBotReview(session, userId, chatId, reviewAll = false)
+        telegramCommunityChannels = if (PhoneTelegram.communityChannelsCompleted(getApplication(), userId)) null
+        else app.cablegram.telegram.CommunityChannels(session.api) {
+            PhoneTelegram.completeCommunityChannels(getApplication(), userId)
+        }
+    }
+
+    private fun createLibraryBotReview(
+        session: app.cablegram.telegram.TelegramSession,
+        userId: Long,
+        chatId: Long,
+        reviewAll: Boolean,
+    ) = app.cablegram.telegram.LibraryBotRecommendations(
+        api = session.api,
+        libraryChatId = chatId,
+        handledBotIds = if (reviewAll) emptySet() else PhoneTelegram.handledLibraryBots(getApplication(), userId, chatId),
+        onDecision = { PhoneTelegram.recordLibraryBotDecision(getApplication(), userId, chatId, it) },
+        onCompleted = { PhoneTelegram.completeLibraryBots(getApplication(), userId, chatId) },
+    )
+
+    /** Explicit checks always fetch current recommendations and let users reconsider skipped bots. */
+    fun checkTelegramBotHub() {
+        val link = telegramLink?.takeIf { it.linked } ?: return
+        val userId = link.userId ?: return
+        val chatId = link.chatId ?: return
+        if (telegramHealth != TelegramHealth.Ok || !PhoneTelegram.wasLinked(getApplication())) return
+        val session = PhoneTelegram.session(getApplication())
+        val ready = session.state.value as? app.cablegram.telegram.TelegramState.Ready
+        if (ready?.user?.id != userId) {
+            openTelegramSheet()
+            return
+        }
+        val previous = telegramLibraryBotsJob
+        previous?.cancel()
+        telegramLibraryBotsJob = viewModelScope.launch {
+            // Finish cancellation before discovery replaces the API's verified bot IDs.
+            previous?.join()
+            if (telegramLink?.userId != userId || telegramLink?.chatId != chatId || PhoneTelegram.existing() !== session) return@launch
+            telegramLibraryBots = createLibraryBotReview(session, userId, chatId, reviewAll = true)
+            telegramBotHubOnly = true
+            telegramMessage = null
+            telegramSheetOpen = true
+        }
+    }
+
+    fun saveTelegramCommunityChannels() {
+        val channels = telegramCommunityChannels ?: return
+        if (telegramCommunitySaveJob?.isActive == true) return
+        telegramCommunitySaveJob = viewModelScope.launch {
+            channels.save()
+            organizeTelegramFolder()
+        }
+    }
+
+    fun loadTelegramLibraryBots() {
+        val bots = telegramLibraryBots ?: return
+        if (telegramLibraryBotsJob?.isActive == true) return
+        telegramLibraryBotsJob = viewModelScope.launch { bots.load() }
+    }
+
+    fun addRecommendedTelegramBot() {
+        val bots = telegramLibraryBots ?: return
+        if (telegramLibraryBotsJob?.isActive == true) return
+        telegramLibraryBotsJob = viewModelScope.launch {
+            val addedBefore = bots.state.value.added
+            bots.addCurrent()
+            if (bots.state.value.added > addedBefore) organizeTelegramFolder()
+        }
+    }
+
+    /** Folder failures are retryable and never undo successful channel or bot membership changes. */
+    fun organizeTelegramFolder() {
+        val link = telegramLink?.takeIf { it.linked } ?: return
+        val chatId = link.chatId ?: return
+        val userId = link.userId ?: return
+        val session = PhoneTelegram.existing() ?: return
+        if (telegramHealth != TelegramHealth.Ok || !PhoneTelegram.wasLinked(getApplication())) return
+        if ((session.state.value as? app.cablegram.telegram.TelegramState.Ready)?.user?.id != userId) return
+        val previous = telegramFolderJob
+        previous?.cancel()
+        telegramFolderJob = viewModelScope.launch {
+            previous?.join()
+            telegramFolderBusy = true
+            telegramFolderMessage = null
+            try {
+                val result = withTimeout(30_000) {
+                    session.api.organizeCablegramFolder(chatId, PhoneTelegram.handledLibraryBots(getApplication(), userId, chatId).toLongArray())
+                }
+                telegramFolderMessage = if (result.unlistedBots.isEmpty()) "Cablegram folder updated in Telegram."
+                else "Cablegram folder updated in Telegram. To include ${result.unlistedBots.joinToString(", ")}, open those bots in Telegram and tap Start, then organize again."
+            } catch (_: TimeoutCancellationException) {
+                telegramFolderMessage = "Updating the Telegram folder took too long. Tap Organize Telegram folder to retry."
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                PairLog.w("Telegram folder update failed", e)
+                telegramFolderMessage = "Couldn’t update the Telegram folder. Check your connection and Telegram’s folder limits, then tap Organize Telegram folder to retry."
+            } finally {
+                telegramFolderBusy = false
+            }
+        }
+    }
+
     private var telegramFinishJob: kotlinx.coroutines.Job? = null
 
     fun loadTelegramLink() {
@@ -1222,6 +1351,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 result.link?.let { telegramLink = it }
                 telegramChannelCreated = library.created
                 telegramHealth = TelegramHealth.Ok
+                organizeTelegramFolder()
                 status = if (library.created) "Created a new \"Cablegram library\" channel in Telegram."
                 else "Found your \"Cablegram library\" channel in Telegram again."
             } catch (e: Exception) {
@@ -1233,6 +1363,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Telegram ended this phone's session: sign in again without disconnecting the household. */
     fun signInToTelegramAgain() {
         telegramHealth = TelegramHealth.Unknown
+        clearTelegramRecommendations()
         // The old session is dead; start clean, then finish like a first link (same account → same link).
         PhoneTelegram.forget(getApplication())
         connectTelegram()
@@ -1255,8 +1386,11 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         telegramSheetOpen = true
         telegramStarted = true
         if (telegramFinishJob?.isActive == true) return
-        if (telegramLink?.linked == true && telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(getApplication())) return
         val session = PhoneTelegram.session(getApplication())
+        if (telegramLink?.linked == true && telegramHealth == TelegramHealth.Ok && PhoneTelegram.wasLinked(getApplication())) {
+            telegramLink?.userId?.let { prepareCommunityChannels(session, it) }
+            return
+        }
         telegramFinishJob = viewModelScope.launch {
             // Once per attempt: the link PUT is idempotent for the same account and 409 for another.
             val ready = session.state.first { it is app.cablegram.telegram.TelegramState.Ready } as app.cablegram.telegram.TelegramState.Ready
@@ -1365,6 +1499,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                     telegramLink = result.link
                     telegramHealth = TelegramHealth.Ok
                     PhoneTelegram.setLinked(getApplication(), true)
+                    prepareCommunityChannels(session, user.id)
+                    organizeTelegramFolder()
                     status = "Telegram connected. Videos you share into \"Cablegram library\" appear on your TV."
                 }
             }
@@ -1381,12 +1517,29 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Closing half-way keeps the step: reopening continues where the user left off. */
     fun closeTelegramSheet() {
+        telegramBotHubOnly = false
         telegramSheetOpen = false
         telegramMessage = null
     }
 
+    /** Cancel operations tied to the old Telegram session before replacing or signing it out. */
+    private fun clearTelegramRecommendations() {
+        telegramFolderJob?.cancel()
+        telegramFolderMessage = null
+        telegramFolderBusy = false
+        telegramBotHubOnly = false
+        telegramLibraryBotsJob?.cancel()
+        telegramLibraryBots = null
+        telegramCommunityLibraryId = null
+        telegramCommunitySaveJob?.cancel()
+        telegramCommunityChannels = null
+        telegramCommunityUserId = null
+        telegramCommunitySession = null
+    }
+
     /** Logs this phone out of Telegram and deletes the local TDLib database, files and key. */
     private fun wipeTelegramLocally() {
+        clearTelegramRecommendations()
         PhoneTelegram.existing()?.logOut()
         PhoneTelegram.forget(getApplication())
         telegramLink = TelegramLinkInfo(linked = false)
