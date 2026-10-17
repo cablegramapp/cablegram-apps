@@ -88,7 +88,7 @@ class ArtworkEditorController(
                     update { it.copy(searching = false, message = "No matching movie or series found. Try another title or keep your current cover.") }
                     return@launch
                 }
-                val preview = api.enrich(match.title, token(), null, mediaType = match.mediaType,
+                val preview = api.enrich(match.title, token(), current.base.catalogItemId, mediaType = match.mediaType,
                     year = match.year, imdbId = match.imdbId, strict = true)
                 showCandidate(api, preview, session, revision, ::active)
             } catch (cancelled: CancellationException) {
@@ -135,7 +135,7 @@ class ArtworkEditorController(
         searchJob = scope.launch {
             try {
                 val api = catalog()
-                val preview = api.enrich(current.base.title, token(), null, mediaType = suggestion.type,
+                val preview = api.enrich(current.base.title, token(), current.base.catalogItemId, mediaType = suggestion.type,
                     seasonNumber = suggestion.season, episodeNumber = suggestion.episode, strict = true, tmdbId = suggestion.id)
                 showCandidate(api, preview, session, revision, ::active)
             } catch (cancelled: CancellationException) {
