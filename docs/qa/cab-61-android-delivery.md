@@ -2,6 +2,10 @@
 
 Reviewed `main` at `6bc6250e7d76a355b13fafaa73d2e0079e6d7baa`.
 
+This is a point-in-time QA record for 2026-10-17, not living documentation. Test counts,
+artifact byte sizes, and repository settings below describe the recorded runs and checks;
+later validation should be recorded separately rather than replacing these measurements.
+
 The main implementation already exists in `68751f9` (CAB-8): Android regression tests on
 PRs that touch Android/release inputs and every main push, read-only PR Gradle caches,
 separate APK/bundle invocations, exhaustive APK signing/verification, and checksums
@@ -103,6 +107,9 @@ The separate APK invocations succeeded and replaced the universal APKs with:
 AGP metadata lists the split outputs as `ONE_OF_MANY` with the matching ABI filter.
 The subsequent separate bundle invocations also succeeded and preserved both APKs for
 each app. Final unsigned bundles were 45,512,987 bytes (phone) and 132,177,978 bytes (TV).
+The phone bundle is two bytes smaller than the 45,512,989-byte bundle from the combined
+invocation above. These are measurements from separate builds, not a transcription error
+or a claim that the builds are byte-for-byte reproducible.
 
 ## Real local signing and checksums
 
@@ -129,8 +136,35 @@ minified release runtime behavior. No device/runtime behavior is claimed here.
 
 ## Release-environment limits
 
-GitHub execution, branch protection, production signing secrets, attestations, artifact
-upload/download, and public release creation are not exercised by this local review.
+Production signing secrets, attestations, artifact upload/download, and public release
+creation are not exercised by this local review.
 No tag, deployment, public release, or external artifact upload was created, and CAB-61
-was not moved to Done. Local verification does not establish that GitHub branch protection
-requires these jobs.
+was not moved to Done. Local verification does not establish GitHub CI success.
+
+### Repository-settings follow-up — 2026-10-17
+
+A read-only GitHub API check of the effective rules for `main` found repository ruleset
+`24204786`. Its required checks are **only `telegram-sync` and `gitleaks`**, with the branch
+required to be up to date. Neither `android (android-phone)` nor `android (android-tv)` is
+required, so their failures currently do not block merging through this status-check rule.
+The classic branch-protection endpoint returned HTTP 404; the effective rules endpoint
+succeeded and supplied the ruleset result above.
+
+To enforce the intended Android gate, require both exact Android job names in the ruleset.
+Also require `changes`, so a failed file-filter job cannot leave only skipped downstream
+Android jobs. Intentional Android skips for docs-only PRs can still satisfy the Android
+checks. No repository setting was changed during this check.
+
+### Hosted CI follow-up — 2026-10-17
+
+[PR #96's first CI run](https://github.com/cablegramapp/cablegram-apps/actions/runs/39040374910)
+failed both Android jobs (phone 8 of 312, TV 1 of 285), each with
+`UnsupportedOperationException at DefaultSdkProvider.java:170`. `main` has failed the same
+way since `6bc6250` (#95), which moved tests onto Robolectric 4.16. Robolectric needs JDK 21
+for the apps' SDK 36, while CI and release used JDK 17. The local runs above used JDK 21,
+which is why they passed. Both workflows now set up JDK 21; `sourceCompatibility` and
+`jvmTarget` stay at 17, so the app bytecode is unchanged.
+
+Queries used: `GET /repos/cablegramapp/cablegram-apps/branches/main/protection`,
+`GET /repos/cablegramapp/cablegram-apps/rules/branches/main`, and `gh pr view --json
+number,url,baseRefName,headRefName,statusCheckRollup`.
