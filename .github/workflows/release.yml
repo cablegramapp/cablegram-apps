@@ -150,5 +150,3 @@ jobs:
           releaseName: ${{ github.ref_name }}
           track: internal
           status: completed
-          # Keep pending Console changes out of review; never retry with this set to false.
-          changesNotSentForReview: true
