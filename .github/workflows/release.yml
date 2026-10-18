@@ -148,5 +148,5 @@ jobs:
           packageName: ${{ matrix.package }}
           releaseFiles: dist-play/*.aab
           releaseName: ${{ github.ref_name }}
-          track: internal
+          tracks: internal
           status: completed
