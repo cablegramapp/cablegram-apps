@@ -130,6 +130,13 @@ dependencies {
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.robolectric:robolectric:4.16")
     testImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2025.03.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    // 3.7 uses the system InputManager service; older Espresso reflection fails on Android 17.
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
 

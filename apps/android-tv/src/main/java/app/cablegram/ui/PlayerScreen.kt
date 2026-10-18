@@ -918,25 +918,27 @@ fun PlayerScreen(
                         }
                     }
 
-                    if (hud.timelineActive) {
-                        TimelinePreview(
-                            positionMs = displayPosition,
-                            holdMultiplier = hud.holdMultiplier,
-                            scrubbingBack = (hud.previewPositionMs ?: currentPositionMs) < currentPositionMs,
+                    LtrControls {
+                        if (hud.timelineActive) {
+                            TimelinePreview(
+                                positionMs = displayPosition,
+                                holdMultiplier = hud.holdMultiplier,
+                                scrubbingBack = (hud.previewPositionMs ?: currentPositionMs) < currentPositionMs,
+                            )
+                        }
+
+                        TimelineBar(
+                            progressFraction = progressFraction,
+                            focused = hud.focus == ControlsFocus.TIMELINE && !hud.menuOpen,
+                        )
+                        Text(
+                            text = ui.getString(R.string.ui_message_f1c1f8, formatTime(displayPosition), if (currentDurationMs > 0L) formatTime(currentDurationMs) else "--:--"),
+                            color = Paper,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
                         )
                     }
-
-                    TimelineBar(
-                        progressFraction = progressFraction,
-                        focused = hud.focus == ControlsFocus.TIMELINE && !hud.menuOpen,
-                    )
-                    Text(
-                        text = ui.getString(R.string.ui_message_f1c1f8, formatTime(displayPosition), if (currentDurationMs > 0L) formatTime(currentDurationMs) else "--:--"),
-                        color = Paper,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
-                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         TransportButton(

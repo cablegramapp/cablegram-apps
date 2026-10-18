@@ -96,7 +96,7 @@
     <string name="ui_library_unavailable_357219" formatted="false">"Library unavailable"</string>
     <string name="ui_licence_and_notices_ded184" formatted="false">"Licence and notices"</string>
     <string name="ui_live_b64ac0" formatted="false">"Live"</string>
-    <string name="ui_local_lan_3cd048" formatted="false">"Local LAN"</string>
+    <string name="ui_local_lan_3cd048" formatted="false">"Local network"</string>
     <string name="ui_looking_for_your_phone_d386a9" formatted="false">"Looking for your phone"</string>
     <string name="ui_making_a_cover_photo_b9f1ef" formatted="false">"Making a cover photo"</string>
     <string name="ui_media_source_de4006" formatted="false">"Media source"</string>
@@ -167,7 +167,7 @@
     <string name="ui_removed_from_my_list_570caa" formatted="false">"Removed from My List"</string>
     <string name="ui_resume_d640c7" formatted="false">"Resume"</string>
     <string name="ui_retry_942087" formatted="false">"Retry"</string>
-    <string name="ui_same_wi_fi_gives_the_fastest_start_and_best_quality_el_50f729" formatted="false">"Same Wi‑Fi gives the fastest start and best quality. Elsewhere, Cablegram streams through its relay."</string>
+    <string name="ui_same_wi_fi_gives_the_fastest_start_and_best_quality_el_50f729" formatted="false">"Connecting your phone and TV to the same Wi-Fi network gives the fastest start and best quality. Elsewhere, Cablegram streams through its relay."</string>
     <string name="ui_saving_096b73" formatted="false">"Saving"</string>
     <string name="ui_saving_the_video_829213" formatted="false">"Saving the video"</string>
     <string name="ui_scan_the_code_with_your_phone_s_camera_or_type_this_pi_f54954" formatted="false">"Scan the code with your phone’s camera, or type this PIN in the Cablegram app or at app.cablegram.app."</string>
@@ -181,7 +181,7 @@
     <string name="ui_settings_74a883" formatted="false">"Settings"</string>
     <string name="ui_several_accounts_use_this_tv_to_remove_one_open_one_of_f713b3" formatted="false">"Several accounts use this TV. To remove one, open one of its profiles, select the profile picture at the top left, then choose Remove this account from this TV."</string>
     <string name="ui_sign_in_bfd402" formatted="false">"Sign in"</string>
-    <string name="ui_sign_in_to_your_telegram_a2b2cf">"Sign in %1$s to your Telegram?"</string>
+    <string name="ui_sign_in_to_your_telegram_a2b2cf">"Allow %1$s to sign in to your Telegram account?"</string>
     <string name="ui_sign_out_48f0d3" formatted="false">"Sign out"</string>
     <string name="ui_signed_in_as_abc50e" formatted="false">"Signed in as"</string>
     <string name="ui_signing_in_8b9d3d" formatted="false">"Signing in…"</string>
@@ -271,7 +271,7 @@
     <string name="ui_your_password_goes_only_to_telegram_encrypted_for_this_c23ea4" formatted="false">"Your password goes only to Telegram, encrypted for this TV. Cablegram never sees it."</string>
     <string name="ui_your_phone_807163" formatted="false">"Your phone"</string>
     <string name="ui_your_phone_and_this_tv_aren_t_on_the_same_wi_fi_so_cab_29145c" formatted="false">"Your phone and this TV aren\'t on the same Wi‑Fi, so Cablegram streams through its relay. This takes a few seconds."</string>
-    <string name="ui_your_phone_can_sleep_or_leave_home_it_uses_no_battery__dec30b" formatted="false">"Your phone can sleep or leave home; it uses no battery or data."</string>
+    <string name="ui_your_phone_can_sleep_or_leave_home_it_uses_no_battery__dec30b" formatted="false">"You can turn off your phone’s screen or take it away from home. Playback does not use your phone’s battery or data."</string>
     <string name="ui_your_phone_didn_t_allow_3272a3">"Your phone didn\'t allow %1$s."</string>
     <string name="ui_your_phone_didn_t_approve_this_title_press_try_again_t_6fe116" formatted="false">"Your phone didn\'t approve this title. Press Try again to ask once more, or Back to the title."</string>
     <string name="ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_a75585" formatted="false">"Your phone is letting this TV in to Telegram. If it asks, approve it in the Cablegram notification. The video starts as soon as it\'s done."</string>
