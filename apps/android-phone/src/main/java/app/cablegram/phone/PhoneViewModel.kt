@@ -2186,7 +2186,7 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
             }
             if (files.isNotEmpty()) addBrowseFileEntries(files.filter { it.isVideo })
             if (refused > 0) {
-                status = uiText(R.string.ui_couldn_t_be_added_android_limits_how_many_f88239, refused, if (refused == 1) "video" else "videos") +
+                status = uiText(R.string.ui_couldn_t_be_added_android_limits_how_many_f88239, refused, uiText(if (refused == 1) R.string.ui_video_d534be else R.string.ui_video_plural_word)) +
                     uiText(R.string.ui_single_files_an_app_can_keep_remove_videos_you_no_long_eb70b0)
             }
         }
@@ -3088,7 +3088,7 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
             tvName = pairing.tvName
         }
         report(when {
-            sent.switchedFrom != null -> uiText(R.string.ui_isn_t_on_so_on_5fb016, sent.switchedFrom, if (command == "play" && videoId != null) "starting" else "sending", sent.tvName)
+            sent.switchedFrom != null -> uiText(R.string.ui_isn_t_on_so_on_5fb016, sent.switchedFrom, uiText(if (command == "play" && videoId != null) R.string.ui_command_starting else R.string.ui_command_sending), sent.tvName)
             command == "play" && videoId != null -> uiText(R.string.ui_starting_on_12d09e, sent.tvName)
             else -> uiText(R.string.ui_sent_to_29ea5e, sent.tvName)
         })

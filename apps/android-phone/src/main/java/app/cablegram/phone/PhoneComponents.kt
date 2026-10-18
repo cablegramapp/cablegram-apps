@@ -45,7 +45,7 @@ internal fun MediaArtwork(item: LibraryItem, modifier: Modifier = Modifier) {
 @Composable
 internal fun ScreenHeading(title: String, subtitle: String? = null, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineLarge, color = Color.White)
+        Text(title, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.headlineLarge, color = Color.White)
         if (!subtitle.isNullOrBlank()) Text(subtitle, color = VlcMuted, style = MaterialTheme.typography.bodyMedium)
     }
 }

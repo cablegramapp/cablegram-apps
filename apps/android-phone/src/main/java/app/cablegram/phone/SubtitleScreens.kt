@@ -457,16 +457,14 @@ internal fun ColumnScope.AdjustContent(
             )
         }
         }
-        if (durationMs > 0) {
-            Slider(value = (position * 1000 / durationMs).toFloat().coerceIn(0f, 1f), onValueChange = { f -> seek((f * durationMs).toInt()) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SEEK))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { preview?.togglePlayback() }, enabled = playback.ready, modifier = Modifier.maestro(MaestroIds.SUBTITLES_PLAY)) {
-                Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if (playing) ui.getString(R.string.ui_pause_858e4b) else ui.getString(R.string.ui_play_436e61))
-            }
-            OutlinedButton(onClick = { seek((position * 1000).toInt() - 10_000) }, enabled = playback.ready) { Text("−10 s") }
-            OutlinedButton(onClick = { seek((position * 1000).toInt() + 10_000) }, enabled = playback.ready) { Text("+10 s") }
-        }
+        SubtitlePlaybackControls(
+            durationMs = durationMs,
+            positionSeconds = position,
+            playing = playing,
+            ready = playback.ready,
+            onSeek = ::seek,
+            onTogglePlayback = { preview?.togglePlayback() },
+        )
     } else if (opening) StatusNote(ui.getString(R.string.ui_opening_your_video_3e392b))
     else StatusNote((openError ?: ui.getString(R.string.ui_this_video_can_t_be_opened_right_now_so_it_can_t_be_pr_395068)) + ui.getString(R.string.ui_you_can_still_shift_the_timing_684cd9))
     Surface(color = Color.Black, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
@@ -519,3 +517,34 @@ internal fun ColumnScope.AdjustContent(
 @Serializable private data class SyncRequest(val offset: Double? = null, val scale: Double? = null, val points: List<SyncPointDto>? = null)
 
 private fun clock(seconds: Double): String { val s = seconds.toInt(); return "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) }
+
+/** Playback positions and transport controls keep their physical direction in every UI language. */
+@Composable
+internal fun SubtitlePlaybackControls(
+    durationMs: Int,
+    positionSeconds: Double,
+    playing: Boolean,
+    ready: Boolean,
+    onSeek: (Int) -> Unit,
+    onTogglePlayback: () -> Unit,
+) {
+    val ui = androidx.compose.ui.platform.LocalContext.current.resources
+    LtrControls {
+        if (durationMs > 0) {
+            Slider(
+                value = (positionSeconds * 1000 / durationMs).toFloat().coerceIn(0f, 1f),
+                onValueChange = { onSeek((it * durationMs).toInt()) },
+                modifier = Modifier.fillMaxWidth().maestro(MaestroIds.SUBTITLES_SEEK),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onTogglePlayback, enabled = ready, modifier = Modifier.maestro(MaestroIds.SUBTITLES_PLAY)) {
+                Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(if (playing) ui.getString(R.string.ui_pause_858e4b) else ui.getString(R.string.ui_play_436e61))
+            }
+            OutlinedButton(onClick = { onSeek((positionSeconds * 1000).toInt() - 10_000) }, enabled = ready) { Text("−10 s") }
+            OutlinedButton(onClick = { onSeek((positionSeconds * 1000).toInt() + 10_000) }, enabled = ready) { Text("+10 s") }
+        }
+    }
+}

@@ -22,16 +22,16 @@ fun storageBadge(item: LibraryItem): StorageBadge = when {
     else -> StorageBadge.Local
 }
 
-fun storageBadgeLabel(badge: StorageBadge): String = when (badge) {
-    StorageBadge.Local -> "On phone"
-    StorageBadge.Cloud -> "Cloud"
-    StorageBadge.Both -> "Phone & cloud"
-    StorageBadge.Saving -> "Saving…"
-    StorageBadge.Failed -> "Save failed"
-    StorageBadge.Unavailable -> "Unavailable"
-    StorageBadge.NotOnPhone -> "Not on this phone"
-    StorageBadge.Telegram -> "Cloud · Telegram"
-}
+fun storageBadgeLabel(badge: StorageBadge, resources: android.content.res.Resources): String = resources.getString(when (badge) {
+    StorageBadge.Local -> R.string.ui_on_phone_9557b8
+    StorageBadge.Cloud -> R.string.ui_cloud_b977b9
+    StorageBadge.Both -> R.string.ui_badge_phone_cloud
+    StorageBadge.Saving -> R.string.ui_saving_23e392
+    StorageBadge.Failed -> R.string.ui_badge_save_failed
+    StorageBadge.Unavailable -> R.string.ui_badge_unavailable
+    StorageBadge.NotOnPhone -> R.string.ui_badge_not_on_phone
+    StorageBadge.Telegram -> R.string.ui_cloud_telegram_798118
+})
 
 fun storageStatusLine(item: LibraryItem, resources: android.content.res.Resources): String = when (storageBadge(item)) {
     StorageBadge.Local -> resources.getString(R.string.ui_on_phone_9557b8)

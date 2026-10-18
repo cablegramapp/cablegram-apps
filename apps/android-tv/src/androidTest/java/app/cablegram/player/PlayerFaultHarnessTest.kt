@@ -8,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import app.cablegram.MainActivity
 import app.cablegram.data.PlaybackResponse
 import app.cablegram.ui.PlayerScreen
+import app.cablegram.ui.TvLanguage
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.Rule
@@ -19,7 +20,8 @@ import org.junit.runner.RunWith
  * driver controls and logs what the screen reports, so a script can inject faults (silent source, frozen stream,
  * dropped network) and watch the screen with `uiautomator dump` and logcat (tags FaultHarness, CableGramPlayback).
  *
- * Arguments: `-e url <primary>`, optional `-e fallback <url>`, `-e resume <seconds>`, `-e hold <seconds>` (default 120).
+ * Arguments: `-e url <primary>`, optional `-e fallback <url>`, `-e resume <seconds>`, `-e hold <seconds>` (default 120),
+ * and `-e locale <language tag>` (default en). Use seekable HTTP(S) media longer than the resume position.
  * It ends when the screen calls `onBack`, or after `hold` seconds.
  */
 @RunWith(AndroidJUnit4::class)
@@ -37,6 +39,7 @@ class PlayerFaultHarnessTest {
         val tag = "FaultHarness"
         activityRule.scenario.onActivity { activity ->
             activity.setContent {
+                TvLanguage(args.getString("locale") ?: "en") {
                 PlayerScreen(
                     videoId = "fault-journey",
                     title = "Fault journey",
@@ -56,6 +59,7 @@ class PlayerFaultHarnessTest {
                     onRenewPlayback = { null },
                     onBack = { Log.i(tag, "onBack called"); finished.countDown() },
                 )
+                }
             }
         }
         Log.i(tag, "hosting $url (fallback=$fallback resume=$resume hold=${hold}s)")

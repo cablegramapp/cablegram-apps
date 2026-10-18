@@ -12,6 +12,19 @@ import org.junit.Test
 class LibraryLogicTest {
     private val res = ApplicationProvider.getApplicationContext<android.content.Context>().resources
 
+    @Test fun `poster storage badges use the selected language`() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val labels = mapOf("en" to "On phone", "de" to "Auf dem Smartphone", "es" to "En el teléfono",
+            "it" to "Sul telefono", "ru" to "На телефоне", "fa" to "روی گوشی", "ar" to "على الهاتف")
+        labels.forEach { (language, expected) ->
+            val configuration = android.content.res.Configuration(res.configuration).apply {
+                setLocale(java.util.Locale.forLanguageTag(language))
+            }
+            val localized = context.createConfigurationContext(configuration).resources
+            assertEquals(language, expected, storageBadgeLabel(StorageBadge.Local, localized))
+        }
+    }
+
     @Test fun `imported videos are ready without mandatory artwork editing`() {
         assertEquals(ImportMetadataAction.Ready, importMetadataAction(item(title = "38", filename = "38.mp4")))
         assertEquals(ImportMetadataAction.Ready, importMetadataAction(item(title = "a1b2c3d4e5f6", filename = "a1b2c3d4e5f6.mp4")))
@@ -119,7 +132,7 @@ class LibraryLogicTest {
     fun `telegram titles show a cloud badge and cannot be saved to cloud again`() {
         val telegram = item().copy(sourceKind = "telegram", copied = false, sourceAvailable = true)
         assertEquals(StorageBadge.Telegram, storageBadge(telegram))
-        assertEquals("Cloud · Telegram", storageBadgeLabel(storageBadge(telegram)))
+        assertEquals("Cloud · Telegram", storageBadgeLabel(storageBadge(telegram), res))
         assertFalse(canSaveToCloud(telegram))
         assertEquals(StorageBadge.Unavailable, storageBadge(telegram.copy(sourceAvailable = false)))
     }
