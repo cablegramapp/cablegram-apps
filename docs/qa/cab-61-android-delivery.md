@@ -157,7 +157,7 @@ checks. No repository setting was changed during this check.
 
 ### Hosted CI follow-up — 2026-10-17
 
-[PR #96's first CI run](https://github.com/cablegramapp/cablegram-apps/actions/runs/39040374910)
+[PR #96's first CI run](https://github.com/seep-labs/cablegram-apps/actions/runs/39040374910)
 failed both Android jobs (phone 8 of 312, TV 1 of 285), each with
 `UnsupportedOperationException at DefaultSdkProvider.java:170`. `main` has failed the same
 way since `6bc6250` (#95), which moved tests onto Robolectric 4.16. Robolectric needs JDK 21
