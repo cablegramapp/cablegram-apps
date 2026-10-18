@@ -25,7 +25,7 @@
     <string name="delete_account_removed_account" formatted="false">"حساب شما و آدرس ایمیل"</string>
     <string name="delete_account_removed_files" formatted="false">"هر فایل Cablegram فروشگاه برای شما"</string>
     <string name="delete_account_removed_heading" formatted="false">"چه چیزی حذف شده است"</string>
-    <string name="delete_account_removed_household" formatted="false">"خانه شما، با پروفایل های خود و هر تلفن و تلویزیون جفت شده"</string>
+    <string name="delete_account_removed_household" formatted="false">"پروفایل‌های شما و همه تلفن‌ها و تلویزیون‌های جفت‌شده"</string>
     <string name="delete_account_removed_library" formatted="false">"کتابخانه شما، نگاهی به پیشرفت و فهرست من"</string>
     <string name="delete_account_removed_telegram" formatted="false">"لینک به حساب Telegram خود و این تلفن Telegram امضا"</string>
     <string name="delete_account_send_code" formatted="false">"ارسال کد به ایمیل من"</string>
@@ -408,7 +408,7 @@
     <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"%1$s پاسخ نمی دهد. Cablegram را در آن باز کنید، انتخاب کنید که چه کسی تماشا می کند، سپس دوباره امتحان کنید."</string>
     <string name="ui_it_only_reaches_the_files_cablegram_creates_never_the__2a9187" formatted="false">"این فقط به فایل های Cablegram می رسد، هرگز بقیه درایو شما نیست."</string>
     <string name="ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008" formatted="false">"آن را جایگزین زیر عنوان ذخیره شده خود را برای این کپی. شما می توانید آن را از جزئیات ویدئویی حذف کنید. "</string>
-    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"آن را به کتابخانه Telegram خود را نشان می دهد و جفت باقی می ماند."</string>
+    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"جفت‌شده می‌ماند و در صورت اتصال کتابخانه Telegram می‌تواند از آن استفاده کند."</string>
     <string name="ui_it_stays_on_the_server_until_you_tap_remove_here_chang_9f0819" formatted="false">"آن را بر روی سرور باقی می ماند تا زمانی که شما در اینجا را حذف کنید، پوشش را تغییر دهید یا ویدیو را خصوصی کنید."</string>
     <string name="ui_it_will_be_unpaired_4f9898">"این امر به طور کامل %1$s دلار خواهد شد."</string>
     <string name="ui_join_cablegram_channels_d35d5f" formatted="false">"کانال های Cablegram"</string>

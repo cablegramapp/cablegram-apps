@@ -752,6 +752,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun requestSignInCode(email: String) {
+        // "Your account was deleted." has done its job once the person starts signing in again.
+        status = null
         viewModelScope.launch { signIn.requestCode(email) }
     }
 
@@ -770,6 +772,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Shows Google's sign-in sheet; [activity] must be the Activity, which Credential Manager needs. */
     fun signInWithGoogle(activity: android.content.Context) {
         val clientId = signIn.methods?.google?.clientId ?: return
+        status = null
         viewModelScope.launch {
             when (val result = googleIdToken(activity, clientId)) {
                 is GoogleIdResult.Token -> signIn.google(result.idToken, result.nonce)
