@@ -55,7 +55,7 @@ private const val PRIVACY_URL = "https://cablegram.app/privacy.html#telegram"
  * (`v` + versionName). Update the tag in the URL together with `versionName` in build.gradle.kts.
  */
 private const val TELEGRAM_CODE_URL =
-    "https://github.com/cablegramapp/cablegram-apps/tree/v0.2.2/apps/android-phone/src/main/java/app/cablegram/telegram"
+    "https://github.com/seep-labs/cablegram-apps/tree/v0.2.2/apps/android-phone/src/main/java/app/cablegram/telegram"
 
 /** A direct route to the household's linked channel, before the other import sources. */
 @Composable

@@ -29,10 +29,13 @@ with the APK by someone else proves nothing.
 ## 2. That GitHub built it from this repository
 
 ```sh
-gh attestation verify cablegram-phone-arm64-v8a-v0.2.0.apk --repo cablegramapp/cablegram-apps
+gh attestation verify cablegram-phone-arm64-v8a-v0.2.0.apk --repo seep-labs/cablegram-apps
 ```
 
 This checks that the release workflow in this repository, at the tagged commit, produced that exact file.
+
+The repository moved from `cablegramapp` to `seep-labs` on 2026-10-18. Releases built before the move were attested under
+the old name; if verifying one of them with `seep-labs/cablegram-apps` fails, use `--repo cablegramapp/cablegram-apps`.
 
 ## 3. An app already installed on a device
 
