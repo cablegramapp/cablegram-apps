@@ -1,290 +1,290 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Bundled offline translations. Review wording in this file; no runtime translation service. -->
 <resources>
-    <string name="app_tagline" formatted="false">"فیلم های خود را، از تلفن شما به تلویزیون شما منتقل شده است."</string>
-    <string name="legal_disclaimer" formatted="false">"Cablegram فیلم هایی را که شما مالک آن هستید یا مجاز به تماشای آن هستید، بازی می کند. هیچ رسانه ای از خود را فراهم نمی کند. فیلم ها از تلفن شما یا کانال Telegram شما هرگز در سرورهای خود ذخیره نمی شوند؛ تنها یک ویدیو وب که برای ذخیره سازی به ذخیره سازی Cablegram انتخاب می کنید، تا زمانی که حساب کاربری خود را حذف کنید."</string>
-    <string name="ui_a_phone_in_your_household_asked_this_tv_to_sign_it_in__568faf" formatted="false">"یک تلفن در خانه شما از این تلویزیون خواست تا آن را به حساب Telegram شما وارد کند. اجازه دهید فقط اگر "</string>
-    <string name="ui_about_cablegram_8eeae9" formatted="false">"درباره Cablegram"</string>
-    <string name="ui_add_profile_f964be" formatted="false">"افزودن نمایه"</string>
-    <string name="ui_added_to_my_list_c528ea" formatted="false">"اضافه شدن به لیست من"</string>
+    <string name="app_tagline" formatted="false">"ویدیوهای شما، از گوشی روی تلویزیون"</string>
+    <string name="legal_disclaimer" formatted="false">"Cablegram ویدیوهایی را پخش می‌کند که متعلق به شماست یا اجازهٔ تماشای آن‌ها را دارید. این برنامه محتوایی از خودش ارائه نمی‌کند. ویدیوهای گوشی یا کانال Telegram شما هرگز روی سرورهای آن ذخیره نمی‌شوند؛ فقط ویدیوهای وبی که خودتان برای ذخیره در فضای Cablegram انتخاب می‌کنید، تا زمان حذف حسابتان آنجا نگه داشته می‌شوند."</string>
+    <string name="ui_a_phone_in_your_household_asked_this_tv_to_sign_it_in__568faf" formatted="false">"گوشی‌ای در گروه خانهٔ شما از این تلویزیون درخواست ورود به حساب Telegram شما را کرده است. فقط زمانی اجازه دهید که همین حالا "</string>
+    <string name="ui_about_cablegram_8eeae9" formatted="false">"دربارهٔ Cablegram"</string>
+    <string name="ui_add_profile_f964be" formatted="false">"افزودن پروفایل"</string>
+    <string name="ui_added_to_my_list_c528ea" formatted="false">"به «فهرست من» اضافه شد"</string>
     <string name="ui_all_a52ace" formatted="false">"همه"</string>
-    <string name="ui_all_titles_531868" formatted="false">"همه عناوین"</string>
+    <string name="ui_all_titles_531868" formatted="false">"‹  همهٔ عناوین"</string>
     <string name="ui_allow_e213c1" formatted="false">"اجازه دادن"</string>
-    <string name="ui_allow_on_your_phone_f78aa2" formatted="false">"اجازه دهید در تلفن شما"</string>
-    <string name="ui_allow_streaming_on_your_phone_394ad4" formatted="false">"اجازه دهید جریان در تلفن شما"</string>
-    <string name="ui_allow_this_play_on_your_phone_8a268c" formatted="false">"اجازه دهید این بازی بر روی تلفن شما"</string>
-    <string name="ui_almost_there_750a35" formatted="false">"تقریباً آنجا"</string>
-    <string name="ui_always_use_my_phone_ce2492" formatted="false">"همیشه از تلفن من استفاده کنید"</string>
-    <string name="ui_api_unreachable_phone_qr_still_works_on_this_wi_fi_cfb036" formatted="false">"API غیر قابل دسترس گوشی QR هنوز هم بر روی این موضوع کار می کند Wi‑Fi..."</string>
-    <string name="ui_ask_my_phone_again_c2ad29" formatted="false">"دوباره از تلفن من سوال کنید"</string>
+    <string name="ui_allow_on_your_phone_f78aa2" formatted="false">"در گوشی تأیید کنید"</string>
+    <string name="ui_allow_streaming_on_your_phone_394ad4" formatted="false">"پخش را در گوشی تأیید کنید"</string>
+    <string name="ui_allow_this_play_on_your_phone_8a268c" formatted="false">"این نوبت پخش را در گوشی تأیید کنید"</string>
+    <string name="ui_almost_there_750a35" formatted="false">"تقریباً آماده است"</string>
+    <string name="ui_always_use_my_phone_ce2492" formatted="false">"همیشه از گوشی من استفاده شود"</string>
+    <string name="ui_api_unreachable_phone_qr_still_works_on_this_wi_fi_cfb036" formatted="false">"دسترسی به API ممکن نیست. کد QR گوشی همچنان در همین شبکهٔ وای‌فای کار می‌کند."</string>
+    <string name="ui_ask_my_phone_again_c2ad29" formatted="false">"درخواست دوباره از گوشی"</string>
     <string name="ui_aspect_ratio_556f85" formatted="false">"نسبت تصویر"</string>
     <string name="ui_audio_bc1b88" formatted="false">"صدا"</string>
-    <string name="ui_audio_delay_f1f2f5" formatted="false">"تاخیر صوتی"</string>
+    <string name="ui_audio_delay_f1f2f5" formatted="false">"تأخیر صدا"</string>
     <string name="ui_audio_subtitles_0c57c9" formatted="false">"صدا و زیرنویس"</string>
     <string name="ui_audio_subtitles_ee0b9b" formatted="false">"صدا و زیرنویس"</string>
     <string name="ui_back_76900f" formatted="false">"بازگشت"</string>
-    <string name="ui_back_on_the_remote_closes_the_keyboard_cancel_picks_an_c14dae" formatted="false">"بازگشت به دور، صفحه کلید را بسته است. لغو یکی دیگر."</string>
-    <string name="ui_back_on_your_wi_fi_b6047e" formatted="false">"بازگشت به شما WIFI"</string>
+    <string name="ui_back_on_the_remote_closes_the_keyboard_cancel_picks_an_c14dae" formatted="false">"دکمهٔ بازگشت روی کنترل، صفحه‌کلید را می‌بندد. برای انتخاب صفحه‌کلید دیگر، «لغو» را بزنید."</string>
+    <string name="ui_back_on_your_wi_fi_b6047e" formatted="false">"دوباره در شبکهٔ وای‌فای شما"</string>
     <string name="ui_back_to_library_008e42" formatted="false">"بازگشت به کتابخانه"</string>
     <string name="ui_back_to_settings_ea37ec" formatted="false">"بازگشت به تنظیمات"</string>
-    <string name="ui_backup_838557" formatted="false">"پشتیبان گیری"</string>
-    <string name="ui_cablegram_is_an_unofficial_app_not_made_or_endorsed_by_5de578" formatted="false">"Cablegram یک برنامه غیر رسمی است که توسط Telegram ساخته یا تایید نشده است. این حساب از حساب Telegram خود استفاده می کند."</string>
-    <string name="ui_cablegram_is_getting_the_best_available_stream_ready_52cd87" formatted="false">"Cablegram بهترین جریان موجود را آماده می کند."</string>
-    <string name="ui_cablegram_on_your_phone_will_open_a_password_screen_8fe1ea" formatted="false">"Cablegram در تلفن شما یک صفحه کلید رمز عبور باز خواهد کرد."</string>
-    <string name="ui_cablegram_reads_only_your_cablegram_library_channel_ne_359f98" formatted="false">"Cablegram تنها کانال \"کتابخانه Cablegram\" خود را می خواند و هرگز چت های شما را نمی خواند."</string>
-    <string name="ui_can_t_convert_this_video_260740" formatted="false">"نمی توان این ویدئو را تبدیل کرد"</string>
-    <string name="ui_can_t_play_this_video_7cfde0" formatted="false">"نمی توان این ویدئو را بازی کرد"</string>
-    <string name="ui_can_t_remove_this_video_51b490" formatted="false">"نمی توان این ویدئو را حذف کرد"</string>
+    <string name="ui_backup_838557" formatted="false">"نسخهٔ پشتیبان"</string>
+    <string name="ui_cablegram_is_an_unofficial_app_not_made_or_endorsed_by_5de578" formatted="false">"Cablegram برنامه‌ای غیررسمی است و Telegram آن را نساخته یا تأیید نکرده است. این برنامه از حساب شخصی Telegram شما استفاده می‌کند."</string>
+    <string name="ui_cablegram_is_getting_the_best_available_stream_ready_52cd87" formatted="false">"Cablegram بهترین نسخهٔ قابل پخش را آماده می‌کند."</string>
+    <string name="ui_cablegram_on_your_phone_will_open_a_password_screen_8fe1ea" formatted="false">"Cablegram در گوشی شما صفحهٔ ورود رمز عبور را باز می‌کند."</string>
+    <string name="ui_cablegram_reads_only_your_cablegram_library_channel_ne_359f98" formatted="false">"Cablegram فقط کانال «Cablegram library» شما را می‌خواند و هرگز به گفت‌وگوهایتان دسترسی پیدا نمی‌کند."</string>
+    <string name="ui_can_t_convert_this_video_260740" formatted="false">"تبدیل این ویدیو ممکن نیست"</string>
+    <string name="ui_can_t_play_this_video_7cfde0" formatted="false">"پخش این ویدیو ممکن نیست"</string>
+    <string name="ui_can_t_remove_this_video_51b490" formatted="false">"حذف این ویدیو ممکن نیست"</string>
     <string name="ui_cancel_19766e" formatted="false">"لغو"</string>
-    <string name="ui_check_again_fb7099" formatted="false">"دوباره چک کنید"</string>
-    <string name="ui_check_the_backend_address_and_network_connection_1548f3" formatted="false">"آدرس backend و اتصال شبکه را بررسی کنید."</string>
-    <string name="ui_checking_0dfe1d" formatted="false">"چک کردن"</string>
-    <string name="ui_checking_ec963f" formatted="false">"بررسی ..."</string>
-    <string name="ui_checking_the_file_1c7df4" formatted="false">"بررسی فایل"</string>
-    <string name="ui_checking_your_password_06c20d" formatted="false">"بررسی رمز عبور شما ..."</string>
-    <string name="ui_choose_an_action_769239" formatted="false">"یک اقدام را انتخاب کنید"</string>
-    <string name="ui_choose_the_digits_then_ok_30a667" formatted="false">"اعداد را انتخاب کنید، سپس خوب است."</string>
-    <string name="ui_choose_your_profile_a946b9" formatted="false">"نمایه خود را انتخاب کنید"</string>
-    <string name="ui_chose_use_the_qr_code_on_your_tv_on_your_own_phone_all_ce22eb" formatted="false">"گزینه “استفاده از کد QR در تلویزیون” را بر روی گوشی خود انتخاب کنید. اجازه می دهد تا این تلفن کامل به Telegram شما دسترسی داشته باشد."</string>
-    <string name="ui_cloud_b977b9" formatted="false">"Cloud Cloud Cloud Cloud"</string>
+    <string name="ui_check_again_fb7099" formatted="false">"بررسی دوباره"</string>
+    <string name="ui_check_the_backend_address_and_network_connection_1548f3" formatted="false">"نشانی سرور و اتصال شبکه را بررسی کنید."</string>
+    <string name="ui_checking_0dfe1d" formatted="false">"در حال بررسی"</string>
+    <string name="ui_checking_ec963f" formatted="false">"در حال بررسی…"</string>
+    <string name="ui_checking_the_file_1c7df4" formatted="false">"در حال بررسی فایل"</string>
+    <string name="ui_checking_your_password_06c20d" formatted="false">"در حال بررسی رمز عبور…"</string>
+    <string name="ui_choose_an_action_769239" formatted="false">"یک گزینه را انتخاب کنید"</string>
+    <string name="ui_choose_the_digits_then_ok_30a667" formatted="false">"رقم‌ها را انتخاب کنید، سپس «تأیید» را بزنید."</string>
+    <string name="ui_choose_your_profile_a946b9" formatted="false">"پروفایل خود را انتخاب کنید"</string>
+    <string name="ui_chose_use_the_qr_code_on_your_tv_on_your_own_phone_all_ce22eb" formatted="false">"گزینهٔ «استفاده از کد QR روی تلویزیون» را در گوشی خودتان انتخاب کرده‌اید. با تأیید، آن گوشی به حساب Telegram شما دسترسی کامل خواهد داشت."</string>
+    <string name="ui_cloud_b977b9" formatted="false">"فضای ابری"</string>
     <string name="ui_connect_telegram_on_this_tv_461bf0" formatted="false">"اتصال Telegram در این تلویزیون"</string>
-    <string name="ui_connect_the_phone_that_has_this_video_to_the_same_wi_f_5fe0b3" formatted="false">"اتصال تلفن که این ویدیو را به همان Wi-Fi در تلویزیون و نگه داشتن Cablegram باز است."</string>
+    <string name="ui_connect_the_phone_that_has_this_video_to_the_same_wi_f_5fe0b3" formatted="false">"گوشی حاوی این ویدیو را به همان شبکهٔ وای‌فای تلویزیون وصل کنید و Cablegram را باز نگه دارید."</string>
     <string name="ui_connect_this_tv_8474b0" formatted="false">"این تلویزیون را متصل کنید"</string>
-    <string name="ui_connect_your_telegram_to_this_tv_once_and_your_library_f3e103" formatted="false">"Telegram خود را به این تلویزیون متصل کنید و کتابخانه شما مستقیماً از Telegram بازی می کند."</string>
-    <string name="ui_connecting_telegram_ed3dc8" formatted="false">"ارتباط با Telegram"</string>
-    <string name="ui_connecting_through_the_relay_a3dfc7" formatted="false">"۳- در صورتی که RELAY"</string>
-    <string name="ui_connecting_to_telegram_06a2ff" formatted="false">"ارتباط با Telegram ..."</string>
-    <string name="ui_connection_639a40" formatted="false">"اتصال اتصال"</string>
+    <string name="ui_connect_your_telegram_to_this_tv_once_and_your_library_f3e103" formatted="false">"یک‌بار حساب Telegram را به این تلویزیون وصل کنید تا ویدیوهای کتابخانه مستقیماً از Telegram پخش شوند."</string>
+    <string name="ui_connecting_telegram_ed3dc8" formatted="false">"در حال اتصال Telegram"</string>
+    <string name="ui_connecting_through_the_relay_a3dfc7" formatted="false">"در حال اتصال از طریق سرور واسط"</string>
+    <string name="ui_connecting_to_telegram_06a2ff" formatted="false">"در حال اتصال به Telegram…"</string>
+    <string name="ui_connection_639a40" formatted="false">"اتصال"</string>
     <string name="ui_continue_31fbef" formatted="false">"ادامه"</string>
     <string name="ui_continue_watching_81ebbe" formatted="false">"ادامه تماشا"</string>
-    <string name="ui_continue_watching_908149" formatted="false">"ادامه تماشا کنید؟"</string>
-    <string name="ui_continuing_straight_from_telegram_fbf398" formatted="false">"ادامه مستقیم از Telegram"</string>
-    <string name="ui_continuing_through_your_phone_bd43fe" formatted="false">"ادامه دادن از طریق تلفن شما"</string>
-    <string name="ui_convert_anyway_2c1857" formatted="false">"در هر صورت تبدیل"</string>
-    <string name="ui_converting_your_movie_3a5267" formatted="false">"تبدیل فیلم شما ..."</string>
-    <string name="ui_could_not_load_profiles_a6c9d7" formatted="false">"نمی تواند پروفایل ها را بارگذاری کند."</string>
-    <string name="ui_couldn_t_check_the_pin_check_the_connection_and_try_ag_ce4d77" formatted="false">"نمی تواند PIN را بررسی کند. اتصال را بررسی کنید و دوباره امتحان کنید."</string>
-    <string name="ui_couldn_t_send_the_phone_prompt_check_your_connection_s_97e9ba" formatted="false">"نمی تواند تلفن را سریع ارسال کند. اتصال خود را بررسی کنید، دوباره آن را ارسال کنید یا صفحه کلید تلویزیون را انتخاب کنید."</string>
-    <string name="ui_couldn_t_set_up_your_telegram_library_check_your_conne_793c9c" formatted="false">"نمی توانید کتابخانه Telegram خود را تنظیم کنید. ارتباط خود را بررسی کنید و دوباره امتحان کنید."</string>
-    <string name="ui_cover_fa8d84" formatted="false">"پوشش پوشش"</string>
+    <string name="ui_continue_watching_908149" formatted="false">"تماشا را ادامه می‌دهید؟"</string>
+    <string name="ui_continuing_straight_from_telegram_fbf398" formatted="false">"ادامهٔ پخش مستقیم از Telegram"</string>
+    <string name="ui_continuing_through_your_phone_bd43fe" formatted="false">"ادامهٔ پخش از طریق گوشی"</string>
+    <string name="ui_convert_anyway_2c1857" formatted="false">"تبدیل در هر صورت"</string>
+    <string name="ui_converting_your_movie_3a5267" formatted="false">"در حال تبدیل فیلم شما…"</string>
+    <string name="ui_could_not_load_profiles_a6c9d7" formatted="false">"بارگذاری پروفایل‌ها ممکن نشد."</string>
+    <string name="ui_couldn_t_check_the_pin_check_the_connection_and_try_ag_ce4d77" formatted="false">"بررسی پین ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید."</string>
+    <string name="ui_couldn_t_send_the_phone_prompt_check_your_connection_s_97e9ba" formatted="false">"ارسال درخواست به گوشی ممکن نشد. اتصال را بررسی کنید و دوباره بفرستید، یا صفحه‌کلید تلویزیون را انتخاب کنید."</string>
+    <string name="ui_couldn_t_set_up_your_telegram_library_check_your_conne_793c9c" formatted="false">"راه‌اندازی کتابخانهٔ Telegram ممکن نشد. اتصال را بررسی کنید و دوباره تلاش کنید."</string>
+    <string name="ui_cover_fa8d84" formatted="false">"پوستر"</string>
     <string name="ui_crop_98caf7" formatted="false">"برش"</string>
-    <string name="ui_demo_8a2cc0" formatted="false">"دموکراسی"</string>
-    <string name="ui_demo_mode_royalty_free_sample_streams_9e36b2" formatted="false">"حالت Demo Mode · جریان های نمونه رایگان"</string>
+    <string name="ui_demo_8a2cc0" formatted="false">"نسخهٔ نمایشی"</string>
+    <string name="ui_demo_mode_royalty_free_sample_streams_9e36b2" formatted="false">"حالت نمایشی · ویدیوهای نمونهٔ بدون حق امتیاز"</string>
     <string name="ui_don_t_allow_9803bd" formatted="false">"اجازه ندادن"</string>
-    <string name="ui_done_11a676" formatted="false">"تمام"</string>
-    <string name="ui_downloading_37b345" formatted="false">"دانلود بازی Downloading"</string>
-    <string name="ui_downloading_your_video_4a7a5a" formatted="false">"دانلود فیلم Your Video"</string>
-    <string name="ui_enjoy_a_little_cablegram_while_we_prepare_your_video_b47aa0" formatted="false">"لذت بردن از کمی Cablegram در حالی که ما ویدیو شما را آماده می کنیم."</string>
-    <string name="ui_enter_pin_f246c7" formatted="false">"وارد کردن PIN"</string>
-    <string name="ui_enter_telegram_password_7844e5" formatted="false">"رمز عبور Telegram"</string>
-    <string name="ui_fill_033955" formatted="false">"پر کردن"</string>
-    <string name="ui_finding_the_movie_515229" formatted="false">"پیدا کردن فیلم"</string>
-    <string name="ui_finish_signing_in_from_settings_telegram_on_this_tv_d69b81" formatted="false">"ثبت نام در تنظیمات Telegram در این تلویزیون"</string>
-    <string name="ui_finish_signing_in_to_telegram_enter_your_telegram_pass_284439" formatted="false">"پایان نامه به Telegram: وارد رمز عبور Telegram خود را در تنظیمات در این تلویزیون."</string>
-    <string name="ui_fit_9f872e" formatted="false">"جا دادن"</string>
-    <string name="ui_genre_8dc737">"بایگانی برچسب ها: %1$s"</string>
-    <string name="ui_getting_it_ready_for_tv_f762f4" formatted="false">"آماده شدن برای تلویزیون"</string>
-    <string name="ui_getting_the_picture_ready_ef0b9b" formatted="false">"آماده شدن عکس ..."</string>
-    <string name="ui_getting_your_video_ready_09b497" formatted="false">"آماده کردن ویدیو شما"</string>
-    <string name="ui_hide_licence_and_notices_35e525" formatted="false">"مجوز مخفی و اطلاعیه ها"</string>
-    <string name="ui_hint_3033f3">"بازی Hint: %1$s"</string>
-    <string name="ui_hold_ok_on_any_title_to_save_it_here_8857f0" formatted="false">"در هر عنوان خوب نگه دارید تا آن را در اینجا ذخیره کنید."</string>
+    <string name="ui_done_11a676" formatted="false">"انجام شد"</string>
+    <string name="ui_downloading_37b345" formatted="false">"در حال دانلود"</string>
+    <string name="ui_downloading_your_video_4a7a5a" formatted="false">"در حال دانلود ویدیو"</string>
+    <string name="ui_enjoy_a_little_cablegram_while_we_prepare_your_video_b47aa0" formatted="false">"تا ویدیوی شما آماده می‌شود، کمی با Cablegram سرگرم شوید."</string>
+    <string name="ui_enter_pin_f246c7" formatted="false">"رمز PIN را وارد کنید"</string>
+    <string name="ui_enter_telegram_password_7844e5" formatted="false">"رمز عبور Telegram را وارد کنید"</string>
+    <string name="ui_fill_033955" formatted="false">"پر کردن صفحه"</string>
+    <string name="ui_finding_the_movie_515229" formatted="false">"در حال یافتن فیلم"</string>
+    <string name="ui_finish_signing_in_from_settings_telegram_on_this_tv_d69b81" formatted="false">"ورود را از بخش تنظیمات ← Telegram در این تلویزیون کامل کنید."</string>
+    <string name="ui_finish_signing_in_to_telegram_enter_your_telegram_pass_284439" formatted="false">"برای تکمیل ورود به Telegram، رمز عبور Telegram را در تنظیمات این تلویزیون وارد کنید."</string>
+    <string name="ui_fit_9f872e" formatted="false">"متناسب با صفحه"</string>
+    <string name="ui_genre_8dc737">"ژانر: %1$s"</string>
+    <string name="ui_getting_it_ready_for_tv_f762f4" formatted="false">"در حال آماده‌سازی برای تلویزیون"</string>
+    <string name="ui_getting_the_picture_ready_ef0b9b" formatted="false">"در حال آماده‌سازی تصویر…"</string>
+    <string name="ui_getting_your_video_ready_09b497" formatted="false">"در حال آماده‌سازی ویدیو"</string>
+    <string name="ui_hide_licence_and_notices_35e525" formatted="false">"پنهان کردن مجوز و اطلاعیه‌ها"</string>
+    <string name="ui_hint_3033f3">"راهنما: %1$s"</string>
+    <string name="ui_hold_ok_on_any_title_to_save_it_here_8857f0" formatted="false">"برای افزودن هر عنوان به این فهرست، دکمهٔ تأیید را روی آن نگه دارید."</string>
     <string name="ui_home_3a7869" formatted="false">"خانه"</string>
-    <string name="ui_it_s_on_its_way_cablegram_on_your_phone_opens_a_passwo_f216b7" formatted="false">"در راه آن است. Cablegram در تلفن شما یک صفحه کلید رمز عبور را در چند ثانیه باز می کند یا یک اعلان برای ضربه زدن نشان می دهد. رمز عبور را در آنجا تایپ کنید، این نشانه های تلویزیونی به محض اینکه Telegram آن را بپذیرد."</string>
-    <string name="ui_it_was_removed_from_your_library_on_the_phone_5bd088" formatted="false">"آن را از کتابخانه خود بر روی تلفن حذف شده است."</string>
-    <string name="ui_keep_the_phone_and_tv_on_the_same_wi_fi_your_videos_st_898a8b" formatted="false">"تلفن و تلویزیون را در همان Wi‑Fi نگه دارید. فیلم های شما در تلفن شما باقی می مانند."</string>
-    <string name="ui_keep_your_phone_nearby_2dc5e4" formatted="false">"دانلود آهنگ زیبای Your PHone NEARBY"</string>
-    <string name="ui_keeping_a_backup_7c73a2" formatted="false">"نگه داشتن یک پشتیبان"</string>
-    <string name="ui_left_right_to_adjust_42fa43" formatted="false">"چپ / راست برای تنظیم"</string>
+    <string name="ui_it_s_on_its_way_cablegram_on_your_phone_opens_a_passwo_f216b7" formatted="false">"درخواست ارسال شد. Cablegram در گوشی شما تا چند ثانیهٔ دیگر صفحهٔ ورود رمز را باز می‌کند یا اعلانی نشان می‌دهد که باید روی آن بزنید. رمز را آنجا وارد کنید؛ به‌محض تأیید Telegram، ورود روی تلویزیون انجام می‌شود."</string>
+    <string name="ui_it_was_removed_from_your_library_on_the_phone_5bd088" formatted="false">"این ویدیو از کتابخانهٔ گوشی حذف شده است."</string>
+    <string name="ui_keep_the_phone_and_tv_on_the_same_wi_fi_your_videos_st_898a8b" formatted="false">"گوشی و تلویزیون را به یک شبکهٔ وای‌فای وصل نگه دارید. ویدیوها روی گوشی شما باقی می‌مانند."</string>
+    <string name="ui_keep_your_phone_nearby_2dc5e4" formatted="false">"گوشی را نزدیک نگه دارید"</string>
+    <string name="ui_keeping_a_backup_7c73a2" formatted="false">"در حال نگهداری نسخهٔ پشتیبان"</string>
+    <string name="ui_left_right_to_adjust_42fa43" formatted="false">"تنظیم با دکمه‌های چپ و راست"</string>
     <string name="ui_library_unavailable_357219" formatted="false">"کتابخانه در دسترس نیست"</string>
-    <string name="ui_licence_and_notices_ded184" formatted="false">"مجوز و اطلاع"</string>
-    <string name="ui_live_b64ac0" formatted="false">"زندگی زنده Live Live"</string>
-    <string name="ui_local_lan_3cd048" formatted="false">"محلی LAN"</string>
-    <string name="ui_looking_for_your_phone_d386a9" formatted="false">"جستجوی تلفن همراه شما"</string>
-    <string name="ui_making_a_cover_photo_b9f1ef" formatted="false">"ساخت یک عکس مخفی"</string>
-    <string name="ui_media_source_de4006" formatted="false">"منبع رسانه"</string>
+    <string name="ui_licence_and_notices_ded184" formatted="false">"مجوز و اطلاعیه‌ها"</string>
+    <string name="ui_live_b64ac0" formatted="false">"پخش زنده"</string>
+    <string name="ui_local_lan_3cd048" formatted="false">"شبکهٔ محلی"</string>
+    <string name="ui_looking_for_your_phone_d386a9" formatted="false">"در حال یافتن گوشی"</string>
+    <string name="ui_making_a_cover_photo_b9f1ef" formatted="false">"در حال ساخت پوستر"</string>
+    <string name="ui_media_source_de4006" formatted="false">"منبع ویدیو"</string>
     <string name="ui_message_6c5b82">"%1$s%2$s"</string>
     <string name="ui_message_b6bb55">"%1$s%%"</string>
     <string name="ui_message_f1c1f8">"%1$s / %2$s"</string>
-    <string name="ui_movies_and_shows_from_your_phone_appear_here_db03ba" formatted="false">"فیلم ها و نمایش های تلفن شما در اینجا ظاهر می شوند."</string>
+    <string name="ui_movies_and_shows_from_your_phone_appear_here_db03ba" formatted="false">"فیلم‌ها و سریال‌های گوشی شما اینجا نمایش داده می‌شوند."</string>
     <string name="ui_movies_dff924" formatted="false">"فیلم‌ها"</string>
     <string name="ui_muted_2346f2" formatted="false">"بی‌صدا"</string>
     <string name="ui_my_list_e957f4" formatted="false">"فهرست من"</string>
-    <string name="ui_my_telegram_has_no_password_2e003f" formatted="false">"Telegram من هیچ رمز عبوری ندارد"</string>
-    <string name="ui_new_pin_6d8849" formatted="false">"PIN جدید"</string>
+    <string name="ui_my_telegram_has_no_password_2e003f" formatted="false">"حساب Telegram من رمز عبور ندارد"</string>
+    <string name="ui_new_pin_6d8849" formatted="false">"پین جدید"</string>
     <string name="ui_no_titles_match_these_filters_a0f06f" formatted="false">"هیچ عنوانی با این فیلترها مطابقت ندارد."</string>
-    <string name="ui_no_wi_fi_address_yet_614231" formatted="false">"هیچ کس Wi‑Fi آدرس هنوز"</string>
-    <string name="ui_nobody_allowed_on_a_phone_in_time_try_again_39ef3f">"هیچ کس اجازه نمی دهد %1$s در یک تلفن در زمان دوباره امتحان کنید."</string>
+    <string name="ui_no_wi_fi_address_yet_614231" formatted="false">"هنوز آدرس وای‌فای دریافت نشده"</string>
+    <string name="ui_nobody_allowed_on_a_phone_in_time_try_again_39ef3f">"در مهلت مقرر، هیچ گوشی‌ای درخواست %1$s را تأیید نکرد. دوباره تلاش کنید."</string>
     <string name="ui_nothing_here_yet_49abaf" formatted="false">"هنوز چیزی اینجا نیست"</string>
-    <string name="ui_nothing_in_progress_44a3cc" formatted="false">"هیچ چیز در پیشرفت"</string>
-    <string name="ui_nothing_on_your_phone_yet_6a0939" formatted="false">"هنوز هیچ چیز در گوشی شما وجود ندارد؟"</string>
-    <string name="ui_nothing_saved_yet_hold_ok_on_a_title_to_add_it_00ae6a" formatted="false">"هنوز هیچ چیز نجات نیافته است. در یک عنوان خوب نگه دارید تا آن را اضافه کنید."</string>
+    <string name="ui_nothing_in_progress_44a3cc" formatted="false">"هیچ ویدیوی نیمه‌تمامی ندارید"</string>
+    <string name="ui_nothing_on_your_phone_yet_6a0939" formatted="false">"هنوز چیزی روی گوشی ندارید؟"</string>
+    <string name="ui_nothing_saved_yet_hold_ok_on_a_title_to_add_it_00ae6a" formatted="false">"هنوز چیزی ذخیره نشده است. برای افزودن عنوان، دکمهٔ تأیید را روی آن نگه دارید."</string>
     <string name="ui_off_ca7981" formatted="false">"خاموش"</string>
-    <string name="ui_ok_565339" formatted="false">"OK"</string>
-    <string name="ui_ok_to_play_back_for_all_titles_df524e" formatted="false">"خوب برای بازی کردن · بازگشت برای همه عناوین"</string>
-    <string name="ui_on_your_phone_open_cablegram_and_tap_import_to_add_vid_f88e31" formatted="false">"در تلفن خود، Cablegram را باز کنید و برای اضافه کردن ویدیو، وارد کنید. آنها در عرض چند ثانیه در این تلویزیون ظاهر می شوند."</string>
-    <string name="ui_on_your_phone_open_the_cablegram_notification_and_tap__c5d631" formatted="false">"در تلفن خود، اطلاع رسانی Cablegram را باز کنید و به “Allow This Time” ضربه بزنید. Playback درست بعد از آن ادامه دارد."</string>
-    <string name="ui_open_cablegram_on_your_phone_1bc6dd" formatted="false">"باز کردن Cablegram در تلفن شما"</string>
-    <string name="ui_open_privacy_policy_c90fcb" formatted="false">"سیاست حفظ حریم خصوصی باز"</string>
-    <string name="ui_opening_profile_08573a" formatted="false">"باز کردن پروفایل ..."</string>
-    <string name="ui_opening_the_video_file_f25019" formatted="false">"باز کردن فایل ویدئویی"</string>
-    <string name="ui_opening_your_library_2d9a4d" formatted="false">"کتابخانه خود را باز کنید"</string>
-    <string name="ui_or_open_app_cablegram_app_and_enter_the_pin_8e31cb" formatted="false">"یا باز app.cablegram.app و وارد PIN"</string>
-    <string name="ui_other_accounts_use_this_tv_too_so_this_account_s_phone_9a6f28" formatted="false">"حساب های دیگر نیز از این تلویزیون استفاده می کنند، بنابراین تلفن این حساب باید اجازه دهد. باز کردن Cablegram در این تلفن و ضربه زدن اجازه."</string>
-    <string name="ui_pair_this_tv_a16f6b" formatted="false">"پرواز این تلویزیون"</string>
-    <string name="ui_pair_this_tv_from_the_cablegram_app_on_your_phone_894b76" formatted="false">"این تلویزیون را از برنامه Cablegram در تلفن خود خاموش کنید."</string>
-    <string name="ui_pair_your_phone_with_this_tv_to_use_its_keyboard_or_ch_4d91e1" formatted="false">"تلفن خود را با این تلویزیون خاموش کنید تا از صفحه کلید خود استفاده کنید یا صفحه کلید تلویزیون را انتخاب کنید."</string>
+    <string name="ui_ok_565339" formatted="false">"تأیید"</string>
+    <string name="ui_ok_to_play_back_for_all_titles_df524e" formatted="false">"تأیید برای پخش · بازگشت برای همهٔ عناوین"</string>
+    <string name="ui_on_your_phone_open_cablegram_and_tap_import_to_add_vid_f88e31" formatted="false">"Cablegram را روی گوشی باز کنید و برای افزودن ویدیو، «وارد کردن» را بزنید. ویدیوها چند ثانیه بعد روی این تلویزیون نمایش داده می‌شوند."</string>
+    <string name="ui_on_your_phone_open_the_cablegram_notification_and_tap__c5d631" formatted="false">"اعلان Cablegram را در گوشی باز کنید و «اجازه فقط این بار» را بزنید. پخش بلافاصله در اینجا ادامه پیدا می‌کند."</string>
+    <string name="ui_open_cablegram_on_your_phone_1bc6dd" formatted="false">"Cablegram را روی گوشی باز کنید"</string>
+    <string name="ui_open_privacy_policy_c90fcb" formatted="false">"نمایش سیاست حریم خصوصی"</string>
+    <string name="ui_opening_profile_08573a" formatted="false">"در حال باز کردن پروفایل…"</string>
+    <string name="ui_opening_the_video_file_f25019" formatted="false">"در حال باز کردن فایل ویدیو"</string>
+    <string name="ui_opening_your_library_2d9a4d" formatted="false">"در حال باز کردن کتابخانه…"</string>
+    <string name="ui_or_open_app_cablegram_app_and_enter_the_pin_8e31cb" formatted="false">"یا app.cablegram.app را باز کنید و رمز PIN را وارد کنید"</string>
+    <string name="ui_other_accounts_use_this_tv_too_so_this_account_s_phone_9a6f28" formatted="false">"حساب‌های دیگری هم از این تلویزیون استفاده می‌کنند؛ بنابراین باید در گوشی این حساب تأیید کنید. Cablegram را در آن گوشی باز کنید و «اجازه دادن» را بزنید."</string>
+    <string name="ui_pair_this_tv_a16f6b" formatted="false">"جفت‌سازی این تلویزیون"</string>
+    <string name="ui_pair_this_tv_from_the_cablegram_app_on_your_phone_894b76" formatted="false">"این تلویزیون را از برنامهٔ Cablegram در گوشی جفت کنید."</string>
+    <string name="ui_pair_your_phone_with_this_tv_to_use_its_keyboard_or_ch_4d91e1" formatted="false">"برای استفاده از صفحه‌کلید گوشی، آن را با تلویزیون جفت کنید؛ یا صفحه‌کلید تلویزیون را انتخاب کنید."</string>
     <string name="ui_paused_e159b0" formatted="false">"در حالت مکث"</string>
-    <string name="ui_phone_keyboard_recommended_9db367" formatted="false">"صفحه کلید تلفن (recommend)"</string>
-    <string name="ui_phone_not_on_this_wi_fi_f08589" formatted="false">"هیچ کس در این زمینه حضور ندارد."</string>
-    <string name="ui_phone_paired_choose_who_s_watching_9e5cf5" formatted="false">"تلفن جفت شد. انتخاب کنید که چه کسی تماشا می کند."</string>
-    <string name="ui_phone_paired_opening_the_library_3954f7" formatted="false">"تلفن جفت شد. باز کردن کتابخانه"</string>
-    <string name="ui_phone_pairing_qr_code_6fc5a0" formatted="false">"کد QR را جفت کنید"</string>
-    <string name="ui_play_through_my_phone_this_time_389f1f" formatted="false">"این بار از طریق تلفن من بازی کنید"</string>
-    <string name="ui_playback_continues_from_where_you_were_using_this_tv_s_344891" formatted="false">"Playback از جایی که شما بودید، با استفاده از اتصال Telegram خود این تلویزیون ادامه می دهد."</string>
-    <string name="ui_playback_didn_t_start_check_that_your_phone_is_online__af7362" formatted="false">"Playback شروع نشد. چک کنید که تلفن شما با Cablegram باز است، سپس دوباره امتحان کنید."</string>
-    <string name="ui_playback_interrupted_b9de29" formatted="false">"دانلود بازی Playback قطع شد"</string>
-    <string name="ui_playback_path_5cecee" formatted="false">"مسیر بازگشت"</string>
+    <string name="ui_phone_keyboard_recommended_9db367" formatted="false">"صفحه‌کلید گوشی (پیشنهادی)"</string>
+    <string name="ui_phone_not_on_this_wi_fi_f08589" formatted="false">"گوشی در این شبکهٔ وای‌فای نیست"</string>
+    <string name="ui_phone_paired_choose_who_s_watching_9e5cf5" formatted="false">"گوشی جفت شد. انتخاب کنید چه کسی تماشا می‌کند."</string>
+    <string name="ui_phone_paired_opening_the_library_3954f7" formatted="false">"گوشی جفت شد. در حال باز کردن کتابخانه."</string>
+    <string name="ui_phone_pairing_qr_code_6fc5a0" formatted="false">"کد QR جفت‌سازی گوشی"</string>
+    <string name="ui_play_through_my_phone_this_time_389f1f" formatted="false">"این بار از طریق گوشی پخش شود"</string>
+    <string name="ui_playback_continues_from_where_you_were_using_this_tv_s_344891" formatted="false">"پخش از همان جایی که بودید، با اتصال مستقیم Telegram این تلویزیون ادامه پیدا می‌کند."</string>
+    <string name="ui_playback_didn_t_start_check_that_your_phone_is_online__af7362" formatted="false">"پخش شروع نشد. مطمئن شوید گوشی به اینترنت وصل است و Cablegram در آن باز است، سپس دوباره تلاش کنید."</string>
+    <string name="ui_playback_interrupted_b9de29" formatted="false">"پخش قطع شد"</string>
+    <string name="ui_playback_path_5cecee" formatted="false">"مسیر پخش"</string>
     <string name="ui_playback_speed_4b2f5d" formatted="false">"سرعت پخش"</string>
-    <string name="ui_playback_starts_automatically_when_your_video_is_ready_6d9609" formatted="false">"Playback به طور خودکار شروع می شود زمانی که ویدیو شما آماده است."</string>
-    <string name="ui_playback_wasn_t_approved_5cb346" formatted="false">"Playback تایید نشد"</string>
+    <string name="ui_playback_starts_automatically_when_your_video_is_ready_6d9609" formatted="false">"وقتی ویدیو آماده شود، پخش خودکار شروع می‌شود."</string>
+    <string name="ui_playback_wasn_t_approved_5cb346" formatted="false">"پخش تأیید نشد"</string>
     <string name="ui_player_settings_d9f938" formatted="false">"تنظیمات پخش‌کننده"</string>
-    <string name="ui_playing_until_your_stream_is_ready_906bd0" formatted="false">"بازی کردن تا زمانی که جریان شما آماده باشد"</string>
+    <string name="ui_playing_until_your_stream_is_ready_906bd0" formatted="false">"در حال پخش تا آماده شدن ویدیوی شما"</string>
     <string name="ui_poster_9ca171">"پوستر %1$s"</string>
-    <string name="ui_preparing_your_movie_f22b39" formatted="false">"آماده سازی فیلم شما ..."</string>
-    <string name="ui_preparing_your_video_7daf7e" formatted="false">"آماده سازی ویدیو"</string>
-    <string name="ui_press_back_again_to_exit_e12dfa" formatted="false">"مطبوعات دوباره برای خروج"</string>
-    <string name="ui_press_back_to_browse_library_1b206d" formatted="false">"بازگشت به کتابخانه"</string>
-    <string name="ui_press_back_to_cancel_and_return_to_your_library_35e34a" formatted="false">"بازگشت به لغو و بازگشت به کتابخانه"</string>
+    <string name="ui_preparing_your_movie_f22b39" formatted="false">"در حال آماده‌سازی فیلم شما…"</string>
+    <string name="ui_preparing_your_video_7daf7e" formatted="false">"در حال آماده‌سازی ویدیو"</string>
+    <string name="ui_press_back_again_to_exit_e12dfa" formatted="false">"برای خروج، دوباره دکمهٔ بازگشت را بزنید"</string>
+    <string name="ui_press_back_to_browse_library_1b206d" formatted="false">"برای مرور کتابخانه، دکمهٔ بازگشت را بزنید"</string>
+    <string name="ui_press_back_to_cancel_and_return_to_your_library_35e34a" formatted="false">"برای لغو و برگشتن به کتابخانه، دکمهٔ بازگشت را بزنید"</string>
     <string name="ui_preview_324b13" formatted="false">"پیش‌نمایش"</string>
-    <string name="ui_profiles_unavailable_ea6ad2" formatted="false">"پروفایل هایی که در دسترس نیستند"</string>
-    <string name="ui_queued_661ff4" formatted="false">"Queu"</string>
-    <string name="ui_reaching_your_phone_over_the_internet_f54b1f" formatted="false">"رسیدن به تلفن خود را بر روی اینترنت"</string>
-    <string name="ui_ready_5fa7aa" formatted="false">"آمادگی آماده"</string>
-    <string name="ui_ready_to_play_6dbc08" formatted="false">"آماده برای بازی"</string>
+    <string name="ui_profiles_unavailable_ea6ad2" formatted="false">"پروفایل‌ها در دسترس نیستند"</string>
+    <string name="ui_queued_661ff4" formatted="false">"در صف"</string>
+    <string name="ui_reaching_your_phone_over_the_internet_f54b1f" formatted="false">"در حال اتصال به گوشی از طریق اینترنت"</string>
+    <string name="ui_ready_5fa7aa" formatted="false">"آماده"</string>
+    <string name="ui_ready_to_play_6dbc08" formatted="false">"آمادهٔ پخش"</string>
     <string name="ui_recently_added_96ec5d" formatted="false">"اخیراً اضافه‌شده"</string>
-    <string name="ui_relay_c226b0" formatted="false">"رله رله"</string>
-    <string name="ui_remove_c3812f" formatted="false">"برداشتن"</string>
-    <string name="ui_remove_this_account_from_this_tv_7dea07" formatted="false">"این حساب را از این تلویزیون حذف کنید؟"</string>
-    <string name="ui_remove_this_account_from_this_tv_b0c050" formatted="false">"این حساب را از این تلویزیون حذف کنید"</string>
-    <string name="ui_removed_from_my_list_570caa" formatted="false">"حذف شده از My List"</string>
+    <string name="ui_relay_c226b0" formatted="false">"سرور واسط"</string>
+    <string name="ui_remove_c3812f" formatted="false">"حذف"</string>
+    <string name="ui_remove_this_account_from_this_tv_7dea07" formatted="false">"این حساب از این تلویزیون حذف شود؟"</string>
+    <string name="ui_remove_this_account_from_this_tv_b0c050" formatted="false">"حذف این حساب از این تلویزیون"</string>
+    <string name="ui_removed_from_my_list_570caa" formatted="false">"از «فهرست من» حذف شد"</string>
     <string name="ui_resume_d640c7" formatted="false">"ادامه"</string>
     <string name="ui_retry_942087" formatted="false">"تلاش دوباره"</string>
-    <string name="ui_same_wi_fi_gives_the_fastest_start_and_best_quality_el_50f729" formatted="false">"همان Wi‑Fi سریع ترین شروع و بهترین کیفیت را ارائه می دهد. در جاهای دیگر، Cablegram جریان ها از طریق رله آن"</string>
-    <string name="ui_saving_096b73" formatted="false">"پس انداز پس انداز"</string>
-    <string name="ui_saving_the_video_829213" formatted="false">"صرفه جویی در ویدیو"</string>
-    <string name="ui_scan_the_code_with_your_phone_s_camera_or_type_this_pi_f54954" formatted="false">"کد را با دوربین تلفن خود اسکن کنید یا این پین را در برنامه Cablegram یا در app.cablegram.app تایپ کنید."</string>
-    <string name="ui_scan_this_code_in_telegram_on_your_phone_settings_devi_1df732" formatted="false">"این کد را اسکن کنید Telegram بر روی گوشی شما: Settings | Link Desktop Device"</string>
-    <string name="ui_scan_with_your_phone_s_camera_91a2f3" formatted="false">"اسکن با دوربین تلفن شما"</string>
-    <string name="ui_sec_7a04a5">"⁇   ⁇  %1$s جدایی فرقه"</string>
-    <string name="ui_sec_7d0a5c">"%1$s فرقه  ⁇"</string>
-    <string name="ui_send_your_password_only_if_the_phone_shows_this_same_c_4e8437" formatted="false">"رمز عبور خود را فقط در صورتی ارسال کنید که تلفن این کد را نشان دهد."</string>
-    <string name="ui_sending_it_to_your_tv_aad4d0" formatted="false">"ارسال آن به تلویزیون"</string>
-    <string name="ui_sending_to_your_phone_4c2c7f" formatted="false">"ارسال به تلفن شما ..."</string>
+    <string name="ui_same_wi_fi_gives_the_fastest_start_and_best_quality_el_50f729" formatted="false">"اتصال به یک شبکهٔ Wi-Fi، سریع‌ترین شروع پخش و بهترین کیفیت را فراهم می‌کند. در شبکه‌های دیگر، Cablegram ویدیو را از طریق سرور واسط پخش می‌کند."</string>
+    <string name="ui_saving_096b73" formatted="false">"در حال ذخیره‌سازی"</string>
+    <string name="ui_saving_the_video_829213" formatted="false">"در حال ذخیرهٔ ویدیو"</string>
+    <string name="ui_scan_the_code_with_your_phone_s_camera_or_type_this_pi_f54954" formatted="false">"کد را با دوربین گوشی اسکن کنید، یا این پین را در برنامهٔ Cablegram یا در app.cablegram.app وارد کنید."</string>
+    <string name="ui_scan_this_code_in_telegram_on_your_phone_settings_devi_1df732" formatted="false">"این کد را در Telegram گوشی اسکن کنید: تنظیمات ← دستگاه‌ها ← اتصال دستگاه دسکتاپ."</string>
+    <string name="ui_scan_with_your_phone_s_camera_91a2f3" formatted="false">"با دوربین گوشی اسکن کنید"</string>
+    <string name="ui_sec_7a04a5">"↶  %1$s ثانیه"</string>
+    <string name="ui_sec_7d0a5c">"%1$s ثانیه  ↷"</string>
+    <string name="ui_send_your_password_only_if_the_phone_shows_this_same_c_4e8437" formatted="false">"رمز عبور را فقط زمانی ارسال کنید که همین کد روی گوشی نمایش داده شود."</string>
+    <string name="ui_sending_it_to_your_tv_aad4d0" formatted="false">"در حال ارسال به تلویزیون"</string>
+    <string name="ui_sending_to_your_phone_4c2c7f" formatted="false">"در حال ارسال به گوشی…"</string>
     <string name="ui_settings_74a883" formatted="false">"تنظیمات"</string>
-    <string name="ui_several_accounts_use_this_tv_to_remove_one_open_one_of_f713b3" formatted="false">"چندین حساب کاربری از این تلویزیون استفاده می کنند. برای حذف یکی، باز کردن یکی از پروفایل های آن، تصویر پروفایل را در سمت چپ بالا انتخاب کنید، سپس این حساب را از این تلویزیون حذف کنید."</string>
+    <string name="ui_several_accounts_use_this_tv_to_remove_one_open_one_of_f713b3" formatted="false">"چند حساب به این تلویزیون متصل‌اند. برای حذف یک حساب، یکی از پروفایل‌های آن را باز کنید، تصویر پروفایل را در بالا سمت چپ انتخاب کنید و سپس «حذف این حساب از این تلویزیون» را بزنید."</string>
     <string name="ui_sign_in_bfd402" formatted="false">"ورود"</string>
-    <string name="ui_sign_in_to_your_telegram_a2b2cf">"ثبت نام در %1$s تا Telegram"</string>
+    <string name="ui_sign_in_to_your_telegram_a2b2cf">"به %1$s اجازه می‌دهید وارد حساب Telegram شما شود؟"</string>
     <string name="ui_sign_out_48f0d3" formatted="false">"خروج"</string>
-    <string name="ui_signed_in_as_abc50e" formatted="false">"ثبت نام در"</string>
-    <string name="ui_signing_in_8b9d3d" formatted="false">"ثبت نام در ..."</string>
+    <string name="ui_signed_in_as_abc50e" formatted="false">"واردشده با حساب"</string>
+    <string name="ui_signing_in_8b9d3d" formatted="false">"در حال ورود…"</string>
     <string name="ui_skip_28d035" formatted="false">"رد کردن"</string>
-    <string name="ui_start_now_9ff3a6" formatted="false">"حالا شروع کنید"</string>
+    <string name="ui_start_now_9ff3a6" formatted="false">"شروع اکنون"</string>
     <string name="ui_start_over_5eed7e" formatted="false">"شروع از ابتدا"</string>
-    <string name="ui_start_watching_89562c" formatted="false">"شروع به تماشای"</string>
-    <string name="ui_starting_aeed4d" formatted="false">"شروع"</string>
-    <string name="ui_starting_playback_f13f4e" formatted="false">"شروع پخش ..."</string>
-    <string name="ui_starts_faster_and_seeks_smoothly_the_video_comes_strai_bd5209" formatted="false">"سریع تر شروع می شود و به دنبال هموار است: ویدیو مستقیم از Telegram می آید."</string>
-    <string name="ui_stopped_at_59a5a3">"توقف در %1$s"</string>
-    <string name="ui_stopped_at_of_29e480">"توقف در %1$s از %2$s"</string>
-    <string name="ui_stream_quality_good_4e325d" formatted="false">"کیفیت جریان: Good"</string>
-    <string name="ui_stream_quality_ok_095e1f" formatted="false">"کیفیت جریان: OK"</string>
-    <string name="ui_stream_quality_poor_7b7238" formatted="false">"کیفیت جریان: ضعیف"</string>
-    <string name="ui_subtitle_delay_825119" formatted="false">"تاخیر"</string>
+    <string name="ui_start_watching_89562c" formatted="false">"شروع تماشا"</string>
+    <string name="ui_starting_aeed4d" formatted="false">"در حال شروع"</string>
+    <string name="ui_starting_playback_f13f4e" formatted="false">"در حال شروع پخش…"</string>
+    <string name="ui_starts_faster_and_seeks_smoothly_the_video_comes_strai_bd5209" formatted="false">"پخش سریع‌تر شروع می‌شود و جلو و عقب بردن ویدیو روان‌تر است؛ ویدیو مستقیماً از Telegram پخش می‌شود."</string>
+    <string name="ui_stopped_at_59a5a3">"متوقف‌شده در %1$s"</string>
+    <string name="ui_stopped_at_of_29e480">"متوقف‌شده در %1$s از %2$s"</string>
+    <string name="ui_stream_quality_good_4e325d" formatted="false">"کیفیت پخش: خوب"</string>
+    <string name="ui_stream_quality_ok_095e1f" formatted="false">"کیفیت پخش: قابل قبول"</string>
+    <string name="ui_stream_quality_poor_7b7238" formatted="false">"کیفیت پخش: ضعیف"</string>
+    <string name="ui_subtitle_delay_825119" formatted="false">"تأخیر زیرنویس"</string>
     <string name="ui_subtitles_0ee695" formatted="false">"زیرنویس"</string>
-    <string name="ui_subtitles_s_0c46b8">"زیرنویس های %1$s %2$s"</string>
-    <string name="ui_switch_39921a" formatted="false">"Switch Switch"</string>
-    <string name="ui_switch_profile_c1e0da" formatted="false">"تغییر نمایه"</string>
-    <string name="ui_switching_back_to_your_phone_56a1f2" formatted="false">"بازگشت به تلفن شما"</string>
-    <string name="ui_switching_source_1ede8f" formatted="false">"دانلود زیرنویس فارسی فیلم SWITTION"</string>
-    <string name="ui_switching_to_the_cablegram_relay_79ead3" formatted="false">"انتقال به رله Cablegram"</string>
-    <string name="ui_telegram_is_already_connected_for_this_household_ask_t_2ca07e" formatted="false">"Telegram در حال حاضر برای این خانواده متصل شده است. از مالک بخواهید از برنامه ای که آن را متصل می کند استفاده کند."</string>
-    <string name="ui_telegram_is_checking_your_password_this_tv_continues_a_8aca24" formatted="false">"Telegram رمز عبور شما را چک می کند. این تلویزیون به محض انجام این کار ادامه می یابد."</string>
-    <string name="ui_telegram_isn_t_connected_for_this_household_yet_you_ca_634c79" formatted="false">"Telegram هنوز به این خانواده متصل نیست. شما می توانید آن را از این تلویزیون متصل کنید: یک کد را با برنامه Telegram در تلفن خود اسکن کنید."</string>
-    <string name="ui_telegram_login_qr_code_b413de" formatted="false">"کد ورود Telegram QR"</string>
-    <string name="ui_telegram_needs_your_two_step_verification_password_onc_fe96c0" formatted="false">"Telegram به رمز عبور تأیید دو مرحله ای شما نیاز دارد تا در این تلویزیون ثبت نام کند. ثبت نام در شروع فقط پس از آن که شما آن را تایپ کرده اید."</string>
-    <string name="ui_telegram_needs_your_two_step_verification_password_to__2f2be0" formatted="false">"Telegram به رمز عبور تأیید دو مرحله ای شما برای پایان دادن به ثبت نام در این تلویزیون نیاز دارد."</string>
+    <string name="ui_subtitles_s_0c46b8">"زیرنویس %1$s%2$s ثانیه"</string>
+    <string name="ui_switch_39921a" formatted="false">"تغییر"</string>
+    <string name="ui_switch_profile_c1e0da" formatted="false">"تغییر پروفایل"</string>
+    <string name="ui_switching_back_to_your_phone_56a1f2" formatted="false">"در حال بازگشت به پخش از گوشی"</string>
+    <string name="ui_switching_source_1ede8f" formatted="false">"در حال تغییر منبع"</string>
+    <string name="ui_switching_to_the_cablegram_relay_79ead3" formatted="false">"در حال انتقال به سرور واسط Cablegram"</string>
+    <string name="ui_telegram_is_already_connected_for_this_household_ask_t_2ca07e" formatted="false">"Telegram قبلاً برای این خانواده متصل شده است. از مالک بخواهید از همان برنامه‌ای استفاده کند که با آن اتصال را برقرار کرده است."</string>
+    <string name="ui_telegram_is_checking_your_password_this_tv_continues_a_8aca24" formatted="false">"Telegram در حال بررسی رمز عبور شماست. پس از پایان بررسی، فرایند روی تلویزیون ادامه پیدا می‌کند."</string>
+    <string name="ui_telegram_isn_t_connected_for_this_household_yet_you_ca_634c79" formatted="false">"Telegram هنوز برای این خانواده متصل نشده است. برای اتصال از این تلویزیون، کد را با برنامهٔ Telegram روی گوشی اسکن کنید."</string>
+    <string name="ui_telegram_login_qr_code_b413de" formatted="false">"کد QR ورود به Telegram"</string>
+    <string name="ui_telegram_needs_your_two_step_verification_password_onc_fe96c0" formatted="false">"برای ورود به Telegram در این تلویزیون، باید رمز عبور تأیید دومرحله‌ای را یک بار وارد کنید. ورود تنها پس از وارد کردن رمز شروع می‌شود."</string>
+    <string name="ui_telegram_needs_your_two_step_verification_password_to__2f2be0" formatted="false">"برای تکمیل ورود به Telegram در این تلویزیون، رمز عبور تأیید دومرحله‌ای لازم است."</string>
     <string name="ui_telegram_password_65d868" formatted="false">"رمز عبور Telegram"</string>
-    <string name="ui_telegram_sign_in_f886b3" formatted="false">"ثبت نام در Telegram"</string>
-    <string name="ui_telegram_via_phone_6802a7" formatted="false">"Telegram از طریق تلفن"</string>
-    <string name="ui_telegram_videos_play_through_your_phone_on_this_tv_not_e75ff6" formatted="false">"Telegram فیلم ها از طریق تلفن شما در این تلویزیون بازی می کنند. هیچ چیز از Telegram اینجا ذخیره شده است."</string>
-    <string name="ui_telegram_was_too_slow_on_this_tv_so_your_phone_fetches_ad106b" formatted="false">"Telegram در این تلویزیون بسیار کند بود، بنابراین تلفن شما ویدئو را می گیرد و آن را در اینجا ارسال می کند. Playback از جایی که بودید ادامه دارد."</string>
-    <string name="ui_the_password_screen_didn_t_reach_your_phone_f88f9e" formatted="false">"صفحه کلید رمز عبور به تلفن شما نرسید."</string>
-    <string name="ui_the_phone_keyboard_isn_t_available_for_this_tv_choose__e2ade7" formatted="false">"صفحه کلید تلفن برای این تلویزیون در دسترس نیست. صفحه کلید تلویزیون را به جای آن انتخاب کنید."</string>
-    <string name="ui_this_account_and_its_profiles_leave_this_tv_the_other__3f0d5a" formatted="false">"این حساب و پروفایل های آن این تلویزیون را ترک می کنند. حساب های دیگر در آن باقی مانده است. برای استفاده مجدد از این حساب، تلویزیون را با تلفن همراه خود جفت کنید."</string>
-    <string name="ui_this_account_is_locked_open_cablegram_on_a_phone_signe_af553c" formatted="false">"این حساب قفل شده است. باز کردن Cablegram در یک تلفن امضا شده در آن و ضربه زدن اجازه."</string>
+    <string name="ui_telegram_sign_in_f886b3" formatted="false">"ورود به Telegram"</string>
+    <string name="ui_telegram_via_phone_6802a7" formatted="false">"Telegram از طریق گوشی"</string>
+    <string name="ui_telegram_videos_play_through_your_phone_on_this_tv_not_e75ff6" formatted="false">"ویدیوهای Telegram از طریق گوشی روی این تلویزیون پخش می‌شوند. هیچ داده‌ای از Telegram روی تلویزیون ذخیره نمی‌شود."</string>
+    <string name="ui_telegram_was_too_slow_on_this_tv_so_your_phone_fetches_ad106b" formatted="false">"Telegram روی این تلویزیون خیلی کند بود؛ اکنون گوشی ویدیو را دریافت و به تلویزیون ارسال می‌کند. پخش از همان جایی که بودید ادامه پیدا می‌کند."</string>
+    <string name="ui_the_password_screen_didn_t_reach_your_phone_f88f9e" formatted="false">"صفحهٔ ورود رمز عبور روی گوشی باز نشد."</string>
+    <string name="ui_the_phone_keyboard_isn_t_available_for_this_tv_choose__e2ade7" formatted="false">"صفحه‌کلید گوشی برای این تلویزیون در دسترس نیست. از صفحه‌کلید تلویزیون استفاده کنید."</string>
+    <string name="ui_this_account_and_its_profiles_leave_this_tv_the_other__3f0d5a" formatted="false">"این حساب و پروفایل‌هایش از تلویزیون حذف می‌شوند. حساب‌های دیگر باقی می‌مانند. برای استفادهٔ دوباره از این حساب، تلویزیون را با گوشی متصل به آن جفت کنید."</string>
+    <string name="ui_this_account_is_locked_open_cablegram_on_a_phone_signe_af553c" formatted="false">"این حساب قفل است. Cablegram را روی گوشی‌ای که با این حساب وارد شده باز کنید و «اجازه دادن» را بزنید."</string>
     <string name="ui_this_title_b588b8" formatted="false">"این عنوان"</string>
-    <string name="ui_this_title_is_private_open_cablegram_or_its_notificati_d68ff8" formatted="false">"این عنوان خصوصی است. باز کردن Cablegram یا اطلاع رسانی آن در تلفن خود و ضربه زدن به \"AllowOnce\""</string>
+    <string name="ui_this_title_is_private_open_cablegram_or_its_notificati_d68ff8" formatted="false">"این عنوان خصوصی است. Cablegram یا اعلان آن را روی گوشی باز کنید و «اجازه برای یک بار» را بزنید."</string>
     <string name="ui_this_tv_036568">"این تلویزیون: %1$s"</string>
     <string name="ui_this_tv_3e2400" formatted="false">"این تلویزیون"</string>
-    <string name="ui_this_tv_gets_its_own_session_end_it_any_time_in_telegr_ad0e0a" formatted="false">"این تلویزیون جلسه خود را می گیرد. آن را هر زمان در Telegram - تنظیمات - دستگاه ها پایان دهید."</string>
+    <string name="ui_this_tv_gets_its_own_session_end_it_any_time_in_telegr_ad0e0a" formatted="false">"برای این تلویزیون یک نشست جداگانه ایجاد می‌شود. هر زمان بخواهید می‌توانید آن را در Telegram، بخش تنظیمات ← دستگاه‌ها، پایان دهید."</string>
     <string name="ui_this_tv_is_connected_c944e9" formatted="false">"این تلویزیون متصل است"</string>
-    <string name="ui_this_tv_was_signed_in_to_a_different_telegram_account__f97fa9" formatted="false">"این تلویزیون به حساب Telegram مختلف نسبت به خانواده شما امضا شده است. دوباره امضا کرد."</string>
-    <string name="ui_this_tv_wasn_t_used_for_a_while_choose_who_s_watching__9bb395" formatted="false">"این تلویزیون برای مدتی استفاده نمی شد. انتخاب کنید که چه کسی تماشا می کند؛ تلفن حساب باید دوباره به آن اجازه دهد."</string>
-    <string name="ui_this_tv_will_be_signed_out_of_cablegram_to_use_it_agai_40c00b" formatted="false">"این تلویزیون از آن خارج خواهد شد Cablegram... برای استفاده مجدد از آن باید دوباره آن را با تلفن همراه خود جفت کنید."</string>
-    <string name="ui_this_usually_takes_a_minute_playback_starts_when_it_s__fb7bed" formatted="false">"این معمولا یک دقیقه طول می کشد. Playback زمانی شروع می شود که آماده است."</string>
-    <string name="ui_this_video_s_source_changed_on_your_phone_open_cablegr_d12a5c" formatted="false">"منبع این ویدیو در تلفن شما تغییر کرد. باز کردن Cablegram در تلفن برای تازه کردن آن"</string>
+    <string name="ui_this_tv_was_signed_in_to_a_different_telegram_account__f97fa9" formatted="false">"این تلویزیون وارد حساب Telegram متفاوتی با حساب خانوادهٔ شما شده بود و اکنون از آن خارج شده است."</string>
+    <string name="ui_this_tv_wasn_t_used_for_a_while_choose_who_s_watching__9bb395" formatted="false">"مدتی از این تلویزیون استفاده نشده است. انتخاب کنید چه کسی تماشا می‌کند؛ دسترسی باید دوباره از گوشی متصل به حساب تأیید شود."</string>
+    <string name="ui_this_tv_will_be_signed_out_of_cablegram_to_use_it_agai_40c00b" formatted="false">"این تلویزیون از Cablegram خارج می‌شود. برای استفادهٔ دوباره، باید آن را مجدداً با گوشی جفت کنید."</string>
+    <string name="ui_this_usually_takes_a_minute_playback_starts_when_it_s__fb7bed" formatted="false">"این کار معمولاً یک دقیقه طول می‌کشد. پخش به‌محض آماده شدن ویدیو شروع می‌شود."</string>
+    <string name="ui_this_video_s_source_changed_on_your_phone_open_cablegr_d12a5c" formatted="false">"منبع این ویدیو روی گوشی تغییر کرده است. برای به‌روزرسانی آن، Cablegram را روی گوشی باز کنید."</string>
     <string name="ui_this_video_was_deleted_1ddf86" formatted="false">"این ویدئو حذف شد"</string>
-    <string name="ui_tip_connect_telegram_in_the_phone_app_import_connected_a039b5" formatted="false">"نکته: اتصال Telegram در برنامه تلفن (Import @ Connected Storage) و این تلویزیون می تواند حتی زمانی که تلفن شما خاموش است."</string>
-    <string name="ui_titles_you_start_watching_show_up_here_5990dd" formatted="false">"عنوان هایی که شما شروع به تماشای آن می کنید."</string>
-    <string name="ui_too_many_tries_this_profile_is_locked_for_15_minutes_21bd30" formatted="false">"خیلی زیاد تلاش می کند. این پروفایل به مدت ۱۵ دقیقه قفل شده است."</string>
+    <string name="ui_tip_connect_telegram_in_the_phone_app_import_connected_a039b5" formatted="false">"نکته: در برنامهٔ گوشی، از بخش «وارد کردن» ← «فضای ذخیره‌سازی متصل»، Telegram را متصل کنید تا تلویزیون حتی وقتی گوشی خاموش است هم بتواند ویدیو پخش کند."</string>
+    <string name="ui_titles_you_start_watching_show_up_here_5990dd" formatted="false">"عنوان‌هایی که تماشایشان را شروع می‌کنید، اینجا نمایش داده می‌شوند."</string>
+    <string name="ui_too_many_tries_this_profile_is_locked_for_15_minutes_21bd30" formatted="false">"تعداد تلاش‌ها بیش از حد مجاز است. این پروفایل به مدت ۱۵ دقیقه قفل شده است."</string>
     <string name="ui_try_again_d8b839" formatted="false">"تلاش دوباره"</string>
-    <string name="ui_tuning_2abeef" formatted="false">"تونسی"</string>
-    <string name="ui_tv_keyboard_0fb61f" formatted="false">"صفحه کلید تلویزیون"</string>
-    <string name="ui_tv_session_dca893" formatted="false">"جلسه تلویزیونی"</string>
+    <string name="ui_tuning_2abeef" formatted="false">"تنظیم نهایی"</string>
+    <string name="ui_tv_keyboard_0fb61f" formatted="false">"صفحه‌کلید تلویزیون"</string>
+    <string name="ui_tv_session_dca893" formatted="false">"نشست تلویزیون"</string>
     <string name="ui_tv_shows_6adcc6" formatted="false">"سریال‌ها"</string>
-    <string name="ui_type_on_your_phone_a4ef92" formatted="false">"نوع تلفن شما"</string>
-    <string name="ui_type_with_the_tv_keyboard_b12dad" formatted="false">"نوع صفحه کلید تلویزیون"</string>
+    <string name="ui_type_on_your_phone_a4ef92" formatted="false">"با گوشی تایپ کنید"</string>
+    <string name="ui_type_with_the_tv_keyboard_b12dad" formatted="false">"با صفحه‌کلید تلویزیون تایپ کنید"</string>
     <string name="ui_unpair_10be2f" formatted="false">"لغو جفت‌سازی"</string>
-    <string name="ui_unpair_this_tv_c7796b" formatted="false">"این تلویزیون را خاموش کنید"</string>
-    <string name="ui_unpair_this_tv_d99d68" formatted="false">"این تلویزیون را خراب کنید؟"</string>
-    <string name="ui_unpair_tv_fbd044" formatted="false">"تلویزیون بدون وقفه"</string>
-    <string name="ui_use_the_tv_keyboard_instead_c6c66e" formatted="false">"استفاده از صفحه کلید تلویزیون در عوض"</string>
-    <string name="ui_use_this_tv_for_telegram_playback_051438" formatted="false">"استفاده از این تلویزیون برای پخش Telegram"</string>
+    <string name="ui_unpair_this_tv_c7796b" formatted="false">"لغو جفت‌سازی این تلویزیون"</string>
+    <string name="ui_unpair_this_tv_d99d68" formatted="false">"جفت‌سازی این تلویزیون لغو شود؟"</string>
+    <string name="ui_unpair_tv_fbd044" formatted="false">"لغو جفت‌سازی تلویزیون"</string>
+    <string name="ui_use_the_tv_keyboard_instead_c6c66e" formatted="false">"به‌جای آن از صفحه‌کلید تلویزیون استفاده کنید"</string>
+    <string name="ui_use_this_tv_for_telegram_playback_051438" formatted="false">"پخش ویدیوهای Telegram با این تلویزیون"</string>
     <string name="ui_volume_b10fb9" formatted="false">"بلندی صدا"</string>
-    <string name="ui_waiting_for_approval_10c573" formatted="false">"انتظار برای تایید"</string>
-    <string name="ui_waiting_for_wi_fi_72c813" formatted="false">"انتظار برای Wi-Fi"</string>
-    <string name="ui_waiting_for_your_phone_3c5ba6" formatted="false">"منتظر تلفن شما ..."</string>
-    <string name="ui_waiting_for_your_phone_to_approve_ec56d7" formatted="false">"انتظار برای تلفن شما برای تایید"</string>
-    <string name="ui_waiting_for_your_phone_to_let_this_tv_use_your_telegra_6296ca" formatted="false">"منتظر تلفن خود باشید تا این تلویزیون از شما استفاده کند Telegram... ... ..."</string>
-    <string name="ui_waiting_in_line_28cc95" formatted="false">"انتظار در صف"</string>
-    <string name="ui_wants_to_play_choose_who_s_watching_dbc0ba">"%1$s می خواهد بازی کند %2$s انتخاب کنید که چه کسی تماشا می کند"</string>
-    <string name="ui_watch_telegram_on_this_tv_b79cf0" formatted="false">"در این تلویزیون به تماشای Telegram نگاه کنید؟"</string>
-    <string name="ui_where_would_you_like_to_type_your_password_cbc0dc" formatted="false">"دوست دارید رمز عبور خود را کجا تایپ کنید؟"</string>
+    <string name="ui_waiting_for_approval_10c573" formatted="false">"در انتظار تأیید"</string>
+    <string name="ui_waiting_for_wi_fi_72c813" formatted="false">"در انتظار اتصال Wi-Fi"</string>
+    <string name="ui_waiting_for_your_phone_3c5ba6" formatted="false">"در انتظار گوشی…"</string>
+    <string name="ui_waiting_for_your_phone_to_approve_ec56d7" formatted="false">"در انتظار تأیید از گوشی"</string>
+    <string name="ui_waiting_for_your_phone_to_let_this_tv_use_your_telegra_6296ca" formatted="false">"در انتظار تأیید از گوشی برای دسترسی این تلویزیون به Telegram…"</string>
+    <string name="ui_waiting_in_line_28cc95" formatted="false">"در صف انتظار"</string>
+    <string name="ui_wants_to_play_choose_who_s_watching_dbc0ba">"%1$s می‌خواهد %2$s را پخش کند؛ انتخاب کنید چه کسی تماشا می‌کند"</string>
+    <string name="ui_watch_telegram_on_this_tv_b79cf0" formatted="false">"ویدیوهای Telegram را روی این تلویزیون تماشا می‌کنید؟"</string>
+    <string name="ui_where_would_you_like_to_type_your_password_cbc0dc" formatted="false">"رمز عبور را کجا وارد می‌کنید؟"</string>
     <string name="ui_who_s_watching_d0ec3b" formatted="false">"چه کسی تماشا می‌کند؟"</string>
-    <string name="ui_wi_fi_connection_lost_591289" formatted="false">"دانلود بازی Wi-FI CONNECTION"</string>
-    <string name="ui_wi_fi_first_relay_when_away_4ab75e" formatted="false">"Wi‑Fi اول، هنگامی که دور می شود، پخش می شود"</string>
-    <string name="ui_wrong_pin_try_again_c5ce26" formatted="false">"PIN اشتباه دوباره امتحان کنید."</string>
+    <string name="ui_wi_fi_connection_lost_591289" formatted="false">"اتصال Wi-Fi قطع شد"</string>
+    <string name="ui_wi_fi_first_relay_when_away_4ab75e" formatted="false">"ابتدا Wi-Fi؛ در شبکه‌های دیگر، سرور واسط"</string>
+    <string name="ui_wrong_pin_try_again_c5ce26" formatted="false">"پین اشتباه است. دوباره تلاش کنید."</string>
     <string name="ui_x_db967f">"%1$s  %2$sx"</string>
-    <string name="ui_you_can_leave_this_screen_with_back_and_return_to_the__848751" formatted="false">"شما می توانید این صفحه را با Back ترک کنید و بعدا به عنوان برگردید."</string>
-    <string name="ui_your_household_s_telegram_is_connected_but_this_tv_isn_90d748" formatted="false">"Telegram خانه شما متصل است، اما این تلویزیون در آن ثبت نشده است. آن را در جریان قرار دهید Telegram فیلم های مستقیم از Telegramبدون تلفن شما"</string>
+    <string name="ui_you_can_leave_this_screen_with_back_and_return_to_the__848751" formatted="false">"می‌توانید با دکمهٔ بازگشت از این صفحه خارج شوید و بعداً به این عنوان برگردید."</string>
+    <string name="ui_your_household_s_telegram_is_connected_but_this_tv_isn_90d748" formatted="false">"Telegram خانوادهٔ شما متصل است، اما این تلویزیون هنوز وارد حساب نشده است. روی تلویزیون وارد شوید تا ویدیوها مستقیماً از Telegram و بدون نیاز به گوشی پخش شوند."</string>
     <string name="ui_your_library_1ad842" formatted="false">"کتابخانه شما"</string>
-    <string name="ui_your_list_is_empty_6a2cf9" formatted="false">"لیست شما خالی است"</string>
-    <string name="ui_your_paired_phone_7e4f9a" formatted="false">"تلفن همراه شما"</string>
-    <string name="ui_your_password_goes_only_to_telegram_encrypted_for_this_c23ea4" formatted="false">"رمز عبور شما فقط به Telegram می رسد که برای این تلویزیون رمزگذاری شده است. Cablegram هرگز آن را نمی بیند."</string>
-    <string name="ui_your_phone_807163" formatted="false">"تلفن همراه شما"</string>
-    <string name="ui_your_phone_and_this_tv_aren_t_on_the_same_wi_fi_so_cab_29145c" formatted="false">"تلفن شما و این تلویزیون در همان حالت نیست. Wi‑Fiبنابراین، Cablegram جریان ها از طریق رله آن این کار چند ثانیه طول می کشد."</string>
-    <string name="ui_your_phone_can_sleep_or_leave_home_it_uses_no_battery__dec30b" formatted="false">"تلفن شما می تواند بخوابد یا خانه را ترک کند؛ از هیچ باتری یا داده ای استفاده نمی کند."</string>
-    <string name="ui_your_phone_didn_t_allow_3272a3">"تلفن شما اجازه نمی دهد %1$s..."</string>
-    <string name="ui_your_phone_didn_t_approve_this_title_press_try_again_t_6fe116" formatted="false">"تلفن شما این عنوان را تایید نکرد. مطبوعات دوباره تلاش می کنند تا یک بار دیگر یا دوباره به عنوان سوال کنند."</string>
-    <string name="ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_a75585" formatted="false">"تلفن شما اجازه می دهد تا این تلویزیون به Telegram برسد. اگر از آن بپرسید، آن را در اطلاع رسانی Cablegram تایید کنید. این ویدیو به محض انجام این کار شروع می شود."</string>
-    <string name="ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_e165e6" formatted="false">"تلفن شما اجازه می دهد تا این تلویزیون به Telegram برسد. اگر از آن بپرسید، آن را در اطلاع رسانی Cablegram تایید کنید."</string>
-    <string name="ui_your_phone_is_on_this_wi_fi_again_so_playback_continue_b85633" formatted="false">"تلفن شما دوباره در این Wi‑Fi قرار دارد، بنابراین پخش به طور مستقیم از آن ادامه می یابد."</string>
-    <string name="ui_your_phone_is_the_remote_and_the_library_add_videos_in_fc9a65" formatted="false">"تلفن شما از راه دور و کتابخانه است. اضافه کردن ویدیو در برگه واردات برنامه تلفن و آنها در عرض چند ثانیه ظاهر می شوند."</string>
-    <string name="ui_your_phone_isn_t_on_the_same_wi_fi_as_this_tv_so_cable_a08076" formatted="false">"تلفن شما در همان Wi‑Fi به عنوان این تلویزیون نیست، بنابراین Cablegram می تواند با استفاده از داده های تلفن همراه از طریق رله آن جریان یابد."</string>
-    <string name="ui_your_phone_left_this_wi_fi_playback_continues_through__120c29" formatted="false">"تلفن شما این Wi‑Fi را ترک کرد. Playback از طریق رله از جایی که شما بودید ادامه می یابد - این چند ثانیه طول می کشد."</string>
-    <string name="ui_your_phone_shows_the_code_de7f56" formatted="false">"تلفن شما کد را نشان می دهد"</string>
-    <string name="ui_your_title_starts_automatically_after_approval_1cc12a" formatted="false">"عنوان شما به طور خودکار پس از تصویب شروع می شود."</string>
+    <string name="ui_your_list_is_empty_6a2cf9" formatted="false">"فهرست شما خالی است"</string>
+    <string name="ui_your_paired_phone_7e4f9a" formatted="false">"گوشی جفت‌شدهٔ شما"</string>
+    <string name="ui_your_password_goes_only_to_telegram_encrypted_for_this_c23ea4" formatted="false">"رمز عبور شما برای این تلویزیون رمزگذاری می‌شود و فقط به Telegram ارسال می‌شود. Cablegram هرگز به آن دسترسی ندارد."</string>
+    <string name="ui_your_phone_807163" formatted="false">"گوشی شما"</string>
+    <string name="ui_your_phone_and_this_tv_aren_t_on_the_same_wi_fi_so_cab_29145c" formatted="false">"گوشی و تلویزیون به یک شبکهٔ Wi-Fi متصل نیستند؛ بنابراین Cablegram ویدیو را از طریق سرور واسط پخش می‌کند. این کار چند ثانیه طول می‌کشد."</string>
+    <string name="ui_your_phone_can_sleep_or_leave_home_it_uses_no_battery__dec30b" formatted="false">"می‌توانید صفحهٔ گوشی را خاموش کنید یا آن را از خانه ببرید؛ پخش ویدیو از باتری یا اینترنت گوشی استفاده نمی‌کند."</string>
+    <string name="ui_your_phone_didn_t_allow_3272a3">"درخواست %1$s از گوشی تأیید نشد."</string>
+    <string name="ui_your_phone_didn_t_approve_this_title_press_try_again_t_6fe116" formatted="false">"پخش این عنوان از گوشی تأیید نشد. برای درخواست دوباره، «تلاش دوباره» را بزنید یا با دکمهٔ بازگشت به صفحهٔ عنوان برگردید."</string>
+    <string name="ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_a75585" formatted="false">"گوشی در حال فراهم کردن دسترسی این تلویزیون به Telegram است. اگر درخواستی نمایش داده شد، آن را در اعلان Cablegram تأیید کنید. ویدیو به‌محض تکمیل این کار پخش می‌شود."</string>
+    <string name="ui_your_phone_is_letting_this_tv_in_to_telegram_if_it_ask_e165e6" formatted="false">"گوشی در حال فراهم کردن دسترسی این تلویزیون به Telegram است. اگر درخواستی نمایش داده شد، آن را در اعلان Cablegram تأیید کنید."</string>
+    <string name="ui_your_phone_is_on_this_wi_fi_again_so_playback_continue_b85633" formatted="false">"گوشی دوباره به همین شبکهٔ Wi-Fi متصل شده است؛ پخش مستقیماً از گوشی ادامه پیدا می‌کند."</string>
+    <string name="ui_your_phone_is_the_remote_and_the_library_add_videos_in_fc9a65" formatted="false">"گوشی شما هم کنترل تلویزیون است و هم کتابخانهٔ ویدیوها. در زبانهٔ «وارد کردن» برنامهٔ گوشی ویدیو اضافه کنید؛ چند ثانیه بعد اینجا نمایش داده می‌شود."</string>
+    <string name="ui_your_phone_isn_t_on_the_same_wi_fi_as_this_tv_so_cable_a08076" formatted="false">"گوشی و تلویزیون به یک شبکهٔ Wi-Fi متصل نیستند. Cablegram می‌تواند با استفاده از اینترنت همراه گوشی و از طریق سرور واسط ویدیو را پخش کند."</string>
+    <string name="ui_your_phone_left_this_wi_fi_playback_continues_through__120c29" formatted="false">"گوشی از این شبکهٔ Wi-Fi قطع شده است. پخش از طریق سرور واسط و از همان جایی که بودید ادامه پیدا می‌کند؛ این کار چند ثانیه طول می‌کشد."</string>
+    <string name="ui_your_phone_shows_the_code_de7f56" formatted="false">"کد روی گوشی نمایش داده می‌شود"</string>
+    <string name="ui_your_title_starts_automatically_after_approval_1cc12a" formatted="false">"پس از تأیید، پخش این عنوان خودکار شروع می‌شود."</string>
     <string name="ui_your_video_is_ready_4f9fb5" formatted="false">"ویدیوی شما آماده است."</string>
     <string name="ui_zoom_509c51" formatted="false">"بزرگ‌نمایی"</string>
 </resources>

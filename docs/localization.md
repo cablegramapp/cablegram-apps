@@ -57,8 +57,14 @@ arguments intact. `values/languages.xml` and `xml/locales_config.xml` must agree
 both apps.
 
 The initial longer-message drafts were generated locally with Argos translation
-models; common controls were edited manually. Native-language review of longer
-messages is still needed before a public release. No model assets or translation
+models; common controls were edited manually. The phone catalogs subsequently
+received a full source-to-translation review in Farsi, Arabic, German, Spanish,
+Italian and Russian, correcting misleading playback, sign-in, storage, subtitle,
+permission and privacy wording. This review does not replace native-speaker
+release review. The TV catalogs have also received a source-to-translation
+wording review in all six languages, including playback, sign-in, pairing,
+permission and privacy messages, with matching phone labels in TV instructions.
+No model assets or translation
 runtime dependency ship in the apps. See the [Argos documentation](https://argos-translate.readthedocs.io/en/latest/source/examples.html)
 for the offline generation approach.
 
@@ -79,6 +85,11 @@ isolation. Build and lint both apps after changing translations.
 Verify the sign-in and profile language picker in every language; Arabic/Farsi
 text and number fields; a mixed-language TV's English picker and unlock/approval
 screens; selection/switching back; and language changes during actual playback.
-Maestro currently reports no connected Android phone or TV, so physical layout,
-remote-focus behavior and end-to-end propagation have not been verified for this
-change. Automated checks do not establish physical-device coverage.
+Arabic/Farsi timeline direction was checked on a Pixel 8 Pro running Android 17
+and the Android 16 TV emulator. Phone instrumentation checks left-quarter taps,
+rightward dragging and physical rewind/forward ordering. TV playback checks with
+Maestro verified left-to-right progress, elapsed/total ordering and both D-pad
+seek directions using a seekable 120-second local fixture. See
+[timeline verification](qa/timeline-direction.md) for the procedure and limits.
+This does not establish physical-TV coverage or verify the broader sign-in,
+profile switching and language-propagation scenarios above.
