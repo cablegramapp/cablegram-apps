@@ -327,6 +327,7 @@
     <string name="ui_enter_a_valid_tunnel_address_or_leave_it_empty_773859" formatted="false">"أدخل عنوان نفق صالح أو أتركه فارغاً"</string>
     <string name="ui_enter_password_7014af" formatted="false">"إدخال كلمة المرور"</string>
     <string name="ui_enter_the_6_digit_code_we_sent_to_it_expires_in_15_min_89e634">"أدخل رمز 6 أرقام أرسلناه إلى %1$s تنتهي بعد 15 دقيقة"</string>
+    <string name="ui_didn_t_get_it_check_your_spam_or_junk_folder_23f145" formatted="false">"لم يصلك الرمز؟ تحقق من مجلد البريد العشوائي."</string>
     <string name="ui_enter_the_6_digit_pin_shown_on_the_tv_or_tap_refresh_c_52ae0e" formatted="false">"أدخل رمز PIN المكوّن من ستة أرقام الظاهر على التلفاز، أو اضغط «تحديث الرمز» هناك."</string>
     <string name="ui_enter_the_details_0aa04d" formatted="false">"أدخل التفاصيل"</string>
     <string name="ui_enter_the_key_with_your_opensubtitles_username_and_pas_5e0f85" formatted="false">"أدخل المفتاح بإسمك الـ OpenSubtitles و كلمة السر"</string>
