@@ -57,8 +57,12 @@ arguments intact. `values/languages.xml` and `xml/locales_config.xml` must agree
 both apps.
 
 The initial longer-message drafts were generated locally with Argos translation
-models; common controls were edited manually. Native-language review of longer
-messages is still needed before a public release. No model assets or translation
+models; common controls were edited manually. The phone catalogs subsequently
+received a full source-to-translation review in Farsi, Arabic, German, Spanish,
+Italian and Russian, correcting misleading playback, sign-in, storage, subtitle,
+permission and privacy wording. This review does not replace native-speaker
+release review, and the TV catalogs have not received the same wording pass.
+No model assets or translation
 runtime dependency ship in the apps. See the [Argos documentation](https://argos-translate.readthedocs.io/en/latest/source/examples.html)
 for the offline generation approach.
 

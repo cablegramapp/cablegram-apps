@@ -534,7 +534,7 @@ private fun PosterCard(item: LibraryItem, showProgress: Boolean, viewModel: Phon
         ) {
             MediaArtwork(item, Modifier.fillMaxSize())
             Text(
-                storageBadgeLabel(storageBadge(item)),
+                storageBadgeLabel(storageBadge(item), ui),
                 color = Color.White,
                 fontSize = 10.sp,
                 modifier = Modifier
@@ -949,7 +949,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
         viewModel.loadRelayUsage()
     }
     Column(Modifier.fillMaxSize().verticalScroll(if (page == null) overviewScroll else detailScroll).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        ScreenHeading(ui.getString(R.string.ui_settings_74a883), viewModel.householdName.ifBlank { ui.getString(R.string.ui_make_cablegram_yours_13baae) }, Modifier.maestro(MaestroIds.SETTINGS_TITLE))
+        ScreenHeading(ui.getString(R.string.ui_settings_74a883), viewModel.householdName.ifBlank { ui.getString(R.string.ui_make_cablegram_yours_13baae) }, Modifier.fillMaxWidth().maestro(MaestroIds.SETTINGS_TITLE))
         if (page != null) {
             TextButton(onClick = { page = null }, modifier = Modifier.maestro("settings_back")) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, null, modifier = Modifier.size(18.dp))

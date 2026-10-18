@@ -19,7 +19,7 @@ REQUIRED_PLURALS = {
 # English is an untranslated leftover.
 SAME_AS_ENGLISH = {
     "ui_30_min_f69fa2": {"de", "es", "it"}, "ui_account_7e1b0d": {"it"}, "ui_audio_bc1b88": {"de", "es", "it"},
-    "ui_backup_838557": {"de", "it"}, "ui_bot_hub_6dcb6e": {"ar", "fa", "es", "it"}, "ui_cloud_b977b9": {"it"},
+    "ui_backup_838557": {"de", "it"}, "ui_bot_hub_6dcb6e": {"ar", "fa", "es", "it"}, "ui_cloud_b977b9": {"de", "it"},
     "ui_code_340f46": {"de"}, "ui_demo_8a2cc0": {"es"}, "ui_details_45989d": {"de"}, "ui_episode_b19c45": {"de"},
     "ui_file_50009c": {"it"}, "ui_genre_8dc737": {"de"}, "ui_home_3a7869": {"it"}, "ui_live_b64ac0": {"it"},
     "ui_normal_a7248e": {"de", "es"}, "ui_opensubtitles_optional_4070ca": {"de"}, "ui_password_e7cf3e": {"it"},

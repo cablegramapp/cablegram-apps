@@ -1004,4 +1004,11 @@
     <string name="telegram_separate_telegram_link" formatted="false">"Read Telegram’s account guidance"</string>
     <string name="telegram_separate_temporary_price" formatted="false">"From approximately $0.40 per verification · Short-term access only"</string>
     <string name="telegram_separate_provider_disclaimer" formatted="false">"These are independent third-party services. Using a separate number is optional. Cablegram cannot guarantee successful registration, continued number access, or account anonymity."</string>
+    <string name="ui_video_plural_word" formatted="false">"videos"</string>
+    <string name="ui_command_starting" formatted="false">"starting"</string>
+    <string name="ui_command_sending" formatted="false">"sending"</string>
+    <string name="ui_badge_phone_cloud">"Phone &amp; cloud"</string>
+    <string name="ui_badge_save_failed">"Save failed"</string>
+    <string name="ui_badge_unavailable">"Unavailable"</string>
+    <string name="ui_badge_not_on_phone">"Not on this phone"</string>
 </resources>
