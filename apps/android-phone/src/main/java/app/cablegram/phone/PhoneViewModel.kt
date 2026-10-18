@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,7 +36,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 
-class PhoneViewModel(application: Application) : AndroidViewModel(application) {
+class PhoneViewModel(application: Application, private val savedState: SavedStateHandle) : AndroidViewModel(application) {
     private val supportedLanguages: Set<String> by lazy {
         getApplication<Application>().resources.getStringArray(R.array.ui_languages).toSet()
     }
@@ -552,6 +553,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         private const val HOUSEHOLD_TVS_REFRESH_MS = 60_000L
         /** How long a finished command's result stays in [remoteStatus] before it clears. */
         private const val REMOTE_STATUS_LINGER_MS = 6_000L
+        private const val SAVED_DELETING_ACCOUNT = "deleting_account"
+        private const val SAVED_DELETION_CODE_SENT_TO = "deletion_code_sent_to"
     }
 
     fun refresh() {
@@ -752,6 +755,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun requestSignInCode(email: String) {
+        // "Your account was deleted." has done its job once the person starts signing in again.
+        status = null
         viewModelScope.launch { signIn.requestCode(email) }
     }
 
@@ -770,6 +775,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     /** Shows Google's sign-in sheet; [activity] must be the Activity, which Credential Manager needs. */
     fun signInWithGoogle(activity: android.content.Context) {
         val clientId = signIn.methods?.google?.clientId ?: return
+        status = null
         viewModelScope.launch {
             when (val result = googleIdToken(activity, clientId)) {
                 is GoogleIdResult.Token -> signIn.google(result.idToken, result.nonce)
@@ -1115,7 +1121,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     // ---- Delete account ----
 
     /** The "Delete account" screens are open. */
-    var deletingAccount by mutableStateOf(false)
+    var deletingAccount by mutableStateOf(savedState.get<Boolean>(SAVED_DELETING_ACCOUNT) ?: false)
         private set
 
     val accountDeletion = AccountDeletionController(
@@ -1125,16 +1131,28 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     /** Where the deletion code went; null until one was sent. */
-    var deletionCodeSentTo by mutableStateOf<String?>(null)
+    var deletionCodeSentTo by mutableStateOf(savedState.get<String>(SAVED_DELETION_CODE_SENT_TO))
         private set
     var deletionCodeFailed by mutableStateOf(false)
         private set
 
     fun openDeleteAccount() {
         accountDeletion.reset()
-        deletionCodeSentTo = null
+        rememberDeletionCodeSentTo(null)
         deletionCodeFailed = false
-        deletingAccount = true
+        rememberDeletingAccount(true)
+    }
+
+    // The open Delete account screen and where its code went survive Android ending this process while the person reads
+    // the code in their mail app. The code itself is on the server and still valid.
+    private fun rememberDeletingAccount(open: Boolean) {
+        deletingAccount = open
+        savedState[SAVED_DELETING_ACCOUNT] = open
+    }
+
+    private fun rememberDeletionCodeSentTo(address: String?) {
+        deletionCodeSentTo = address
+        savedState[SAVED_DELETION_CODE_SENT_TO] = address
     }
 
     /** Mails a sign-in code to the account's address; it confirms the deletion (spec 007 FR-015). */
@@ -1147,7 +1165,7 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
                 val email = catalog().accountEmail(token)
                 val failed = email?.let { catalog().requestSignInCode(it, forDeletion = true) }
                 deletionCodeFailed = email == null || failed != null
-                if (!deletionCodeFailed) deletionCodeSentTo = email
+                if (!deletionCodeFailed) rememberDeletionCodeSentTo(email)
             } finally {
                 busy = false
             }
@@ -1157,7 +1175,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
     fun closeDeleteAccount() {
         if (accountDeletion.running) return
         accountDeletion.reset()
-        deletingAccount = false
+        rememberDeletingAccount(false)
+        rememberDeletionCodeSentTo(null)
     }
 
     fun deleteAccount(code: String) {
@@ -1181,7 +1200,8 @@ class PhoneViewModel(application: Application) : AndroidViewModel(application) {
         collections = store.collections()
         PrivateApprovals.pending.value = emptyList()
         relayUsage = null
-        deletingAccount = false
+        rememberDeletingAccount(false)
+        rememberDeletionCodeSentTo(null)
         busy = false
         status = app.getString(R.string.account_deleted_message)
         PairLog.i("Account deleted; phone signed out")

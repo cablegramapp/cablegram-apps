@@ -25,7 +25,7 @@
     <string name="delete_account_removed_account" formatted="false">"Ваш аккаунт и адрес электронной почты"</string>
     <string name="delete_account_removed_files" formatted="false">"Все файлы, которые Cablegram хранит для вас"</string>
     <string name="delete_account_removed_heading" formatted="false">"Что удаляется"</string>
-    <string name="delete_account_removed_household" formatted="false">"Ваша семейная группа, её профили и все подключённые телефоны и телевизоры"</string>
+    <string name="delete_account_removed_household" formatted="false">"Ваши профили и все подключённые телефоны и телевизоры"</string>
     <string name="delete_account_removed_library" formatted="false">"Ваша медиатека, прогресс просмотра и «Мой список»"</string>
     <string name="delete_account_removed_telegram" formatted="false">"Связь с вашим аккаунтом Telegram и сеанс Telegram на этом телефоне"</string>
     <string name="delete_account_send_code" formatted="false">"Отправить код на почту"</string>
@@ -408,7 +408,7 @@
     <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"%1$s не отвечает. Откройте Cablegram на нем, выберите, кто смотрит, а затем попробуйте снова."</string>
     <string name="ui_it_only_reaches_the_files_cablegram_creates_never_the__2a9187" formatted="false">"Доступ ограничен файлами, созданными Cablegram, без доступа к остальным файлам Drive."</string>
     <string name="ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008" formatted="false">"Он заменит сохранённые субтитры для этой копии. Их можно удалить в сведениях о видео. "</string>
-    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"Телевизор входит в медиатеку Telegram и остаётся подключённым."</string>
+    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"Он остаётся в паре и может использовать вашу библиотеку Telegram, если вы её подключите."</string>
     <string name="ui_it_stays_on_the_server_until_you_tap_remove_here_chang_9f0819" formatted="false">"Он остается на сервере, пока вы не нажмете «Удалить», не измените обложку или не сделаете видео приватным."</string>
     <string name="ui_it_will_be_unpaired_4f9898">"Он будет отключён %1$s."</string>
     <string name="ui_join_cablegram_channels_d35d5f" formatted="false">"Вступить в каналы Cablegram"</string>

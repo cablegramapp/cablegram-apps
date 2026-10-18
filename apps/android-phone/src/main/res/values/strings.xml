@@ -10,7 +10,7 @@
     <string name="delete_account_intro">This deletes everything at once and cannot be undone. There is no grace period.</string>
     <string name="delete_account_removed_heading">What is deleted</string>
     <string name="delete_account_removed_account">Your account and email address</string>
-    <string name="delete_account_removed_household">Your household, with its profiles and every paired phone and TV</string>
+    <string name="delete_account_removed_household">Your profiles and every paired phone and TV</string>
     <string name="delete_account_removed_library">Your library, watch progress and My List</string>
     <string name="delete_account_removed_telegram">The link to your Telegram account, and this phone\'s Telegram sign-in</string>
     <string name="delete_account_removed_files">Any files Cablegram stores for you</string>

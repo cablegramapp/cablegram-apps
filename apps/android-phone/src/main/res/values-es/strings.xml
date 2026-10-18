@@ -25,7 +25,7 @@
     <string name="delete_account_removed_account" formatted="false">"Su cuenta y dirección de correo electrónico"</string>
     <string name="delete_account_removed_files" formatted="false">"Todos los archivos que Cablegram almacena para ti"</string>
     <string name="delete_account_removed_heading" formatted="false">"Lo que se elimina"</string>
-    <string name="delete_account_removed_household" formatted="false">"Tu hogar, sus perfiles y todos los teléfonos y televisores vinculados"</string>
+    <string name="delete_account_removed_household" formatted="false">"Sus perfiles y todos los teléfonos y televisores vinculados"</string>
     <string name="delete_account_removed_library" formatted="false">"Tu biblioteca, el progreso de reproducción y «Mi lista»"</string>
     <string name="delete_account_removed_telegram" formatted="false">"La vinculación con tu cuenta de Telegram y la sesión de Telegram en este teléfono"</string>
     <string name="delete_account_send_code" formatted="false">"Enviarme un código"</string>
@@ -408,7 +408,7 @@
     <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"%1$s no responde. Abre Cablegram en él, elige quién está mirando, y luego vuelve a intentarlo."</string>
     <string name="ui_it_only_reaches_the_files_cablegram_creates_never_the__2a9187" formatted="false">"Solo accede a los archivos creados por Cablegram, no al resto de tu Drive."</string>
     <string name="ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008" formatted="false">"Reemplaza tu subtítulo guardado para esta copia. Puede quitarlo de los detalles de vídeo. "</string>
-    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"Inicia sesión en tu biblioteca de Telegram y permanece vinculado."</string>
+    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"Se mantiene vinculado y puede usar su biblioteca de Telegram si conecta una."</string>
     <string name="ui_it_stays_on_the_server_until_you_tap_remove_here_chang_9f0819" formatted="false">"Se queda en el servidor hasta que toque Quitar aquí, cambiar la cubierta, o hacer el vídeo privado."</string>
     <string name="ui_it_will_be_unpaired_4f9898">"Se desvinculará %1$s."</string>
     <string name="ui_join_cablegram_channels_d35d5f" formatted="false">"Unirse a los canales de Cablegram"</string>

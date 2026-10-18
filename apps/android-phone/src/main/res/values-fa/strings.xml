@@ -25,7 +25,7 @@
     <string name="delete_account_removed_account" formatted="false">"حساب و نشانی ایمیل شما"</string>
     <string name="delete_account_removed_files" formatted="false">"تمام فایل‌هایی که Cablegram برای شما ذخیره کرده است"</string>
     <string name="delete_account_removed_heading" formatted="false">"مواردی که حذف می‌شوند"</string>
-    <string name="delete_account_removed_household" formatted="false">"گروه خانوادگی شما، پروفایل‌های آن و تمام گوشی‌ها و تلویزیون‌های متصل"</string>
+    <string name="delete_account_removed_household" formatted="false">"پروفایل‌های شما و همه تلفن‌ها و تلویزیون‌های جفت‌شده"</string>
     <string name="delete_account_removed_library" formatted="false">"کتابخانه، سابقهٔ پیشرفت تماشا و «فهرست من»"</string>
     <string name="delete_account_removed_telegram" formatted="false">"اتصال به حساب تلگرام شما و نشست تلگرام در این گوشی"</string>
     <string name="delete_account_send_code" formatted="false">"ارسال کد به ایمیل من"</string>
@@ -408,7 +408,7 @@
     <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"%1$s پاسخ نمی‌دهد. Cablegram را روی آن باز کنید، پروفایل بیننده را انتخاب کنید و دوباره تلاش کنید."</string>
     <string name="ui_it_only_reaches_the_files_cablegram_creates_never_the__2a9187" formatted="false">"فقط به فایل‌هایی که Cablegram ایجاد می‌کند دسترسی دارد، نه به سایر فایل‌های Drive شما."</string>
     <string name="ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008" formatted="false">"این زیرنویس جایگزین زیرنویس ذخیره‌شده برای این نسخه می‌شود. می‌توانید آن را از بخش جزئیات ویدیو حذف کنید. "</string>
-    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"وارد کتابخانهٔ تلگرام شما می‌شود و متصل می‌ماند."</string>
+    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"جفت‌شده می‌ماند و در صورت اتصال کتابخانه Telegram می‌تواند از آن استفاده کند."</string>
     <string name="ui_it_stays_on_the_server_until_you_tap_remove_here_chang_9f0819" formatted="false">"تا زمانی که اینجا «حذف» را بزنید، پوستر را تغییر دهید یا ویدیو را خصوصی کنید، روی سرور باقی می‌ماند."</string>
     <string name="ui_it_will_be_unpaired_4f9898">"اتصال آن %1$s قطع می‌شود."</string>
     <string name="ui_join_cablegram_channels_d35d5f" formatted="false">"عضویت در کانال‌های Cablegram"</string>

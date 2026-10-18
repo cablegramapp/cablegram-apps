@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,12 +48,12 @@ internal const val DELETE_ACCOUNT_WEB_URL = "https://api.cablegram.app/delete-ac
 /**
  * Deleting the account, step by step: this screen says what goes, mails a code to the account's address (accounts
  * have no password, spec 007), and a second dialog asks for one more explicit tap before anything is sent. The code
- * lives only in this composable's memory.
+ * is kept only in saved instance state, never on disk.
  */
 @Composable
 internal fun DeleteAccountScreen(viewModel: PhoneViewModel) {
     val deletion = viewModel.accountDeletion
-    var code by remember { mutableStateOf("") }
+    var code by rememberSaveable { mutableStateOf("") }
     var confirming by remember { mutableStateOf(false) }
     val sentTo = viewModel.deletionCodeSentTo
     BackHandler(enabled = !deletion.running) { viewModel.closeDeleteAccount() }

@@ -25,7 +25,7 @@
     <string name="delete_account_removed_account" formatted="false">"حسابك وعنوان البريد الإلكتروني"</string>
     <string name="delete_account_removed_files" formatted="false">"كل الملفات التي يخزّنها Cablegram لك"</string>
     <string name="delete_account_removed_heading" formatted="false">"ما الذي يحذف"</string>
-    <string name="delete_account_removed_household" formatted="false">"مجموعتك العائلية وملفاتها الشخصية وكل الهواتف وأجهزة التلفزيون المقترنة"</string>
+    <string name="delete_account_removed_household" formatted="false">"ملفاتك الشخصية وكل هاتف وتلفزيون مقترن"</string>
     <string name="delete_account_removed_library" formatted="false">"مكتبتك وتقدّم المشاهدة و«قائمتي»"</string>
     <string name="delete_account_removed_telegram" formatted="false">"الربط بحسابك في Telegram وجلسة Telegram على هذا الهاتف"</string>
     <string name="delete_account_send_code" formatted="false">"إرسال رمز إلى بريدي"</string>
@@ -408,7 +408,7 @@
     <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"لا يستجيب %1$s. افتح Cablegram عليه، واختر من يشاهد، ثم حاول مجددًا."</string>
     <string name="ui_it_only_reaches_the_files_cablegram_creates_never_the__2a9187" formatted="false">"لا يصل إلا إلى الملفات التي ينشئها Cablegram، وليس بقية ملفات Drive."</string>
     <string name="ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008" formatted="false">"يُستبدلُ ترجمتَكَ المحفوظةَ لهذه النسخةِ. يمكنك أن تزيله من تفاصيل الفيديو "</string>
-    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"يسجّل الدخول إلى مكتبة Telegram ويبقى مقترنًا."</string>
+    <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"يبقى مقترنًا ويمكنه استخدام مكتبة Telegram الخاصة بك إذا قمت بربط واحدة."</string>
     <string name="ui_it_stays_on_the_server_until_you_tap_remove_here_chang_9f0819" formatted="false">"يبقى على الخادم حتى تضغط «إزالة» هنا، أو تغيّر الملصق، أو تجعل الفيديو خاصًا."</string>
     <string name="ui_it_will_be_unpaired_4f9898">"سيُلغى اقترانه %1$s."</string>
     <string name="ui_join_cablegram_channels_d35d5f" formatted="false">"الانضمام إلى قنوات Cablegram"</string>
