@@ -15,15 +15,15 @@ class Bits {
 }
 
 function pack(fields: Array<[number, number]>): Uint8Array {
-  let bits = 0;
-  let n = 0;
+  const total = fields.reduce((sum, [, w]) => sum + w, 0);
+  const out = new Uint8Array(Math.ceil(total / 8));
+  let pos = 0;
   for (const [v, w] of fields) {
-    bits = (bits << w) | v;
-    n += w;
+    for (let i = w - 1; i >= 0; i--, pos++) {
+      if ((v >>> i) & 1) out[pos >> 3] |= 0x80 >> (pos & 7);
+    }
   }
-  const bytes = Math.ceil(n / 8);
-  bits <<= bytes * 8 - n;
-  return Uint8Array.from({ length: bytes }, (_, i) => (bits >>> ((bytes - 1 - i) * 8)) & 255);
+  return out;
 }
 
 export function dac3FromFrame(frame: Uint8Array): Uint8Array | null {

@@ -55,7 +55,7 @@ checked against ffprobe on every fixture; playback is checked in Chrome for Test
 
 `TelegramSource` reads a Telegram file through a small `TelegramFileApi` (`getFile`, `refreshReference`, optional
 `migrate`). The library does not depend on GramJS; the app implements the interface on top of it (`apps/tv-web/src/telegram.ts`).
-It requests whole 1 MiB-aligned chunks (Telegram's offset/limit rules), keeps one request in flight, sits out
+It requests whole 1 MiB-aligned chunks (Telegram's offset/limit rules), keeps one request in flight (the app's `getFile` allows two downloads at most and stops waiting for a request when a seek aborts it), sits out
 `FLOOD_WAIT_X` up to 30 s, refreshes `FILE_REFERENCE_*` once, follows `FILE_MIGRATE_X`, and maps the rest to typed
 errors. CDN redirects never happen because `getFile` is called with `cdn_supported = false`.
 
@@ -63,7 +63,16 @@ GramJS 2.26.22 (MIT) on old engines: no WebAssembly, big-integer falls back when
 `buffer` package, a few Node shims (`util.inspect`, `events`, its own `crypto.js`; see `apps/tv-web/vite.config.ts`),
 `crypto.subtle` (SHA-1/256, PBKDF2) and a WebSocket to Telegram. Verified: MTProto handshake in desktop Chrome and the
 bundle loading in the Tizen simulator (Chromium 55, `crypto.subtle` present on the `file://` origin). Not verified: webOS 4
-(Chromium 53), and a download from a real signed-in account.
+(Chromium 53). A download from a real signed-in account (T7.2) works in the Tizen simulator (2026-10-19): a 1.1 GB HEVC MKV and a 2 GB H.264 MP4 start, seek and survive quick repeated seeks; the number of simultaneous downloads was not measured live (unit-tested only). The MKV's E-AC-3 sound is not decodable in the simulator's Chromium 55; real TVs are untested.
+
+## Known limits
+
+- A text subtitle cue is found only when the reads pass the cluster that holds it. After a resume or a seek past the start
+  of a cue, a cue still on screen from earlier is not shown (cues of a few seconds are not affected). Finding it would
+  mean reading the file from the start.
+- MKV tracks with zlib or bzip2 compression (not header stripping) are listed under a codec name no decoder accepts, so
+  the engine skips them.
+- A server that ignores `Range` and answers 200 is read only up to one chunk, then the body is cancelled.
 
 ## MSE buffer limits
 

@@ -12,6 +12,7 @@ import { StringSession } from "telegram/sessions";
 import { peerOf } from "./telegram-identity";
 import type { TelegramRef } from "./telegram-identity";
 import { loginLink } from "./telegram-link";
+import { Slots } from "./telegram-slots";
 
 export const SESSION_KEY = "cablegram.tv.tgSession";
 
@@ -60,9 +61,20 @@ function makeClient(config: Config, session: string): TelegramClient {
   });
 }
 
+/** The whole session string identifies the account: two accounts on one data centre have strings of equal length. */
+const sessionKey = (config: Config, session: string) => `${config.apiId}:${session}`;
+
+/** Closes the cached connection (another account is taking over), so connections do not pile up. */
+async function dropShared(): Promise<void> {
+  const old = shared;
+  shared = null;
+  if (old) { try { await old.client.disconnect(); } catch { /* already closed */ } }
+}
+
 async function connect(config: Config, session: string): Promise<TelegramClient> {
-  const key = `${config.apiId}:${session.length}`;
+  const key = sessionKey(config, session);
   if (shared && shared.key === key) return shared.client;
+  await dropShared();
   const client = makeClient(config, session);
   note("connecting");
   await within("connect", 30_000, client.connect());
@@ -161,7 +173,8 @@ export async function loginWithPhone(config: Config, hooks: LoginHooks): Promise
     await finish();
     note("signed in");
     const session = client.session.save() as unknown as string;
-    shared = { client, key: `${config.apiId}:${session.length}` };
+    await dropShared();
+    shared = { client, key: sessionKey(config, session) };
     return session;
   } catch (e) {
     try { await client.disconnect(); } catch { /* already closed */ }
@@ -227,18 +240,24 @@ export async function openTelegramSource(
   note(`video message found (${Math.round(doc.size.toJSNumber() / 1048576)} MB, ${doc.mimeType})`);
   const location = () =>
     new Api.InputDocumentFileLocation({ id: doc.id, accessHash: doc.accessHash, fileReference: doc.fileReference, thumbSize: "" });
-  let dc: number | null = null;
+  // Download from a connection of its own to the file's data centre (the plan's §7), not the one that carries the chat
+  // requests. FILE_MIGRATE can still move it.
+  let dc: number | null = doc.dcId !== client.session.dcId ? doc.dcId : null;
+  const slots = new Slots(2);
 
   const api: TelegramFileApi = {
-    async getFile(offset, limit) {
-      const request = new Api.upload.GetFile({ location: location(), offset: bigInt(offset), limit, precise: false, cdnSupported: false });
+    async getFile(offset, limit, signal) {
       try {
-        const result = await within("download", 45_000, dc === null ? client.invoke(request) : client.getSender(dc).then((sender) => sender.send(request)));
+        const result = await slots.run(signal, () => {
+          const request = new Api.upload.GetFile({ location: location(), offset: bigInt(offset), limit, precise: false, cdnSupported: false });
+          return within("download", 45_000, dc === null ? client.invoke(request) : client.getSender(dc).then((sender) => sender.send(request)));
+        });
         if (!(result instanceof Api.upload.File)) throw new TelegramRpcError("CDN_REDIRECT_UNSUPPORTED");
         const b = result.bytes;
         if (offset === 0 || offset % (16 * 1048576) === 0) note(`downloaded a chunk at ${Math.round(offset / 1048576)} MB`);
         return new Uint8Array(b.buffer, b.byteOffset, b.length);
       } catch (e) {
+        if (e instanceof SourceError) throw e;
         const rpc = rpcMessage(e);
         if (rpc) throw new TelegramRpcError(rpc);
         throw e;

@@ -1,6 +1,7 @@
 // Dev only: forwards to the control plane and adds CORS headers so a TV app loaded from file://, localhost or a
 // simulator can talk to it. The real control plane only answers origins listed in WEB_APP_ORIGINS.
 // Usage: node scripts/dev-proxy.mjs [port]   then build with VITE_API_BASE=http://localhost:8787
+// LOG=1 prints START/END per request with the number in flight, to check a TV holds one relay stream at a time.
 import http from "node:http";
 import https from "node:https";
 
@@ -14,7 +15,18 @@ const cors = {
   "access-control-expose-headers": "content-range, accept-ranges, content-length",
 };
 
+const log = process.env.LOG === "1";
+let inflight = 0;
+let peak = 0;
+
 http.createServer((req, res) => {
+  if (log && req.method !== "OPTIONS") {
+    inflight++;
+    peak = Math.max(peak, inflight);
+    const label = `${req.method} ${req.url.split("?")[0]} ${req.headers.range ?? ""}`.trim();
+    console.log(`${new Date().toISOString()} START ${label} (in flight ${inflight}, peak ${peak})`);
+    res.on("close", () => { inflight--; console.log(`${new Date().toISOString()} END   ${label} (in flight ${inflight})`); });
+  }
   if (req.method === "OPTIONS") { res.writeHead(204, cors).end(); return; }
   const headers = { ...req.headers, host: target.host };
   delete headers.origin;

@@ -1,6 +1,6 @@
 # Plan: TV media engine, milestone 1 (our own demuxing, feeding the TV's player)
 
-Status: planned 2026-10-19, not started. Branch to build on: `feat/tv-web-tizen-webos` (commit `78eeea2` or later).
+Status: built on `feat/tv-web-tizen-webos` (T0–T8, T10 done). T9 passed 2026-10-19 in the Tizen and webOS 26 simulators with two generated H.264/AAC test files (MP4, MKV with SRT) over the real relay; not yet with the founder's own titles. T7.2 passed in the Tizen simulator with a real signed-in account (Telegram MKV and MP4); real TVs and webOS 4 are untested.
 Implementer: a Sonnet session. Read this whole file first; it is self-contained.
 
 ## 1. Why

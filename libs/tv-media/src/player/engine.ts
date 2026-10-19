@@ -51,6 +51,8 @@ export class Player extends Emitter<PlayerEvents> {
   private switching: Promise<void> = Promise.resolve();
   private subtitleId: number | null = null;
   private readonly seenCues = new Map<number, Map<string, SubtitleCue>>();
+  private readonly onStall = () => this.setWaiting(true);
+  private readonly onResume = () => this.setWaiting(false);
   private readonly onSeeking = () => {
     if (this.suppressSeek) {
       this.suppressSeek = false;
@@ -82,6 +84,9 @@ export class Player extends Emitter<PlayerEvents> {
     this.abort.abort();
     this.video.removeEventListener("seeking", this.onSeeking);
     this.video.removeEventListener("error", this.onVideoError);
+    this.video.removeEventListener("waiting", this.onStall);
+    this.video.removeEventListener("playing", this.onResume);
+    this.video.removeEventListener("canplay", this.onResume);
     this.source.close();
     if (this.url) {
       this.video.removeAttribute("src");
@@ -218,10 +223,16 @@ export class Player extends Emitter<PlayerEvents> {
       await this.attach([video, audio].filter((t): t is Track => !!t), info.duration);
       this.video.addEventListener("seeking", this.onSeeking);
       this.video.addEventListener("error", this.onVideoError);
+      this.video.addEventListener("waiting", this.onStall);
+      this.video.addEventListener("playing", this.onResume);
+      this.video.addEventListener("canplay", this.onResume);
 
       const startAt = this.opts.startAt ?? 0;
       await this.demuxer.seek(startAt, this.abort.signal);
-      if (startAt > 0) this.video.currentTime = startAt;
+      if (startAt > 0) {
+        this.suppressSeek = true; // the demuxer is already there; the seeking event would only restart the reads
+        this.video.currentTime = startAt;
+      }
       this.startPump();
       return info;
     } catch (e) {
@@ -312,7 +323,6 @@ export class Player extends Emitter<PlayerEvents> {
           await this.evict(gen, true);
         } else {
           // Nothing left behind the playhead to drop: wait for playback to free space.
-          this.setWaiting(false);
           await sleep(500);
         }
       }

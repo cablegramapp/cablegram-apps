@@ -39,16 +39,16 @@ learn the file size (MP4 and indexed MKV still play; seeking in an MKV without a
 Telegram titles play over MTProto from the TV itself: a GramJS client (lazy chunk, only in builds with the flag) reads
 the video's bytes and the same engine plays them. The application's `api_id`/`api_hash` are fetched at run time from the
 control plane (`GET /api/telegram/client-config`, allowed per TV) and are never in this repository. The account session
-is a GramJS `StringSession` that a developer puts in `localStorage["cablegram.tv.tgSession"]` through the TV's debugger
-(`TG_API_ID=… TG_API_HASH=… node scripts/tg-session.mjs` signs an account in and prints one; treat it like a password).
-A TV sign-in screen is a later milestone. Without a session the TV says "Telegram isn't set up on this TV yet".
+is a GramJS `StringSession`, created by signing in on the TV with the sign-in approved on the phone (two-step password
+typed on the phone) and kept per account. For development `TG_API_ID=… TG_API_HASH=… node scripts/tg-session.mjs` signs an
+account in and prints one; treat it like a password. Without a session the TV says "Telegram isn't set up on this TV yet".
 Builds without the flag contain no Telegram code. Verified so far: the GramJS bundle loads and completes the MTProto
 handshake in desktop Chrome, loads in the Tizen simulator and fails politely without a session; downloading a real
 file needs a signed-in account and has not been run.
 
 Not the same as Android TV yet:
-- **Telegram-hosted titles** work only in `VITE_TG_DIRECT=1` builds with a developer-provided session (see above); the
-  TV has no Telegram sign-in screen yet, and the Android TV app's TDLib does not run in a TV web view.
+- **Telegram-hosted titles** work only in `VITE_TG_DIRECT=1` builds, with the account signed in on the TV (see above);
+  the Android TV app's TDLib does not run in a TV web view.
 - **Private titles** (need phone approval, `/api/playback/private-approvals`).
 - **Phone over LAN.** A browser cannot pin the phone's self-signed certificate, so the relay carries phone copies.
 - **Image subtitles** (PGS, VobSub) inside a file are not shown; text subtitles in the file (SubRip, ASS as plain text,

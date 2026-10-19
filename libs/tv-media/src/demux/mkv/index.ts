@@ -292,6 +292,7 @@ export class MkvDemuxer implements Demuxer {
       let channels: number | undefined;
       let sampleRate: number | undefined;
       let prefix: Uint8Array | undefined;
+      let compressed = false; // a compression other than header stripping: the frames are not usable as stored
       forEach(body, s, e, (cid, cs, ce) => {
         switch (cid) {
           case ID.TrackNumber: number = readUInt(body, cs, ce); break;
@@ -325,7 +326,8 @@ export class MkvDemuxer implements Demuxer {
                   if (yid === ID.ContentCompAlgo) algo = readUInt(body, ys, ye);
                   else if (yid === ID.ContentCompSettings) settings = body.subarray(ys, ye);
                 });
-                if (algo === 3 && settings) prefix = settings;
+                if (algo === 3) prefix = settings;
+                else compressed = true;
               });
             });
             break;
@@ -341,6 +343,8 @@ export class MkvDemuxer implements Demuxer {
       if (channels) track.channels = channels;
       if (sampleRate) track.sampleRate = sampleRate;
       mapCodec(track, codecId, priv);
+      // Reported under a name no decoder accepts, so the engine skips it instead of feeding it garbage.
+      if (compressed) track.codec = `${track.codec}+compressed` as typeof track.codec;
       this.infos.push({ track, type, defaultDuration, prefix });
     });
     // DefaultDuration is in ns; convert once the timescale is known
@@ -486,6 +490,13 @@ export class MkvDemuxer implements Demuxer {
         }
         if (h.size < 0) break;
         const total = h.header + h.size;
+        if (this.pos + at + total > c.end) {
+          // an element that runs past its cluster: a damaged size. Drop the rest of the cluster rather than read it.
+          at = c.end - this.pos; // `this.pos += at` below lands on the cluster end
+          this.cluster = null;
+          ended = true;
+          break;
+        }
         if (at + total > buf.length) {
           if (at === 0) {
             // a single element larger than the window: read exactly it
@@ -719,7 +730,7 @@ function mapCodec(track: Track, codecId: string, priv: Uint8Array | undefined): 
 /** OpusHead (RFC 7845, little-endian) to the dOps box payload (big-endian, version 0). */
 function dopsFromOpusHead(h: Uint8Array): Uint8Array | undefined {
   if (h.length < 19 || String.fromCharCode(...h.subarray(0, 8)) !== "OpusHead") return undefined;
-  const out = new Uint8Array(h.length - 1);
+  const out = new Uint8Array(h.length - 8);
   out[0] = 0; // version
   out[1] = h[9]; // channel count
   out[2] = h[11]; // pre-skip, to big-endian
