@@ -37,6 +37,8 @@ export interface PlayerEvents {
   error: (error: PlayerError) => void;
   /** True while the engine is waiting for data the playhead needs. */
   buffering: (waiting: boolean) => void;
+  /** The selected subtitle track changed (null = off). */
+  subtitle: (trackId: number | null) => void;
 }
 
 export class Emitter<E extends { [K in keyof E]: (...args: any[]) => void }> {

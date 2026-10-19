@@ -1,7 +1,7 @@
 import { MkvDemuxer } from "../demux/mkv";
 import { Mp4Demuxer } from "../demux/mp4";
 import { sniffContainer } from "../demux/sniff";
-import { MediaError, type Demuxer, type MediaInfo, type Sample, type Track } from "../demux/types";
+import { MediaError, type Demuxer, type MediaInfo, type Sample, type SubtitleCue, type Track } from "../demux/types";
 import { buildFragment, buildInitSegment } from "../mux/fmp4";
 import { mimeType } from "../mux/codecs";
 import { QuotaError, SourceBufferQueue, rangesOf } from "../sink/mse";
@@ -22,6 +22,8 @@ interface Lane {
   track: Track;
   queue: SourceBufferQueue;
   sequence: number;
+  /** Track id written into this SourceBuffer's init segment and fragments; stays fixed when the source track changes. */
+  muxId: number;
 }
 
 const TEXT_SUBTITLES = new Set(["srt", "ass", "webvtt", "tx3g"]);
@@ -45,7 +47,17 @@ export class Player extends Emitter<PlayerEvents> {
   private eof = false;
   private destroyed = false;
   private waiting = false;
-  private readonly onSeeking = () => void this.handleSeeking();
+  private suppressSeek = false;
+  private switching: Promise<void> = Promise.resolve();
+  private subtitleId: number | null = null;
+  private readonly seenCues = new Map<number, Map<string, SubtitleCue>>();
+  private readonly onSeeking = () => {
+    if (this.suppressSeek) {
+      this.suppressSeek = false;
+      return;
+    }
+    void this.handleSeeking();
+  };
   private readonly onVideoError = () => {
     const err = this.video.error;
     this.fail(new PlayerError("decode", err ? `media element error ${err.code}: ${err.message}` : "media element error"));
@@ -77,6 +89,103 @@ export class Player extends Emitter<PlayerEvents> {
       URL.revokeObjectURL(this.url);
       this.url = null;
     }
+  }
+
+  // ---- tracks --------------------------------------------------------------------------------------------------
+
+  get audioTracks(): Track[] {
+    return this.info ? this.info.tracks.filter((t) => t.kind === "audio") : [];
+  }
+
+  /** Text subtitle tracks inside the file; image subtitles are not offered. */
+  get subtitleTracks(): Track[] {
+    return this.info ? this.info.tracks.filter((t) => t.kind === "subtitle" && TEXT_SUBTITLES.has(t.codec)) : [];
+  }
+
+  get currentAudio(): Track | null {
+    return this.lanes.find((l) => l.track.kind === "audio")?.track ?? null;
+  }
+
+  get currentSubtitle(): number | null {
+    return this.subtitleId;
+  }
+
+  /** Every cue read so far for a track, in file order. The app draws; the engine only reads. */
+  cuesOf(trackId: number): SubtitleCue[] {
+    return [...(this.seenCues.get(trackId)?.values() ?? [])];
+  }
+
+  selectSubtitle(trackId: number | null): void {
+    this.subtitleId = trackId;
+    this.emit("subtitle", trackId);
+  }
+
+  /** Switches the audio track at the playhead. Resolves when the new audio is queued. */
+  selectAudio(trackId: number): Promise<void> {
+    const run = this.switching.then(() => this.doSelectAudio(trackId));
+    this.switching = run.catch(() => undefined);
+    return run;
+  }
+
+  private async doSelectAudio(trackId: number): Promise<void> {
+    await this.ready;
+    const next = this.audioTracks.find((t) => t.id === trackId);
+    if (!next) throw new PlayerError("unsupported_codec", `no audio track ${trackId}`);
+    const lane = this.lanes.find((l) => l.track.kind === "audio");
+    if (lane && lane.track.id === next.id) return;
+    if (!this.supported(next)) throw new PlayerError("unsupported_codec", `the TV's decoders refuse audio track ${trackId}`);
+    const demuxer = this.demuxer!;
+    const t = this.video.currentTime;
+    const wasPlaying = !this.video.paused;
+    const rate = this.video.playbackRate;
+
+    // stop pumping and drop reads in flight
+    const gen = ++this.gen;
+    this.abort.abort();
+    this.abort = new AbortController();
+    await this.pumping;
+
+    try {
+      const video = this.lanes.find((l) => l.track.kind === "video")?.track;
+      const text = this.subtitleTracks;
+      demuxer.setEnabledTracks([video, next, ...text].filter((x): x is Track => !!x).map((x) => x.id));
+      if (lane && mimeType(lane.track) === mimeType(next)) {
+        // Same codec: keep the MediaSource and the video buffer; swap only the audio buffer.
+        lane.queue.reset();
+        const r = rangesOf(lane.queue.sb.buffered);
+        if (r.length) await lane.queue.remove(0, Math.max(r[r.length - 1][1], this.ms?.duration ?? 0) + 1);
+        lane.track = next;
+        await lane.queue.append(buildInitSegment(muxTrack(lane)));
+        await demuxer.seek(t, this.abort.signal);
+      } else {
+        // Different codec: a SourceBuffer cannot change type everywhere (changeType needs Chrome 70), so start a new
+        // MediaSource at the playhead.
+        this.teardownMediaSource();
+        this.lanes = [];
+        await this.attach([video, next].filter((x): x is Track => !!x), this.info!.duration);
+        await demuxer.seek(t, this.abort.signal);
+        if (t > 0.001) {
+          this.suppressSeek = true;
+          this.video.currentTime = t;
+        }
+        this.video.playbackRate = rate;
+        if (wasPlaying) void this.video.play().catch(() => undefined);
+      }
+      if (gen === this.gen) this.startPump();
+    } catch (e) {
+      const err = toPlayerError(e);
+      this.fail(err);
+      throw err;
+    }
+  }
+
+  private teardownMediaSource(): void {
+    for (const lane of this.lanes) lane.queue.reset();
+    this.video.removeAttribute("src");
+    this.video.load();
+    if (this.url) URL.revokeObjectURL(this.url);
+    this.url = null;
+    this.ms = null;
   }
 
   // ---- startup -------------------------------------------------------------------------------------------------
@@ -137,10 +246,10 @@ export class Player extends Emitter<PlayerEvents> {
       const sb = ms.addSourceBuffer(mimeType(track));
       sb.timestampOffset = -this.offsetSec;
       const queue = new SourceBufferQueue(sb);
-      this.lanes.push({ track, queue, sequence: 1 });
+      this.lanes.push({ track, queue, sequence: 1, muxId: track.kind === "video" ? 1 : 2 });
     }
     // All SourceBuffers must exist before the first init segment arrives.
-    for (const lane of this.lanes) await lane.queue.append(buildInitSegment(lane.track));
+    for (const lane of this.lanes) await lane.queue.append(buildInitSegment(muxTrack(lane)));
   }
 
   // ---- pumping -------------------------------------------------------------------------------------------------
@@ -174,7 +283,7 @@ export class Player extends Emitter<PlayerEvents> {
         const samples = batch.filter((s) => s.trackId === lane.track.id);
         if (samples.length === 0) continue;
         const offsetTicks = Math.round(this.offsetSec * lane.track.timescale);
-        const fragment = buildFragment(lane.track, samples, lane.sequence++, offsetTicks);
+        const fragment = buildFragment(muxTrack(lane), samples, lane.sequence++, offsetTicks);
         await this.appendWithRoom(lane, fragment, gen);
         if (gen !== this.gen) return;
       }
@@ -201,14 +310,20 @@ export class Player extends Emitter<PlayerEvents> {
   }
 
   private emitCues(batch: Sample[]): void {
-    const byTrack = new Map<number, NonNullable<Sample["cue"]>[]>();
-    for (const s of batch) {
-      if (!s.cue) continue;
-      const list = byTrack.get(s.trackId) ?? [];
-      list.push(s.cue);
-      byTrack.set(s.trackId, list);
+    const fresh = new Map<number, SubtitleCue[]>();
+    for (const sample of batch) {
+      const cue = sample.cue;
+      if (!cue) continue;
+      let seen = this.seenCues.get(sample.trackId);
+      if (!seen) this.seenCues.set(sample.trackId, (seen = new Map()));
+      const key = `${cue.start}|${cue.text}`;
+      if (seen.has(key)) continue; // re-read after a seek
+      seen.set(key, cue);
+      const list = fresh.get(sample.trackId) ?? [];
+      list.push(cue);
+      fresh.set(sample.trackId, list);
     }
-    byTrack.forEach((cues, id) => this.emit("cues", id, cues));
+    fresh.forEach((cues, id) => this.emit("cues", id, cues));
   }
 
   private bufferedAhead(): number {
@@ -273,6 +388,10 @@ export class Player extends Emitter<PlayerEvents> {
     if (this.destroyed) return;
     this.emit("error", err);
   }
+}
+
+function muxTrack(lane: Lane): Track {
+  return { ...lane.track, id: lane.muxId };
 }
 
 export function createPlayer(video: HTMLVideoElement, source: ByteSource, opts?: PlayerOptions): Player {

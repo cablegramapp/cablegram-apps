@@ -10,6 +10,8 @@ declare global {
       cues: Array<{ track: number; text: string; start: number }>;
       open(url: string, opts?: PlayerOptions): Promise<unknown>;
       supported(mime: string): boolean;
+      listen(): void;
+      hz(): number;
       state(): { time: number; paused: boolean; ended: boolean; ranges: Array<[number, number]>; error: string | null };
     };
   }
@@ -30,6 +32,24 @@ window.t = {
     return { duration: info.duration, tracks: info.tracks.map((t) => ({ id: t.id, kind: t.kind, codec: t.codec })) };
   },
   supported: (mime) => MediaSource.isTypeSupported(mime),
+  listen() {
+    const ctx = new AudioContext();
+    const src = ctx.createMediaElementSource(video);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 4096;
+    src.connect(analyser);
+    analyser.connect(ctx.destination);
+    (window as unknown as { analyser: AnalyserNode }).analyser = analyser;
+    void ctx.resume();
+  },
+  hz() {
+    const analyser = (window as unknown as { analyser: AnalyserNode }).analyser;
+    const bins = new Float32Array(analyser.frequencyBinCount);
+    analyser.getFloatFrequencyData(bins);
+    let best = 0;
+    for (let i = 1; i < bins.length; i++) if (bins[i] > bins[best]) best = i;
+    return bins[best] < -90 ? 0 : (best * analyser.context.sampleRate) / analyser.fftSize;
+  },
   state() {
     const r: Array<[number, number]> = [];
     for (let i = 0; i < video.buffered.length; i++) r.push([video.buffered.start(i), video.buffered.end(i)]);

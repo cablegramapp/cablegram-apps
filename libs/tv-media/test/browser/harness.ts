@@ -39,7 +39,12 @@ export async function startHarness(): Promise<Harness> {
     res.setHeader("Access-Control-Allow-Origin", "*");
     if (url === "/") {
       res.setHeader("Content-Type", "text/html");
-      res.end('<!doctype html><video id="v" muted playsinline width="320" height="180"></video><script src="/bundle.js"></script>');
+      res.end('<!doctype html><video id="v" playsinline width="320" height="180"></video><script src="/bundle.js"></script>');
+      return;
+    }
+    if (url === "/favicon.ico") {
+      res.statusCode = 204;
+      res.end();
       return;
     }
     if (url === "/bundle.js") {

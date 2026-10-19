@@ -115,4 +115,49 @@ describe.skipIf(!chromeAvailable)("MSE playback in Chrome", () => {
     await waitFor(async () => (await state()).time > 10);
     expect(await h.page.evaluate(() => window.t.errors)).toEqual([]);
   });
+
+  describe.each(["mkv-two-audio.mkv", "mkv-aac-opus.mkv"].filter(hasFixture))("audio switching: %s", (name) => {
+    it("switches the audio track without restarting from 0", async () => {
+      await h.page.reload();
+      await h.page.evaluate(() => window.t.listen());
+      const info = (await play(name)) as { tracks: Array<{ id: number; kind: string }> };
+      const audio = info.tracks.filter((t) => t.kind === "audio");
+      expect(audio).toHaveLength(2);
+      const hz = () => h.page.evaluate(() => window.t.hz());
+      const near = (v: number, want: number) => Math.abs(v - want) < 40;
+
+      await waitFor(async () => (await state()).time > 2.5);
+      await waitFor(async () => near(await hz(), 440));
+
+      const before = (await state()).time;
+      await h.page.evaluate((id) => window.t.player!.selectAudio(id), audio[1].id);
+      await waitFor(async () => near(await hz(), 880));
+      const after = (await state()).time;
+      expect(after).toBeGreaterThanOrEqual(before);
+      expect(after).toBeLessThan(before + 6);
+      expect((await state()).paused).toBe(false);
+
+      // and back again
+      await h.page.evaluate((id) => window.t.player!.selectAudio(id), audio[0].id);
+      await waitFor(async () => near(await hz(), 440));
+      expect(await h.page.evaluate(() => window.t.errors)).toEqual([]);
+      expect((await state()).error).toBeNull();
+    });
+  });
+
+  it.each([
+    ["mkv-ac3-ass.mkv", ["Styled text, with comma", "Line one\nLine two"]],
+    ["mp4-tx3g.mp4", ["Hello world", "Second line\nwith a break"]],
+  ] as const)("delivers subtitle cues from %s", async (name, expected) => {
+    if (!hasFixture(name)) return;
+    await h.page.reload();
+    await h.page.evaluate(() => void 0);
+    // AC-3 audio is not decodable in this Chrome, so the engine plays the video alone
+    await play(name);
+    await waitFor(async () => (await h.page.evaluate(() => window.t.cues.length)) >= 2);
+    expect(await h.page.evaluate(() => window.t.cues.map((c) => c.text))).toEqual(expected);
+    const player = await h.page.evaluate(() => ({ n: window.t.player!.subtitleTracks.length, cues: window.t.player!.cuesOf(window.t.player!.subtitleTracks[0].id).length }));
+    expect(player).toEqual({ n: 1, cues: 2 });
+    expect(await h.page.evaluate(() => window.t.errors)).toEqual([]);
+  });
 });
