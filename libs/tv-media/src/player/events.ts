@@ -6,6 +6,10 @@ export type PlayerErrorKind =
   | "unsupported_codec"
   | "source_http"
   | "source_network"
+  | "telegram_flood"
+  | "telegram_auth"
+  | "telegram_file"
+  | "telegram_error"
   | "malformed"
   | "decode"
   | "buffer";
@@ -26,7 +30,8 @@ export class PlayerError extends Error {
 export function toPlayerError(e: unknown): PlayerError {
   if (e instanceof PlayerError) return e;
   if (e instanceof SourceError) {
-    return new PlayerError(e.kind === "source_http" ? "source_http" : "source_network", e.message, e.status, e.code);
+    const kind = e.kind === "source_aborted" ? "source_network" : e.kind;
+    return new PlayerError(kind, e.message, e.status, e.code);
   }
   if (e instanceof MediaError) return new PlayerError(e.kind, e.message);
   return new PlayerError("malformed", e instanceof Error ? e.message : String(e));

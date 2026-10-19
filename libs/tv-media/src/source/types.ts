@@ -7,7 +7,17 @@ export interface ByteSource {
   close(): void;
 }
 
-export type SourceErrorKind = "source_http" | "source_network" | "source_aborted";
+export type SourceErrorKind =
+  | "source_http"
+  | "source_network"
+  | "source_aborted"
+  /** Telegram asked us to slow down for longer than we are willing to wait. */
+  | "telegram_flood"
+  /** The session is not signed in (any more). */
+  | "telegram_auth"
+  /** The file or message is gone or the reference could not be refreshed. */
+  | "telegram_file"
+  | "telegram_error";
 
 export class SourceError extends Error {
   constructor(
@@ -15,7 +25,7 @@ export class SourceError extends Error {
     message: string,
     /** HTTP status, when the server answered. */
     readonly status?: number,
-    /** The server's `error` code from a JSON body, e.g. `relay_streams_exceeded`. */
+    /** The server's `error` code from a JSON body, e.g. `relay_streams_exceeded`, or Telegram's RPC error message. */
     readonly code?: string,
   ) {
     super(message);

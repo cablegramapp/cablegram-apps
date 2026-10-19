@@ -10,3 +10,4 @@ export { codecString, mimeType } from "./mux/codecs";
 export { buildFragment, buildInitSegment } from "./mux/fmp4";
 export { createPlayer, Player, type PlayerOptions } from "./player/engine";
 export { PlayerError, type PlayerErrorKind, type PlayerEvents } from "./player/events";
+export { TelegramSource, TelegramRpcError, type TelegramFileApi, type TelegramSourceOptions } from "./source/telegram";
