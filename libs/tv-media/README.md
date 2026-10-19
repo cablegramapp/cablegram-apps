@@ -48,7 +48,7 @@ otherwise (`changeType` needs Chrome 70). B-frame video: MP4 uses the edit list,
 ## Browser floor
 
 TypeScript target ES2017, no WebAssembly, no BigInt: written for LG webOS 4 (Chromium 53). The demuxers and muxer are
-checked against ffprobe on every fixture; playback is checked in Chrome for Testing 14x and in the Tizen TV simulator
+checked against ffprobe on every fixture; playback is checked in Chrome for Testing 156 and in the Tizen TV simulator
 (Chromium 55). **Not yet run on a real TV.**
 
 ## Telegram
@@ -73,7 +73,7 @@ never hit its quota with the test files. Record per model below when a TV is ava
 
 | Model | Chromium | MSE quota / behaviour | Notes |
 |---|---|---|---|
-| Chrome for Testing 14x (macOS) | 14x | not reached | H.264, HEVC, AAC, Opus; AC-3 refused |
+| Chrome for Testing 156 (macOS) | 156 | not reached | H.264, HEVC, AAC, Opus; AC-3 refused |
 | Tizen TV simulator | 55 | not reached | H.264, HEVC, AAC, Opus; AC-3 refused |
 
 ## Develop
