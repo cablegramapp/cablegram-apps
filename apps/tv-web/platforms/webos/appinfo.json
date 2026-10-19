@@ -9,5 +9,6 @@
   "largeIcon": "icon.png",
   "resolution": "1920x1080",
   "disallowScrollingInMainFrame": true,
-  "disableBackHistoryAPI": true
+  "disableBackHistoryAPI": true,
+  "requiredACG": []
 }

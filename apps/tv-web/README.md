@@ -81,6 +81,7 @@ npm test                 # api, library shelves, artwork, player remote and D-pa
 npm run build            # type-check + legacy-compatible bundle (Chromium 53+) in dist/
 npm run e2e              # headless Chrome against the mock API: pairing, engine playback, audio switch, subtitles, fallback, Telegram messages
 npm run package:webos    # stages build/webos, then: ares-package build/webos -o build   (npm i -g @webos-tools/cli)
+                         # appinfo.json declares "requiredACG": [] (LG access control groups, mandatory from webOS TV 27); the app calls no Luna API. Add a group here if one is ever used.
 npm run package:tizen    # stages build/tizen, then: tizen package -t wgt -s <cert profile> -- build/tizen
 ```
 
