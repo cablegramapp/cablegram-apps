@@ -1,6 +1,6 @@
 // Dev only: a fake control plane for design work. Pairs instantly and serves a few sample titles, so the library
 // can be seen without a phone. Usage: node scripts/mock-api.mjs [port]; build with VITE_API_BASE=http://localhost:<port>
-import { createReadStream, existsSync } from "node:fs";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import http from "node:http";
 
 const port = Number(process.argv[2] ?? 8788);
@@ -38,13 +38,23 @@ const routes = {
 };
 
 http.createServer((req, res) => {
-  const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, content-type", "access-control-allow-methods": "*" };
+  const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, content-type", "access-control-allow-methods": "*",
+    "access-control-expose-headers": "content-range, accept-ranges, content-length" };
   if (req.method === "OPTIONS") { res.writeHead(204, cors).end(); return; }
   const path = (req.url ?? "").split("?")[0];
-  // MOCK_VIDEO=<file.webm> serves that file for every relay media request, so the player can be seen working.
+  // MOCK_VIDEO=<file> serves that file for every relay media request (with Range support, as the relay does), so the
+  // player can be seen working. An MKV with two audio tracks and an embedded SRT shows the tv-media engine.
   if (path.startsWith("/relay/") && process.env.MOCK_VIDEO && existsSync(process.env.MOCK_VIDEO)) {
-    res.writeHead(200, { ...cors, "content-type": "video/webm" });
-    createReadStream(process.env.MOCK_VIDEO).pipe(res);
+    const file = process.env.MOCK_VIDEO;
+    const size = statSync(file).size;
+    const type = file.endsWith(".mkv") ? "video/x-matroska" : file.endsWith(".mp4") ? "video/mp4" : "video/webm";
+    const m = /bytes=(\d+)-(\d*)/.exec(req.headers.range ?? "");
+    const start = m ? Number(m[1]) : 0;
+    const end = m && m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+    if (start >= size) { res.writeHead(416, cors).end(); return; }
+    res.writeHead(m ? 206 : 200, { ...cors, "content-type": type, "accept-ranges": "bytes", "content-length": end - start + 1,
+      ...(m ? { "content-range": `bytes ${start}-${end}/${size}` } : {}) });
+    createReadStream(file, { start, end }).pipe(res);
     return;
   }
   const body = path === "/api/catalog/items" ? { items } : routes[`${req.method} ${path}`]

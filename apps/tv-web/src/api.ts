@@ -206,7 +206,7 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
         if (phoneDevice) {
           try {
             const ticket = await api.relayTicket(phoneDevice.id);
-            return { ...none, status: "ready", url: relayUrl(base, phoneDevice.id, `media/${phone.originIdentity}`, capability, ticket) };
+            return { ...none, status: "ready", engine: true, url: relayUrl(base, phoneDevice.id, `media/${phone.originIdentity}`, capability, ticket) };
           } catch (e) { if (!cloud) throw e; }
         }
       }

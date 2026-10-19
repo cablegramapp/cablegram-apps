@@ -10,6 +10,8 @@ const cors = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   "access-control-allow-headers": "authorization, content-type",
+  // The tv-media engine reads the file size from Content-Range; the real control plane needs to send this too.
+  "access-control-expose-headers": "content-range, accept-ranges, content-length",
 };
 
 http.createServer((req, res) => {

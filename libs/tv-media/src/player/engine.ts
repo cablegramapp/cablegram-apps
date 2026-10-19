@@ -226,6 +226,11 @@ export class Player extends Emitter<PlayerEvents> {
     }
   }
 
+  /** Whether this TV's decoders accept the track (MediaSource.isTypeSupported). */
+  canPlay(track: Track): boolean {
+    return this.supported(track);
+  }
+
   private supported(track: Track): boolean {
     try {
       return MediaSource.isTypeSupported(mimeType(track));

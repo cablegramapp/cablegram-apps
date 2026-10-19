@@ -57,6 +57,7 @@ gen mp4-opus.mp4 $V $A $X264 -c:a libopus -b:a 48k -strict -2 -movflags +faststa
 gen mkv-srt.mkv $V $A -i subs.srt $X264 -c:a aac -b:a 64k -c:s srt
 gen mkv-ac3-ass.mkv $V $A -i subs.ass $X264 -c:a ac3 -b:a 96k -c:s ass
 gen mkv-two-audio.mkv $V $A $A2 -map 0:v -map 1:a -map 2:a $X264 -c:a aac -b:a 64k
+gen mkv-demo.mkv $V $A $A2 -i subs.srt -map 0:v -map 1:a -map 2:a -map 3:s $X264 -c:a aac -b:a 64k -c:s srt -metadata:s:a:0 language=eng -metadata:s:a:1 language=deu -metadata:s:s:0 language=eng
 gen mkv-aac-opus.mkv $V $A $A2 -map 0:v -map 1:a -map 2:a $X264 -c:a:0 aac -b:a:0 64k -c:a:1 libopus -b:a:1 48k
 # ffmpeg always writes Cues; the true no-Cues, stripped-header and unknown-size variants are built in test/mkv.test.ts
 gen mkv-no-cues.mkv $V $A $X264 -c:a aac -b:a 64k -write_crc32 0 -cues_to_front 0 -reserve_index_space 0 -f matroska -avoid_negative_ts make_zero

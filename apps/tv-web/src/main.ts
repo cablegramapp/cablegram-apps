@@ -15,6 +15,8 @@ import type { Entry, LibraryType, Show } from "./library";
 import { focusEl, focusFirst, keyFromEvent, moveFocus, registerPlatformKeys } from "./nav";
 import type { Key } from "./nav";
 import { pairLink, qrCanvas } from "./pairlink";
+import { engineFailureMessage, EMBEDDED, openEngine } from "./engine-adapter";
+import type { EngineHandle } from "./engine-adapter";
 import { cueText, parseVtt, saveChoice, savedChoice, startWithSmart } from "./subtitles";
 import type { Cue, SmartSubtitle } from "./subtitles";
 import * as store from "./session";
@@ -911,16 +913,20 @@ async function startPlayback(v: Title) {
   // A missing subtitle never stops playback.
   const smart = await api.subtitles(v.id).catch(() => [] as SmartSubtitle[]);
   if (cancelled) return;
-  playerScreen(v, entry.profile, playback.url, undefined, 0, smart);
+  playerScreen(v, entry.profile, playback.url, undefined, 0, smart, playback.engine ? "engine" : "plain");
 }
 
 /** How often a refused relay slot is retried before the player gives up (the browser's own extra range request often holds it briefly). */
 const SLOT_RETRIES = 4;
 
-function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attempt = 0, smart: SmartSubtitle[] = []) {
+function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attempt = 0, smart: SmartSubtitle[] = [], mode: "engine" | "plain" = "plain") {
   const video = document.createElement("video");
-  video.src = url;
   video.autoplay = true;
+  let engine: EngineHandle | null = null;
+  let embeddedOn: string | null = null;
+  const resumeAt = startAt ?? t.resumeSeconds;
+  // The engine starts at the resume point itself; plain <video> seeks once its metadata is in.
+  const engineStart = resumeAt && (!t.durationSeconds || resumeAt < t.durationSeconds - 10) ? resumeAt : 0;
   const back = () => { void loadLibrary(); };
 
   let hud: HudState = { ...initialHud };
@@ -965,7 +971,8 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
   let smartOn: string | null = startWithSmart(smart[0], savedChoice(t.id)) ? smart[0].id : null;
   let shownText = "";
   const drawSubtitle = () => {
-    const text = smartOn && parsed[smartOn] ? cueText(parsed[smartOn], video.currentTime) : "";
+    const text = smartOn && parsed[smartOn] ? cueText(parsed[smartOn], video.currentTime)
+      : embeddedOn && engine ? cueText(engine.cues(embeddedOn), video.currentTime) : "";
     if (text === shownText) return;
     shownText = text;
     subLine.textContent = "";
@@ -984,6 +991,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const v = video as any;
   const audioTracks = (): HudTrack[] => {
+    if (engine) return engine.audioTracks();
     const list = v.audioTracks;
     if (!list || !list.length) return [];
     const out: HudTrack[] = [];
@@ -991,6 +999,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
     return out;
   };
   const selectedAudio = (): string | null => {
+    if (engine) return engine.selectedAudio();
     const list = v.audioTracks;
     if (!list) return null;
     for (let i = 0; i < list.length; i++) if (list[i].enabled) return String(i);
@@ -998,6 +1007,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
   };
   const subtitleTracks = (): HudTrack[] => {
     const out: HudTrack[] = smart.map((s) => ({ id: `smart:${s.id}`, label: s.label }));
+    if (engine) out.push(...engine.subtitleTracks());
     for (let i = 0; i < video.textTracks.length; i++) {
       const tr = video.textTracks[i];
       if (tr.kind === "subtitles" || tr.kind === "captions") out.push({ id: String(i), label: tr.label || tr.language || `Subtitle ${i + 1}` });
@@ -1006,6 +1016,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
   };
   const selectedSubtitle = (): string | null => {
     if (smartOn) return `smart:${smartOn}`;
+    if (embeddedOn) return embeddedOn;
     for (let i = 0; i < video.textTracks.length; i++) if (video.textTracks[i].mode === "showing") return String(i);
     return null;
   };
@@ -1111,8 +1122,11 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
     if (exited) return;
     exited = true;
     void save("stopped");
-    video.removeAttribute("src");
-    video.load();
+    if (engine) engine.destroy();
+    else {
+      video.removeAttribute("src");
+      video.load();
+    }
     then();
   };
 
@@ -1127,6 +1141,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
         case "speed": speed = e.rate; video.playbackRate = e.rate; break;
         case "aspect": aspect = e.mode; applyAspect(); break;
         case "audio": {
+          if (engine) { if (e.id) engine.selectAudio(e.id); break; }
           const list = v.audioTracks;
           if (list) for (let i = 0; i < list.length; i++) list[i].enabled = String(i) === e.id;
           break;
@@ -1134,6 +1149,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
         case "subtitle": {
           const id = e.id;
           smartOn = id && id.indexOf("smart:") === 0 ? id.slice(6) : null;
+          embeddedOn = id && id.indexOf(EMBEDDED) === 0 ? id : null;
           for (let i = 0; i < video.textTracks.length; i++) video.textTracks[i].mode = String(i) === id ? "showing" : "disabled";
           // Remembered per video, and for which Cablegram subtitle, so a newly added one still shows next time.
           if (smart[0]) saveChoice(t.id, { off: !smartOn, smartId: smart[0].id });
@@ -1145,6 +1161,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
   };
 
   video.addEventListener("loadedmetadata", () => {
+    if (engine) return;
     const resume = startAt ?? t.resumeSeconds;
     if (resume && resume < video.duration - 10) video.currentTime = resume;
   });
@@ -1159,7 +1176,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
   });
   video.addEventListener("ended", () => { void save("completed"); stop(); });
   video.addEventListener("error", () => {
-    if (exited) return;
+    if (exited || engine) return; // the engine reports media errors itself
     const at = started ? video.currentTime : startAt;
     // Release our own relay stream before asking why: the relay counts open requests.
     exited = true;
@@ -1181,6 +1198,27 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
         [button("Back to library", () => libraryScreen()), button("Try again", () => void startPlayback(t), "panel")], () => libraryScreen());
     })();
   });
+
+  if (mode === "engine") {
+    engine = openEngine(video, url, engineStart, {
+      onError: (e) => {
+        if (exited) return;
+        exited = true;
+        const at = started ? video.currentTime : startAt;
+        engine?.destroy();
+        engine = null;
+        const message = engineFailureMessage(e);
+        if (message === null) {
+          // A format the engine can't handle: the TV's own player may still manage it.
+          playerScreen(t, p, url, at, 0, smart, "plain");
+          return;
+        }
+        if (started) void save("stopped");
+        errorScreen("Couldn't play this video", message,
+          [button("Back to library", () => libraryScreen()), button("Try again", () => void startPlayback(t), "panel")], () => libraryScreen());
+      },
+    });
+  } else video.src = url;
 
   const dpad: Partial<Record<Key, DpadKey>> = { up: "up", down: "down", left: "left", right: "right", enter: "ok", back: "back" };
   screenKeys = (key, _e, repeat) => {

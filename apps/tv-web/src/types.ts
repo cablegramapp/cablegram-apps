@@ -17,5 +17,7 @@ export interface Device { id: string; kind: string; revokedAt?: string }
 export interface Playback {
   status: "ready" | "denied" | "preparing" | "unsupported";
   url?: string; headers: Record<string, string>; message?: string;
+  /** Play through the tv-media engine (own demuxing into MSE) instead of a plain <video src>. */
+  engine?: boolean;
 }
 export interface SwitchRequest { requestId: string; status: string }
