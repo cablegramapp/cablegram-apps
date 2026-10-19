@@ -1,4 +1,5 @@
-import { API_BASE } from "./config";
+import { API_BASE, TG_DIRECT } from "./config";
+import { parseTelegramIdentity } from "./telegram-identity";
 import type { Device, DeviceSession, PairingStatus, Playback, Profile, Source, SwitchRequest, Title } from "./types";
 
 export class ApiError extends Error {
@@ -173,6 +174,11 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
       const b = (await call("api/me"))!;
       return ((b.devices as Json[]) ?? []).map((d) => ({ id: d.id, kind: d.kind, revokedAt: str(d.revoked_at) }));
     },
+    /** The application's Telegram identity for this TV (allowed per TV by the control plane). */
+    async telegramClientConfig(): Promise<{ apiId: number; apiHash: string }> {
+      const b = (await call("api/telegram/client-config"))!;
+      return { apiId: Number(b.api_id), apiHash: String(b.api_hash) };
+    },
     async relayTicket(phoneId: string): Promise<string> {
       const b = (await call("api/relay/ticket", { method: "POST", body: JSON.stringify({ phone_device_id: phoneId }) }))!;
       return b.ticket;
@@ -214,7 +220,10 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
         const r = await api.resolveCloud(title.id);
         if (r.status === "ready" && str(r.url)) return { status: "ready", url: r.url, headers: (r.headers as Record<string, string>) ?? {} };
       }
-      if (live.some((s) => s.kind === "telegram")) {
+      const tg = live.find((s) => s.kind === "telegram");
+      const ref = TG_DIRECT ? parseTelegramIdentity(tg?.originIdentity) : null;
+      if (ref) return { ...none, status: "ready", engine: true, telegram: ref };
+      if (tg) {
         return { ...none, status: "unsupported", message: "This video is stored in Telegram. Telegram playback isn't available on this TV yet." };
       }
       return { ...none, status: "preparing", message: "Waiting for your phone to come online." };

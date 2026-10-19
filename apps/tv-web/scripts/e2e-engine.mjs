@@ -13,9 +13,19 @@ import { chromium } from "playwright-core";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = path.resolve(here, "..");
 const fixture = path.resolve(app, "../../libs/tv-media/fixtures/mkv-demo.mkv");
-const chrome = process.env.CHROME_PATH ?? path.join(os.homedir(), "Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+function findChrome() {
+  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+  const cache = path.join(os.homedir(), "Library/Caches/ms-playwright");
+  const dirs = fs.existsSync(cache) ? fs.readdirSync(cache).filter((d) => /^chromium-\d+$/.test(d)).sort((a, b) => Number(b.slice(9)) - Number(a.slice(9))) : [];
+  for (const d of dirs) {
+    const p = path.join(cache, d, "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+    if (fs.existsSync(p)) return p;
+  }
+  return "";
+}
+const chrome = findChrome();
 if (!fs.existsSync(fixture)) { console.error(`missing ${fixture}; run npm run fixtures in libs/tv-media`); process.exit(2); }
-if (!fs.existsSync(chrome)) { console.error("Chrome for Testing not found; set CHROME_PATH"); process.exit(2); }
+if (!chrome) { console.error("Chrome for Testing not found; set CHROME_PATH"); process.exit(2); }
 
 const MOCK_PORT = 8788;
 const failures = [];
@@ -27,8 +37,11 @@ async function until(fn, ms = 15000, what = "condition") {
   throw new Error(`timed out waiting for ${what}`);
 }
 
-const build = spawnSync("npx", ["vite", "build", "--outDir", "dist-mock"], { cwd: app, env: { ...process.env, VITE_API_BASE: `http://localhost:${MOCK_PORT}` }, encoding: "utf8" });
-if (build.status !== 0) { console.error(build.stdout, build.stderr); process.exit(1); }
+const build = (extra = {}) => {
+  const r = spawnSync("npx", ["vite", "build", "--outDir", "dist-mock"], { cwd: app, env: { ...process.env, VITE_API_BASE: `http://localhost:${MOCK_PORT}`, ...extra }, encoding: "utf8" });
+  if (r.status !== 0) { console.error(r.stdout, r.stderr); process.exit(1); }
+};
+build();
 
 let mock = null;
 const startMock = async (file) => {
@@ -121,6 +134,23 @@ try {
     check(f.src === "http:", `unsupported codec falls back to the plain player (src ${f.src})`);
     check(!f.error, "fallback plays without error");
   }
+
+  // Direct Telegram playback (VITE_TG_DIRECT=1 build): without a session the TV says so instead of failing obscurely.
+  build({ VITE_TG_DIRECT: "1" });
+  await startMock(fixture);
+  const openCosmos = async () => {
+    await page.goto(`http://127.0.0.1:${server.address().port}/`);
+    await until(() => page.evaluate(() => !!document.querySelector(".card")), 10000, "library");
+    await page.evaluate(() => [...document.querySelectorAll(".card")].find((e) => /Cosmos Laundromat/.test(e.textContent)).onSelect());
+  };
+  const screenText = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
+  await openCosmos();
+  await until(async () => /Telegram isn't set up on this TV yet/.test(await screenText()), 15000, "no-session message").catch(async (e) => { console.log("[screen]", (await screenText()).slice(0, 300)); throw e; });
+  check(true, "Telegram title without a session explains that Telegram isn't set up");
+  await page.evaluate(() => localStorage.setItem("cablegram.tv.tgSession", "not-a-session"));
+  await openCosmos();
+  await until(async () => /Telegram couldn't deliver this video/.test(await screenText()), 15000, "bad-session message");
+  check(true, "Telegram title with an unusable session fails with a Telegram message, not a crash");
 } catch (e) {
   console.error(e.message);
   failures.push(e.message);

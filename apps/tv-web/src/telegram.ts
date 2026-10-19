@@ -1,0 +1,105 @@
+// Direct Telegram playback for TVs that cannot run TDLib: a GramJS client reads the video's bytes over MTProto and the
+// tv-media engine plays them. Loaded lazily (import("./telegram")) and only when the app was built with VITE_TG_DIRECT=1.
+// Credentials: the application's api_id/api_hash come from the control plane at run time (GET /api/telegram/client-config,
+// allowed per TV), never from this repository. The account session is a GramJS StringSession; for now a developer
+// provides it in localStorage["cablegram.tv.tgSession"] (a TV sign-in screen is a later milestone). Never log it.
+import "./telegram-env";
+import { TelegramRpcError, TelegramSource } from "tv-media";
+import type { TelegramFileApi } from "tv-media";
+import bigInt from "big-integer";
+import { Api, TelegramClient, errors } from "telegram";
+import { StringSession } from "telegram/sessions";
+import { peerOf } from "./telegram-identity";
+import type { TelegramRef } from "./telegram-identity";
+
+export const SESSION_KEY = "cablegram.tv.tgSession";
+
+export class TelegramUnavailable extends Error {
+  constructor(readonly reason: "no_session" | "no_video" | "not_found") {
+    super(reason);
+  }
+}
+
+let shared: { client: TelegramClient; key: string } | null = null;
+
+async function connect(config: { apiId: number; apiHash: string }, session: string): Promise<TelegramClient> {
+  const key = `${config.apiId}:${session.length}`;
+  if (shared && shared.key === key) return shared.client;
+  const client = new TelegramClient(new StringSession(session), config.apiId, config.apiHash, {
+    connectionRetries: 3,
+    useWSS: true,
+    floodSleepThreshold: 0, // TelegramSource decides how long to wait
+    deviceModel: "Smart TV",
+    systemVersion: "1.0",
+    appVersion: "TV Web",
+  });
+  await client.connect();
+  shared = { client, key };
+  return client;
+}
+
+/** Turns a GramJS failure into the RPC message TelegramSource understands. */
+export function rpcMessage(e: unknown): string | null {
+  const err = e as { errorMessage?: string; seconds?: number; newDc?: number };
+  if (e instanceof errors.FloodWaitError) return `FLOOD_WAIT_${err.seconds ?? 5}`;
+  if (e instanceof errors.FileMigrateError) return `FILE_MIGRATE_${err.newDc}`;
+  return typeof err.errorMessage === "string" ? err.errorMessage : null;
+}
+
+export async function openTelegramSource(
+  ref: TelegramRef,
+  config: { apiId: number; apiHash: string },
+  session: string | null,
+): Promise<TelegramSource> {
+  if (!session) throw new TelegramUnavailable("no_session");
+  const client = await connect(config, session);
+
+  const peer = peerOf(ref.chatId);
+  const resolve = async () => {
+    const id = peer.kind === "channel" ? Number(`-100${peer.id}`) : Number(ref.chatId);
+    try {
+      return await client.getInputEntity(id);
+    } catch {
+      // A fresh session does not know the channel's access hash yet: reading the dialogs fills the cache.
+      await client.getDialogs({ limit: 300 });
+      return client.getInputEntity(id);
+    }
+  };
+  const inputPeer = await resolve();
+
+  const fetchDocument = async (): Promise<Api.Document> => {
+    const [message] = await client.getMessages(inputPeer, { ids: [ref.messageId] });
+    if (!message) throw new TelegramUnavailable("not_found");
+    const media = message.media;
+    if (!(media instanceof Api.MessageMediaDocument) || !(media.document instanceof Api.Document)) throw new TelegramUnavailable("no_video");
+    return media.document;
+  };
+
+  let doc = await fetchDocument();
+  const location = () =>
+    new Api.InputDocumentFileLocation({ id: doc.id, accessHash: doc.accessHash, fileReference: doc.fileReference, thumbSize: "" });
+  let dc: number | null = null;
+
+  const api: TelegramFileApi = {
+    async getFile(offset, limit) {
+      const request = new Api.upload.GetFile({ location: location(), offset: bigInt(offset), limit, precise: false, cdnSupported: false });
+      try {
+        const result = dc === null ? await client.invoke(request) : await (await client.getSender(dc)).send(request);
+        if (!(result instanceof Api.upload.File)) throw new TelegramRpcError("CDN_REDIRECT_UNSUPPORTED");
+        const b = result.bytes;
+        return new Uint8Array(b.buffer, b.byteOffset, b.length);
+      } catch (e) {
+        const rpc = rpcMessage(e);
+        if (rpc) throw new TelegramRpcError(rpc);
+        throw e;
+      }
+    },
+    async refreshReference() {
+      doc = await fetchDocument();
+    },
+    async migrate(newDc) {
+      dc = newDc;
+    },
+  };
+  return new TelegramSource(api, doc.size.toJSNumber());
+}

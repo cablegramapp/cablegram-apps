@@ -15,7 +15,10 @@ import type { Entry, LibraryType, Show } from "./library";
 import { focusEl, focusFirst, keyFromEvent, moveFocus, registerPlatformKeys } from "./nav";
 import type { Key } from "./nav";
 import { pairLink, qrCanvas } from "./pairlink";
-import { engineFailureMessage, EMBEDDED, openEngine } from "./engine-adapter";
+import { engineFailureMessage, EMBEDDED, lazySource, openEngine } from "./engine-adapter";
+import { SourceError } from "tv-media";
+import type { ByteSource } from "tv-media";
+import type { TelegramRef } from "./telegram-identity";
 import type { EngineHandle } from "./engine-adapter";
 import { cueText, parseVtt, saveChoice, savedChoice, startWithSmart } from "./subtitles";
 import type { Cue, SmartSubtitle } from "./subtitles";
@@ -905,7 +908,7 @@ async function startPlayback(v: Title) {
     return;
   }
   if (cancelled) return;
-  if (playback.status !== "ready" || !playback.url) {
+  if (playback.status !== "ready" || (!playback.url && !playback.telegram)) {
     errorScreen("This video can't play here", playback.message ?? "This video can't play right now.",
       [button("Back to library", back), button("Try again", () => void startPlayback(v), "panel")], back);
     return;
@@ -913,13 +916,32 @@ async function startPlayback(v: Title) {
   // A missing subtitle never stops playback.
   const smart = await api.subtitles(v.id).catch(() => [] as SmartSubtitle[]);
   if (cancelled) return;
-  playerScreen(v, entry.profile, playback.url, undefined, 0, smart, playback.engine ? "engine" : "plain");
+  playerScreen(v, entry.profile, playback.url ?? "", undefined, 0, smart, playback.engine ? "engine" : "plain", playback.telegram);
+}
+
+/** Telegram bytes over MTProto (VITE_TG_DIRECT=1 builds only); failures become typed source errors the player explains. */
+async function telegramSource(ref: TelegramRef): Promise<ByteSource> {
+  try {
+    // Written out here (not via TG_DIRECT) so the bundler drops the whole Telegram chunk from builds without the flag.
+    if (import.meta.env.VITE_TG_DIRECT === "1") {
+      const [mod, config] = await Promise.all([import("./telegram"), api.telegramClientConfig()]);
+      return await mod.openTelegramSource(ref, config, localStorage.getItem(mod.SESSION_KEY));
+    }
+    throw new SourceError("telegram_error", "direct Telegram playback is not built in", undefined, "not_built");
+  } catch (e) {
+    if (e instanceof SourceError) throw e;
+    if (e instanceof ApiError) throw new SourceError(e.status === 403 ? "telegram_auth" : "telegram_error", e.code, e.status, e.code);
+    const reason = (e as { reason?: string }).reason;
+    if (reason === "no_session") throw new SourceError("telegram_auth", reason, undefined, reason);
+    if (reason === "no_video" || reason === "not_found") throw new SourceError("telegram_file", reason, undefined, reason);
+    throw new SourceError("telegram_error", e instanceof Error ? e.message : "telegram failed", undefined, "connect_failed");
+  }
 }
 
 /** How often a refused relay slot is retried before the player gives up (the browser's own extra range request often holds it briefly). */
 const SLOT_RETRIES = 4;
 
-function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attempt = 0, smart: SmartSubtitle[] = [], mode: "engine" | "plain" = "plain") {
+function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attempt = 0, smart: SmartSubtitle[] = [], mode: "engine" | "plain" = "plain", telegram?: TelegramRef) {
   const video = document.createElement("video");
   video.autoplay = true;
   let engine: EngineHandle | null = null;
@@ -1200,7 +1222,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
   });
 
   if (mode === "engine") {
-    engine = openEngine(video, url, engineStart, {
+    engine = openEngine(video, telegram ? lazySource(() => telegramSource(telegram)) : url, engineStart, {
       onError: (e) => {
         if (exited) return;
         exited = true;
@@ -1208,13 +1230,13 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
         engine?.destroy();
         engine = null;
         const message = engineFailureMessage(e);
-        if (message === null) {
+        if (message === null && url) {
           // A format the engine can't handle: the TV's own player may still manage it.
           playerScreen(t, p, url, at, 0, smart, "plain");
           return;
         }
         if (started) void save("stopped");
-        errorScreen("Couldn't play this video", message,
+        errorScreen("Couldn't play this video", message ?? "This TV can't play this video's format. It plays on the Android TV app.",
           [button("Back to library", () => libraryScreen()), button("Try again", () => void startPlayback(t), "panel")], () => libraryScreen());
       },
     });

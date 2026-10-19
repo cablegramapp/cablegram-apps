@@ -5,3 +5,5 @@
 export const API_BASE: string = (import.meta.env?.VITE_API_BASE as string | undefined) || "https://api.cablegram.app";
 /** The page the pairing QR opens (the web remote); the PIN also works in the phone app. */
 export const WEB_APP_BASE = "https://app.cablegram.app";
+/** Built with VITE_TG_DIRECT=1: Telegram titles play over MTProto from this TV (needs a Telegram session, see src/telegram.ts). */
+export const TG_DIRECT: boolean = import.meta.env?.VITE_TG_DIRECT === "1";

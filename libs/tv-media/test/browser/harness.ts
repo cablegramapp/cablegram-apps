@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { homedir } from "node:os";
@@ -7,11 +7,20 @@ import { build } from "esbuild";
 import { chromium, type Browser, type Page } from "playwright-core";
 import { FIXTURES } from "../helpers";
 
-const CHROME =
-  process.env.CHROME_PATH ??
-  join(homedir(), "Library/Caches/ms-playwright/chromium-1243/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+/** CHROME_PATH, else the newest Chrome for Testing in the Playwright cache. */
+function findChrome(): string {
+  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+  const cache = join(homedir(), "Library/Caches/ms-playwright");
+  const dirs = existsSync(cache) ? readdirSync(cache).filter((d) => /^chromium-\d+$/.test(d)).sort((a, b) => Number(b.slice(9)) - Number(a.slice(9))) : [];
+  for (const d of dirs) {
+    const p = join(cache, d, "chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing");
+    if (existsSync(p)) return p;
+  }
+  return "";
+}
+const CHROME = findChrome();
 
-export const chromeAvailable = existsSync(CHROME);
+export const chromeAvailable = CHROME !== "";
 
 export interface Harness {
   page: Page;

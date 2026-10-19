@@ -20,7 +20,11 @@
     "vitest": "3.2.4"
   },
   "dependencies": {
+    "big-integer": "^1.6.52",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
     "qrcode-generator": "^2.0.4",
+    "telegram": "^2.26.22",
     "tv-media": "file:../../libs/tv-media"
   }
 }

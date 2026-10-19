@@ -1,7 +1,7 @@
 // Glue between the tv-media engine and the player screen: turns the engine's tracks into menu entries, keeps the
 // embedded subtitle cues sorted for drawing, and maps engine errors to the app's wording.
-import { createPlayer, HttpRangeSource } from "tv-media";
-import type { Player, PlayerError, Track } from "tv-media";
+import { createPlayer, HttpRangeSource, SourceError } from "tv-media";
+import type { ByteSource, Player, PlayerError, Track } from "tv-media";
 import { relayMessage } from "./api";
 import type { HudTrack } from "./hud";
 import type { Cue } from "./subtitles";
@@ -47,8 +47,29 @@ export interface EngineEvents {
   onError(e: PlayerError): void;
 }
 
-export function openEngine(video: HTMLVideoElement, url: string, startAt: number, events: EngineEvents): EngineHandle {
-  const player = createPlayer(video, new HttpRangeSource(url), { startAt: startAt > 0 ? startAt : undefined });
+/** A source that is only created when the engine opens it (Telegram needs a connection first). */
+export function lazySource(create: () => Promise<ByteSource>): ByteSource {
+  let inner: ByteSource | null = null;
+  let closed = false;
+  return {
+    get size() { return inner ? inner.size : null; },
+    async open() {
+      const made = await create();
+      if (closed) { made.close(); throw new SourceError("source_aborted", "closed before it opened"); }
+      inner = made;
+      await made.open();
+    },
+    read(offset, length, signal) {
+      if (!inner) throw new SourceError("source_network", "source is not open");
+      return inner.read(offset, length, signal);
+    },
+    close() { closed = true; inner?.close(); },
+  };
+}
+
+/** [source] is a URL for HTTP range reads, or a ready ByteSource (Telegram). */
+export function openEngine(video: HTMLVideoElement, source: string | ByteSource, startAt: number, events: EngineEvents): EngineHandle {
+  const player = createPlayer(video, typeof source === "string" ? new HttpRangeSource(source) : source, { startAt: startAt > 0 ? startAt : undefined });
   const cues = new Map<string, Cue[]>();
   player.on("cues", (trackId, fresh) => {
     const key = EMBEDDED + trackId;
@@ -74,7 +95,10 @@ export function engineFailureMessage(e: PlayerError): string | null {
     case "source_http": return relayMessage(e.status ?? null, e.code);
     case "source_network": return relayMessage(null, undefined);
     case "telegram_flood": return "Telegram is limiting downloads right now. Try again in a few minutes.";
-    case "telegram_auth": return "This TV isn't signed in to Telegram any more.";
+    case "telegram_auth":
+      if (e.code === "telegram_direct_not_allowed") return "Direct Telegram playback isn't turned on for this TV.";
+      if (e.code === "no_session") return "Telegram isn't set up on this TV yet.";
+      return "This TV isn't signed in to Telegram any more.";
     case "telegram_file": return "This video is no longer available in Telegram.";
     case "telegram_error": return "Telegram couldn't deliver this video.";
     default: return null; // unsupported_*, decode, malformed, buffer: fall back to the plain player

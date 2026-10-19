@@ -31,6 +31,8 @@ const routes = {
   "POST /api/profiles/switch-requests": { requestId: "r1", status: "approved" },
   "GET /api/me": { devices: [{ id: "ph1", kind: "phone" }] },
   "POST /api/relay/ticket": { ticket: "rt" },
+  // Dummy application identity (not a real api_id/api_hash): enough for the TV app to build a Telegram client.
+  "GET /api/telegram/client-config": { api_id: 1, api_hash: "0".repeat(32) },
   // Sintel has a Cablegram subtitle, so the player's subtitle drawing can be seen.
   "GET /api/subtitles/playback/item/1": { subtitles: [{ trackId: "sub1", language: "en", label: "English", isDefault: true,
     url: "/api/subtitles/sub1/content",
