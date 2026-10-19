@@ -95,9 +95,16 @@ async function profiles() {
   if (list.length === 1 && !list[0].pinSet) { openProfile(list[0]); return; }
   show([
     h("h1", undefined, "Who's watching?"),
-    h("div", "row", undefined, list.map((p) => focusable("div", "profile", p.name, () => selectProfile(p)))),
+    h("div", "row", undefined, list.map((p) => profileTile(p))),
     focusable("div", "btn", "Unpair this TV", () => { saveSession(null); pair(); }),
   ]);
+}
+
+function profileTile(p: Profile): HTMLElement {
+  const el = focusable("div", "profile", "", () => selectProfile(p));
+  el.appendChild(h("div", "avatar-disc avatar-big", initials(p.name)));
+  el.appendChild(h("div", "profile-name", p.name));
+  return el;
 }
 
 function selectProfile(p: Profile) {
@@ -127,35 +134,139 @@ function openProfile(p: Profile) {
 
 // ---- Library ----------------------------------------------------------------------------------------------------
 
-async function library(p: Profile) {
+type Section = "home" | "continue" | "list";
+
+const GRADIENTS: Array<[string, string]> = [
+  ["#8a5a2b", "#1e140c"], ["#2d6b66", "#0c1a19"], ["#6e3558", "#1a0d16"], ["#3b4f8a", "#0e1322"],
+  ["#6b6a2e", "#19180b"], ["#8a3f32", "#1f0e0b"], ["#4a3f7a", "#110f1f"], ["#2f6b45", "#0b1a10"],
+];
+
+/** The same title always gets the same colours, so a missing poster still looks deliberate. */
+export function placeholderGradient(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  const [top, bottom] = GRADIENTS[Math.abs(hash) % GRADIENTS.length];
+  return `linear-gradient(160deg, ${top}, ${bottom})`;
+}
+
+function duration(seconds?: number): string {
+  if (!seconds) return "";
+  const m = Math.round(seconds / 60);
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+}
+
+function sourceBadge(t: Title): string {
+  const kinds = t.sources.map((s) => s.kind);
+  const names: string[] = [];
+  if (kinds.indexOf("telegram") >= 0) names.push("Telegram");
+  if (kinds.indexOf("own_cloud") >= 0 || kinds.indexOf("cloud_object") >= 0) names.push("Cloud");
+  if (t.sources.some((s) => s.kind !== "telegram" && s.kind !== "own_cloud" && s.kind !== "web" && !!s.originIdentity)) names.push("Phone");
+  return names.join(" · ");
+}
+
+function initials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+}
+
+async function library(p: Profile, section: Section = "home") {
   show([h("h1", undefined, "Loading your library…")]);
   let items: Title[];
   try {
     items = await api.catalog(p.id);
   } catch {
-    show([h("h1", undefined, "Can't load your library"), focusable("div", "btn", "Try again", () => library(p))], profiles);
+    show([h("h1", undefined, "Can't load your library"), focusable("div", "btn", "Try again", () => library(p, section))], profiles);
     return;
   }
   const continueRow = items.filter((t) => t.resumeSeconds);
   const myList = items.filter((t) => t.inMyList);
-  const rows: Node[] = [h("h1", undefined, `Hi, ${p.name}`)];
+
+  // Hero: describes whichever card has focus.
+  const heroTitle = h("div", "hero-title", "");
+  const heroMeta = h("div", "hero-meta", "");
+  const heroBar = h("div", "hero-bar");
+  const heroBarFill = h("i");
+  heroBar.appendChild(heroBarFill);
+  const heroHint = h("div", "hero-hint", "");
+  const hero = h("div", "hero", undefined, [heroTitle, heroMeta, heroBar, heroHint]);
+  const describe = (t: Title) => {
+    heroTitle.textContent = t.year ? `${t.title} (${t.year})` : t.title;
+    heroMeta.textContent = "";
+    const chips = [duration(t.durationSeconds), sourceBadge(t)].filter(Boolean);
+    chips.forEach((c, i) => heroMeta.appendChild(h("span", i === 0 ? "chip chip-hot" : "chip", c)));
+    const pct = t.resumeSeconds && t.durationSeconds ? Math.min(100, (t.resumeSeconds / t.durationSeconds) * 100) : 0;
+    heroBar.style.display = pct ? "block" : "none";
+    heroBarFill.style.width = `${pct}%`;
+    heroHint.textContent = t.resumeSeconds ? "OK to resume" : "OK to play";
+  };
+
+  const rows = h("div", "rows");
   const addRow = (title: string, list: Title[]) => {
     if (!list.length) return;
-    rows.push(h("h2", undefined, title), h("div", "row", undefined, list.map((t) => card(t, p))));
+    const strip = h("div", "row", undefined, list.map((t) => card(t, p, describe)));
+    rows.appendChild(h("div", "row-block", undefined, [h("h2", undefined, `${title}`, [h("span", "count", String(list.length))]), strip]));
   };
-  addRow("Continue watching", continueRow);
-  addRow("My list", myList);
-  addRow("All titles", items);
-  if (!items.length) rows.push(h("p", undefined, "Your library is empty. Add videos from the Cablegram phone app."));
-  show(rows, profiles);
+  if (section === "home") { addRow("Continue watching", continueRow); addRow("My list", myList); addRow("All titles", items); }
+  else if (section === "continue") addRow("Continue watching", continueRow);
+  else addRow("My list", myList);
+  if (!rows.firstChild) {
+    const empty = section === "home" ? "Your library is empty. Add videos from the Cablegram phone app."
+      : section === "continue" ? "Nothing to resume yet." : "Nothing in My list yet.";
+    rows.appendChild(h("p", "empty", empty));
+  }
+
+  // Moving to another row brings that row up under the hero.
+  rows.addEventListener("focusin", (e) => {
+    let el = e.target as HTMLElement | null;
+    while (el && el !== rows && el.className.indexOf("row-block") < 0) el = el.parentElement;
+    if (el && el !== rows) rows.scrollTop = el.offsetTop - 8;
+  });
+
+  const nav = (label: string, icon: string, target: Section) => {
+    const el = focusable("div", `rail-item${section === target ? " current" : ""}`, "", () => library(p, target));
+    el.appendChild(h("div", "rail-icon", icon));
+    el.appendChild(h("div", "rail-label", label));
+    return el;
+  };
+  const avatar = focusable("div", "rail-avatar", "", () => profiles());
+  avatar.appendChild(h("div", "avatar-disc", initials(p.name)));
+  avatar.appendChild(h("div", "rail-label", p.name));
+  const settings = focusable("div", "rail-item rail-bottom", "", () => {
+    saveSession(null); pair();
+  });
+  settings.appendChild(h("div", "rail-icon", "⎋"));
+  settings.appendChild(h("div", "rail-label", "Unpair"));
+  const rail = h("div", "rail", undefined, [avatar, nav("Home", "⌂", "home"), nav("Continue", "▶", "continue"), nav("My list", "☆", "list"), settings]);
+
+  const clock = h("div", "clock", "");
+  const tick = () => { const d = new Date(); clock.textContent = `${d.getHours()}:${("0" + d.getMinutes()).slice(-2)}`; };
+  tick();
+  const clockTimer = window.setInterval(() => { if (!clock.isConnected) clearInterval(clockTimer); else tick(); }, 30_000);
+  const top = h("div", "topbar", undefined, [h("div", "logo", undefined, [h("span", "logo-dot"), h("span", undefined, "Cablegram")]), clock]);
+
+  const main = h("div", "main", undefined, [top, hero, rows]);
+  show([h("div", "shell", undefined, [rail, main])], profiles);
+  const first = rows.querySelector(".card") as HTMLElement | null;
+  if (first) first.focus(); else focusFirst(rail);
 }
 
-function card(t: Title, p: Profile): HTMLElement {
+function card(t: Title, p: Profile, onFocus: (t: Title) => void): HTMLElement {
   const art = h("div", "art");
   if (t.posterUrl) art.style.backgroundImage = `url("${t.posterUrl.replace(/"/g, "%22")}")`;
+  else {
+    art.style.backgroundImage = placeholderGradient(t.id + t.title);
+    art.appendChild(h("div", "art-letters", initials(t.title)));
+  }
+  const badge = sourceBadge(t);
+  if (badge) art.appendChild(h("div", "badge", badge.split(" · ")[0]));
+  if (t.resumeSeconds && t.durationSeconds) {
+    const fill = h("i");
+    fill.style.width = `${Math.min(100, (t.resumeSeconds / t.durationSeconds) * 100)}%`;
+    art.appendChild(h("div", "card-bar", undefined, [fill]));
+  }
   const el = focusable("div", "card", "", () => play(t, p, () => library(p)));
   el.appendChild(art);
   el.appendChild(h("div", "name", t.title));
+  el.addEventListener("focus", () => onFocus(t));
   return el;
 }
 
