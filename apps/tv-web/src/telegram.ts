@@ -4,7 +4,7 @@
 // allowed per TV), never from this repository. The account session is a GramJS StringSession; for now a developer
 // provides it in localStorage["cablegram.tv.tgSession"] (a TV sign-in screen is a later milestone). Never log it.
 import "./telegram-env";
-import { TelegramRpcError, TelegramSource } from "tv-media";
+import { SourceError, TelegramRpcError, TelegramSource } from "tv-media";
 import type { TelegramFileApi } from "tv-media";
 import bigInt from "big-integer";
 import { Api, TelegramClient, errors } from "telegram";
@@ -13,6 +13,17 @@ import { peerOf } from "./telegram-identity";
 import type { TelegramRef } from "./telegram-identity";
 
 export const SESSION_KEY = "cablegram.tv.tgSession";
+
+/** Progress markers for debugging on a TV or in the live check (never ids, names or credentials). */
+const note = (step: string) => console.info(`[tg] ${step}`);
+
+/** A step that never answers must end in an error the TV can show, not an endless "Starting playback". */
+function within<T>(step: string, ms: number, work: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new SourceError("telegram_error", `Telegram did not answer (${step})`, undefined, `timeout_${step}`)), ms);
+    work.then((v) => { clearTimeout(timer); resolve(v); }, (e) => { clearTimeout(timer); reject(e); });
+  });
+}
 
 export class TelegramUnavailable extends Error {
   constructor(readonly reason: "no_session" | "no_video" | "not_found") {
@@ -33,7 +44,9 @@ async function connect(config: { apiId: number; apiHash: string }, session: stri
     systemVersion: "1.0",
     appVersion: "TV Web",
   });
-  await client.connect();
+  note("connecting");
+  await within("connect", 30_000, client.connect());
+  note("connected");
   shared = { client, key };
   return client;
 }
@@ -58,17 +71,19 @@ export async function openTelegramSource(
   const resolve = async () => {
     const id = peer.kind === "channel" ? Number(`-100${peer.id}`) : Number(ref.chatId);
     try {
-      return await client.getInputEntity(id);
+      return await within("find_chat", 20_000, client.getInputEntity(id));
     } catch {
       // A fresh session does not know the channel's access hash yet: reading the dialogs fills the cache.
-      await client.getDialogs({ limit: 300 });
-      return client.getInputEntity(id);
+      note("chat not cached, reading dialogs");
+      await within("dialogs", 60_000, client.getDialogs({ limit: 300 }));
+      return within("find_chat", 20_000, client.getInputEntity(id));
     }
   };
   const inputPeer = await resolve();
+  note("chat found");
 
   const fetchDocument = async (): Promise<Api.Document> => {
-    const [message] = await client.getMessages(inputPeer, { ids: [ref.messageId] });
+    const [message] = await within("message", 30_000, client.getMessages(inputPeer, { ids: [ref.messageId] }));
     if (!message) throw new TelegramUnavailable("not_found");
     const media = message.media;
     if (!(media instanceof Api.MessageMediaDocument) || !(media.document instanceof Api.Document)) throw new TelegramUnavailable("no_video");
@@ -76,6 +91,7 @@ export async function openTelegramSource(
   };
 
   let doc = await fetchDocument();
+  note(`video message found (${Math.round(doc.size.toJSNumber() / 1048576)} MB, ${doc.mimeType})`);
   const location = () =>
     new Api.InputDocumentFileLocation({ id: doc.id, accessHash: doc.accessHash, fileReference: doc.fileReference, thumbSize: "" });
   let dc: number | null = null;
@@ -84,9 +100,10 @@ export async function openTelegramSource(
     async getFile(offset, limit) {
       const request = new Api.upload.GetFile({ location: location(), offset: bigInt(offset), limit, precise: false, cdnSupported: false });
       try {
-        const result = dc === null ? await client.invoke(request) : await (await client.getSender(dc)).send(request);
+        const result = await within("download", 45_000, dc === null ? client.invoke(request) : client.getSender(dc).then((sender) => sender.send(request)));
         if (!(result instanceof Api.upload.File)) throw new TelegramRpcError("CDN_REDIRECT_UNSUPPORTED");
         const b = result.bytes;
+        if (offset === 0 || offset % (16 * 1048576) === 0) note(`downloaded a chunk at ${Math.round(offset / 1048576)} MB`);
         return new Uint8Array(b.buffer, b.byteOffset, b.length);
       } catch (e) {
         const rpc = rpcMessage(e);

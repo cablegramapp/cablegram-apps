@@ -53,6 +53,8 @@ let code = 1;
 try {
   for (let i = 0; i < 50; i++) { try { if ((await fetch(`http://localhost:${MOCK_PORT}/api/me`)).ok) break; } catch { /* starting */ } await sleep(100); }
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+  page.on("console", (m) => { if (m.text().startsWith("[tg]")) console.log("  " + m.text()); });
+  page.on("pageerror", (e) => console.log("  [page error]", e.message.slice(0, 200)));
   await page.addInitScript((s) => localStorage.setItem("cablegram.tv.tgSession", s), process.env.TG_SESSION);
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.waitForFunction(() => /Who's watching/.test(document.body.innerText), null, { timeout: 15000 });
@@ -74,7 +76,10 @@ try {
     if (s.t > 3 || /Couldn't play this video|can't play/.test(s.text)) break;
     await sleep(500);
   }
-  if (!(s.t > 3)) { console.log(`FAIL did not start: "${s.text}"`); }
+  if (!(s.t > 3)) {
+    const media = await page.evaluate(() => { const v = document.querySelector("video"); if (!v) return "no video element"; const r = []; for (let i = 0; i < v.buffered.length; i++) r.push(`${v.buffered.start(i).toFixed(1)}-${v.buffered.end(i).toFixed(1)}`); return `readyState ${v.readyState}, paused ${v.paused}, buffered [${r.join(", ")}], error ${v.error ? v.error.message : "none"}`; });
+    console.log(`FAIL did not start: "${s.text}"\n     ${media}`);
+  }
   else {
     console.log(`ok   playing over MTProto: ${s.t.toFixed(1)} s of ${s.dur.toFixed(0)} s (${s.src})`);
     const target = Math.max(5, Math.floor(s.dur * 0.6));
