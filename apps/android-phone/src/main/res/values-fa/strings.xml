@@ -327,6 +327,7 @@
     <string name="ui_enter_a_valid_tunnel_address_or_leave_it_empty_773859" formatted="false">"نشانی معتبر تونل را وارد کنید یا این قسمت را خالی بگذارید."</string>
     <string name="ui_enter_password_7014af" formatted="false">"ورود رمز عبور"</string>
     <string name="ui_enter_the_6_digit_code_we_sent_to_it_expires_in_15_min_89e634">"کد شش‌رقمی ارسال‌شده به %1$s را وارد کنید. این کد تا ۱۵ دقیقه معتبر است."</string>
+    <string name="ui_didn_t_get_it_check_your_spam_or_junk_folder_23f145" formatted="false">"کد را دریافت نکردید؟ پوشهٔ هرزنامه (Spam) را بررسی کنید."</string>
     <string name="ui_enter_the_6_digit_pin_shown_on_the_tv_or_tap_refresh_c_52ae0e" formatted="false">"پین شش‌رقمی نمایش‌داده‌شده روی تلویزیون را وارد کنید یا در تلویزیون «تازه‌سازی کد» را بزنید."</string>
     <string name="ui_enter_the_details_0aa04d" formatted="false">"جزئیات را وارد کنید"</string>
     <string name="ui_enter_the_key_with_your_opensubtitles_username_and_pas_5e0f85" formatted="false">"کلید را با نام کاربری و رمز عبور OpenSubtitles خود وارد کنید."</string>
