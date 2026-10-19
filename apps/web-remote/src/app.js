@@ -202,7 +202,7 @@ function renderCode(email, error = "") {
   };
   signinPage(
     h("h1", {}, "Check your email"),
-    h("p", {}, `Enter the 6-digit code we sent to ${email}. It expires in 15 minutes.`),
+    h("p", {}, `Enter the 6-digit code we sent to ${email}. It expires in 15 minutes. Didn't get it? Check your spam or junk folder.`),
     form,
     errorLine,
     h("p", { class: "center" },
