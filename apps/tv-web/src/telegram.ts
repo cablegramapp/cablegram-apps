@@ -31,12 +31,25 @@ export class TelegramUnavailable extends Error {
   }
 }
 
+const WEB_DC_HOSTS: Record<number, string> = {
+  1: "pluto.web.telegram.org",
+  2: "venus.web.telegram.org",
+  3: "aurora.web.telegram.org",
+  4: "vesta.web.telegram.org",
+  5: "flora.web.telegram.org",
+};
+
 let shared: { client: TelegramClient; key: string } | null = null;
 
 async function connect(config: { apiId: number; apiHash: string }, session: string): Promise<TelegramClient> {
   const key = `${config.apiId}:${session.length}`;
   if (shared && shared.key === key) return shared.client;
-  const client = new TelegramClient(new StringSession(session), config.apiId, config.apiHash, {
+  const stored = new StringSession(session);
+  // A session string made on a computer (TCP) remembers the data centre's IP address, but a browser can only reach
+  // Telegram through its WebSocket hosts: wss://<name>.web.telegram.org. Same auth key, different address.
+  const webHost = WEB_DC_HOSTS[stored.dcId];
+  if (webHost) stored.setDC(stored.dcId, webHost, 443);
+  const client = new TelegramClient(stored, config.apiId, config.apiHash, {
     connectionRetries: 3,
     useWSS: true,
     floodSleepThreshold: 0, // TelegramSource decides how long to wait
