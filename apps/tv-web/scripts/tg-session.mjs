@@ -6,8 +6,8 @@ import readline from "node:readline/promises";
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 
-const apiId = Number(process.env.TG_API_ID);
-const apiHash = process.env.TG_API_HASH;
+const apiId = Number(process.env.TG_API_ID || process.env.TELEGRAM_API_ID);
+const apiHash = process.env.TG_API_HASH || process.env.TELEGRAM_API_HASH;
 if (!apiId || !apiHash) { console.error("set TG_API_ID and TG_API_HASH"); process.exit(2); }
 const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
 const ask = (q) => rl.question(q);

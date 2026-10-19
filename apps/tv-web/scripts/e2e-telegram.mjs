@@ -13,6 +13,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
+// The control plane's own names work too, so `set -a; . …/control-plane/.env; set +a` is enough.
+process.env.TG_API_ID ||= process.env.TELEGRAM_API_ID;
+process.env.TG_API_HASH ||= process.env.TELEGRAM_API_HASH;
 const need = ["TG_API_ID", "TG_API_HASH", "TG_SESSION", "TG_IDENTITY"].filter((k) => !process.env[k]);
 if (need.length) { console.error(`missing environment: ${need.join(", ")}`); process.exit(2); }
 if (!/^tg:-?\d+:\d+$/.test(process.env.TG_IDENTITY)) { console.error("TG_IDENTITY must look like tg:-1001234567890:42"); process.exit(2); }
