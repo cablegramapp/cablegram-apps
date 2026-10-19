@@ -139,7 +139,7 @@ private fun tourPages(ui: android.content.res.Resources) = listOf(
 /** Already set up: the page shows that instead of its setup button. */
 private fun connectedLabel(viewModel: PhoneViewModel, step: TourStep, subtitlesConnected: Boolean, ui: android.content.res.Resources): String? = when (step) {
     TourStep.Tv -> ui.getString(R.string.ui_tv_connected_5710cb).takeIf { viewModel.paired }
-    TourStep.Telegram -> ui.getString(R.string.ui_telegram_connected_815464).takeIf { viewModel.telegramLink?.linked == true }
+    TourStep.Telegram -> ui.getString(R.string.ui_telegram_connected_815464).takeIf { viewModel.telegramSignedInHere }
     TourStep.Drive -> ui.getString(R.string.ui_cloud_storage_connected_fe282c).takeIf { viewModel.cloudConnected }
     TourStep.Subtitles -> ui.getString(R.string.ui_subtitle_account_connected_c16774).takeIf { subtitlesConnected }
     TourStep.Welcome, TourStep.Ready -> null
