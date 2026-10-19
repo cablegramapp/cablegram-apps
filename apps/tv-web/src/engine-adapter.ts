@@ -15,6 +15,15 @@ const LANGUAGES: Record<string, string> = {
 
 export const EMBEDDED = "emb:";
 
+const CODEC_NAMES: Record<string, string> = { ac3: "Dolby Digital (AC-3)", eac3: "Dolby Digital Plus (E-AC-3)", dts: "DTS", truehd: "Dolby TrueHD", flac: "FLAC", mp3: "MP3", opus: "Opus", aac: "AAC" };
+
+/** What the viewer is told when the file has sound but this TV cannot decode any of it; null when there is nothing to say. */
+export function silentVideoNotice(playable: number, unplayable: string[]): string | null {
+  if (playable > 0 || unplayable.length === 0) return null;
+  const names = unplayable.map((c) => CODEC_NAMES[c.toLowerCase()] ?? c).filter((n, i, all) => all.indexOf(n) === i);
+  return `This TV can't play this video's sound (${names.join(", ")}). The picture plays without it.`;
+}
+
 /** "English · Commentary" from a track's language and name; falls back to "Track 2". */
 export function trackLabel(t: { language?: string; name?: string }, position: number): string {
   const lang = t.language ? LANGUAGES[t.language.toLowerCase()] ?? t.language.toUpperCase() : "";

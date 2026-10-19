@@ -16,7 +16,7 @@ import { focusEl, focusFirst, keyFromEvent, moveFocus, registerPlatformKeys } fr
 import type { Key } from "./nav";
 import { pairLink, qrCanvas } from "./pairlink";
 import * as diag from "./diagnostics";
-import { engineFailureMessage, EMBEDDED, lazySource, openEngine } from "./engine-adapter";
+import { engineFailureMessage, EMBEDDED, lazySource, openEngine, silentVideoNotice } from "./engine-adapter";
 import { SourceError } from "tv-media";
 import type { ByteSource } from "tv-media";
 import type { TelegramRef } from "./telegram-identity";
@@ -1461,6 +1461,12 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
               : button("Try again", () => void startPlayback(t), "panel")], () => libraryScreen());
       },
     });
+    // For inspection from a debugger on the TV (tracks, codecs); not used by the app.
+    (window as unknown as { __player?: unknown }).__player = engine.player;
+    engine.player.ready.then(() => {
+      const say = silentVideoNotice(engine?.audioTracks().length ?? 0, engine?.player.unplayableAudio.map((t) => t.codec) ?? []);
+      if (say) notice(say, 9_000);
+    }).catch(() => undefined);
   } else video.src = url;
 
   const dpad: Partial<Record<Key, DpadKey>> = { up: "up", down: "down", left: "left", right: "right", enter: "ok", back: "back" };

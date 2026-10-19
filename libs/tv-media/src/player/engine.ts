@@ -102,6 +102,11 @@ export class Player extends Emitter<PlayerEvents> {
     return this.info ? this.info.tracks.filter((t) => t.kind === "subtitle" && TEXT_SUBTITLES.has(t.codec)) : [];
   }
 
+  /** Audio tracks in the file that this TV's decoders refuse (for example AC-3 on some TVs): the video plays without them. */
+  get unplayableAudio(): Track[] {
+    return this.audioTracks.filter((t) => !this.supported(t));
+  }
+
   get currentAudio(): Track | null {
     return this.lanes.find((l) => l.track.kind === "audio")?.track ?? null;
   }

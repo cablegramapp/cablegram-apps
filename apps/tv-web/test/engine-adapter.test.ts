@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { engineFailureMessage, insertCues, trackLabel } from "../src/engine-adapter";
+import { engineFailureMessage, insertCues, silentVideoNotice, trackLabel } from "../src/engine-adapter";
 
 describe("trackLabel", () => {
   it("uses the language name and a distinct track name", () => {
@@ -29,5 +29,14 @@ describe("engineFailureMessage", () => {
     expect(engineFailureMessage(err("telegram_flood"))).toContain("Telegram");
     expect(engineFailureMessage(err("unsupported_codec"))).toBeNull();
     expect(engineFailureMessage(err("decode"))).toBeNull();
+  });
+});
+
+describe("silentVideoNotice", () => {
+  it("tells the viewer only when there is sound this TV cannot decode and nothing else to hear", () => {
+    expect(silentVideoNotice(0, ["ac3"])).toContain("Dolby Digital (AC-3)");
+    expect(silentVideoNotice(0, ["eac3", "eac3", "dts"])).toContain("Dolby Digital Plus (E-AC-3), DTS");
+    expect(silentVideoNotice(1, ["ac3"])).toBeNull();
+    expect(silentVideoNotice(0, [])).toBeNull();
   });
 });
