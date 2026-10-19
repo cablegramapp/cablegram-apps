@@ -20,6 +20,7 @@ import { engineFailureMessage, EMBEDDED, lazySource, openEngine } from "./engine
 import { SourceError } from "tv-media";
 import type { ByteSource } from "tv-media";
 import type { TelegramRef } from "./telegram-identity";
+import { checkCode, clearSession, newTvKeys, openSealed, saveSession, savedSession } from "./telegram-link";
 import type { EngineHandle } from "./engine-adapter";
 import { cueText, parseVtt, saveChoice, savedChoice, startWithSmart } from "./subtitles";
 import type { Cue, SmartSubtitle } from "./subtitles";
@@ -495,6 +496,7 @@ async function loadLibrary() {
       [button("Try again", () => loadLibrary())], () => picker());
     return;
   }
+  void telegramHousekeeping();
   libraryScreen();
   if (connectedWelcome) { connectedWelcome = false; showConnectedWelcome(); }
 }
@@ -990,6 +992,7 @@ async function startPlayback(v: Title) {
       [button("Back to library", back), button("Try again", () => void startPlayback(v), "panel")], back);
     return;
   }
+  if (playback.telegram && !savedSession(entry.account.sessionId)) { askToConnectTelegram(v); return; }
   // A missing subtitle never stops playback.
   const smart = await api.subtitles(v.id).catch(() => [] as SmartSubtitle[]);
   if (cancelled) return;
@@ -1002,7 +1005,7 @@ async function telegramSource(ref: TelegramRef): Promise<ByteSource> {
     // Written out here (not via TG_DIRECT) so the bundler drops the whole Telegram chunk from builds without the flag.
     if (import.meta.env.VITE_TG_DIRECT === "1") {
       const [mod, config] = await Promise.all([import("./telegram"), api.telegramClientConfig()]);
-      return await mod.openTelegramSource(ref, config, localStorage.getItem(mod.SESSION_KEY));
+      return await mod.openTelegramSource(ref, config, current ? savedSession(current.account.sessionId) : null);
     }
     throw new SourceError("telegram_error", "direct Telegram playback is not built in", undefined, "not_built");
   } catch (e) {
@@ -1013,6 +1016,143 @@ async function telegramSource(ref: TelegramRef): Promise<ByteSource> {
     if (reason === "no_video" || reason === "not_found") throw new SourceError("telegram_file", reason, undefined, reason);
     throw new SourceError("telegram_error", e instanceof Error ? e.message : "telegram failed", undefined, "connect_failed");
   }
+}
+
+// ---- Telegram sign-in on the TV ------------------------------------------------------------------------------------
+
+/** The GramJS side, only in builds with VITE_TG_DIRECT=1 (written out so other builds drop the whole chunk). */
+async function telegramModule() {
+  if (import.meta.env.VITE_TG_DIRECT === "1") return import("./telegram");
+  throw new Error("direct Telegram playback is not built in");
+}
+
+/** A card in the middle of the screen: what is happening, what to do, and a way out. */
+function telegramCard(title: string, lines: string[], actions: Focusable[], big?: string, back: (() => void) | null = null) {
+  if (actions[0]) actions[0].setAttribute("data-autofocus", "");
+  show([h("div", "player-start", undefined, [h("div", "start-card tg-card", undefined, [
+    h("div", "start-title", title),
+    ...lines.map((l) => h("div", "start-sub", l)),
+    ...(big ? [h("div", "tg-code ltr", big)] : []),
+    h("div", "stack tg-actions", undefined, actions),
+  ])])], back);
+}
+
+/** The first time a Telegram title is played on this TV: explain, and ask before signing in to anyone's Telegram. */
+async function askToConnectTelegram(v: Title) {
+  const back = () => libraryScreen();
+  telegramCard("Connect Telegram to this TV?", ["Checking your account…"], [button("Back to library", back, "raised")], undefined, back);
+  try {
+    const link = await api.telegramLink();
+    if (!link.linked) {
+      errorScreen("Telegram isn't connected yet", "Open Cablegram on your phone, go to Import, connect your Telegram account, then try this video again.",
+        [button("Back to library", back), button("Try again", () => void askToConnectTelegram(v), "panel")], back);
+      return;
+    }
+    if (!link.direct) {
+      errorScreen("Telegram isn't allowed on this TV", "This TV is a temporary TV, so Telegram videos play through your phone instead. The owner can allow Telegram on this TV in the phone app.",
+        [button("Back to library", back)], back);
+      return;
+    }
+  } catch {
+    errorScreen("Can't reach Cablegram", "Check the TV's internet connection and try again.", [button("Back to library", back), button("Try again", () => void askToConnectTelegram(v), "panel")], back);
+    return;
+  }
+  telegramCard("Connect Telegram to this TV?", [
+    "This video is stored in your Telegram. To play it, this TV signs in to your Telegram account, and your phone approves it.",
+    "Your Telegram password never goes through Cablegram. You can end the TV's access any time from Telegram's Devices list or the Cablegram app.",
+  ], [button("Connect with my phone", () => void connectTelegram(v)), button("Not now", back, "raised")], undefined, back);
+}
+
+/** Posts the login link for the phone, waits for it to approve, and asks for the two-step password on the phone if needed. */
+async function connectTelegram(v: Title) {
+  const entry = current;
+  if (!entry) return;
+  const accountId = entry.account.sessionId;
+  let cancelled = false;
+  const back = () => { cancelled = true; libraryScreen(); };
+  const cancel = () => button("Cancel", back, "raised");
+  telegramCard("Connecting Telegram…", ["Getting ready"], [cancel()], undefined, back);
+  const retry = [button("Back to library", () => libraryScreen()), button("Try again", () => void askToConnectTelegram(v), "panel")];
+  try {
+    const [mod, config] = await Promise.all([telegramModule(), api.telegramClientConfig()]);
+    let requestId = "";
+    let waitingShown = false;
+    const session = await mod.loginWithPhone(config, {
+      cancelled: () => cancelled,
+      postLink: async (link) => {
+        requestId = await api.postTelegramLogin(link);
+        if (!waitingShown && !cancelled) {
+          waitingShown = true;
+          telegramCard("Approve on your phone", [`Open Cablegram on your phone and tap Allow to let ${deviceName()} use your Telegram.`, "This takes a few seconds."], [cancel()], undefined, back);
+        }
+      },
+      phoneState: async () => (requestId ? api.telegramLoginState(requestId) : { state: "pending" }),
+      password: (hint, attempt) => passwordFromPhone(hint, attempt, () => cancelled, back),
+    });
+    if (cancelled) return;
+    saveSession(accountId, session);
+    void startPlayback(v);
+  } catch (e) {
+    if (cancelled) return;
+    const code = e instanceof ApiError ? e.code : (e as { errorMessage?: string; code?: string }).errorMessage ?? (e as { code?: string }).code;
+    const reason = (e as { reason?: string }).reason;
+    if (e instanceof ApiError && e.code === "telegram_not_linked") {
+      errorScreen("Telegram isn't connected yet", "Open Cablegram on your phone, go to Import, connect your Telegram account, then try again.", retry, () => libraryScreen());
+    } else if (e instanceof ApiError && e.code === "telegram_not_allowed_on_temporary_tv") {
+      errorScreen("Telegram isn't allowed on this TV", "The owner can allow it for this temporary TV in the phone app.", [retry[0]], () => libraryScreen());
+    } else if (reason === "denied") {
+      errorScreen("Your phone didn't allow it", "Nothing was connected. You can try again whenever you like.", retry, () => libraryScreen());
+    } else if (reason === "password") {
+      errorScreen("The password wasn't entered", "Telegram needs your two-step password to finish. Try again and type it on your phone when it asks.", retry, () => libraryScreen());
+    } else {
+      errorScreen("Couldn't connect Telegram", code ? `Telegram answered: ${code}.` : "Check the TV's internet connection and your phone, then try again.", retry, () => libraryScreen());
+    }
+  }
+}
+
+/** The Telegram two-step password, typed on the phone and sealed to a key made here; the control plane cannot read it. */
+async function passwordFromPhone(hint: string | undefined, attempt: number, cancelled: () => boolean, back: () => void): Promise<string> {
+  const keys = await newTvKeys();
+  const id = await api.postTelegramPasswordRequest(keys.publicKey, hint);
+  const code = await checkCode(keys.publicKey);
+  telegramCard("Type your Telegram password on your phone", [
+    attempt > 1 ? "That password wasn't right. Open Cablegram on your phone and try again." : "Your Telegram account has a two-step password. Open Cablegram on your phone and type it there.",
+    ...(hint ? [`Hint: ${hint}`] : []),
+    "Check that your phone shows this code:",
+  ], [button("Cancel", back, "raised")], code, back);
+  const end = Date.now() + 5 * 60_000;
+  try {
+    while (Date.now() < end && !cancelled()) {
+      await new Promise<void>((r) => setTimeout(r, 2_000));
+      const st = await api.telegramPasswordState(id);
+      if (st.state === "delivered" && st.sealed) {
+        const password = await openSealed(keys.privateKey, id, st.sealed);
+        if (password) return password;
+        throw new Error("the sealed password did not open");
+      }
+      if (st.state === "cancelled" || st.state === "expired") throw new Error(st.state);
+    }
+    throw new Error(cancelled() ? "cancelled" : "timeout");
+  } catch (e) {
+    await api.cancelTelegramPasswordRequest(id);
+    throw e;
+  }
+}
+
+/** The phone can end this TV's Telegram session; when it has, sign out here too and say so (contracts: logout-ack). */
+async function telegramHousekeeping() {
+  if (import.meta.env.VITE_TG_DIRECT !== "1" || !current) return;
+  const accountId = current.account.sessionId;
+  const session = savedSession(accountId);
+  if (!session) return;
+  try {
+    const link = await api.telegramLink();
+    if (!link.logoutRequired) return;
+    const [mod, config] = await Promise.all([telegramModule(), api.telegramClientConfig()]);
+    await mod.signOut(config, session);
+    clearSession(accountId);
+    await api.telegramLogoutAck();
+  } catch { /* try again the next time the library opens */ }
 }
 
 /** How often a refused relay slot is retried before the player gives up (the browser's own extra range request often holds it briefly). */
@@ -1313,8 +1453,12 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
           return;
         }
         if (started) void save("stopped");
+        // Telegram ended this TV's session (or it never worked): signing in again fixes it, trying again does not.
+        const reconnect = telegram && e.kind === "telegram_auth" && e.code !== "telegram_direct_not_allowed";
         errorScreen("Couldn't play this video", message ?? "This TV can't play this video's format. It plays on the Android TV app.",
-          [button("Back to library", () => libraryScreen()), button("Try again", () => void startPlayback(t), "panel")], () => libraryScreen());
+          [button("Back to library", () => libraryScreen()),
+            reconnect ? button("Connect Telegram again", () => { clearSession(current?.account.sessionId ?? ""); askToConnectTelegram(t); }, "panel")
+              : button("Try again", () => void startPlayback(t), "panel")], () => libraryScreen());
       },
     });
   } else video.src = url;

@@ -145,8 +145,11 @@ try {
   };
   const screenText = () => page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
   await openCosmos();
-  await until(async () => /Telegram isn't set up on this TV yet/.test(await screenText()), 15000, "no-session message").catch(async (e) => { console.log("[screen]", (await screenText()).slice(0, 300)); throw e; });
-  check(true, "Telegram title without a session explains that Telegram isn't set up");
+  await until(async () => /Connect Telegram to this TV\?/.test(await screenText()) && /Connect with my phone/.test(await screenText()), 15000, "connect question");
+  check(true, "Telegram title without a session asks whether to connect Telegram");
+  await page.evaluate(() => [...document.querySelectorAll(".focusable")].find((e) => /Connect with my phone/.test(e.textContent)).onSelect());
+  await until(async () => /Approve on your phone|Couldn't connect Telegram/.test(await screenText()), 45000, "sign-in to start");
+  check(true, `sign-in starts (${(await screenText()).slice(0, 90)})`);
   await page.evaluate(() => localStorage.setItem("cablegram.tv.tgSession", "not-a-session"));
   await openCosmos();
   await until(async () => /Telegram couldn't deliver this video/.test(await screenText()), 15000, "bad-session message");

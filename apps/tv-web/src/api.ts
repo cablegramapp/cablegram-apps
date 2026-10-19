@@ -179,6 +179,38 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
       const b = (await call("api/telegram/client-config"))!;
       return { apiId: Number(b.api_id), apiHash: String(b.api_hash) };
     },
+    /** Whether the household's phone has linked Telegram, and whether this TV must sign out (the phone ended its session). */
+    async telegramLink(): Promise<{ linked: boolean; direct: boolean; logoutRequired: boolean }> {
+      const b = (await call("api/telegram/link"))!;
+      return { linked: b.linked === true, direct: b.telegram_direct !== false, logoutRequired: b.telegram_logout_required === true };
+    },
+    /** Hands the phone the link it can approve (Telegram "login by QR"). A new link replaces the TV's earlier one. */
+    async postTelegramLogin(loginLink: string): Promise<string> {
+      const b = (await call("api/telegram/tv-logins", { method: "POST", body: JSON.stringify({ login_link: loginLink }) }))!;
+      return String(b.request_id);
+    },
+    async telegramLoginState(requestId: string): Promise<{ state: string; error?: string }> {
+      const b = (await call(`api/telegram/tv-logins/${encodeURIComponent(requestId)}`))!;
+      return { state: String(b.state), error: str(b.error) };
+    },
+    /** Asks the phone to type the Telegram two-step password; [publicKey] is this request's one-time TV key. */
+    async postTelegramPasswordRequest(publicKey: string, hint?: string): Promise<string> {
+      const body: Json = { public_key: publicKey };
+      if (hint) body.hint = hint.slice(0, 200);
+      const b = (await call("api/telegram/tv-password-requests", { method: "POST", body: JSON.stringify(body) }))!;
+      return String(b.request_id);
+    },
+    /** The sealed password arrives exactly once, as state "delivered". */
+    async telegramPasswordState(requestId: string): Promise<{ state: string; sealed?: string }> {
+      const b = (await call(`api/telegram/tv-password-requests/${encodeURIComponent(requestId)}`))!;
+      return { state: String(b.state), sealed: str(b.sealed) };
+    },
+    async cancelTelegramPasswordRequest(requestId: string): Promise<void> {
+      await call(`api/telegram/tv-password-requests/${encodeURIComponent(requestId)}`, { method: "DELETE" }).catch(() => undefined);
+    },
+    async telegramLogoutAck(): Promise<void> {
+      await call("api/telegram/logout-ack", { method: "POST", body: "{}" });
+    },
     async relayTicket(phoneId: string): Promise<string> {
       const b = (await call("api/relay/ticket", { method: "POST", body: JSON.stringify({ phone_device_id: phoneId }) }))!;
       return b.ticket;

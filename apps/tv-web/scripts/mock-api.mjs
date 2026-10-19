@@ -31,6 +31,10 @@ const routes = {
   "POST /api/profiles/switch-requests": { requestId: "r1", status: "approved" },
   "GET /api/me": { devices: [{ id: "ph1", kind: "phone" }] },
   "POST /api/relay/ticket": { ticket: "rt" },
+  // The household is linked to Telegram and this TV may sign in; the phone never answers in the mock.
+  "GET /api/telegram/link": { linked: true, telegram_direct: true, telegram_logout_required: false },
+  "POST /api/telegram/tv-logins": { request_id: "11111111-1111-4111-8111-111111111111", expires_in_ms: 60000 },
+  "GET /api/telegram/tv-logins/11111111-1111-4111-8111-111111111111": { state: "pending" },
   // Dummy application identity (not a real api_id/api_hash): enough for the TV app to build a Telegram client.
   "GET /api/telegram/client-config": process.env.TG_API_ID && process.env.TG_API_HASH
     ? { api_id: Number(process.env.TG_API_ID), api_hash: process.env.TG_API_HASH } : { api_id: 1, api_hash: "0".repeat(32) },

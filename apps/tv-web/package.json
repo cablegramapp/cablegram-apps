@@ -12,6 +12,7 @@
     "e2e": "node scripts/e2e-engine.mjs"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "@vitejs/plugin-legacy": "^7.2.1",
     "playwright-core": "^1.64.1",
     "terser": "^5.51.2",

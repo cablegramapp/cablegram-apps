@@ -1,8 +1,8 @@
 // Direct Telegram playback for TVs that cannot run TDLib: a GramJS client reads the video's bytes over MTProto and the
 // tv-media engine plays them. Loaded lazily (import("./telegram")) and only when the app was built with VITE_TG_DIRECT=1.
 // Credentials: the application's api_id/api_hash come from the control plane at run time (GET /api/telegram/client-config,
-// allowed per TV), never from this repository. The account session is a GramJS StringSession; for now a developer
-// provides it in localStorage["cablegram.tv.tgSession"] (a TV sign-in screen is a later milestone). Never log it.
+// allowed per TV), never from this repository. The account session is a GramJS StringSession, created by signing in
+// through the phone (loginWithPhone) and kept per account by telegram-link.ts. Never log it.
 import "./telegram-env";
 import { SourceError, TelegramRpcError, TelegramSource } from "tv-media";
 import type { TelegramFileApi } from "tv-media";
@@ -11,6 +11,7 @@ import { Api, TelegramClient, errors } from "telegram";
 import { StringSession } from "telegram/sessions";
 import { peerOf } from "./telegram-identity";
 import type { TelegramRef } from "./telegram-identity";
+import { loginLink } from "./telegram-link";
 
 export const SESSION_KEY = "cablegram.tv.tgSession";
 
@@ -41,15 +42,15 @@ const WEB_DC_HOSTS: Record<number, string> = {
 
 let shared: { client: TelegramClient; key: string } | null = null;
 
-async function connect(config: { apiId: number; apiHash: string }, session: string): Promise<TelegramClient> {
-  const key = `${config.apiId}:${session.length}`;
-  if (shared && shared.key === key) return shared.client;
+type Config = { apiId: number; apiHash: string };
+
+function makeClient(config: Config, session: string): TelegramClient {
   const stored = new StringSession(session);
   // A session string made on a computer (TCP) remembers the data centre's IP address, but a browser can only reach
   // Telegram through its WebSocket hosts: wss://<name>.web.telegram.org. Same auth key, different address.
   const webHost = WEB_DC_HOSTS[stored.dcId];
   if (webHost) stored.setDC(stored.dcId, webHost, 443);
-  const client = new TelegramClient(stored, config.apiId, config.apiHash, {
+  return new TelegramClient(stored, config.apiId, config.apiHash, {
     connectionRetries: 3,
     useWSS: true,
     floodSleepThreshold: 0, // TelegramSource decides how long to wait
@@ -57,11 +58,127 @@ async function connect(config: { apiId: number; apiHash: string }, session: stri
     systemVersion: "1.0",
     appVersion: "TV Web",
   });
+}
+
+async function connect(config: Config, session: string): Promise<TelegramClient> {
+  const key = `${config.apiId}:${session.length}`;
+  if (shared && shared.key === key) return shared.client;
+  const client = makeClient(config, session);
   note("connecting");
   await within("connect", 30_000, client.connect());
   note("connected");
   shared = { client, key };
   return client;
+}
+
+// ---- signing this TV in, approved on the phone -----------------------------------------------------------------------
+
+/** Why a sign-in ended without a session. */
+export class LoginError extends Error {
+  constructor(readonly reason: "denied" | "failed" | "cancelled" | "password", readonly code?: string) {
+    super(reason);
+  }
+}
+
+export interface LoginHooks {
+  cancelled(): boolean;
+  /** Gives the phone a fresh login link to approve (Telegram refreshes it about every 30 s). */
+  postLink(link: string): Promise<void>;
+  /** What the phone did with the latest link. */
+  phoneState(): Promise<{ state: string; error?: string }>;
+  /** The account's two-step password, typed on the phone. Rejects when nobody answers. */
+  password(hint: string | undefined, attempt: number): Promise<string>;
+}
+
+const APPROVAL_WAIT_MS = 25_000;
+const MAX_ROUNDS = 12; // about five minutes of fresh links
+
+/**
+ * Telegram "login by QR", but the code is shown to nobody: the phone, which already holds the account, approves the
+ * link through Cablegram (contracts/telegram-link.md). Returns this TV's own session string. Telegram's secrets
+ * (session, password) are known to Telegram, this TV and the phone only.
+ */
+export async function loginWithPhone(config: Config, hooks: LoginHooks): Promise<string> {
+  const client = makeClient(config, "");
+  note("connecting for sign-in");
+  await within("connect", 30_000, client.connect());
+  let tokenUpdate = () => undefined as void;
+  const scanned = new Promise<void>((resolve) => { tokenUpdate = resolve; });
+  const handler = (update: unknown) => { if (update instanceof Api.UpdateLoginToken) tokenUpdate(); };
+  client.addEventHandler(handler);
+  const fresh = () => within("sign_in", 30_000, client.invoke(new Api.auth.ExportLoginToken({ apiId: config.apiId, apiHash: config.apiHash, exceptIds: [] })));
+  try {
+    let approved = false;
+    for (let round = 0; round < MAX_ROUNDS && !approved; round++) {
+      if (hooks.cancelled()) throw new LoginError("cancelled");
+      const result = await fresh();
+      if (result instanceof Api.auth.LoginTokenSuccess || result instanceof Api.auth.LoginTokenMigrateTo) { approved = true; break; }
+      if (!(result instanceof Api.auth.LoginToken)) throw new LoginError("failed", "UNEXPECTED_RESULT");
+      await hooks.postLink(loginLink(result.token));
+      note("link posted, waiting for the phone");
+      const end = Date.now() + APPROVAL_WAIT_MS;
+      let seen = false;
+      scanned.then(() => { seen = true; });
+      while (Date.now() < end && !seen) {
+        if (hooks.cancelled()) throw new LoginError("cancelled");
+        await new Promise<void>((r) => setTimeout(r, 1500));
+        const phone = await hooks.phoneState().catch(() => ({ state: "pending" as string, error: undefined }));
+        if (phone.state === "denied") throw new LoginError("denied");
+        if (phone.state === "failed") throw new LoginError("failed", phone.error);
+      }
+      approved = seen;
+    }
+    if (!approved) throw new LoginError("failed", "TIMEOUT");
+    note("the phone approved");
+
+    // Telegram now has an authorisation for this link: collect it (on another data centre if it says so).
+    let attempts = 0;
+    const finish = async (): Promise<void> => {
+      try {
+        const done = await fresh();
+        if (done instanceof Api.auth.LoginTokenSuccess) return;
+        if (done instanceof Api.auth.LoginTokenMigrateTo) {
+          await (client as unknown as { _switchDC(dc: number): Promise<void> })._switchDC(done.dcId);
+          const moved = await within("sign_in", 30_000, client.invoke(new Api.auth.ImportLoginToken({ token: done.token })));
+          if (moved instanceof Api.auth.LoginTokenSuccess) return;
+        }
+        throw new LoginError("failed", "UNEXPECTED_RESULT");
+      } catch (e) {
+        if ((e as { errorMessage?: string }).errorMessage !== "SESSION_PASSWORD_NEEDED") throw e;
+        note("two-step password needed");
+        await client.signInWithPassword({ apiId: config.apiId, apiHash: config.apiHash }, {
+          password: async (hint?: string) => {
+            attempts++;
+            try { return await hooks.password(hint, attempts); } catch { throw new LoginError("password"); }
+          },
+          onError: async (err: Error) => {
+            if (err instanceof LoginError || attempts >= 3) return true; // stop
+            return (err as { errorMessage?: string }).errorMessage === "PASSWORD_HASH_INVALID" ? false : true; // wrong: ask again
+          },
+        });
+      }
+    };
+    await finish();
+    note("signed in");
+    const session = client.session.save() as unknown as string;
+    shared = { client, key: `${config.apiId}:${session.length}` };
+    return session;
+  } catch (e) {
+    try { await client.disconnect(); } catch { /* already closed */ }
+    if (e instanceof LoginError) throw e;
+    if ((e as Error).message === "AUTH_USER_CANCEL") throw new LoginError("password");
+    throw e;
+  } finally {
+    try { client.removeEventHandler(handler, undefined as never); } catch { /* the client is closed anyway */ }
+  }
+}
+
+/** Ends this TV's Telegram session on Telegram's side (the phone asked for it, or the household disconnected). */
+export async function signOut(config: Config, session: string): Promise<void> {
+  const client = await connect(config, session);
+  try { await within("log_out", 20_000, client.invoke(new Api.auth.LogOut())); } catch { /* already ended: that is the goal */ }
+  try { await client.disconnect(); } catch { /* ignore */ }
+  shared = null;
 }
 
 /** Turns a GramJS failure into the RPC message TelegramSource understands. */
