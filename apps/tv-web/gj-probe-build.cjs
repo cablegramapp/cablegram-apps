@@ -1,0 +1,3 @@
+const stubs = ["net","stream","tls","dns","os","crypto","http","https","zlib","url","fs","path","assert","child_process","constants","readline","punycode","string_decoder","querystring","vm","tty","timers"];
+const stub = { name:"stub", setup(b){ b.onResolve({filter:new RegExp("^("+stubs.join("|")+")$")}, a=>({path:a.path,namespace:"stub"})); b.onLoad({filter:/.*/,namespace:"stub"},()=>({contents:"module.exports={}",loader:"js"})); } };
+require("esbuild").build({entryPoints:["gj-probe.ts"],bundle:true,platform:"browser",format:"iife",target:"es2015",outfile:"/tmp/gj2/probe.js",logLevel:"error",define:{global:"window"},alias:{util:"./src/shims/util.ts",events:"./src/shims/events.ts"},plugins:[stub]}).then(()=>console.log("built"));

@@ -1,0 +1,7 @@
+tv-media
+Copyright 2026 Seep Labs
+
+This product includes software developed by Seep Labs (https://seeplabs.com).
+
+tv-media itself has no runtime dependencies. The Telegram byte source takes any object that implements its small
+TelegramFileApi; the apps in this repository implement it with GramJS (MIT), which is not part of this library.

@@ -1,0 +1,32 @@
+{
+  "name": "cablegram-tv-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "package:tizen": "node scripts/package.mjs tizen",
+    "package:webos": "node scripts/package.mjs webos",
+    "e2e": "node scripts/e2e-engine.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@vitejs/plugin-legacy": "^7.2.1",
+    "playwright-core": "^1.64.1",
+    "terser": "^5.51.2",
+    "typescript": "5.9.3",
+    "vite": "7.1.12",
+    "vitest": "3.2.4"
+  },
+  "dependencies": {
+    "@cryptography/aes": "^0.1.1",
+    "big-integer": "^1.6.52",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
+    "qrcode-generator": "^2.0.4",
+    "telegram": "^2.26.22",
+    "tv-media": "file:../../libs/tv-media"
+  }
+}
