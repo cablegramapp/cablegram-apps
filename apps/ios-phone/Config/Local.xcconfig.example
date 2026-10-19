@@ -1,0 +1,6 @@
+// Copy to Local.xcconfig (gitignored). Never commit real values.
+DEVELOPMENT_TEAM =
+CABLEGRAM_CAST_APP_ID =
+// Google sign-in iOS OAuth client (Google project 9735184484) and its reversed id for the URL scheme.
+GOOGLE_IOS_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID =

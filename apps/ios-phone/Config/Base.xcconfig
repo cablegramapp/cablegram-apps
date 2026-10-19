@@ -1,0 +1,16 @@
+// Shared build settings. URLs use the $() trick because xcconfig treats // as a comment.
+// Override locally in Local.xcconfig (gitignored); see Local.xcconfig.example.
+MARKETING_VERSION = 0.3.0
+CURRENT_PROJECT_VERSION = 1
+PRODUCT_BUNDLE_IDENTIFIER = app.cablegram.phone
+DEVELOPMENT_TEAM =
+API_BASE = https:/$()/api.cablegram.app/
+WEB_APP_BASE = https:/$()/app.cablegram.app
+// Empty hides Cast (same as Android CABLEGRAM_CAST_APP_ID).
+CABLEGRAM_CAST_APP_ID =
+// First-release scope: speech-based subtitle sync stays off (CAB-77, CAB-80).
+SUBTITLE_SPEECH_SYNC = NO
+LAN_IDLE_TIMEOUT_MS = 1800000
+// Test-only (Android LAN_HOST_OVERRIDE): announce this host instead of the phone's own address.
+LAN_HOST_OVERRIDE =
+#include? "Local.xcconfig"

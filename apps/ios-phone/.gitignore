@@ -1,0 +1,9 @@
+*.xcodeproj
+*.xcworkspace
+build/
+DerivedData/
+.build/
+.swiftpm/
+Config/Local.xcconfig
+Cablegram/Resources/legal/
+xcuserdata/
