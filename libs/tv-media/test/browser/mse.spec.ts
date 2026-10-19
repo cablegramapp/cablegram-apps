@@ -93,4 +93,26 @@ describe.skipIf(!chromeAvailable)("MSE playback in Chrome", () => {
       expect(await h.page.evaluate(() => window.t.errors)).toEqual([]);
     });
   });
+
+  it.skipIf(!hasFixture("mkv-srt.mkv"))("plays an MKV and delivers its subtitle cues", async () => {
+    await h.page.reload();
+    await play("mkv-srt.mkv");
+    await waitFor(async () => (await state()).time > 7).catch(async (e) => {
+      console.log(JSON.stringify(await state()), await h.page.evaluate(() => window.t.errors));
+      throw e;
+    });
+    expect(await h.page.evaluate(() => window.t.errors)).toEqual([]);
+    const texts = await h.page.evaluate(() => window.t.cues.map((c) => c.text));
+    expect(texts).toContain("Hello world");
+    expect(texts).toContain("Second line\nwith a break");
+  });
+
+  it.skipIf(!hasFixture("mkv-srt.mkv"))("seeks inside an MKV", async () => {
+    await h.page.reload();
+    await play("mkv-srt.mkv");
+    await waitFor(async () => (await state()).time > 1);
+    await h.page.evaluate(() => (window.t.video.currentTime = 9));
+    await waitFor(async () => (await state()).time > 10);
+    expect(await h.page.evaluate(() => window.t.errors)).toEqual([]);
+  });
 });

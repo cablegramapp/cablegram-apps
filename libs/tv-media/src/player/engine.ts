@@ -1,3 +1,4 @@
+import { MkvDemuxer } from "../demux/mkv";
 import { Mp4Demuxer } from "../demux/mp4";
 import { sniffContainer } from "../demux/sniff";
 import { MediaError, type Demuxer, type MediaInfo, type Sample, type Track } from "../demux/types";
@@ -23,6 +24,7 @@ interface Lane {
   sequence: number;
 }
 
+const TEXT_SUBTITLES = new Set(["srt", "ass", "webvtt", "tx3g"]);
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 export class Player extends Emitter<PlayerEvents> {
@@ -85,7 +87,8 @@ export class Player extends Emitter<PlayerEvents> {
       const head = await this.source.read(0, 16);
       const container = sniffContainer(head);
       if (container === "mp4") this.demuxer = new Mp4Demuxer(this.source);
-      else throw new MediaError("unsupported_container", container ? `${container} is not supported yet` : "unknown container");
+      else if (container === "mkv") this.demuxer = new MkvDemuxer(this.source);
+      else throw new MediaError("unsupported_container", "unknown container");
       const info = await this.demuxer.init();
       this.info = info;
 
@@ -93,7 +96,9 @@ export class Player extends Emitter<PlayerEvents> {
       const audio = info.tracks.find((t) => t.kind === "audio" && this.supported(t));
       if (!video && !audio) throw new MediaError("unsupported_codec", "no playable track: the TV's decoders refuse every codec");
       if (info.tracks.some((t) => t.kind === "video") && !video) throw new MediaError("unsupported_codec", "the TV's decoders refuse the video codec");
-      this.demuxer.setEnabledTracks([video, audio].filter((t): t is Track => !!t).map((t) => t.id));
+      // Subtitle tracks are tiny, so every text one is read for the menu; image subtitles are never read.
+      const text = info.tracks.filter((t) => t.kind === "subtitle" && TEXT_SUBTITLES.has(t.codec));
+      this.demuxer.setEnabledTracks([video, audio, ...text].filter((t): t is Track => !!t).map((t) => t.id));
       this.offsetSec = -info.minDts;
 
       await this.attach([video, audio].filter((t): t is Track => !!t), info.duration);

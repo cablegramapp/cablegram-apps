@@ -3,6 +3,7 @@ export { HttpRangeSource, type HttpRangeOptions } from "./source/http";
 export { ReadCache } from "./source/cache";
 export { SourceError, type ByteSource, type SourceErrorKind } from "./source/types";
 export { Mp4Demuxer } from "./demux/mp4";
+export { MkvDemuxer } from "./demux/mkv";
 export { sniffContainer } from "./demux/sniff";
 export * from "./demux/types";
 export { codecString, mimeType } from "./mux/codecs";
