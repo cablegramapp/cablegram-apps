@@ -5,3 +5,5 @@ export { SourceError, type ByteSource, type SourceErrorKind } from "./source/typ
 export { Mp4Demuxer } from "./demux/mp4";
 export { sniffContainer } from "./demux/sniff";
 export * from "./demux/types";
+export { codecString, mimeType } from "./mux/codecs";
+export { buildFragment, buildInitSegment } from "./mux/fmp4";

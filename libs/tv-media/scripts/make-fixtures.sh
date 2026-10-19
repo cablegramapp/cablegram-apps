@@ -48,6 +48,9 @@ gen mp4-tx3g.mp4 $V $A -i subs.srt $X264 -c:a aac -b:a 64k -c:s mov_text -movfla
 gen mp4-hevc.mp4 $V $A -c:v libx265 -preset ultrafast -g 25 -pix_fmt yuv420p -tag:v hvc1 -x265-params log-level=error -c:a aac -b:a 64k -movflags +faststart
 gen mp4-ac3.mp4 $V $A $X264 -c:a ac3 -b:a 96k -movflags +faststart
 
+gen mp4-mp3.mp4 $V $A $X264 -c:a libmp3lame -b:a 64k -movflags +faststart
+gen mp4-opus.mp4 $V $A $X264 -c:a libopus -b:a 48k -strict -2 -movflags +faststart
+
 gen mkv-srt.mkv $V $A -i subs.srt $X264 -c:a aac -b:a 64k -c:s srt
 gen mkv-ac3-ass.mkv $V $A -i subs.ass $X264 -c:a ac3 -b:a 96k -c:s ass
 gen mkv-two-audio.mkv $V $A $A2 -map 0:v -map 1:a -map 2:a $X264 -c:a aac -b:a 64k
