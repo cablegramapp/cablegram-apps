@@ -9,19 +9,23 @@ if (!apiId || !apiHash || !process.env.TG_SESSION) { console.error("set TG_SESSI
 const client = new TelegramClient(new StringSession(process.env.TG_SESSION), apiId, apiHash, { connectionRetries: 3, deviceModel: "Smart TV", systemVersion: "1.0", appVersion: "TV Web" });
 await client.connect();
 const me = await client.getMe();
-const dialogs = await client.getDialogs({ limit: 60 });
+const dialogs = [...(await client.getDialogs({ limit: 80 })), ...(await client.getDialogs({ limit: 40, folder: 1 }).catch(() => []))];
 // Saved Messages first, then chats named like the Cablegram library channel, then everything else.
+const named = (d) => /cablegram/i.test(d.title ?? "");
 const places = [{ entity: "me", id: me.id.toString(), title: "Saved Messages" }]
-  .concat(dialogs.filter((d) => /cablegram/i.test(d.title ?? "")).map((d) => ({ entity: d.entity, id: d.id.toString(), title: d.title })))
-  .concat(dialogs.filter((d) => !/cablegram/i.test(d.title ?? "")).map((d) => ({ entity: d.entity, id: d.id.toString(), title: d.title })));
+  .concat(dialogs.filter(named).map((d) => ({ entity: d.entity, id: d.id.toString(), title: d.title })))
+  .concat(dialogs.filter((d) => !named(d)).map((d) => ({ entity: d.entity, id: d.id.toString(), title: d.title })));
+const isVideo = (doc) => doc && (/^video\//.test(doc.mimeType ?? "") || /\.(mkv|mp4|mov|webm|avi)$/i.test(doc.attributes?.find((a) => a.fileName)?.fileName ?? ""));
 let shown = 0;
 for (const place of places) {
   if (shown >= 25) break;
   let msgs = [];
-  try { msgs = await client.getMessages(place.entity, { limit: 5, filter: new Api.InputMessagesFilterVideo() }); } catch { continue; }
-  for (const m of msgs) {
-    const doc = m.media?.document;
-    if (!doc) continue;
+  // The last 100 messages, whatever Telegram calls them: videos sent as files are not "video" messages.
+  try { msgs = await client.getMessages(place.entity, { limit: 100 }); } catch (e) { console.error(`(skipped ${place.title}: ${e.errorMessage ?? e.message})`); continue; }
+  const videos = msgs.filter((m) => isVideo(m.media?.document));
+  console.error(`scanned ${place.title}: ${msgs.length} messages, ${videos.length} videos`);
+  for (const m of videos.slice(0, 5)) {
+    const doc = m.media.document;
     const name = doc.attributes?.find((a) => a.fileName)?.fileName ?? "(no file name)";
     console.log(`tg:${place.id}:${m.id}   ${(Number(doc.size.toString()) / 1048576).toFixed(0)} MB   ${doc.mimeType}   ${name}   [${place.title}]`);
     shown++;
