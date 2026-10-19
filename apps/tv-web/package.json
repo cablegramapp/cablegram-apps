@@ -18,7 +18,7 @@
     "terser": "^5.51.2",
     "typescript": "5.9.3",
     "vite": "7.3.7",
-    "vitest": "3.2.4"
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "@cryptography/aes": "^0.1.1",
