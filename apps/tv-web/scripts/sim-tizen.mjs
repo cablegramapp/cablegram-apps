@@ -4,6 +4,8 @@
 // Usage: node scripts/sim-tizen.mjs
 import { chromium } from "playwright-core";
 
+// THROTTLE=6 slows the simulator's CPU 6x (CDP Emulation.setCPUThrottlingRate), to stand in for a TV's weak processor.
+const THROTTLE = Number(process.env.THROTTLE || 1);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const failures = [];
 const check = (ok, what) => { console.log(`${ok ? "ok  " : "FAIL"} ${what}`); if (!ok) failures.push(what); };
@@ -24,6 +26,12 @@ const press = (code) => app().evaluate((c) => {
 const KEY = { enter: 13, down: 40, right: 39 };
 
 try {
+  if (THROTTLE > 1) {
+    const cdp = await page.context().newCDPSession(page);
+    try { await cdp.send("Emulation.setCPUThrottlingRate", { rate: THROTTLE }); console.log(`CPU throttled ${THROTTLE}x`); }
+    catch (e) { console.log(`this Chromium cannot throttle the CPU over CDP (${e.message.slice(0, 80)})`); }
+  }
+  let started = Date.now();
   console.log("user agent:", await page.evaluate(() => navigator.userAgent));
   await app().evaluate(() => { localStorage.clear(); location.reload(); });
   await sleep(3000); // let the reload happen before looking at the page
@@ -39,11 +47,13 @@ try {
   }));
   console.log("environment:", JSON.stringify(env));
 
+  started = Date.now();
   await app().evaluate(() => [...document.querySelectorAll(".card")].find((e) => /Big Buck Bunny/.test(e.textContent)).onSelect());
   const video = () => app().evaluate(() => { const v = document.querySelector("video"); return v && { t: v.currentTime, src: v.currentSrc.slice(0, 5), error: v.error && v.error.message, dur: v.duration }; });
   await until(async () => (await video())?.t > 1, 20000, "playback to start");
   const v0 = await video();
   check(v0.src === "blob:", "engine playback (MediaSource) in the simulator");
+  console.log(`     time to first picture ${((Date.now() - started) / 1000).toFixed(1)} s`);
   check(!v0.error, "no media element error");
 
   await app().evaluate(() => {

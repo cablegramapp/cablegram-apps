@@ -51,6 +51,10 @@ gen mp4-ac3.mp4 $V $A $X264 -c:a ac3 -b:a 96k -movflags +faststart
 # 2-minute file for buffer-policy and seek tests in the browser
 [ -f mp4-long.mp4 ] || ffmpeg -loglevel error -y -f lavfi -i testsrc2=size=320x180:rate=25 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 120 $X264 -c:a aac -b:a 64k -movflags +faststart mp4-long.mp4
 
+# 30 s of noisy 1080p at about 20 Mbit/s, for the CPU-throttled speed checks (apps/tv-web/scripts/perf-throttle.mjs)
+[ -f mp4-hi.mp4 ] || ffmpeg -loglevel error -y -f lavfi -i testsrc2=size=1920x1080:rate=25 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 30 -vf noise=alls=40:allf=t -c:v libx264 -preset ultrafast -b:v 20M -minrate 20M -maxrate 20M -bufsize 20M -g 50 -bf 2 -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart mp4-hi.mp4
+[ -f mkv-hi.mkv ] || ffmpeg -loglevel error -y -i mp4-hi.mp4 -c copy mkv-hi.mkv
+
 gen mp4-mp3.mp4 $V $A $X264 -c:a libmp3lame -b:a 64k -movflags +faststart
 gen mp4-opus.mp4 $V $A $X264 -c:a libopus -b:a 48k -strict -2 -movflags +faststart
 

@@ -96,7 +96,29 @@ Run apps from a shell with `env -u ELECTRON_RUN_AS_NODE` (VS Code's shell sets i
   `~/tizen-studio/tools/sec-tv-simulator/nwjs.app/Contents/MacOS/nwjs --remote-debugging-port=9333 --disableInspector --platform tizentv --tizentvversion 2.0 --resolution 1920X1080 --file <build/tizen/index.html>`.
   The simulator keeps the first installed copy of the app: copy `build/tizen/.` over
   `…/nwjs.app/Contents/Resources/app.nw/appLauncher/app/CblGramTV1/` to update it. `node scripts/sim-tizen.mjs` then drives
-  the app over CDP (engine playback, audio switch, embedded subtitle, seek, GramJS chunk).
+  the app over CDP (engine playback, audio switch, embedded subtitle, seek, GramJS chunk). A simulator that has already
+  seen the app lists it under "Recent Apps" instead of opening it: focus the tile and press Enter over CDP
+  (`frame.evaluate(() => document.getElementById("first_screen_gridlist_item_0").focus()); page.keyboard.press("Enter")`).
+  `THROTTLE=6 node scripts/sim-tizen.mjs` slows the simulator's CPU 6× (CDP `Emulation.setCPUThrottlingRate`).
 - **LG (webOS TV 26 simulator, Electron 28 / Chromium 120):** run its binary with `build/webos` after `npm run package:webos`.
   It lists the app in its launcher, but the app's page is not exposed over `--remote-debugging-port`, so it was not driven
   automatically; Chromium 120 behaves like the desktop Chrome that `npm run e2e` uses.
+
+## Slow CPUs
+
+TV chips are several times slower than a laptop core. `node scripts/perf-throttle.mjs [rate…]` (default 1 4 6 10) runs
+the engine's demux/remux/append and GramJS's AES-IGE decryption in Chrome with the CPU throttled by each rate, on a
+30 s, 20 Mbit/s 1080p file (`npm run fixtures` in `../../libs/tv-media`). Measured 2026-10-19 on an Apple-silicon Mac:
+
+| CPU | AES-IGE (Telegram) | MP4 demux+mux, 20 Mbit/s | MKV |
+|---|---|---|---|
+| 1× | 59 MB/s | 65× real time | 71× |
+| 4× slower | 25 MB/s | 39× | 42× |
+| 6× slower | 16 MB/s | 25× | 27× |
+| 10× slower | 10 MB/s | 16× | 16× |
+| 20× slower | 4.3 MB/s | 4.5× | 5.0× |
+
+A 20 Mbit/s stream is 2.5 MB/s, so decryption would use about a quarter of a core at 10× and all of it at 20×; the
+demuxing side keeps a large margin. Throttling slows only JavaScript: a real TV also has slower memory, a smaller heap,
+and decodes in hardware, so treat this as a guide and measure on the TV. In the Tizen simulator (Chromium 55) the first
+picture of the test file took 1.7 s at 1×, 2.9 s at 6× and 5.4 s at 10×, and every check still passed.
