@@ -20,6 +20,9 @@ http.createServer((req, res) => {
     res.writeHead(r.statusCode ?? 502, { ...r.headers, ...cors });
     r.pipe(res);
   });
-  up.on("error", () => res.writeHead(502, cors).end());
+  up.on("error", () => { if (!res.headersSent) res.writeHead(502, cors); res.end(); });
+  // A player drops requests on every seek and stop; close ours upstream too, or the relay keeps streaming the whole
+  // file and holds one of the household's relay streams until it ends.
+  res.on("close", () => { if (!res.writableFinished) up.destroy(); });
   req.pipe(up);
 }).listen(port, () => console.log(`dev proxy on http://localhost:${port} -> ${target.origin}`));

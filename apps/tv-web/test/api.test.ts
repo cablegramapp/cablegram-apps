@@ -68,3 +68,14 @@ describe("pairLink", () => {
     expect(pairLink("https://app.example/", "123456", "LG TV")).toBe("https://app.example/?pair=123456&tv=LG%20TV");
   });
 });
+
+describe("preflight", () => {
+  it("passes video through and reads the relay's error code", async () => {
+    const { preflight, relayMessage } = await import("../src/api");
+    expect(await preflight("u", async () => new Response("x", { status: 206 }))).toBeNull();
+    const refused = await preflight("u", async () => json(429, { error: "relay_streams_exceeded" }));
+    expect(refused).toEqual({ status: 429, error: "relay_streams_exceeded" });
+    expect(relayMessage(429, "relay_streams_exceeded")).toMatch(/Too many relay streams/);
+    expect(await preflight("u", async () => { throw new Error("offline"); })).toEqual({ status: null });
+  });
+});
