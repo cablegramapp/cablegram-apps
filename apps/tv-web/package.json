@@ -18,6 +18,7 @@
     "vitest": "3.2.4"
   },
   "dependencies": {
-    "qrcode-generator": "^2.0.4"
+    "qrcode-generator": "^2.0.4",
+    "tv-media": "file:../../libs/tv-media"
   }
 }
