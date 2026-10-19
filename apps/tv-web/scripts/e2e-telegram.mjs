@@ -33,6 +33,7 @@ function findChrome() {
 const chrome = findChrome();
 if (!chrome) { console.error("Chrome for Testing not found; set CHROME_PATH"); process.exit(2); }
 
+console.log("building the app (about 10 s)…");
 const built = spawnSync("npx", ["vite", "build", "--outDir", "dist-mock"], { cwd: app, env: { ...process.env, VITE_API_BASE: `http://localhost:${MOCK_PORT}`, VITE_TG_DIRECT: "1" }, encoding: "utf8" });
 if (built.status !== 0) { console.error("build failed"); process.exit(1); }
 const mock = spawn("node", ["scripts/mock-api.mjs", String(MOCK_PORT)], { cwd: app, env: { ...process.env, MOCK_TG_IDENTITY: process.env.TG_IDENTITY }, stdio: "ignore" });
@@ -46,6 +47,7 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(p).pipe(res);
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
+console.log("starting Chrome and the mock control plane…");
 const browser = await chromium.launch({ executablePath: chrome, args: ["--autoplay-policy=no-user-gesture-required"] });
 let code = 1;
 try {
@@ -62,10 +64,13 @@ try {
     const v = document.querySelector("video");
     return { text: document.body.innerText.replace(/\s+/g, " ").slice(0, 200), t: v ? v.currentTime : null, dur: v ? v.duration : null, src: v ? v.currentSrc.slice(0, 5) : null, err: v && v.error ? v.error.message : null };
   });
+  console.log("opened the title; connecting to Telegram and waiting for playback (up to 90 s)…");
   let s;
+  let lastNote = 0;
   const end = Date.now() + 90000;
   while (Date.now() < end) {
     s = await state();
+    if (Date.now() - lastNote > 10000) { lastNote = Date.now(); console.log(`  … ${Math.round((Date.now() - (end - 90000)) / 1000)} s: ${s.t == null ? "no video yet" : `video at ${s.t.toFixed(1)} s`}`); }
     if (s.t > 3 || /Couldn't play this video|can't play/.test(s.text)) break;
     await sleep(500);
   }
