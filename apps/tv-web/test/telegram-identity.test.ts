@@ -6,6 +6,10 @@ describe("parseTelegramIdentity", () => {
     expect(parseTelegramIdentity("tg:-1001234567890:42")).toEqual({ chatId: "-1001234567890", messageId: 42 });
     expect(parseTelegramIdentity("tg:777:1")).toEqual({ chatId: "777", messageId: 1 });
   });
+  it("turns TDLib message ids (server id × 2^20) into MTProto message ids", () => {
+    expect(parseTelegramIdentity("tg:-1004305790282:26214400")).toEqual({ chatId: "-1004305790282", messageId: 25 });
+    expect(parseTelegramIdentity("tg:-1004305790282:4194304")).toEqual({ chatId: "-1004305790282", messageId: 4 });
+  });
   it("rejects anything else", () => {
     for (const bad of [undefined, "", "tg:1", "tg:a:2", "tg:1:0", "tg:1:2:3", "http://x", "s1"]) expect(parseTelegramIdentity(bad)).toBeNull();
   });
