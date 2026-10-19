@@ -130,6 +130,8 @@ private fun CodeForm(viewModel: PhoneViewModel, step: SignInStep.Code) {
             modifier = Modifier.fillMaxWidth().maestro("sign_in_code"),
             singleLine = true,
             label = { Text(ui.getString(R.string.ui_code_340f46)) },
+            // New senders often land in spam (Yahoo especially) until the domain builds reputation.
+            supportingText = { Text(ui.getString(R.string.ui_didn_t_get_it_check_your_spam_or_junk_folder_23f145)) },
             textStyle = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { if (code.length == 6 && !signIn.busy) viewModel.verifySignInCode(code) }),
