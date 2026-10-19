@@ -61,3 +61,10 @@ describe("pickNext", () => {
     expect(pickNext(from, [r(200, 0)], "left")).toBe(-1);
   });
 });
+
+import { pairLink } from "../src/pairlink";
+describe("pairLink", () => {
+  it("matches the Android TV link shape", () => {
+    expect(pairLink("https://app.example/", "123456", "LG TV")).toBe("https://app.example/?pair=123456&tv=LG%20TV");
+  });
+});

@@ -6,7 +6,7 @@ library, resume position and progress.
 
 ## Status
 
-Works: pairing (verified against the real control plane), profiles and PIN unlock, library rows (Continue watching,
+Works: pairing with a QR code (verified against the real control plane), profiles and PIN unlock, library rows (Continue watching,
 My list, All titles), D-pad navigation, playback with progress saving, resume.
 
 Plays: copies on the phone (through the relay) and copies in the household's own cloud (`/api/playback/resolve`).
@@ -16,7 +16,7 @@ Does not play yet:
   is an MTProto client in JS (for example mtcute) published as its own open-source library; until then the TV says so.
 - **Private titles** (need phone approval, `/api/playback/private-approvals`).
 - **Phone over LAN.** A browser cannot pin the phone's self-signed certificate, so the relay carries phone copies.
-- Pairing QR code (the PIN and the address are shown as text), subtitles, remote commands from the phone,
+- Subtitles, remote commands from the phone,
   UI languages other than English.
 
 ## Server requirement: CORS

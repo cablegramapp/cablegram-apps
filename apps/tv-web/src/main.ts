@@ -2,6 +2,7 @@ import "./style.css";
 import { ApiError, createApi } from "./api";
 import { API_BASE, WEB_APP_BASE } from "./config";
 import { focusFirst, keyFromEvent, moveFocus, registerPlatformKeys } from "./nav";
+import { pairLink, qrCanvas } from "./pairlink";
 import { loadSession, saveSession } from "./session";
 import type { DeviceSession, Profile, Title } from "./types";
 
@@ -53,12 +54,15 @@ async function pair() {
       focusable("div", "btn", "Try again", pair)]);
     return;
   }
-  const link = `${WEB_APP_BASE}/?pair=${session.pin}`;
+  const link = pairLink(WEB_APP_BASE, session.pin, deviceName());
+  const qr = qrCanvas(link);
+  qr.style.cssText = "position:absolute;right:96px;top:96px;border-radius:12px";
   show([
     h("h1", undefined, "Pair this TV"),
-    h("p", undefined, "On your phone, open Cablegram → Add a TV and enter this code, or open the address below."),
+    h("p", undefined, "On your phone, open Cablegram → Add a TV and enter this code, or scan the QR code."),
     h("div", "pin", session.pin),
     h("p", undefined, link),
+    qr,
   ]);
   const deadline = Date.parse(session.expiresAt) || Date.now() + 10 * 60_000;
   const timer = window.setInterval(async () => {
