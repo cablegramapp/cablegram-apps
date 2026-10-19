@@ -4,7 +4,7 @@ Plays MP4 and Matroska (MKV/WebM) on Samsung Tizen and LG webOS TVs. It demuxes 
 samples as fragmented MP4 and feeds the TV's own hardware decoders through Media Source Extensions (MSE). Byte sources
 are HTTP range requests and Telegram (MTProto). No software video decoding, no WebAssembly.
 
-Status: milestone 1 (`docs/plans/tv-media-engine-m1.md`). Licence: [Apache-2.0](LICENSE), copyright Seep Labs
+Status: milestone 1. Licence: [Apache-2.0](LICENSE), copyright Seep Labs
 (the rest of this repository is GPL-3.0; Apache-2.0 code can be used from it). Name: working name `tv-media`.
 
 ## Use

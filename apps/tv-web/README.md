@@ -30,9 +30,10 @@ What that adds on a TV: **subtitles and audio tracks from inside the file** (lis
 MKV seeking that does not stall, and a single relay stream per TV. If the engine meets a format it cannot handle
 (`unsupported_container`, `unsupported_codec`, a decode error) the player falls back to the plain `<video src>`.
 
-The relay must let the browser read `Content-Range`: the control plane's CORS (`apps/control-plane/src/http/cors.ts`)
-needs `access-control-expose-headers: content-range, accept-ranges` for the TV origin. Without it the engine cannot
-learn the file size (MP4 and indexed MKV still play; seeking in an MKV without an index needs it).
+The relay must let the browser read `Content-Range`. Both the control plane (`apps/control-plane/src/http/cors.ts`) and the
+relay service send `access-control-expose-headers: content-range, accept-ranges, content-length` (and answer the preflight)
+for the origins listed in `WEB_APP_ORIGINS`, so the TV's origin has to be in that list. Without it the engine cannot learn
+the file size (MP4 and indexed MKV still play; seeking in an MKV without an index needs it).
 
 ### Telegram titles (`VITE_TG_DIRECT=1`)
 
@@ -108,7 +109,7 @@ Run apps from a shell with `env -u ELECTRON_RUN_AS_NODE` (VS Code's shell sets i
 
 Settings → Diagnostics (and **Check this TV** on the pairing screen, or `#diag` in a desktop browser) checks the TV's
 decoders, speed, server access, plays a bundled 1080p test clip through the engine and can measure the MSE buffer size.
-`docs/testing-on-a-friends-lg-tv.md` explains how to get the app onto someone else's LG TV and what to ask them to send.
+The maintainers keep a private guide for testing on someone else's LG TV.
 
 ## Slow CPUs
 

@@ -89,7 +89,6 @@ Arabic/Farsi timeline direction was checked on a Pixel 8 Pro running Android 17
 and the Android 16 TV emulator. Phone instrumentation checks left-quarter taps,
 rightward dragging and physical rewind/forward ordering. TV playback checks with
 Maestro verified left-to-right progress, elapsed/total ordering and both D-pad
-seek directions using a seekable 120-second local fixture. See
-[timeline verification](qa/timeline-direction.md) for the procedure and limits.
+seek directions using a seekable 120-second local fixture. The procedure and limits are in the maintainers' private test records.
 This does not establish physical-TV coverage or verify the broader sign-in,
 profile switching and language-propagation scenarios above.
