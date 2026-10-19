@@ -151,6 +151,22 @@ try {
   await openCosmos();
   await until(async () => /Telegram couldn't deliver this video/.test(await screenText()), 15000, "bad-session message");
   check(true, "Telegram title with an unusable session fails with a Telegram message, not a crash");
+
+  // Diagnostics screen (also what a friend's TV runs): every check reports, the clip plays, a QR code appears.
+  await page.goto(`http://127.0.0.1:${server.address().port}/#diag`);
+  await page.reload();
+  await until(() => page.evaluate(() => /Done\./.test(document.querySelector(".diag-sub")?.textContent ?? "")), 60000, "diagnostics to finish");
+  const rows = await page.evaluate(() => [...document.querySelectorAll(".diag-row")].map((r) => ({ mark: r.querySelector(".diag-mark").textContent, label: r.querySelector(".diag-label").textContent, detail: r.querySelector(".diag-detail").textContent })));
+  const bad = rows.filter((r) => r.mark === "✗");
+  check(bad.length === 0, `diagnostics: no failed row (${bad.map((r) => `${r.label}: ${r.detail}`).join("; ") || "none"})`);
+  for (const label of ["Time to first picture", "1080p decoding", "Subtitles from the file", "Switching audio track", "Seeking"]) {
+    check(rows.some((r) => r.label === label && r.mark === "✓"), `diagnostics: ${label}`);
+  }
+  check(await page.evaluate(() => !!document.querySelector(".diag-qr canvas")), "diagnostics: results QR code shown");
+  await page.evaluate(() => [...document.querySelectorAll(".focusable")].find((e) => /Measure buffer size/.test(e.textContent)).onSelect());
+  await until(() => page.evaluate(() => [...document.querySelectorAll(".diag-row")].some((r) => /MSE buffer size/.test(r.textContent) && !/measuring/.test(r.textContent)) && /Done\./.test(document.querySelector(".diag-sub").textContent)), 150000, "buffer measurement");
+  const buf = await page.evaluate(() => [...document.querySelectorAll(".diag-row")].find((r) => /MSE buffer size/.test(r.textContent)).textContent);
+  check(/MB of 1080p video/.test(buf), `diagnostics: buffer probe reports a size (${buf.replace(/\s+/g, " ")})`);
 } catch (e) {
   console.error(e.message);
   failures.push(e.message);

@@ -15,6 +15,7 @@ import type { Entry, LibraryType, Show } from "./library";
 import { focusEl, focusFirst, keyFromEvent, moveFocus, registerPlatformKeys } from "./nav";
 import type { Key } from "./nav";
 import { pairLink, qrCanvas } from "./pairlink";
+import * as diag from "./diagnostics";
 import { engineFailureMessage, EMBEDDED, lazySource, openEngine } from "./engine-adapter";
 import { SourceError } from "tv-media";
 import type { ByteSource } from "tv-media";
@@ -210,6 +211,7 @@ async function pair(canCancel = profileEntries.length > 0) {
   const qr = qrCanvas(link, 544);
   const buttons = [button("New PIN", () => pair(canCancel), "raised", true)];
   if (canCancel) buttons.push(button("Cancel", () => { pairingRun++; picker(); }, "raised"));
+  buttons.push(button("Check this TV", () => { pairingRun++; diagnosticsScreen(() => void pair(canCancel)); }, "raised"));
   show([h("div", "pairing", undefined, [
     h("div", "pairing-text", undefined, [
       brandMark(),
@@ -880,9 +882,84 @@ function settingsPanel(): HTMLElement {
       value("Playback path", "Relay through Cablegram"),
       h("div", "settings-text small", "This TV reaches your phone through the Cablegram relay, so it plays whether or not both are on the same Wi‑Fi."),
       h("div", "settings-heading", "Telegram"),
-      h("div", "settings-text small", "Telegram playback isn't available on this TV yet. Titles stored in Telegram play on the Android TV app."),
+      h("div", "settings-text small", import.meta.env.VITE_TG_DIRECT === "1"
+        ? "Telegram playback on this TV is in testing."
+        : "Telegram playback isn't available on this TV yet. Titles stored in Telegram play on the Android TV app."),
+      h("div", "settings-heading", "Help"),
+      button("Diagnostics", () => diagnosticsScreen(), "panel"),
     ]),
   ]);
+}
+
+// ---- Diagnostics -------------------------------------------------------------------------------------------------
+
+/** What this TV can do and how fast it is; also reachable at #diag. Results can be photographed or scanned as a QR code. */
+function diagnosticsScreen(back: () => void = () => libraryScreen()) {
+  const rowsEl = h("div", "diag-rows");
+  const status = h("div", "diag-sub", "Running checks…");
+  const preview = h("div", "diag-preview");
+  const qrBox = h("div", "diag-qr");
+  let run = 0;
+  let clip: Uint8Array | null = null;
+  let report = new diag.Report();
+  const mark: Record<diag.Status, string> = { ok: "✓", fail: "✗", warn: "!", info: "·" };
+
+  const draw = (rows: diag.Row[]) => {
+    rowsEl.textContent = "";
+    rows.forEach((r) => rowsEl.appendChild(h("div", "diag-row", undefined, [
+      h("div", `diag-mark ${r.status}`, mark[r.status]), h("div", "diag-label", r.label), h("div", "diag-detail", r.detail),
+    ])));
+  };
+  const finish = () => {
+    qrBox.textContent = "";
+    try { qrBox.appendChild(qrCanvas(diag.compactSummary(report.facts, report.rows), 300)); } catch { /* too long for a QR: the list on screen still says it all */ }
+  };
+  const getClip = async () => (clip ??= await diag.loadBytes("diag/clip.mkv"));
+
+  const runAll = async () => {
+    const id = ++run;
+    const live = () => id === run;
+    report = new diag.Report(draw);
+    qrBox.textContent = "";
+    status.textContent = "Running checks…";
+    try {
+      diag.checkEnvironment(report);
+      diag.checkDecoders(report);
+      await diag.checkSpeed(report);
+      if (!live()) return;
+      await diag.checkNetwork(report, API_BASE);
+      if (!live()) return;
+      const bytes = await getClip().catch((e: Error) => { report.add("clip", "Test clip", "fail", `could not load it (${e.message})`); return null; });
+      if (bytes && live()) await diag.checkPlayback(report, bytes, preview);
+    } catch (e) {
+      report.add("error", "Diagnostics", "fail", (e as Error).message);
+    }
+    if (!live()) return;
+    status.textContent = "Done. Photograph this screen or scan the code to send the results.";
+    finish();
+  };
+  const measure = async () => {
+    const id = ++run;
+    status.textContent = "Measuring the video buffer (about a minute; the TV may flicker)…";
+    try {
+      await diag.measureBuffer(report, await getClip(), (mb) => { if (id === run) status.textContent = `Measuring the video buffer… ${Math.round(mb)} MB accepted so far`; });
+    } catch (e) {
+      report.add("buffer", "MSE buffer size", "fail", (e as Error).message);
+    }
+    if (id !== run) return;
+    status.textContent = "Done. Photograph this screen or scan the code to send the results.";
+    finish();
+  };
+
+  const again = button("Run again", () => void runAll(), "panel");
+  const buffer = button("Measure buffer size", () => void measure(), "panel");
+  const done = button("Back", back, "primary", true);
+  show([h("div", "diag", undefined, [
+    h("div", "diag-main", undefined, [h("div", "diag-title", "Diagnostics"), status, rowsEl]),
+    h("div", "diag-side", undefined, [preview, qrBox, h("div", "stack", undefined, [again, buffer, done])]),
+  ])], back);
+  screenCleanup.push(() => { run = -1; });
+  void runAll();
 }
 
 // ---- Playback ----------------------------------------------------------------------------------------------------
@@ -1318,6 +1395,7 @@ document.addEventListener("keyup", (e) => {
 registerPlatformKeys();
 
 async function start() {
+  if (location.hash === "#diag") { diagnosticsScreen(); return; }
   if (!store.accounts().length) { void pair(false); return; }
   await loadProfiles();
   // Reopen the profile this TV was on, unless it needs a PIN or a phone's approval.

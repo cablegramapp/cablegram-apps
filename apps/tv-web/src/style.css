@@ -313,3 +313,20 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; color: 
   font-size: 32px; font-weight: 600; color: var(--paper); }
 .setting-row b { margin-left: 48px; }
 .setting-row.focused { background: var(--acid); color: var(--ink); }
+
+/* Diagnostics */
+.diag { display: flex; width: 100%; height: 100%; padding: 40px 56px; box-sizing: border-box; }
+.diag-main { -webkit-box-flex: 3; flex: 3; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.diag-title { font-size: 44px; font-weight: 700; margin-bottom: 6px; }
+.diag-sub { font-size: 24px; opacity: .7; margin-bottom: 14px; min-height: 30px; }
+.diag-rows { -webkit-box-flex: 1; flex: 1; overflow: hidden; }
+.diag-row { display: flex; padding: 7px 0; font-size: 24px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.diag-mark { width: 44px; flex: none; font-weight: 700; }
+.diag-mark.ok { color: #6fdc8c; } .diag-mark.fail { color: #ff6b6b; } .diag-mark.warn { color: #ffc14d; } .diag-mark.info { opacity: .6; }
+.diag-label { width: 330px; flex: none; }
+.diag-detail { -webkit-box-flex: 1; flex: 1; min-width: 0; opacity: .85; word-wrap: break-word; }
+.diag-side { -webkit-box-flex: 1; flex: 1; margin-left: 40px; display: flex; flex-direction: column; align-items: flex-start; }
+.diag-preview { width: 320px; height: 180px; background: #000; margin-bottom: 20px; overflow: hidden; }
+.diag-preview video { width: 100%; height: 100%; }
+.diag-qr { margin-bottom: 20px; min-height: 8px; }
+.diag-qr canvas { width: 280px; height: 280px; }

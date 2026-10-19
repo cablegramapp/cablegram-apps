@@ -20,6 +20,7 @@
     "vitest": "3.2.4"
   },
   "dependencies": {
+    "@cryptography/aes": "^0.1.1",
     "big-integer": "^1.6.52",
     "buffer": "^6.0.3",
     "events": "^3.3.0",

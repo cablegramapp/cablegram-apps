@@ -104,6 +104,12 @@ Run apps from a shell with `env -u ELECTRON_RUN_AS_NODE` (VS Code's shell sets i
   It lists the app in its launcher, but the app's page is not exposed over `--remote-debugging-port`, so it was not driven
   automatically; Chromium 120 behaves like the desktop Chrome that `npm run e2e` uses.
 
+## Diagnostics and testing on a real TV
+
+Settings → Diagnostics (and **Check this TV** on the pairing screen, or `#diag` in a desktop browser) checks the TV's
+decoders, speed, server access, plays a bundled 1080p test clip through the engine and can measure the MSE buffer size.
+`docs/testing-on-a-friends-lg-tv.md` explains how to get the app onto someone else's LG TV and what to ask them to send.
+
 ## Slow CPUs
 
 TV chips are several times slower than a laptop core. `node scripts/perf-throttle.mjs [rate…]` (default 1 4 6 10) runs
