@@ -21,5 +21,14 @@ Third-party software used by the apps, each under its own licence:
 The Movie Database (TMDB): title search, metadata and artwork shown in the apps come from the TMDB API through the Cablegram service. This product uses
 the TMDB API but is not endorsed or certified by TMDB.
 
+libs/tv-media (the TV playback library) is a separate component licensed under the Apache License 2.0, copyright
+Seep Labs (libs/tv-media/LICENSE and libs/tv-media/NOTICE). It has no runtime dependencies, so other projects can use
+it without GPL obligations. Apache-2.0 code can be combined with the GPL-3.0 apps here.
+
+The TV web app (apps/tv-web) additionally bundles, under their own licences: qrcode-generator, GramJS (`telegram`),
+buffer, events and async-mutex (MIT); big-integer (Unlicense); pako (MIT and Zlib); websocket (Apache-2.0); and
+@cryptography/aes, which is GPL-3.0-or-later (the app is GPL-3.0, so that is compatible; keep it out of libs/tv-media).
+Direct Telegram playback in that app is built only with VITE_TG_DIRECT=1.
+
 All of these licences are compatible with GPL-3.0 for the way Cablegram uses them. Check again before
 adding a dependency that is not listed here.

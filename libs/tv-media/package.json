@@ -2,7 +2,7 @@
   "name": "tv-media",
   "version": "0.0.0",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "description": "Demux MP4/MKV in TypeScript and feed the TV's own decoders through Media Source Extensions",
   "type": "module",
   "main": "src/index.ts",
