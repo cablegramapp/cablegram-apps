@@ -14,7 +14,7 @@ const items = [
     progress: { position_seconds: 90, state: "paused" }, sources: phone("s2") },
   { id: "3", title: "Big Buck Bunny", year: 2008, duration_seconds: 596, genres: ["Animation", "Comedy"], created_at: day(16), in_my_list: true, sources: phone("s3") },
   { id: "4", title: "Tears of Steel", year: 2012, duration_seconds: 734, genres: ["Science Fiction"], created_at: day(15), sources: [{ kind: "own_cloud", origin_identity: "s4" }] },
-  { id: "5", title: "Cosmos Laundromat", year: 2015, duration_seconds: 731, genres: ["Animation"], created_at: day(14), sources: [{ kind: "telegram", origin_identity: "tg:1:5" }] },
+  { id: "5", title: "Cosmos Laundromat", year: 2015, duration_seconds: 731, genres: ["Animation"], created_at: day(14), sources: [{ kind: "telegram", origin_identity: process.env.MOCK_TG_IDENTITY ?? "tg:1:5" }] },
   { id: "6", title: "VID-20261018-WA0012", duration_seconds: 75, created_at: day(19), sources: [{ kind: "phone_local", origin_identity: "s6", serving_device_id: "ph1", private: true }] },
   { id: "7", title: "Spring", year: 2019, duration_seconds: 464, genres: ["Animation", "Fantasy"], created_at: day(12), sources: phone("s7") },
   { id: "8", title: "Agent 327 Operation Barbershop", year: 2017, duration_seconds: 231, genres: ["Comedy"], created_at: day(11), sources: phone("s8") },
@@ -32,7 +32,8 @@ const routes = {
   "GET /api/me": { devices: [{ id: "ph1", kind: "phone" }] },
   "POST /api/relay/ticket": { ticket: "rt" },
   // Dummy application identity (not a real api_id/api_hash): enough for the TV app to build a Telegram client.
-  "GET /api/telegram/client-config": { api_id: 1, api_hash: "0".repeat(32) },
+  "GET /api/telegram/client-config": process.env.TG_API_ID && process.env.TG_API_HASH
+    ? { api_id: Number(process.env.TG_API_ID), api_hash: process.env.TG_API_HASH } : { api_id: 1, api_hash: "0".repeat(32) },
   // Sintel has a Cablegram subtitle, so the player's subtitle drawing can be seen.
   "GET /api/subtitles/playback/item/1": { subtitles: [{ trackId: "sub1", language: "en", label: "English", isDefault: true,
     url: "/api/subtitles/sub1/content",
