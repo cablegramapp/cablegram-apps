@@ -22,6 +22,16 @@ jobs:
         app: [android-phone, android-tv]
     steps:
       - uses: actions/checkout@v4
+      - name: Set release version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          # Each tag gets a higher code, including release candidates. Reruns retain the same code.
+          # The offset leaves room above the manually published versions (currently code 4).
+          echo "ORG_GRADLE_PROJECT_CABLEGRAM_VERSION_CODE=$((1000 + RELEASE_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "ORG_GRADLE_PROJECT_CABLEGRAM_VERSION_NAME=${RELEASE_TAG#v}" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -102,3 +112,41 @@ jobs:
           case "$GITHUB_REF_NAME" in *-*) draft="--draft" ;; esac
           gh release create "$GITHUB_REF_NAME" dist/*.apk dist/SHA256SUMS $draft \
             --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
+
+  play-internal:
+    name: Google Play internal (${{ matrix.app }})
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: android-phone
+            package: app.cablegram.phone
+          - app: android-tv
+            package: app.cablegram
+    steps:
+      - name: Check Play publishing credential
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::Set the PLAY_SERVICE_ACCOUNT_JSON repository Actions secret with testing-track access to both Cablegram apps."
+            exit 1
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          name: play-bundle-${{ matrix.app }}
+          path: dist-play
+      - name: Upload signed bundle to internal testing
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ matrix.package }}
+          releaseFiles: dist-play/*.aab
+          releaseName: ${{ github.ref_name }}
+          tracks: internal
+          status: completed

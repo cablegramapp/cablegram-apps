@@ -25,8 +25,8 @@ android {
         (project.findProperty("CABLEGRAM_APP_ID_SUFFIX") as String?)?.let { applicationIdSuffix = it }
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.3.0"
+        versionCode = providers.gradleProperty("CABLEGRAM_VERSION_CODE").orElse("4").get().toInt()
+        versionName = providers.gradleProperty("CABLEGRAM_VERSION_NAME").orElse("0.3.0").get()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val apiBase = (project.findProperty("CABLEGRAM_API_BASE") as String?)
             ?: (project.findProperty("CABLEGRAM_API_BASE_URL") as String?)

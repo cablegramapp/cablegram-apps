@@ -129,6 +129,15 @@ To keep the APK small, add `-PCABLEGRAM_ABIS=arm64-v8a` (phone) or the ABI of yo
 Tagged releases are built and signed by the [Release workflow](.github/workflows/release.yml) and published
 with checksums. See [VERIFY.md](VERIFY.md) to check a download or an installed app.
 
+After the GitHub release is created, the same signed bundles are uploaded to the Google Play **internal
+testing** tracks for the phone and TV apps, including release candidate tags.
+
+The upload runs as a Google Cloud service account whose JSON key is the `PLAY_SERVICE_ACCOUNT_JSON` repository
+secret. In Play Console (Users and permissions), give that account these permissions on each of the two apps, not at
+the account level: *View app information*, *Release apps to testing tracks*, and *Manage testing tracks and edit
+tester lists*. Without the testing-track permissions, the account can still upload a bundle, but committing the
+release fails with "The caller does not have permission". It needs no production or admin permissions.
+
 ## Forks
 
 Cablegram is an unofficial app and is not made or endorsed by Telegram. A fork must use its own Telegram
