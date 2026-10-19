@@ -48,11 +48,20 @@ const server = http.createServer((req, res) => {
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 console.log("starting Chrome and the mock control plane…");
-const browser = await chromium.launch({ executablePath: chrome, args: ["--autoplay-policy=no-user-gesture-required"] });
+// HEADED=1 shows the browser window; by default it runs headless (no window), which is normal.
+const browser = await chromium.launch({ executablePath: chrome, headless: process.env.HEADED !== "1", args: ["--autoplay-policy=no-user-gesture-required"] });
 let code = 1;
 try {
   for (let i = 0; i < 50; i++) { try { if ((await fetch(`http://localhost:${MOCK_PORT}/api/me`)).ok) break; } catch { /* starting */ } await sleep(100); }
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+  // Telegram traffic counters: tells a silent connection from a slow one.
+  const ws = { sockets: 0, sent: 0, received: 0, receivedBytes: 0, closed: 0 };
+  page.on("websocket", (sock) => {
+    ws.sockets++;
+    sock.on("framesent", () => ws.sent++);
+    sock.on("framereceived", (f) => { ws.received++; ws.receivedBytes += f.payload.length; });
+    sock.on("close", () => ws.closed++);
+  });
   page.on("console", (m) => { if (m.text().startsWith("[tg]")) console.log("  " + m.text()); });
   page.on("pageerror", (e) => console.log("  [page error]", e.message.slice(0, 200)));
   await page.addInitScript((s) => localStorage.setItem("cablegram.tv.tgSession", s), process.env.TG_SESSION);
@@ -72,7 +81,7 @@ try {
   const end = Date.now() + 90000;
   while (Date.now() < end) {
     s = await state();
-    if (Date.now() - lastNote > 10000) { lastNote = Date.now(); console.log(`  … ${Math.round((Date.now() - (end - 90000)) / 1000)} s: ${s.t == null ? "no video yet" : `video at ${s.t.toFixed(1)} s`}`); }
+    if (Date.now() - lastNote > 10000) { lastNote = Date.now(); console.log(`  … ${Math.round((Date.now() - (end - 90000)) / 1000)} s: ${s.t == null ? "no video yet" : `video at ${s.t.toFixed(1)} s`}; websocket: ${ws.sockets} open(ed), ${ws.closed} closed, sent ${ws.sent}, received ${ws.received} frames (${Math.round(ws.receivedBytes / 1024)} KB)`); }
     if (s.t > 3 || /Couldn't play this video|can't play/.test(s.text)) break;
     await sleep(500);
   }
