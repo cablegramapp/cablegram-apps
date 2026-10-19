@@ -48,6 +48,9 @@ gen mp4-tx3g.mp4 $V $A -i subs.srt $X264 -c:a aac -b:a 64k -c:s mov_text -movfla
 gen mp4-hevc.mp4 $V $A -c:v libx265 -preset ultrafast -g 25 -pix_fmt yuv420p -tag:v hvc1 -x265-params log-level=error -c:a aac -b:a 64k -movflags +faststart
 gen mp4-ac3.mp4 $V $A $X264 -c:a ac3 -b:a 96k -movflags +faststart
 
+# 2-minute file for buffer-policy and seek tests in the browser
+[ -f mp4-long.mp4 ] || ffmpeg -loglevel error -y -f lavfi -i testsrc2=size=320x180:rate=25 -f lavfi -i sine=frequency=440:sample_rate=48000 -t 120 $X264 -c:a aac -b:a 64k -movflags +faststart mp4-long.mp4
+
 gen mp4-mp3.mp4 $V $A $X264 -c:a libmp3lame -b:a 64k -movflags +faststart
 gen mp4-opus.mp4 $V $A $X264 -c:a libopus -b:a 48k -strict -2 -movflags +faststart
 

@@ -41,6 +41,7 @@ export class Mp4Demuxer implements Demuxer {
     }
 
     let maxEnd = 0;
+    let minDts = 0;
     for (const trak of childBoxes(buf, root.dataStart, root.end)) {
       if (trak.type !== "trak") continue;
       const state = this.parseTrak(buf, trak, movieTimescale);
@@ -49,12 +50,13 @@ export class Mp4Demuxer implements Demuxer {
       this.enabled.add(state.track.id);
       const ix = state.index;
       if (ix.count) {
+        if (state.track.kind !== "subtitle") minDts = Math.min(minDts, ix.dts[0] / state.track.timescale);
         const end = (ix.dts[ix.count - 1] + ix.duration[ix.count - 1]) / state.track.timescale;
         if (state.track.kind !== "subtitle") maxEnd = Math.max(maxEnd, end);
       }
     }
     const duration = movieDuration ? movieDuration / movieTimescale : maxEnd;
-    return { container: "mp4", duration, tracks: this.tracks.map((t) => t.track) };
+    return { container: "mp4", duration, minDts, tracks: this.tracks.map((t) => t.track) };
   }
 
   setEnabledTracks(ids: number[]): void {

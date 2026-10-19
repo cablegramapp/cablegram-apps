@@ -64,6 +64,11 @@ export interface MediaInfo {
   container: "mp4" | "mkv";
   /** Seconds; 0 when unknown. */
   duration: number;
+  /**
+   * Earliest decode time in seconds, 0 or negative (B-frame video starts its dts before pts 0). The muxer needs
+   * dts >= 0, so the sink shifts the timeline by -minDts.
+   */
+  minDts: number;
   tracks: Track[];
 }
 
