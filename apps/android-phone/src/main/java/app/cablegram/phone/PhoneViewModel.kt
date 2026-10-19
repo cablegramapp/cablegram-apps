@@ -1219,6 +1219,9 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         private set
     var telegramFinishing by mutableStateOf(false)
         private set
+    /** The household is linked to Telegram AND this phone holds a session of its own (so it can read and save to it). */
+    val telegramSignedInHere: Boolean get() = telegramLink?.linked == true && PhoneTelegram.wasLinked(getApplication())
+
     /** Whether the link works from this phone; see [checkTelegramHealth]. */
     var telegramHealth by mutableStateOf(TelegramHealth.Unknown)
         private set
@@ -1375,8 +1378,9 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
     fun checkTelegramHealth() {
         if (!PhoneTelegram.configured || telegramLink?.linked != true) return
         if (!PhoneTelegram.wasLinked(getApplication())) {
-            // Linked from another phone: this one has no session to check with.
-            telegramHealth = TelegramHealth.Ok
+            // Linked from another phone: this one has no session to check with, so it is not connected here. Showing
+            // "Connected" and opening the channel would send the owner to whatever Telegram account the Telegram app has.
+            telegramHealth = TelegramHealth.NotHere
             return
         }
         viewModelScope.launch {
@@ -3182,7 +3186,8 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
 
 enum class PhoneTab { Library, Browse, Remote, Storage, Settings }
 
-enum class TelegramHealth { Unknown, Ok, ChannelLost, SignedOut }
+/** [NotHere]: the household is linked (from another phone, or before a reinstall) but this phone has no Telegram session. */
+enum class TelegramHealth { Unknown, Ok, ChannelLost, SignedOut, NotHere }
 
 enum class CloudSheet { None, Setup, Confirm, Oversize, Manage, ConnectR2, FreeUp, FreeUpConfirm }
 

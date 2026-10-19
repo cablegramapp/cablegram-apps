@@ -586,7 +586,7 @@ private fun ItemActionMenu(viewModel: PhoneViewModel, item: LibraryItem, expande
         if (canSaveToCloud(item)) {
             CompactMenuItem(ui.getString(R.string.ui_save_to_cloud_0fd280)) { viewModel.actionMenuId = null; viewModel.beginSaveToCloud(item) }
         }
-        if (canSaveToTelegram(item) && viewModel.telegramLink?.linked == true && PhoneTelegram.configured) {
+        if (canSaveToTelegram(item) && viewModel.telegramSignedInHere && PhoneTelegram.configured) {
             CompactMenuItem(ui.getString(R.string.ui_save_to_telegram_f6c595)) { viewModel.actionMenuId = null; viewModel.saveToTelegram(item) }
         }
         if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) {
@@ -1346,7 +1346,7 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_retry_saving_to_telegram_eed237)) }
                 } else if (item.transferStatus == TRANSFER_FAILED && !sourceUnavailable && item.sourceKind != "web") OutlinedButton(onClick = { viewModel.retrySave(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_retry_cloud_save_6ac597)) }
                 else if (canSaveToCloud(item)) OutlinedButton(onClick = { viewModel.beginSaveToCloud(item) }, modifier = Modifier.fillMaxWidth().maestro(MaestroIds.DETAIL_SAVE_CLOUD)) { Text(ui.getString(R.string.ui_save_a_cloud_copy_dbaf92)) }
-                if (viewModel.telegramLink?.linked == true && PhoneTelegram.configured && canSaveToTelegram(item) && item.webTransferError != TELEGRAM_SAVE_FAILED) {
+                if (viewModel.telegramSignedInHere && PhoneTelegram.configured && canSaveToTelegram(item) && item.webTransferError != TELEGRAM_SAVE_FAILED) {
                     OutlinedButton(onClick = { viewModel.saveToTelegram(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_save_to_telegram_f6c595)) }
                 }
                 if ((item.cloudObjectPresent || item.ownCloudCopy) && !item.copied) OutlinedButton(onClick = { viewModel.downloadFromCloud(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_download_to_phone_6265e3)) }

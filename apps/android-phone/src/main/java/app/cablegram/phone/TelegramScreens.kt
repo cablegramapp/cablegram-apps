@@ -67,16 +67,25 @@ internal fun TelegramLibraryCard(viewModel: PhoneViewModel) {
     val link = viewModel.telegramLink
     val linked = link?.linked == true
     val chatId = link?.chatId
+    // Linked for the household, but this phone has no Telegram session of its own: not connected here.
+    val notHere = linked && (viewModel.telegramHealth == TelegramHealth.NotHere || !PhoneTelegram.wasLinked(context))
     androidx.compose.runtime.LaunchedEffect(linked, chatId) { if (linked) viewModel.checkTelegramHealth() }
     SectionCard(ui.getString(R.string.telegram_library_title)) {
         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = VlcOrange, modifier = Modifier.size(32.dp))
         Text(TelegramSession.LIBRARY_TITLE, color = Color.White, style = MaterialTheme.typography.titleLarge)
         Text(ui.getString(R.string.telegram_library_help), color = VlcMuted)
         when {
-            viewModel.telegramHealth == TelegramHealth.ChannelLost && linked -> {
+            viewModel.telegramHealth == TelegramHealth.ChannelLost && linked && !notHere -> {
                 Text(ui.getString(R.string.ui_you_re_no_longer_in_the_channel_you_left_it_or_it_was__46af5b, TelegramSession.LIBRARY_TITLE), color = VlcOrange)
                 Button(onClick = viewModel::recreateTelegramChannel, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text(ui.getString(R.string.ui_create_a_new_cb63aa, TelegramSession.LIBRARY_TITLE))
+                }
+            }
+            notHere -> {
+                // The household is linked, but not from this phone: say so instead of "Connected" and an Open button.
+                Text(ui.getString(R.string.ui_this_phone_isn_t_signed_in_to_telegram_yet_so_it_can_t_a21b4f), color = VlcOrange)
+                Button(onClick = viewModel::openTelegramSheet, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                    Text(ui.getString(R.string.ui_sign_in_on_this_phone_1bc154))
                 }
             }
             linked && chatId != null -> {
@@ -111,6 +120,7 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel, onAccountHelp: () -
     val linked = link?.linked == true
     val health = viewModel.telegramHealth
     val context = LocalContext.current
+    val notHere = linked && (health == TelegramHealth.NotHere || !PhoneTelegram.wasLinked(context))
     var confirmDisconnect by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp).maestro(MaestroIds.TELEGRAM_ENTRY),
@@ -123,13 +133,14 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel, onAccountHelp: () -
             Text(
                 when {
                     !linked -> ui.getString(R.string.ui_use_your_own_telegram_account_as_cloud_storage_share_v_0d5978)
+                    notHere -> ui.getString(R.string.ui_this_phone_isn_t_signed_in_to_telegram_yet_so_it_can_t_a21b4f)
                     health == TelegramHealth.ChannelLost ->
                         ui.getString(R.string.ui_you_re_no_longer_in_the_channel_you_left_it_or_it_was__46af5b, TelegramSession.LIBRARY_TITLE)
                     health == TelegramHealth.SignedOut ->
                         ui.getString(R.string.ui_telegram_signed_cablegram_out_on_this_phone_for_exampl_c6a476)
                     else -> ui.getString(R.string.ui_connected_as_videos_you_share_into_this_private_channe_54b272, link?.displayName ?: ui.getString(R.string.ui_your_account_17a7e5))
                 },
-                color = if (health == TelegramHealth.ChannelLost || health == TelegramHealth.SignedOut) VlcOrange else VlcMuted,
+                color = if (notHere || health == TelegramHealth.ChannelLost || health == TelegramHealth.SignedOut) VlcOrange else VlcMuted,
                 fontSize = 12.sp,
             )
         }
@@ -139,6 +150,10 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel, onAccountHelp: () -
             onClick = viewModel::openTelegramSheet,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_CONNECT),
         ) { Text(ui.getString(R.string.ui_connect_telegram_00c799)) }
+        notHere -> Button(
+            onClick = viewModel::openTelegramSheet,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        ) { Text(ui.getString(R.string.ui_sign_in_on_this_phone_1bc154)) }
         health == TelegramHealth.ChannelLost -> Button(
             onClick = viewModel::recreateTelegramChannel,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).maestro(MaestroIds.TELEGRAM_RECREATE),
@@ -184,16 +199,7 @@ internal fun TelegramStorageEntry(viewModel: PhoneViewModel, onAccountHelp: () -
             )
         }
     }
-    if (linked && !PhoneTelegram.wasLinked(context)) {
-        // The household is linked (from another phone, or before a reinstall) but this phone has no session,
-        // so it can't approve TVs, save videos or end TV sessions until it signs in too.
-        Text(
-            ui.getString(R.string.ui_this_phone_isn_t_signed_in_to_telegram_yet_so_it_can_t_a21b4f),
-            color = VlcOrange, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp),
-        )
-        Button(onClick = viewModel::openTelegramSheet, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text(ui.getString(R.string.ui_sign_in_on_this_phone_1bc154)) }
-    }
-    if (linked && health == TelegramHealth.Ok) {
+    if (linked && !notHere && health == TelegramHealth.Ok) {
         OutlinedButton(onClick = viewModel::openHiddenVideos, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_hidden_videos_e92f75)) }
     }
     if (viewModel.showHiddenVideos) HiddenVideosDialog(viewModel)
