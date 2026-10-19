@@ -70,14 +70,17 @@ export async function openTelegramSource(
   const peer = peerOf(ref.chatId);
   const resolve = async () => {
     const id = peer.kind === "channel" ? Number(`-100${peer.id}`) : Number(ref.chatId);
-    try {
-      return await within("find_chat", 20_000, client.getInputEntity(id));
-    } catch {
-      // A fresh session does not know the channel's access hash yet: reading the dialogs fills the cache.
-      note("chat not cached, reading dialogs");
-      await within("dialogs", 60_000, client.getDialogs({ limit: 300 }));
-      return within("find_chat", 20_000, client.getInputEntity(id));
-    }
+    // A fresh session does not know the chat's access hash. Reading the dialog list finds it (and fills GramJS's cache);
+    // stop at the chat instead of loading every dialog. getInputEntity alone can wait on the network for a long time.
+    note("looking for the chat in the dialog list");
+    const found = within("dialogs", 60_000, client.getDialogs({ limit: 300 }).then((dialogs) => {
+      const hit = dialogs.find((d) => d.id !== undefined && d.id.toString() === ref.chatId);
+      return hit ? hit.inputEntity : null;
+    }));
+    const entity = await found;
+    if (entity) return entity;
+    note("chat not in the dialog list, asking Telegram directly");
+    return within("find_chat", 20_000, client.getInputEntity(id));
   };
   const inputPeer = await resolve();
   note("chat found");
