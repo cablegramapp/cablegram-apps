@@ -10,7 +10,8 @@ private let legalJSON = #"{"terms":{"version":"2026-10-15","url":"t"},"privacy":
 
 /// Ported from AccountAuthenticatorTest, CatalogClientAccountDeletionTest, SignInControllerTest and
 /// AccountDeletionControllerTest. One serialized suite: the mock server is shared state.
-@Suite(.serialized) @MainActor struct AccountTests {
+extension Network {
+@Suite @MainActor struct AccountTests {
     init() { MockHTTP.reset() }
 
     // MARK: Token renewal (AccountAuthenticatorTest)
@@ -281,4 +282,5 @@ private let legalJSON = #"{"terms":{"version":"2026-10-15","url":"t"},"privacy":
         c.reset()
         #expect(c.error == nil)
     }
+}
 }

@@ -1,4 +1,5 @@
 import Foundation
+import Testing
 @testable import CablegramCore
 
 struct RecordedRequest: @unchecked Sendable {
@@ -88,3 +89,6 @@ final class TestTokens: AccountTokens, @unchecked Sendable {
         set { lock.withLock { _refresh = newValue } }
     }
 }
+
+/// The mock server is shared state, so every suite that uses it lives under this one serialized parent.
+@Suite(.serialized) enum Network {}

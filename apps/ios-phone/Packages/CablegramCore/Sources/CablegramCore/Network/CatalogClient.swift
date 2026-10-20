@@ -13,7 +13,7 @@ public struct CatalogClient: Sendable {
     public let baseURL: URL
     /// Renews the two-hour access token on 401; nil only for anonymous calls.
     public let tokens: (any AccountTokens)?
-    private let session: URLSession
+    let session: URLSession
 
     public init(baseURL: URL = AppConfiguration.defaultApiBase, tokens: (any AccountTokens)? = nil, session: URLSession = .shared) {
         self.baseURL = baseURL
