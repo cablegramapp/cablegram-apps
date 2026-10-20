@@ -52,8 +52,8 @@ struct SettingsScreen: View {
         } message: { Text(key: "ui_this_phone_stops_sharing_and_controlling_your_tvs_your_960038") }
         .sheet(isPresented: $showLegal) { LegalSheet() }
         .onAppear { viewModel.tv.loadProfileLock() }
-        .alert(L("ios_rename_tv"), isPresented: Binding(get: { tvToRename != nil }, set: { if !$0 { tvToRename = nil } })) {
-            TextField(L("ios_tv_name"), text: $renameDraft)
+        .alert(L("tv_rename_title"), isPresented: Binding(get: { tvToRename != nil }, set: { if !$0 { tvToRename = nil } })) {
+            TextField(L("tv_name_label"), text: $renameDraft)
             Button(L("ui_cancel_19766e"), role: .cancel) {}
             Button(L("ui_save_changes_dd0ae7")) { if let tvToRename { viewModel.tv.renameTv(tvToRename, to: renameDraft) } }
         }
@@ -197,7 +197,7 @@ struct SettingsScreen: View {
                     }
                     Spacer()
                     if item.deviceId != nil {
-                        Button { renameDraft = item.name; tvToRename = item } label: { Text(key: "ios_rename").foregroundStyle(Color.phoneAccent) }.disabled(tv.working)
+                        Button { renameDraft = item.name; tvToRename = item } label: { Text(key: "tv_rename").foregroundStyle(Color.phoneAccent) }.disabled(tv.working)
                     }
                     Button { tvToRemove = item } label: { Text(key: "ui_remove_c3812f").foregroundStyle(Color.phoneError) }.disabled(tv.working)
                 }
