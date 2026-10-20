@@ -20,6 +20,10 @@ packages:
   GoogleSignIn:
     url: https://github.com/google/GoogleSignIn-iOS
     exactVersion: 9.1.0
+  # The TDLib version the Android app ships (tdl-coroutines-android 15.0.0 bundles TDLib 1.8.67). A 360 MB binary package.
+  TDLibFramework:
+    url: https://github.com/Swiftgram/TDLibFramework
+    exactVersion: 1.8.67-fa8294b4
 targets:
   Cablegram:
     type: application
@@ -34,6 +38,8 @@ targets:
       - package: CablegramCore
       - package: GoogleSignIn
         product: GoogleSignIn
+      - package: TDLibFramework
+        product: TDLibFramework
       - target: ShareExtension
         embed: true
       - target: ServingWidget
