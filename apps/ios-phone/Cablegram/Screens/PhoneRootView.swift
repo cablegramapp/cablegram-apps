@@ -31,7 +31,7 @@ struct LibraryShell: View {
 
     var body: some View {
         // Storage is a screen under Settings: the bar keeps highlighting Settings while it is open.
-        let selection = Binding<PhoneTab>(get: { viewModel.tab.barItem }, set: { viewModel.tab = $0 })
+        let selection = Binding<PhoneTab>(get: { viewModel.tab.barItem }, set: { viewModel.selectTab($0) })
         TabView(selection: selection) {
             ForEach(PhoneTab.barItems(legacyRemote: viewModel.legacyRemote), id: \.self) { tab in
                 content(for: tab)
@@ -45,11 +45,21 @@ struct LibraryShell: View {
     }
 
     @ViewBuilder private func content(for tab: PhoneTab) -> some View {
-        switch tab {
-        case .settings:
-            if viewModel.tab == .storage { PlaceholderTabView(tab: .storage) } else { SettingsScreen(viewModel: viewModel) }
-        default: PlaceholderTabView(tab: tab)
+        ZStack {
+            switch tab {
+            case .library: LibraryHome(viewModel: viewModel)
+            case .settings:
+                if viewModel.tab == .storage { PlaceholderTabView(tab: .storage) } else { SettingsScreen(viewModel: viewModel) }
+            case .remote where !viewModel.legacyRemote: LibraryHome(viewModel: viewModel)
+            default: PlaceholderTabView(tab: tab)
+            }
+            // A series page and a title page are full-screen overlays on any tab (Android `LibraryShell`).
+            if let series = viewModel.shownSeries { SeriesOverlay(viewModel: viewModel, series: series).transition(.move(edge: .trailing)) }
+            if let selected = viewModel.selected { DetailOverlay(viewModel: viewModel, item: selected).id(selected.id).transition(.move(edge: .trailing)) }
         }
+        .modifier(DeleteConfirmation(viewModel: viewModel))
+        .animation(.default, value: viewModel.selectedId)
+        .animation(.default, value: viewModel.openSeriesKey)
     }
 }
 

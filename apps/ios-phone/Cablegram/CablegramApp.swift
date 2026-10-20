@@ -10,9 +10,10 @@ struct CablegramApp: App {
     private static func makeViewModel() -> PhoneViewModel {
         let pairing = PairingStore(secrets: KeychainSecretStore(), defaultApiBase: configuration.apiBase.absoluteString)
         #if DEBUG
-        DebugAccountSeed.apply(to: pairing)
-        #endif
+        return PhoneViewModel(config: configuration, pairing: pairing, applyDebugSeed: { DebugAccountSeed.apply(to: pairing, store: $0) })
+        #else
         return PhoneViewModel(config: configuration, pairing: pairing)
+        #endif
     }
 
     var body: some Scene {

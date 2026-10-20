@@ -23,6 +23,26 @@ final class PhoneViewModel {
     private(set) var legacyRemote: Bool
     private(set) var castConnect: Bool
 
+    // Library
+    private(set) var items: [LibraryItem] = []
+    private(set) var collections: [UserCollection] = []
+    var searchQuery = ""
+    private(set) var librarySyncState: LibrarySyncState = .idle
+    private(set) var prepareStep: String?
+    private(set) var prepareProgress: Double = 0
+    private(set) var selectedId: String?
+    private(set) var openSeriesKey: String?
+    var editingMetadata = false
+    var collectionsDialogOpen = false
+    var collectionDraft = ""
+    var deleteTarget: LibraryItem?
+    /// Telegram first-run notices and the like arrive with their phases; the library only needs the TV name for its header.
+    private(set) var paired = false
+    private(set) var tvName = "TV"
+
+    @ObservationIgnored let store: LibraryStore
+    @ObservationIgnored private var syncing = false
+
     // Delete account
     private(set) var deletingAccount = false
     private(set) var deletionCodeSentTo: String?
@@ -32,15 +52,20 @@ final class PhoneViewModel {
     @ObservationIgnored private(set) var accountDeletion: AccountDeletionController!
     @ObservationIgnored private let google: GoogleSignInService
 
-    init(config: AppConfiguration, pairing: PairingStore, google: GoogleSignInService = GoogleSignInService()) {
+    init(config: AppConfiguration, pairing: PairingStore, google: GoogleSignInService = GoogleSignInService(),
+         applyDebugSeed: ((LibraryStore) -> Void)? = nil) {
         self.config = config
         self.pairing = pairing
         self.google = google
+        let libraryStore = LibraryStore(root: PhoneViewModel.libraryRoot())
+        // Debug builds only: tests start from a seeded account and library (see DebugAccountSeed).
+        applyDebugSeed?(libraryStore)
         needsAccount = (pairing.accountToken ?? "").isEmpty
         householdName = pairing.displayName
         welcomeTourOpen = !pairing.welcomeTourSeen
         legacyRemote = pairing.legacyRemote
         castConnect = pairing.castConnect
+        store = libraryStore
         let makeClient: @Sendable () -> CatalogClient = { [pairing] in
             CatalogClient(baseURL: URL(string: pairing.apiBaseUrl) ?? AppConfiguration.defaultApiBase, tokens: pairing)
         }
@@ -51,10 +76,140 @@ final class PhoneViewModel {
             wipeLocal: { [weak self] in await self?.wipeAfterAccountDeletion() }
         )
         catalog = makeClient
+        store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
+        refresh()
         if needsAccount { loadSignInOptions() } else { checkTerms() }
     }
 
+    /// `Application Support/library`: not user-visible, backed up with the device, kept across updates.
+    private static func libraryRoot() -> URL {
+        let base = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
+            ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("library", isDirectory: true)
+    }
+
     @ObservationIgnored private(set) var catalog: @Sendable () -> CatalogClient = { CatalogClient() }
+
+    // MARK: Library
+
+    func refresh() {
+        items = store.list()
+        collections = store.collections()
+        if let id = selectedId, !items.contains(where: { $0.id == id }) { selectedId = nil }
+    }
+
+    var selected: LibraryItem? { selectedId.flatMap { id in items.first { $0.id == id } } }
+
+    /// The series whose episodes are open, from the current items.
+    var shownSeries: LibraryEntry? {
+        guard let key = openSeriesKey else { return nil }
+        return groupIntoEntries(items).first { $0.key == key && $0.episodeCount > 0 }
+    }
+
+    func openItem(_ item: LibraryItem) { selectedId = item.id; editingMetadata = false }
+    func closeItem() { selectedId = nil; editingMetadata = false }
+    func openSeries(_ entry: LibraryEntry) { openSeriesKey = entry.key }
+    func closeSeries() { openSeriesKey = nil }
+
+    /// Leaving for another tab must not leave a title page or a series page covering it.
+    func selectTab(_ tab: PhoneTab) {
+        closeItem()
+        closeSeries()
+        self.tab = tab
+    }
+
+    func askDelete(_ item: LibraryItem) { deleteTarget = item }
+
+    func removeFromLibrary(_ item: LibraryItem) {
+        store.removeFromLibrary(item.id)
+        deleteTarget = nil
+        if selectedId == item.id { selectedId = nil }
+        refresh()
+    }
+
+    func deleteFilePermanently(_ item: LibraryItem) {
+        store.deleteFile(item.id)
+        deleteTarget = nil
+        if selectedId == item.id { selectedId = nil }
+        refresh()
+    }
+
+    func toggleCollection(_ item: LibraryItem, _ collectionId: String) {
+        let current = store.get(item.id)?.collectionIds ?? item.collectionIds
+        store.setItemCollections(item.id, collectionIds: current.contains(collectionId) ? current.filter { $0 != collectionId } : current + [collectionId])
+        refresh()
+    }
+
+    func createCollection() {
+        let name = collectionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        store.addCollection(name)
+        collectionDraft = ""
+        refresh()
+    }
+
+    func deleteCollection(_ id: String) {
+        store.deleteCollection(id)
+        refresh()
+    }
+
+    func saveMetadata(base: LibraryItem, title: String, year: Int?, mediaType: String, overview: String) {
+        do {
+            try store.editMetadataDraft(base: base, title: title, year: year, mediaType: mediaType, overview: overview)
+            editingMetadata = false
+            refresh()
+            Task { await syncLibrary() }
+        } catch {
+            status = L("ui_something_went_wrong_try_again_in_a_moment_156a12")
+        }
+    }
+
+    func syncNow() { Task { await syncLibrary(force: true) } }
+
+    /// Flow 5: fingerprint, reconcile, push each item with a checkpoint, send pending edits, merge the household catalog.
+    func syncLibrary(force: Bool = false) async {
+        guard !syncing, let token = pairing.accountToken, !token.isEmpty else { return }
+        syncing = true
+        librarySyncState = .running
+        defer { syncing = false; prepareStep = nil; prepareProgress = 0 }
+        await ensurePhoneDevice()
+        var sync = LibrarySync(store: store, client: catalog(), token: token, phoneDeviceId: pairing.phoneDeviceId)
+        sync.progress = { [weak self] title, fraction in Task { @MainActor in self?.prepareStep = title.map { L("ui_syncing_6c2de6", $0) }; self?.prepareProgress = fraction } }
+        do {
+            try await sync.run()
+            refresh()
+            librarySyncState = .completed
+        } catch {
+            refresh()
+            librarySyncState = .failed
+        }
+    }
+
+    /// CAB-29: "Save artwork to household", after the person confirmed the explanation.
+    func saveArtworkToHousehold(_ item: LibraryItem) {
+        guard let current = store.get(item.id), canSaveArtworkToHousehold(current) else { return }
+        store.updateItem(item.id) { var i = $0; i.householdArtworkVersion = i.posterVersion; return i }
+        refresh()
+        applyHouseholdArtwork(item.id, done: L("ui_cover_saved_to_your_household_762369"), pending: L("ui_the_cover_will_be_saved_to_your_household_on_the_next__87cda3"))
+    }
+
+    func keepArtworkOnPhone(_ item: LibraryItem) {
+        store.updateItem(item.id) { var i = $0; i.householdArtworkVersion = nil; return i }
+        refresh()
+        applyHouseholdArtwork(item.id, done: L("ui_cover_removed_from_your_household_a7304d"), pending: L("ui_the_cover_will_be_removed_from_your_household_on_the_n_135e1a"))
+    }
+
+    private func applyHouseholdArtwork(_ id: String, done: String, pending: String) {
+        let token = pairing.accountToken
+        Task {
+            var ok = false
+            if let token, store.get(id)?.catalogItemId != nil {
+                ok = await LibrarySync(store: store, client: catalog(), token: token, phoneDeviceId: pairing.phoneDeviceId).syncHouseholdArtwork(id)
+            }
+            status = ok ? done : pending
+            refresh()
+        }
+    }
 
     // MARK: Preferences
 
@@ -120,10 +275,15 @@ final class PhoneViewModel {
         pairing.displayName = householdName
         needsAccount = false
         needsName = result.needsName
+        // Another account's library is set aside (and restored if it signs in again), never synced into this one.
+        let setAside = result.householdId.map { store.bindHousehold($0) } ?? false
+        refresh()
         await ensurePhoneDevice()
         // "Signed in. Scan the TV PIN to pair." returns with the pairing screen in phase 5.
         status = result.needsName ? L("ui_choose_an_account_name_to_continue_8eba6d") : nil
+        if setAside { status = L("ui_signed_in_the_previous_account_s_library_is_kept_aside_45bf31") }
         checkTerms()
+        Task { await syncLibrary() }
     }
 
     /// A stable per-install id; the server stores only a keyed hash, used to keep the free relay allowance per device.
@@ -215,6 +375,9 @@ final class PhoneViewModel {
 
     private func clearSignedInState() {
         pairing.clearAccount()
+        items = []
+        selectedId = nil
+        openSeriesKey = nil
         householdName = ""
         tab = .library
         needsName = false
@@ -260,7 +423,9 @@ final class PhoneViewModel {
 
     /// The server deleted the account: sign out completely and forget everything tied to it on this phone.
     private func wipeAfterAccountDeletion() async {
+        store.forgetHousehold()
         clearSignedInState()
+        refresh()
         deletingAccount = false
         deletionCodeSentTo = nil
         busy = false
