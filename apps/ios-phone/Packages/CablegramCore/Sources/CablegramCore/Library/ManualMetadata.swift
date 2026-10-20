@@ -1,6 +1,9 @@
 import Foundation
 
-public struct MetadataValidationError: Error, Equatable { public let reason: String }
+public struct MetadataValidationError: Error, Equatable {
+    public let reason: String
+    public init(reason: String) { self.reason = reason }
+}
 
 private func require(_ condition: Bool, _ reason: String) throws {
     if !condition { throw MetadataValidationError(reason: reason) }

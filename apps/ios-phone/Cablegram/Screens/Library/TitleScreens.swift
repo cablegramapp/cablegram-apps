@@ -121,8 +121,7 @@ struct DetailOverlay: View {
             .buttonStyle(AccentTextButtonStyle()).accessibilityIdentifier(MaestroIds.detailBack)
             Spacer()
             if !viewModel.editingMetadata {
-                // The artwork editor (cover frames, catalog search) arrives next in this phase.
-                Button { viewModel.editingMetadata = true } label: { Text(key: "ui_edit_details_cover_134bbc") }
+                Button { viewModel.findDetailsAndArtwork(item) } label: { Text(key: "ui_edit_details_cover_134bbc") }
                     .buttonStyle(AccentTextButtonStyle()).accessibilityIdentifier("detail_edit_artwork")
             }
         }

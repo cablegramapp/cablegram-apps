@@ -41,6 +41,7 @@ final class PhoneViewModel {
     private(set) var tvName = "TV"
 
     @ObservationIgnored let store: LibraryStore
+    private(set) var artworkEditor: ArtworkEditorController!
     @ObservationIgnored private var syncing = false
 
     // Delete account
@@ -76,6 +77,12 @@ final class PhoneViewModel {
             wipeLocal: { [weak self] in await self?.wipeAfterAccountDeletion() }
         )
         catalog = makeClient
+        artworkEditor = ArtworkEditorController(store: libraryStore, media: AppArtworkMedia(store: libraryStore), catalog: makeClient,
+                                                token: { [pairing] in pairing.accountToken }) { [weak self] _ in
+            self?.refresh()
+            self?.status = L("ui_changes_saved_16bf14")
+            Task { await self?.syncLibrary() }
+        }
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()
         if needsAccount { loadSignInOptions() } else { checkTerms() }
@@ -105,6 +112,8 @@ final class PhoneViewModel {
         guard let key = openSeriesKey else { return nil }
         return groupIntoEntries(items).first { $0.key == key && $0.episodeCount > 0 }
     }
+
+    func findDetailsAndArtwork(_ item: LibraryItem) { artworkEditor.open(item) }
 
     func openItem(_ item: LibraryItem) { selectedId = item.id; editingMetadata = false }
     func closeItem() { selectedId = nil; editingMetadata = false }

@@ -21,6 +21,9 @@ struct PhoneRootView: View {
                 LibraryShell(viewModel: viewModel)
             }
         }
+        .fullScreenCover(isPresented: Binding(get: { viewModel.artworkEditor.draft != nil }, set: { if !$0 { viewModel.artworkEditor.close() } })) {
+            ArtworkEditorScreen(controller: viewModel.artworkEditor, viewModel: viewModel)
+        }
         .preferredColorScheme(.dark)
     }
 }

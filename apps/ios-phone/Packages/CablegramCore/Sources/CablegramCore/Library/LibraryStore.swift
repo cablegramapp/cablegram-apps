@@ -67,7 +67,8 @@ public final class LibraryStore: @unchecked Sendable {
     /// The poster file if it exists on disk.
     public func posterFile(_ item: LibraryItem) -> URL? {
         guard let path = item.posterPath, !path.isEmpty else { return nil }
-        let url = root.appendingPathComponent(path)
+        // Staged editor covers are absolute cache paths; library covers are relative to the library root.
+        let url = path.hasPrefix("/") ? URL(fileURLWithPath: path) : root.appendingPathComponent(path)
         return fm.fileExists(atPath: url.path) ? url : nil
     }
 
