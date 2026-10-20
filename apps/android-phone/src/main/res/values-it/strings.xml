@@ -327,6 +327,7 @@
     <string name="ui_enter_a_valid_tunnel_address_or_leave_it_empty_773859" formatted="false">"Inserisci un indirizzo valido del tunnel o lascialo vuoto."</string>
     <string name="ui_enter_password_7014af" formatted="false">"Inserisci password"</string>
     <string name="ui_enter_the_6_digit_code_we_sent_to_it_expires_in_15_min_89e634">"Inserisci il codice a 6 cifre che abbiamo inviato a %1$s. Scade tra 15 minuti."</string>
+    <string name="ui_didn_t_get_it_check_your_spam_or_junk_folder_23f145" formatted="false">"Non l\'hai ricevuto? Controlla la cartella spam o posta indesiderata."</string>
     <string name="ui_enter_the_6_digit_pin_shown_on_the_tv_or_tap_refresh_c_52ae0e" formatted="false">"Inserisci il PIN a 6 cifre mostrato sulla TV oppure tocca «Aggiorna codice» sulla TV."</string>
     <string name="ui_enter_the_details_0aa04d" formatted="false">"Inserisci i dettagli"</string>
     <string name="ui_enter_the_key_with_your_opensubtitles_username_and_pas_5e0f85" formatted="false">"Inserisci la chiave con il tuo nome utente e password OpenSubtitles."</string>
