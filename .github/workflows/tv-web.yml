@@ -35,6 +35,8 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/tv-web
+          # The action installs Wrangler 3.90 by default, which cannot deploy an assets-only Worker (no `main`).
+          wranglerVersion: "4"
           command: deploy
       - name: Package the webOS wrapper
         # The wrapper only redirects to tv.cablegram.app, so it changes when platforms/webos-hosted does, not with every app release.
