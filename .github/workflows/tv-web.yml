@@ -41,7 +41,7 @@ jobs:
       - name: Package the webOS wrapper
         # The wrapper only redirects to tv.cablegram.app, so it changes when platforms/webos-hosted does, not with every app release.
         working-directory: apps/tv-web
-        run: npx --yes @webos-tools/cli ares-package platforms/webos-hosted -o build
+        run: npx --yes -p @webos-tools/cli ares-package platforms/webos-hosted -o build
       - name: Attach it to a release
         env:
           GH_TOKEN: ${{ github.token }}
