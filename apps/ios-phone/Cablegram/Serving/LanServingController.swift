@@ -19,8 +19,8 @@ final class LanServingController {
     private(set) var failure: String?
     private(set) var lanAddress: String?
 
-    /// How long a backgrounded app keeps serving with nothing playing; also what the background grace period allows.
-    static let backgroundIdleTimeout: TimeInterval = 25
+    /// iOS gives a backgrounded app only a few seconds, so Android's 30-minute idle limit (`LAN_IDLE_TIMEOUT_MS`) is capped here.
+    static let backgroundGrace: TimeInterval = 25
 
     @ObservationIgnored private let pairing: PairingStore
     @ObservationIgnored private let store: LibraryStore
@@ -28,7 +28,8 @@ final class LanServingController {
     @ObservationIgnored private let media: AppMediaProvider
     @ObservationIgnored private let catalog: @Sendable () -> CatalogClient
     @ObservationIgnored private let network = NetworkInfo()
-    @ObservationIgnored private let lifetime = LanLibraryLifetime(idleTimeout: LanServingController.backgroundIdleTimeout)
+    @ObservationIgnored private let lifetime: LanLibraryLifetime
+    @ObservationIgnored private let lanHostOverride: String?
     @ObservationIgnored private var server: LanHTTPServer?
     @ObservationIgnored private var credentials: LanCredentials?
     @ObservationIgnored private var tunnel: RelayTunnel?
@@ -39,10 +40,12 @@ final class LanServingController {
     @ObservationIgnored private var relayStartBytes: Int64 = 0
     @ObservationIgnored private var lastRelayNotice = Date.distantPast
     @ObservationIgnored private var backgroundTask = UIBackgroundTaskIdentifier.invalid
-    @ObservationIgnored private var liveActivity: ServingLiveActivity?
+    @ObservationIgnored private let liveActivity = ServingLiveActivityController()
 
-    init(pairing: PairingStore, store: LibraryStore, root: URL, sources: AppSources, catalog: @escaping @Sendable () -> CatalogClient) {
+    init(pairing: PairingStore, store: LibraryStore, root: URL, sources: AppSources, configuration: AppConfiguration, catalog: @escaping @Sendable () -> CatalogClient) {
         self.pairing = pairing; self.store = store; self.root = root; self.catalog = catalog
+        lifetime = LanLibraryLifetime(idleTimeout: min(Double(configuration.lanIdleTimeoutMs) / 1000, Self.backgroundGrace))
+        lanHostOverride = configuration.lanHostOverride.isEmpty ? nil : configuration.lanHostOverride
         media = AppMediaProvider(sources: sources)
         network.observe { [weak self] type in Task { @MainActor in self?.networkChanged(type) } }
     }
@@ -78,7 +81,7 @@ final class LanServingController {
         tvNames = []
         UIApplication.shared.isIdleTimerDisabled = false
         endBackgroundTask()
-        liveActivity?.end(); liveActivity = nil
+        liveActivity.end()
         media.clearExports()
     }
 
@@ -122,9 +125,10 @@ final class LanServingController {
 
     // MARK: TV address
 
+
     /// Tells the control plane where this phone's LAN server is, with the certificate TVs pin (Android `publishLanAddress`).
     private func announce(_ identity: LanTlsIdentity? = nil) async {
-        guard let host = NetworkInfo.localIPv4() else { lanAddress = nil; return }
+        guard let host = lanHostOverride ?? NetworkInfo.localIPv4() else { lanAddress = nil; return }
         lanAddress = "\(host):\(LanLibraryRouter.port)"
         let fingerprint = (try? identity ?? LanTlsIdentity.load())?.fingerprint
         _ = await catalog().announce(host: host, port: Int(LanLibraryRouter.port), deviceId: pairing.phoneDeviceId, token: pairing.accountToken, certSha256: fingerprint)
@@ -221,9 +225,7 @@ final class LanServingController {
     // MARK: Live Activity
 
     private func updateActivity() {
-        guard running, !foreground else { liveActivity?.end(); liveActivity = nil; return }
-        let title = L("ios_serving_to", tvNames.last ?? L("ui_your_tv_f04452"))
-        if liveActivity == nil { liveActivity = ServingLiveActivity() }
-        liveActivity?.update(title: title, detail: relayText ?? L("ios_serving_keep_open"), streams: activeStreams)
+        guard running else { liveActivity.end(); return }
+        liveActivity.update(title: L("ios_serving_to", tvNames.last ?? L("ui_your_tv_f04452")), detail: relayText ?? L("ios_serving_keep_open"), streams: activeStreams)
     }
 }

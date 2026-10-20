@@ -118,7 +118,7 @@ final class PhoneViewModel {
                           setStatus: { [weak self] in self?.status = $0 }, selectItem: { [weak self] in self?.openItem($0) },
                           ensurePhoneDevice: { [weak self] in await self?.ensurePhoneDevice() }, syncLibrary: { [weak self] in await self?.syncLibrary() },
                           onPairedChanged: { _ in })
-        serving = LanServingController(pairing: pairing, store: libraryStore, root: PhoneViewModel.libraryRoot().deletingLastPathComponent(), sources: appSources, catalog: makeClient)
+        serving = LanServingController(pairing: pairing, store: libraryStore, root: PhoneViewModel.libraryRoot().deletingLastPathComponent(), sources: appSources, configuration: config, catalog: makeClient)
         tv.onTvsChanged = { [weak self] in self?.serving.start() }
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()

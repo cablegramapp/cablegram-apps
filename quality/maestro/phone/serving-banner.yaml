@@ -1,0 +1,10 @@
+# Preconditions: authenticated main UI with at least one paired TV, on the iPhone app. iOS only (Android shows a notification).
+# Checks the "Serving to <TV>" banner, then stops serving. Serving starts again the next time the app is opened.
+appId: app.cablegram.phone
+---
+- assertVisible:
+    id: serving_banner
+- tapOn:
+    id: serving_stop
+- assertNotVisible:
+    id: serving_banner

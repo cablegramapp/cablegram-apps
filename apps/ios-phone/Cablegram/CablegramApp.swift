@@ -10,6 +10,10 @@ struct CablegramApp: App {
     private static func makeViewModel() -> PhoneViewModel {
         let pairing = PairingStore(secrets: KeychainSecretStore(), defaultApiBase: configuration.apiBase.absoluteString)
         #if DEBUG
+        // `-lanHostOverride 10.0.2.2` announces that address (an Android TV emulator reaches the host through it).
+        var info = Bundle.main.infoDictionary ?? [:]
+        if let host = UserDefaults.standard.string(forKey: "lanHostOverride") { info["CablegramLanHostOverride"] = host }
+        let configuration = AppConfiguration(infoDictionary: info)
         return PhoneViewModel(config: configuration, pairing: pairing, applyDebugSeed: { DebugAccountSeed.apply(to: pairing, store: $0) })
         #else
         return PhoneViewModel(config: configuration, pairing: pairing)

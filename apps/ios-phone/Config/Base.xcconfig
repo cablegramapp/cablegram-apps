@@ -10,6 +10,7 @@ WEB_APP_BASE = https:/$()/app.cablegram.app
 CABLEGRAM_CAST_APP_ID =
 // First-release scope: speech-based subtitle sync stays off (CAB-77, CAB-80).
 SUBTITLE_SPEECH_SYNC = NO
+// Android keeps serving 30 minutes in the background; iOS caps this at the few seconds the system grants (LanServingController.backgroundGrace).
 LAN_IDLE_TIMEOUT_MS = 1800000
 // Test-only (Android LAN_HOST_OVERRIDE): announce this host instead of the phone's own address.
 LAN_HOST_OVERRIDE =

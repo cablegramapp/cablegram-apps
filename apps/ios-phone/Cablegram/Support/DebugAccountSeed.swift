@@ -12,10 +12,24 @@ enum DebugAccountSeed {
         if defaults.bool(forKey: "seedTourSeen") { pairing.welcomeTourSeen = true }
         if defaults.object(forKey: "seedTourSeen") != nil, !defaults.bool(forKey: "seedTourSeen") { pairing.welcomeTourSeen = false }
         if defaults.bool(forKey: "seedLibrary") { seedLibrary(store) }
+        if let path = defaults.string(forKey: "seedVideoFile") { seedVideo(path, store) }
         guard let access = defaults.string(forKey: "seedAccessToken"), !access.isEmpty else { return }
         pairing.accountToken = access
         pairing.refreshToken = defaults.string(forKey: "seedRefreshToken")
         pairing.displayName = defaults.string(forKey: "seedName") ?? "Test"
+    }
+
+    /// Copies a real video file into the library (title "Fixture <name>") so a TV can play it from this phone.
+    private static func seedVideo(_ path: String, _ store: LibraryStore) {
+        let source = URL(fileURLWithPath: path)
+        let id = "fixture-" + source.deletingPathExtension().lastPathComponent
+        guard store.get(id) == nil, let size = (try? FileManager.default.attributesOfItem(atPath: path))?[.size] as? NSNumber else { return }
+        var item = LibraryItem(id: id, title: "Fixture " + source.deletingPathExtension().lastPathComponent, filename: source.lastPathComponent,
+                               fileSizeBytes: size.int64Value, importedAt: isoTimestamp())
+        item.fileName = id + "." + source.pathExtension
+        item.copied = true
+        guard (try? FileManager.default.copyItem(at: source, to: store.videoFile(item))) != nil else { return }
+        store.add(item)
     }
 
     /// A small sample library (two films, one in progress, and a three-episode series) for screenshots and flows.

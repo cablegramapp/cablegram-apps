@@ -36,6 +36,8 @@ targets:
         product: GoogleSignIn
       - target: ShareExtension
         embed: true
+      - target: ServingWidget
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_BUNDLE_IDENTIFIER)
@@ -65,6 +67,18 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ShareExtension/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+        SKIP_INSTALL: YES
+  ServingWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ServingWidget
+      - path: Cablegram/Shared/ServingActivityAttributes.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_BUNDLE_IDENTIFIER).serving
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ServingWidget/Info.plist
         SKIP_INSTALL: YES
   CablegramTests:
     type: bundle.unit-test
