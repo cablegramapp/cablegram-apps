@@ -203,6 +203,12 @@ private struct SignInSteps: View {
     @State private var input = ""
 
     var body: some View {
+        content
+            // Each step starts empty (Android keys the field by the step).
+            .onChange(of: PhoneTelegram.session().state) { _, _ in input = "" }
+    }
+
+    @ViewBuilder private var content: some View {
         let telegram: TelegramController = viewModel.telegram
         let session = PhoneTelegram.session()
         let state = session.state
@@ -229,7 +235,7 @@ private struct SignInSteps: View {
             switch state {
             case .starting, .signedOut: Working(L("ui_starting_telegram_44fd03"))
             case .needsPhoneNumber:
-                Text(key: "ui_enter_the_phone_number_of_your_telegram_account_it_goes_284479").foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_enter_the_phone_number_of_your_telegram_account_it_goe_284479").foregroundStyle(Color.phoneMuted)
                 Step(label: L("ui_phone_number_306f1b"), hint: L("ui_with_country_code_e_g_31_6_1234_5678_f10939"), value: $input, keyboard: .phonePad, busy: session.busy, error: session.lastError,
                      action: L("ui_send_code_66a5b4"), enabled: input.filter(\.isNumber).count >= 7) { session.submitPhoneNumber(input) }
                     .onChange(of: input) { _, v in input = String(v.prefix(20)) }
