@@ -1,20 +1,52 @@
 import CablegramCore
 import SwiftUI
 
-/// Tab shell, port of `LibraryShell`. The tab contents arrive in the following phases.
+/// Port of `PhoneApp`: sign-in, delete account, new Terms, naming, the welcome tour, then the library shell.
 struct PhoneRootView: View {
-    @State private var selection: PhoneTab = .library
-    // Becomes the legacy-remote preference in phase 2.
-    private let legacyRemote = false
+    let viewModel: PhoneViewModel
 
     var body: some View {
-        TabView(selection: $selection) {
-            ForEach(PhoneTab.barItems(legacyRemote: legacyRemote), id: \.self) { tab in
-                PlaceholderTabView(tab: tab)
-                    .tabItem { Label(tab.titleKey, systemImage: tab.symbol) }
+        Group {
+            if viewModel.needsAccount {
+                SignInScreen(viewModel: viewModel)
+            } else if viewModel.deletingAccount {
+                DeleteAccountScreen(viewModel: viewModel)
+            } else if viewModel.termsRequired {
+                TermsScreen(viewModel: viewModel)
+            } else if viewModel.needsName {
+                NameForm(viewModel: viewModel)
+            } else if viewModel.welcomeTourOpen {
+                WelcomeTour(viewModel: viewModel)
+            } else {
+                LibraryShell(viewModel: viewModel)
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+/// Tab shell, port of `LibraryShell`. The tab contents arrive in the following phases.
+struct LibraryShell: View {
+    @Bindable var viewModel: PhoneViewModel
+
+    var body: some View {
+        // Storage is a screen under Settings: the bar keeps highlighting Settings while it is open.
+        let selection = Binding<PhoneTab>(get: { viewModel.tab.barItem }, set: { viewModel.tab = $0 })
+        TabView(selection: selection) {
+            ForEach(PhoneTab.barItems(legacyRemote: viewModel.legacyRemote), id: \.self) { tab in
+                content(for: tab)
+                    .tabItem { Label { Text(key: tab.titleKey) } icon: { Image(systemName: tab.symbol) } }
                     .tag(tab)
                     .accessibilityIdentifier(tab.maestroId)
             }
+        }
+    }
+
+    @ViewBuilder private func content(for tab: PhoneTab) -> some View {
+        switch tab {
+        case .settings:
+            if viewModel.tab == .storage { PlaceholderTabView(tab: .storage) } else { SettingsScreen(viewModel: viewModel) }
+        default: PlaceholderTabView(tab: tab)
         }
     }
 }
@@ -23,7 +55,7 @@ private struct PlaceholderTabView: View {
     let tab: PhoneTab
 
     var body: some View {
-        Text(tab.titleKey)
+        Text(key: tab.titleKey)
             .font(PhoneFont.headlineMedium)
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -32,7 +64,7 @@ private struct PlaceholderTabView: View {
 }
 
 extension PhoneTab {
-    var titleKey: LocalizedStringKey {
+    var titleKey: String {
         switch self {
         case .library: "ui_library_dc20b3"
         case .browse: "ui_import_2cff9b"

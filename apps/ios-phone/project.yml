@@ -17,17 +17,23 @@ settings:
 packages:
   CablegramCore:
     path: Packages/CablegramCore
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    exactVersion: 9.1.0
 targets:
   Cablegram:
     type: application
     platform: iOS
     sources:
       - path: Cablegram
+        excludes: ["Resources/legal/**"]
       - path: Cablegram/Resources/legal
-        optional: true
+        type: folder
         buildPhase: resources
     dependencies:
       - package: CablegramCore
+      - package: GoogleSignIn
+        product: GoogleSignIn
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_BUNDLE_IDENTIFIER)

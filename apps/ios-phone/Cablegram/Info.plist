@@ -19,6 +19,10 @@
 			<key>CFBundleURLName</key><string>app.cablegram.phone</string>
 			<key>CFBundleURLSchemes</key><array><string>cablegram</string></array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key><string>google-sign-in</string>
+			<key>CFBundleURLSchemes</key><array><string>$(GOOGLE_REVERSED_CLIENT_ID)</string></array>
+		</dict>
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key><false/>
 	<key>LSRequiresIPhoneOS</key><true/>
@@ -33,6 +37,7 @@
 	<key>NSBonjourServices</key>
 	<array><string>_cablegram._tcp</string><string>_googlecast._tcp</string></array>
 	<key>NSPhotoLibraryUsageDescription</key><string>Cablegram lists the videos in your Photos library so you can play them on your TV.</string>
+	<key>GIDClientID</key><string>$(GOOGLE_IOS_CLIENT_ID)</string>
 	<key>CablegramAPIBase</key><string>$(API_BASE)</string>
 	<key>CablegramWebAppBase</key><string>$(WEB_APP_BASE)</string>
 	<key>CablegramCastAppID</key><string>$(CABLEGRAM_CAST_APP_ID)</string>

@@ -2,9 +2,12 @@
 DEST ?= platform=iOS Simulator,name=iPhone 17
 XCB = xcodebuild -project Cablegram.xcodeproj -scheme Cablegram -destination '$(DEST)' -derivedDataPath build
 
-.PHONY: project build test core-test ui-test strings maestro-ids
+.PHONY: legal project build test core-test ui-test strings maestro-ids
 
-project:
+legal:
+	mkdir -p Cablegram/Resources/legal && cp ../../LICENSE ../../NOTICE Cablegram/Resources/legal/
+
+project: legal
 	xcodegen generate
 
 strings:

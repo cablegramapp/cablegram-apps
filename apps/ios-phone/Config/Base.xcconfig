@@ -13,4 +13,8 @@ SUBTITLE_SPEECH_SYNC = NO
 LAN_IDLE_TIMEOUT_MS = 1800000
 // Test-only (Android LAN_HOST_OVERRIDE): announce this host instead of the phone's own address.
 LAN_HOST_OVERRIDE =
+// Google sign-in iOS OAuth client (founder input, see the plan). Empty client id hides the Google button.
+GOOGLE_IOS_CLIENT_ID =
+// Harmless placeholder scheme until the real reversed client id is set in Local.xcconfig.
+GOOGLE_REVERSED_CLIENT_ID = app.cablegram.phone.google-unset
 #include? "Local.xcconfig"
