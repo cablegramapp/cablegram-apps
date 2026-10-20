@@ -7,7 +7,18 @@ struct CablegramApp: App {
 
     @State private var viewModel = CablegramApp.makeViewModel()
 
+    /// iOS keeps Keychain items when an app is deleted, so a reinstall (or a new owner's install) would come back signed in as the
+    /// previous person, with their TVs. A fresh install has neither the sentinel nor a library; an update of an existing install has one.
+    private static func wipeKeychainOnFreshInstall() {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: "install_sentinel") == nil else { return }
+        let hasLibrary = FileManager.default.fileExists(atPath: PhoneViewModel.libraryRoot().appendingPathComponent("index.json").path)
+        if !hasLibrary { KeychainSecretStore().removeAll() }
+        defaults.set(true, forKey: "install_sentinel")
+    }
+
     private static func makeViewModel() -> PhoneViewModel {
+        wipeKeychainOnFreshInstall()
         let pairing = PairingStore(secrets: KeychainSecretStore(), defaultApiBase: configuration.apiBase.absoluteString)
         #if DEBUG
         // `-lanHostOverride 10.0.2.2` announces that address (an Android TV emulator reaches the host through it).
@@ -42,7 +53,12 @@ struct CablegramApp: App {
                 }
                 .tint(.phoneAccent)
                 .onOpenURL { url in
-                    if url.host == "storage" { viewModel.cloud.applyStorageReturn(url.absoluteString) } else { GoogleSignInURLHandler.handle(url) }
+                    switch url.host {
+                    case "storage": viewModel.cloud.applyStorageReturn(url.absoluteString)
+                    // A TV's QR scanned with the Camera app, or `cablegram://pair?token=<PIN>`: the same "Is this your TV?" step as the in-app scanner.
+                    case "pair": viewModel.tv.applyPairUri(url.absoluteString, webOrigins: pairWebOrigins(CablegramApp.configuration.webAppBase))
+                    default: GoogleSignInURLHandler.handle(url)
+                    }
                 }
         }
     }

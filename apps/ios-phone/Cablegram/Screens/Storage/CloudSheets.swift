@@ -217,9 +217,9 @@ private struct ConnectR2Sheet: View {
                       openLabel: L("ui_open_r2_41969b"), openUrl: cloudflareR2) {}
             GuideStep(number: 4, title: L("ui_enter_the_details_0aa04d"), lines: [L("ui_copy_each_value_from_the_page_cloudflare_showed_you_sp_bb099b")]) {
                 VStack(spacing: 8) {
-                    PhoneTextField(label: L("ui_endpoint_or_account_id_dce8d2"), text: $accountId, supporting: problems[0] ?? L("ui_paste_the_endpoint_address_cloudflare_showed_or_just_t_6ee22f"), isError: problems[0] != nil)
-                    PhoneTextField(label: L("ui_bucket_name_800f2e"), text: $bucket, supporting: problems[1] ?? L("ui_the_name_you_gave_the_bucket_2ae9c0"), isError: problems[1] != nil)
-                    PhoneTextField(label: L("ui_access_key_id_8761c0"), text: $keyId, supporting: problems[2] ?? L("ui_shown_when_you_created_the_token_e2211a"), isError: problems[2] != nil)
+                    PhoneTextField(label: L("ui_endpoint_or_account_id_dce8d2"), text: $accountId, supporting: problems[0] ?? L("ui_paste_the_endpoint_address_cloudflare_showed_or_just_t_6ee22f"), isError: problems[0] != nil, capitalizes: false)
+                    PhoneTextField(label: L("ui_bucket_name_800f2e"), text: $bucket, supporting: problems[1] ?? L("ui_the_name_you_gave_the_bucket_2ae9c0"), isError: problems[1] != nil, capitalizes: false)
+                    PhoneTextField(label: L("ui_access_key_id_8761c0"), text: $keyId, supporting: problems[2] ?? L("ui_shown_when_you_created_the_token_e2211a"), isError: problems[2] != nil, capitalizes: false)
                     SecretField(label: L("ui_secret_access_key_d2aeac"), text: $secret, supporting: problems[3] ?? L("ui_shown_once_under_the_access_key_id_27f4b9"), isError: problems[3] != nil)
                 }
             }

@@ -7,3 +7,13 @@ DerivedData/
 Config/Local.xcconfig
 Cablegram/Resources/legal/
 xcuserdata/
+# Signing material and release output: never committed (Sign in with Apple key, certificates, profiles, archives)
+*.p8
+*.p12
+*.cer
+*.mobileprovision
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
+ExportOptions.plist

@@ -18,7 +18,12 @@ struct PairingScanner: View {
             case .notDetermined, .denied, .restricted:
                 Text(key: "ui_allow_camera_access_to_scan_the_tv_code_you_can_also_e_1e0033").foregroundStyle(Color.phoneMuted)
                 Button {
-                    Task { _ = await AVCaptureDevice.requestAccess(for: .video); status = AVCaptureDevice.authorizationStatus(for: .video) }
+                    if status == .denied || status == .restricted {
+                        // iOS asks only once; afterwards the person has to allow the camera in Settings.
+                        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    } else {
+                        Task { _ = await AVCaptureDevice.requestAccess(for: .video); status = AVCaptureDevice.authorizationStatus(for: .video) }
+                    }
                 } label: { Text(key: "ui_allow_camera_e18835") }.buttonStyle(PrimaryButtonStyle(minHeight: 48))
             @unknown default: EmptyView()
             }

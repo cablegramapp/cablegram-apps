@@ -5,7 +5,8 @@ import Security
 
 /// This phone's TLS identity for the LAN library server (CAB-48). An EC P-256 key made once in the Keychain signs a self-signed
 /// certificate; TVs pin the certificate's SHA-256 (`fingerprint`), which the phone publishes with its address. The key never
-/// leaves the Keychain. Deleting the app makes a new key, and so a new fingerprint, which the next announce publishes.
+/// leaves the Keychain. iOS keeps Keychain items when the app is deleted, so a reinstall keeps this key and its fingerprint; only a
+/// device reset makes a new one, which the next announce publishes.
 struct LanTlsIdentity: @unchecked Sendable {
     let identity: SecIdentity
     /// Lowercase hex SHA-256 of the DER certificate: what a TV pins.

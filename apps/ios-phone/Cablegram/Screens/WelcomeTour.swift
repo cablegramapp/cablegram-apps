@@ -51,8 +51,14 @@ struct WelcomeTour: View {
     @State private var page = 0
     private let pages = tourPages()
 
-    /// Already set up: the page shows that instead of its setup button. Wired up as the features land (phases 4-8).
-    private func connectedLabel(_ step: TourStep) -> String? { nil }
+    /// Already set up: the page shows that instead of its setup button. The TV and cloud pages are wired up; Telegram and subtitles follow with phases 7 and 8.
+    private func connectedLabel(_ step: TourStep) -> String? {
+        switch step {
+        case .tv: viewModel.tv.paired ? L("ui_tv_connected_5710cb") : nil
+        case .drive: viewModel.cloud.cloudConnected ? L("ui_cloud_storage_connected_fe282c") : nil
+        default: nil   // Telegram and subtitles arrive with phases 7 and 8
+        }
+    }
 
     var body: some View {
         let last = page == pages.count - 1

@@ -26,21 +26,19 @@ final class ShareViewController: UIViewController {
         guard !providers.isEmpty else { model.state = .nothing; return }
         var added = 0
         for provider in providers {
-            if let (url, name) = await load(provider), SharedInbox.add(copying: url, displayName: name) { added += 1 }
+            if await load(provider) { added += 1 }
         }
         model.state = added > 0 ? .done(added) : .failed
     }
 
-    private func load(_ provider: NSItemProvider) async -> (URL, String)? {
+    /// Copies one shared video straight into the App Group inbox. The system deletes the file it hands over as soon as the closure
+    /// returns, so the copy happens inside it (a second copy in the temporary folder would double the space a share needs).
+    private func load(_ provider: NSItemProvider) async -> Bool {
         await withCheckedContinuation { continuation in
             provider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, _ in
-                // The system deletes `url` after this closure, so the copy happens in `SharedInbox.add` right away below.
-                guard let url else { continuation.resume(returning: nil); return }
-                let keep = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + "-" + url.lastPathComponent)
-                do {
-                    try FileManager.default.copyItem(at: url, to: keep)
-                    continuation.resume(returning: (keep, provider.suggestedName.map { name in url.pathExtension.isEmpty || name.hasSuffix("." + url.pathExtension) ? name : name + "." + url.pathExtension } ?? url.lastPathComponent))
-                } catch { continuation.resume(returning: nil) }
+                guard let url else { continuation.resume(returning: false); return }
+                let name = provider.suggestedName.map { name in url.pathExtension.isEmpty || name.hasSuffix("." + url.pathExtension) ? name : name + "." + url.pathExtension } ?? url.lastPathComponent
+                continuation.resume(returning: SharedInbox.add(copying: url, displayName: name))
             }
         }
     }

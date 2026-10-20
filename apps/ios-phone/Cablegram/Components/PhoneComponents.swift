@@ -110,6 +110,8 @@ struct PhoneTextField: View {
     var contentType: UITextContentType?
     var isError = false
     var leftToRight = false
+    /// Off for codes, ids and names that are typed exactly (bucket, access key): a capital first letter would make them wrong.
+    var capitalizes = true
     var onSubmit: (() -> Void)?
     var id: String?
     @FocusState private var focused: Bool
@@ -130,7 +132,7 @@ struct PhoneTextField: View {
                         .keyboardType(keyboard)
                         .textContentType(contentType)
                         .autocorrectionDisabled()
-                        .textInputAutocapitalization(keyboard == .emailAddress ? .never : .sentences)
+                        .textInputAutocapitalization(keyboard == .default && capitalizes ? .sentences : .never)
                         .environment(\.layoutDirection, leftToRight ? .leftToRight : layoutDirection)
                         .accessibilityIdentifier(id ?? "")
                         .onSubmit { onSubmit?() }

@@ -19,3 +19,5 @@ GOOGLE_IOS_CLIENT_ID =
 // Harmless placeholder scheme until the real reversed client id is set in Local.xcconfig.
 GOOGLE_REVERSED_CLIENT_ID = app.cablegram.phone.google-unset
 #include? "Local.xcconfig"
+// A release build never announces a test address, whatever Local.xcconfig says.
+LAN_HOST_OVERRIDE[config=Release] =

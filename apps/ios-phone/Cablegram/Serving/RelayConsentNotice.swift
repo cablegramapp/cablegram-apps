@@ -11,8 +11,8 @@ enum RelayConsentNotice {
 
     static var categoryDefinition: UNNotificationCategory {
         UNNotificationCategory(identifier: category, actions: [
-            UNNotificationAction(identifier: allowOnce, title: L("ui_allow_this_time_0a5d24"), options: []),
-            UNNotificationAction(identifier: allowAlways, title: L("ui_always_allow_977618"), options: []),
+            UNNotificationAction(identifier: allowOnce, title: L("ui_allow_this_time_0a5d24"), options: [.authenticationRequired]),
+            UNNotificationAction(identifier: allowAlways, title: L("ui_always_allow_977618"), options: [.authenticationRequired]),
             UNNotificationAction(identifier: deny, title: L("ui_don_t_allow_9803bd"), options: [.destructive]),
         ], intentIdentifiers: [])
     }

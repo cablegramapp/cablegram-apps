@@ -405,11 +405,12 @@ final class TvController {
     }
 
     /// Approves or denies from inside the phone app (or a notification action).
-    func respondToApproval(_ approval: PendingApproval, approve: Bool, cancelNotification: (String) -> Void) {
-        guard let token else { return }
+    @discardableResult
+    func respondToApproval(_ approval: PendingApproval, approve: Bool, cancelNotification: (String) -> Void) -> Task<Void, Never>? {
+        guard let token else { return nil }
         cancelNotification(approval.attemptId)
         pendingApprovals.removeAll { $0.attemptId == approval.attemptId }
-        Task {
+        return Task {
             let profile = approval.kind == .profile
             let what = approval.title ?? L("ui_the_profile_31580c")
             let ok = await catalog().answerApproval(token: token, approval: approval, allow: approve)

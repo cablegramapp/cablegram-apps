@@ -15,6 +15,8 @@ Third-party software used by the apps, each under its own licence:
   the app links dynamically. https://www.videolan.org
 - NanoHTTPD: BSD 3-Clause. OkHttp, Kotlin, kotlinx.coroutines, kotlinx.serialization, AndroidX and
   Jetpack Compose: Apache License 2.0.
+- The iPhone app additionally uses GoogleSignIn-iOS, AppAuth-iOS, GTMAppAuth, GTMSessionFetcher, GoogleUtilities,
+  Promises, App Check and interop-ios-for-google-sdks, all Apache License 2.0.
 - ZXing (`com.google.zxing:core`) and zxing-android-embedded (QR codes), Coil 3 (images) and AndroidX TV
   Material: Apache License 2.0.
 

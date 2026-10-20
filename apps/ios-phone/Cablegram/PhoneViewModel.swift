@@ -63,6 +63,7 @@ final class PhoneViewModel {
     private(set) var tv: TvController!
     private(set) var serving: LanServingController!
     @ObservationIgnored private var syncing = false
+    @ObservationIgnored private var syncAgain = false
 
     // Delete account
     private(set) var deletingAccount = false
@@ -134,11 +135,12 @@ final class PhoneViewModel {
     /// Everything TVs wait for appears as a card and a notification while the phone is signed in (no push: only while the app runs).
     func startApprovalWatchIfSignedIn() {
         guard !needsAccount else { return }
+        Approvals.requestAuthorization()
         tv.startApprovalWatch(notify: { Approvals.notify($0) }, cancelNotification: { Approvals.cancel($0) })
     }
 
     /// `Application Support/library`: not user-visible, backed up with the device, kept across updates.
-    private static func libraryRoot() -> URL {
+    static func libraryRoot() -> URL {
         let base = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
             ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent("library", isDirectory: true)
@@ -231,21 +233,28 @@ final class PhoneViewModel {
 
     /// Flow 5: fingerprint, reconcile, push each item with a checkpoint, send pending edits, merge the household catalog.
     func syncLibrary(force: Bool = false) async {
-        guard !syncing, let token = pairing.accountToken, !token.isEmpty else { return }
+        // Turned off in Settings: titles stay on the phone unless the person taps Sync now.
+        guard force || pairing.syncLibraryToApi else { return }
+        guard let token = pairing.accountToken, !token.isEmpty else { return }
+        // A change made while a sync runs is pushed by a second pass right after, not dropped (Android queues behind a mutex).
+        if syncing { syncAgain = true; return }
         syncing = true
         librarySyncState = .running
         defer { syncing = false; prepareStep = nil; prepareProgress = 0 }
-        await ensurePhoneDevice()
-        var sync = LibrarySync(store: store, client: catalog(), token: token, phoneDeviceId: pairing.phoneDeviceId, sources: AppSources(store: store, bookmarks: bookmarks))
-        sync.progress = { [weak self] title, fraction in Task { @MainActor in self?.prepareStep = title.map { L("ui_syncing_6c2de6", $0) }; self?.prepareProgress = fraction } }
-        do {
-            try await sync.run()
-            refresh()
-            librarySyncState = .completed
-        } catch {
-            refresh()
-            librarySyncState = .failed
-        }
+        repeat {
+            syncAgain = false
+            await ensurePhoneDevice()
+            var sync = LibrarySync(store: store, client: catalog(), token: token, phoneDeviceId: pairing.phoneDeviceId, sources: AppSources(store: store, bookmarks: bookmarks))
+            sync.progress = { [weak self] title, fraction in Task { @MainActor in self?.prepareStep = title.map { L("ui_syncing_6c2de6", $0) }; self?.prepareProgress = fraction } }
+            do {
+                try await sync.run()
+                refresh()
+                librarySyncState = .completed
+            } catch {
+                refresh()
+                librarySyncState = .failed
+            }
+        } while syncAgain
     }
 
     /// CAB-29: "Save artwork to household", after the person confirmed the explanation.
@@ -497,10 +506,10 @@ final class PhoneViewModel {
     }
 
     func choosePrivacy(_ isPrivate: Bool) {
-        guard var item = pendingPrivacyItem else { return }
+        guard let item = pendingPrivacyItem else { return }
         pendingPrivacyItem = nil
-        item.isPrivate = isPrivate
-        store.update(item)
+        // Only the answer is written: the copy held since the import is older than what a sync has stored since.
+        store.updateItem(item.id) { var i = $0; i.isPrivate = isPrivate; return i }
         refresh()
         Task { await syncLibrary() }
         showNextPrivacyPrompt()
@@ -599,6 +608,8 @@ final class PhoneViewModel {
         let setAside = result.householdId.map { store.bindHousehold($0) } ?? false
         refresh()
         await ensurePhoneDevice()
+        // The account's TVs first: after a sign-out the local list is empty, but the account may already have TVs (Android order).
+        await tv.syncHouseholdTvs()
         if tv.paired {
             // Signing in again after an expired session: the TVs stay paired.
             status = result.needsName ? L("ui_choose_an_account_name_to_continue_8eba6d") : L("ui_signed_in_again_00397a")
@@ -608,7 +619,9 @@ final class PhoneViewModel {
             // A TV scanned before signing in goes straight to "Is this your TV?" (CAB-62); otherwise pairing comes next.
             tv.addingTv = !result.needsName && tv.pendingPair == nil
         }
-        await tv.syncHouseholdTvs()
+        // Sign-out stopped the approval watcher; a TV asking for a private title must reach this phone again.
+        startApprovalWatchIfSignedIn()
+        serving.start()
         if setAside { status = L("ui_signed_in_the_previous_account_s_library_is_kept_aside_45bf31") }
         checkTerms()
         Task { await syncLibrary() }

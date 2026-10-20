@@ -34,11 +34,25 @@ enum SharedInbox {
     /// Called by the app: the finished shares waiting to be imported.
     static func pending() -> [(entry: Entry, url: URL, manifest: URL)] {
         guard let directory, let names = try? FileManager.default.contentsOfDirectory(atPath: directory.path) else { return [] }
+        sweepOrphans(in: directory, names: names)
         return names.filter { $0.hasSuffix(".json") }.compactMap { name in
             let manifest = directory.appendingPathComponent(name)
             guard let data = try? Data(contentsOf: manifest), let entry = try? JSONDecoder().decode(Entry.self, from: data) else { return nil }
             let url = directory.appendingPathComponent(entry.file)
             return FileManager.default.fileExists(atPath: url.path) ? (entry, url, manifest) : nil
+        }
+    }
+
+    /// A video or `.part` file with no manifest, older than an hour: the extension was killed between the copy and the manifest.
+    private static func sweepOrphans(in directory: URL, names: [String]) {
+        var referenced = Set<String>()
+        for name in names where name.hasSuffix(".json") {
+            if let data = try? Data(contentsOf: directory.appendingPathComponent(name)), let entry = try? JSONDecoder().decode(Entry.self, from: data) { referenced.insert(entry.file) }
+        }
+        for name in names where !name.hasSuffix(".json") && !referenced.contains(name) {
+            let url = directory.appendingPathComponent(name)
+            let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date()
+            if Date().timeIntervalSince(modified) > 3600 { try? FileManager.default.removeItem(at: url) }
         }
     }
 

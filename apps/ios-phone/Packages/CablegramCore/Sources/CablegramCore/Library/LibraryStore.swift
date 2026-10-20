@@ -38,6 +38,13 @@ public final class LibraryStore: @unchecked Sendable {
         for folder in ["", "videos", "posters", "cloud"] {
             try? fm.createDirectory(at: root.appendingPathComponent(folder), withIntermediateDirectories: true)
         }
+        // Copied videos are copies of what the person already has in Photos or Files: they stay out of iCloud backups (multi-GB).
+        for folder in ["videos", "cloud"] {
+            var url = root.appendingPathComponent(folder, isDirectory: true)
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try? url.setResourceValues(values)
+        }
     }
 
     public var videosDir: URL { root.appendingPathComponent("videos", isDirectory: true) }

@@ -12,7 +12,8 @@ enum Approvals {
     static func registerCategories() {
         func category(_ id: String, allow: String) -> UNNotificationCategory {
             UNNotificationCategory(identifier: id, actions: [
-                UNNotificationAction(identifier: allowAction, title: allow, options: []),
+                // Allowing opens a private title or a profile for whoever is at the TV: on a locked phone it needs Face ID or the passcode.
+                UNNotificationAction(identifier: allowAction, title: allow, options: [.authenticationRequired]),
                 UNNotificationAction(identifier: denyAction, title: L("ui_not_now_a0e63d"), options: []),
             ], intentIdentifiers: [])
         }
@@ -20,6 +21,11 @@ enum Approvals {
             category(playbackCategory, allow: L("ui_allow_once_168511")), category(profileCategory, allow: L("ui_allow_e213c1")),
             RelayConsentNotice.categoryDefinition,
         ])
+    }
+
+    /// Asked once, when the first TV can ask for something: without it no approval or relay question is ever shown.
+    static func requestAuthorization() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
     static func notify(_ approval: PendingApproval) {
@@ -49,7 +55,8 @@ enum Approvals {
 
 /// Handles Allow / Not now from an approval notification.
 final class ApprovalNotificationHandler: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
-    @MainActor static var respond: ((PendingApproval, Bool) -> Void)?
+    /// Returns the task that sends the answer, so the notification handler can wait for it: the app may be suspended right after.
+    @MainActor static var respond: ((PendingApproval, Bool) -> Task<Void, Never>?)?
     /// Answers the mobile-data question of the relay (Allow this time / Always allow / Don't allow).
     @MainActor static var relayAnswer: ((String) -> Void)?
 
@@ -68,7 +75,8 @@ final class ApprovalNotificationHandler: NSObject, UNUserNotificationCenterDeleg
         case Approvals.denyAction: allow = false
         default: return // tapping the notification just opens the app, where the same request is a card
         }
-        await MainActor.run { Self.respond?(PendingApproval(attemptId: attemptId, kind: kind), allow) }
+        let sending = await MainActor.run { Self.respond?(PendingApproval(attemptId: attemptId, kind: kind), allow) }
+        await sending?.value
     }
 
     /// While the app is open the card shows the request; no second banner.
