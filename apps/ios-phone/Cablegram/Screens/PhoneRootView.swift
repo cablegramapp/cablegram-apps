@@ -35,9 +35,11 @@ struct LibraryShell: View {
         TabView(selection: selection) {
             ForEach(PhoneTab.barItems(legacyRemote: viewModel.legacyRemote), id: \.self) { tab in
                 content(for: tab)
-                    .tabItem { Label { Text(key: tab.titleKey) } icon: { Image(systemName: tab.symbol) } }
+                    .tabItem {
+                        Label { Text(key: tab.titleKey) } icon: { Image(systemName: tab.symbol) }
+                            .accessibilityIdentifier(tab.maestroId)
+                    }
                     .tag(tab)
-                    .accessibilityIdentifier(tab.maestroId)
             }
         }
     }

@@ -5,10 +5,15 @@ import SwiftUI
 struct CablegramApp: App {
     nonisolated static let configuration = AppConfiguration(infoDictionary: Bundle.main.infoDictionary ?? [:])
 
-    @State private var viewModel = PhoneViewModel(
-        config: CablegramApp.configuration,
-        pairing: PairingStore(secrets: KeychainSecretStore(), defaultApiBase: CablegramApp.configuration.apiBase.absoluteString)
-    )
+    @State private var viewModel = CablegramApp.makeViewModel()
+
+    private static func makeViewModel() -> PhoneViewModel {
+        let pairing = PairingStore(secrets: KeychainSecretStore(), defaultApiBase: configuration.apiBase.absoluteString)
+        #if DEBUG
+        DebugAccountSeed.apply(to: pairing)
+        #endif
+        return PhoneViewModel(config: configuration, pairing: pairing)
+    }
 
     var body: some Scene {
         WindowGroup {
