@@ -1,0 +1,14 @@
+{
+  "id": "app.cablegram.tv",
+  "version": "0.1.1",
+  "vendor": "Seep Labs",
+  "type": "web",
+  "main": "index.html",
+  "title": "Cablegram",
+  "icon": "icon.png",
+  "largeIcon": "icon.png",
+  "resolution": "1920x1080",
+  "disallowScrollingInMainFrame": true,
+  "disableBackHistoryAPI": true,
+  "requiredACG": []
+}
