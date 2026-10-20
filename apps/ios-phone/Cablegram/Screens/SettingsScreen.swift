@@ -40,6 +40,8 @@ struct SettingsScreen: View {
         }
         .phoneScreenBackground()
         .onAppear { accountNameDraft = viewModel.householdName }
+        // Leaving the tab closes the open page, as on Android (the screen leaves the composition there).
+        .onChange(of: viewModel.tab) { _, tab in if tab != .settings && tab != .storage { page = nil } }
         .onChange(of: viewModel.householdName) { _, new in accountNameDraft = new }
         .onChange(of: page) { _, _ in viewModel.status = nil }
         .alert(L("ui_sign_out_c1c084"), isPresented: $confirmSignOut) {

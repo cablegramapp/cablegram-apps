@@ -54,7 +54,7 @@ struct RemoteScreen: View {
                         Slider(value: $volume, in: 0...1) { editing in if !editing { tv.remoteVolume(Int(volume * 100)) } }.tint(.phoneAccent)
                         Text(L("ui_drag_to_set_the_volume_to_448bd2", "\(Int(volume * 100))")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
                     }
-                    if let status = tv.remoteStatus { StatusNote(message: status) }
+                    if let status = tv.remoteStatus { StatusNote(message: status).accessibilityIdentifier("remote_status") }
                     Text(key: "ui_commands_use_your_household_connection_keep_the_tv_con_b044c4").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
                 }
             }
@@ -68,7 +68,7 @@ struct RemoteScreen: View {
             key("chevron.up", L("ui_navigate_up_5fa84b")) { tv.remoteNavigate("up") }
             HStack(spacing: 12) {
                 key("chevron.left", L("ui_navigate_left_ceb18f")) { tv.remoteNavigate("left") }
-                Button { tv.remoteSelect() } label: { Text(key: "ui_ok_565339").font(PhoneFont.titleMedium).foregroundStyle(.black).frame(width: 68, height: 68).background(Color.phoneAccent, in: Circle()) }
+                Button { tv.remoteSelect() } label: { Text(key: "ui_ok_565339").font(PhoneFont.titleMedium).foregroundStyle(.black).frame(width: 68, height: 68).background(Color.phoneAccent, in: Circle()) }.accessibilityIdentifier("remote_ok")
                 key("chevron.right", L("ui_navigate_right_668ca1")) { tv.remoteNavigate("right") }
             }
             .environment(\.layoutDirection, .leftToRight)
@@ -78,7 +78,8 @@ struct RemoteScreen: View {
     }
 
     private func key(_ symbol: String, _ label: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: symbol).font(.system(size: 24)).foregroundStyle(.white).frame(width: 56, height: 56) }.accessibilityLabel(label)
+        Button(action: action) { Image(systemName: symbol).font(.system(size: 24)).foregroundStyle(.white).frame(width: 56, height: 56) }
+            .accessibilityLabel(label).accessibilityIdentifier("remote_\(symbol)")
     }
 }
 

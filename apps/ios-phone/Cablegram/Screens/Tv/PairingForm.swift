@@ -22,7 +22,7 @@ struct PairingForm: View {
                     Button { tv.applyPairUri(pin, webOrigins: pairWebOrigins(CablegramApp.configuration.webAppBase)) } label: {
                         Text(key: tv.working ? "ui_connecting_72021e" : "ui_connect_tv_c9f94c")
                     }
-                    .buttonStyle(PrimaryButtonStyle(minHeight: 52)).disabled(pin.count != 6 || tv.working)
+                    .buttonStyle(PrimaryButtonStyle(minHeight: 52)).disabled(pin.count != 6 || tv.working).accessibilityIdentifier("pairing_connect")
                     Button { pin = String((UIPasteboard.general.string ?? "").filter(\.isNumber).prefix(6)) } label: { Text(key: "ui_paste_code_682909").frame(maxWidth: .infinity) }
                         .buttonStyle(AccentTextButtonStyle()).disabled(tv.working)
                 }

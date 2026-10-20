@@ -135,6 +135,15 @@ struct PhoneTextField: View {
                         .accessibilityIdentifier(id ?? "")
                         .onSubmit { onSubmit?() }
                         .submitLabel(onSubmit == nil ? .done : .send)
+                        // Number pads have no Return key, and the field would otherwise cover the button below it.
+                        .toolbar {
+                            if keyboard == .numberPad || keyboard == .phonePad {
+                                ToolbarItemGroup(placement: .keyboard) {
+                                    Spacer()
+                                    Button(L("ui_done_11a676")) { focused = false }
+                                }
+                            }
+                        }
                 }
                 .padding(.horizontal, 14).padding(.vertical, 8)
             }
