@@ -305,7 +305,11 @@ struct ItemMenu: View {
     let viewModel: PhoneViewModel
 
     var body: some View {
-        // Play, Save to cloud / Telegram, Download, Free up space and Remove cloud copy join as their phases land.
+        // Play and Save to Telegram join with phases 5 and 7.
+        if canSaveToCloud(item) { Button { viewModel.cloud.beginSaveToCloud(item) } label: { Text(key: "ui_save_to_cloud_0fd280") } }
+        if (item.cloudObjectPresent || item.ownCloudCopy) && !item.copied { Button { viewModel.cloud.downloadFromCloud(item) } label: { Text(key: "ui_download_from_cloud_14cd0d") } }
+        if canRemoveLocalCopy(item) { Button { viewModel.cloud.askFreeUp(item) } label: { Text(key: "ui_free_up_phone_space_6d089c") } }
+        if canRemoveOwnCloudCopy(item) { Button { viewModel.cloud.askRemoveCloudCopy(item) } label: { Text(key: "ui_remove_cloud_copy_0b8eaf") } }
         ForEach(viewModel.collections) { collection in
             Button { viewModel.toggleCollection(item, collection.id) } label: { Text(L("ui_move_to_3fa287", collection.name)) }
         }

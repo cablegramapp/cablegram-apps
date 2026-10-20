@@ -53,11 +53,14 @@ final class PhoneViewModel {
     private(set) var pendingPrivacyItem: LibraryItem?
     private(set) var photosStatus: PHAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
     var importDestination: String { didSet { pairing.importDestination = importDestination } }
+    var transferWhileCharging: Bool { didSet { pairing.transferWhileCharging = transferWhileCharging } }
+    var syncLibraryToApi: Bool { didSet { pairing.syncLibraryToApi = syncLibraryToApi } }
     @ObservationIgnored private var pendingPrivacyItems: [LibraryItem] = []
     @ObservationIgnored private var browseFolderId: String?
     @ObservationIgnored let bookmarks: BookmarkStore
     @ObservationIgnored let store: LibraryStore
     private(set) var artworkEditor: ArtworkEditorController!
+    private(set) var cloud: CloudController!
     @ObservationIgnored private var syncing = false
 
     // Delete account
@@ -85,6 +88,8 @@ final class PhoneViewModel {
         store = libraryStore
         bookmarks = BookmarkStore(root: PhoneViewModel.libraryRoot().deletingLastPathComponent())
         importDestination = pairing.importDestination
+        transferWhileCharging = pairing.transferWhileCharging
+        syncLibraryToApi = pairing.syncLibraryToApi
         let makeClient: @Sendable () -> CatalogClient = { [pairing] in
             CatalogClient(baseURL: URL(string: pairing.apiBaseUrl) ?? AppConfiguration.defaultApiBase, tokens: pairing)
         }
@@ -101,10 +106,18 @@ final class PhoneViewModel {
             self?.status = L("ui_changes_saved_16bf14")
             Task { await self?.syncLibrary() }
         }
+        let appSources = AppSources(store: libraryStore, bookmarks: bookmarks)
+        let manager = CloudTransferManager(store: libraryStore, sources: appSources, catalog: makeClient, token: { [pairing] in pairing.accountToken },
+                                           transport: BackgroundUploadTransport(allowsCellular: { [pairing] in !pairing.wifiOnlyTransfers }))
+        cloud = CloudController(pairing: pairing, store: libraryStore, catalog: makeClient, manager: manager, items: { [weak self] in self?.items ?? [] },
+                                setStatus: { [weak self] in self?.status = $0 }, showTab: { [weak self] in self?.tab = $0 },
+                                refresh: { [weak self] in self?.refresh() }, syncLibrary: { [weak self] in await self?.syncLibrary() })
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()
         recoverSharedImports()
         importSharedInbox()
+        cloud.refreshStorage()
+        cloud.resumeSaves()
         if needsAccount { loadSignInOptions() } else { checkTerms() }
     }
 
@@ -143,6 +156,8 @@ final class PhoneViewModel {
 
     /// Leaving for another tab must not leave a title page or a series page covering it.
     func selectTab(_ tab: PhoneTab) {
+        // A cloud sheet, a title page and a series page are full-screen overlays: leaving for another tab must not leave them covering it.
+        cloud.dismissCloudSheet()
         closeItem()
         closeSeries()
         self.tab = tab
@@ -516,7 +531,7 @@ final class PhoneViewModel {
         switch step {
         case .tv: tab = .settings          // Connect a TV arrives with phase 5
         case .telegram: tab = .browse      // Telegram sheet arrives with phase 7
-        case .drive: tab = .storage        // Cloud sheet arrives with phase 4
+        case .drive: tab = .storage; cloud.cloudSheet = .manage
         case .subtitles: tab = .settings   // Subtitle accounts arrive with phase 8
         case .welcome, .ready: tab = .browse
         }

@@ -223,6 +223,18 @@ struct DetailOverlay: View {
                     Text(formatBytes(size)).foregroundStyle(.white)
                 }
             }
+            let cloud = viewModel.cloud!
+            if item.transferStatus == transferFailed && !sourceUnavailable && item.sourceKind != "web" {
+                Button { cloud.retrySave(item) } label: { Text(key: "ui_retry_cloud_save_6ac597") }.buttonStyle(OutlinedButtonStyle())
+            } else if canSaveToCloud(item) {
+                Button { cloud.beginSaveToCloud(item) } label: { Text(key: "ui_save_a_cloud_copy_dbaf92") }
+                    .buttonStyle(OutlinedButtonStyle()).accessibilityIdentifier(MaestroIds.detailSaveCloud)
+            }
+            if (item.cloudObjectPresent || item.ownCloudCopy) && !item.copied {
+                Button { cloud.downloadFromCloud(item) } label: { Text(key: "ui_download_to_phone_6265e3") }.buttonStyle(OutlinedButtonStyle())
+            }
+            if canRemoveLocalCopy(item) { Button { cloud.askFreeUp(item) } label: { Text(key: "ui_free_up_phone_space_6d089c") }.buttonStyle(AccentTextButtonStyle()) }
+            if canRemoveOwnCloudCopy(item) { Button { cloud.askRemoveCloudCopy(item) } label: { Text(key: "ui_remove_cloud_copy_0b8eaf") }.buttonStyle(AccentTextButtonStyle()) }
         }
         if !viewModel.collections.isEmpty {
             SectionCard(title: L("ui_collections_9f9fea")) {

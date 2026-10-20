@@ -108,6 +108,10 @@ struct SettingsScreen: View {
                     PrefSwitch(key: "ui_open_tv_with_cast_0dd4f2", isOn: Binding(get: { viewModel.castConnect }, set: { viewModel.updateCastConnect($0) }), id: MaestroIds.settingsCastConnect)
                 }
                 PrefSwitch(key: "ui_show_remote_controls_b49919", isOn: Binding(get: { viewModel.legacyRemote }, set: { viewModel.updateLegacyRemote($0) }), id: MaestroIds.settingsLegacyRemote)
+                PrefSwitch(key: "ui_transfer_on_wi_fi_only_992dd6", isOn: Binding(get: { viewModel.cloud.wifiOnlyTransfers }, set: { viewModel.cloud.wifiOnlyTransfers = $0 }))
+                PrefSwitch(key: "ui_transfer_only_while_charging_645032", isOn: Binding(get: { viewModel.transferWhileCharging }, set: { viewModel.transferWhileCharging = $0 }))
+                Divider().overlay(Color.phoneOutline)
+                PrefSwitch(key: "ui_sync_library_titles_b3b6cc", isOn: Binding(get: { viewModel.syncLibraryToApi }, set: { viewModel.syncLibraryToApi = $0 }))
             }
         case .tvs, .profiles, .collections, .connection: EmptyView()
         }

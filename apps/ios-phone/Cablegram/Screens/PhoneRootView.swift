@@ -39,6 +39,7 @@ struct LibraryShell: View {
         VStack(spacing: 0) {
             AddedVideosCard(viewModel: viewModel)
             PrepareCard(viewModel: viewModel)
+            TransferCard(viewModel: viewModel)
             tabs(selection)
         }
         .phoneScreenBackground()
@@ -63,7 +64,7 @@ struct LibraryShell: View {
             case .library: LibraryHome(viewModel: viewModel)
             case .browse: BrowseScreen(viewModel: viewModel)
             case .settings:
-                if viewModel.tab == .storage { PlaceholderTabView(tab: .storage) } else { SettingsScreen(viewModel: viewModel) }
+                if viewModel.tab == .storage { StorageScreen(viewModel: viewModel) } else { SettingsScreen(viewModel: viewModel) }
             case .remote where !viewModel.legacyRemote: LibraryHome(viewModel: viewModel)
             default: PlaceholderTabView(tab: tab)
             }
@@ -71,7 +72,9 @@ struct LibraryShell: View {
             if let series = viewModel.shownSeries { SeriesOverlay(viewModel: viewModel, series: series).transition(.move(edge: .trailing)) }
             if let selected = viewModel.selected { DetailOverlay(viewModel: viewModel, item: selected).id(selected.id).transition(.move(edge: .trailing)) }
         }
+        .overlay { CloudFlow(viewModel: viewModel) }
         .modifier(DeleteConfirmation(viewModel: viewModel))
+        .modifier(RemoveCloudCopyDialog(viewModel: viewModel))
         .animation(.default, value: viewModel.selectedId)
         .animation(.default, value: viewModel.openSeriesKey)
     }

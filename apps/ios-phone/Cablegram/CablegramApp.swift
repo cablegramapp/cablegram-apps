@@ -16,6 +16,7 @@ struct CablegramApp: App {
         #endif
     }
 
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -23,7 +24,9 @@ struct CablegramApp: App {
             PhoneRootView(viewModel: viewModel)
                 .onChange(of: scenePhase) { _, phase in if phase == .active { viewModel.importSharedInbox() } }
                 .tint(.phoneAccent)
-                .onOpenURL { GoogleSignInURLHandler.handle($0) }
+                .onOpenURL { url in
+                    if url.host == "storage" { viewModel.cloud.applyStorageReturn(url.absoluteString) } else { GoogleSignInURLHandler.handle(url) }
+                }
         }
     }
 }
