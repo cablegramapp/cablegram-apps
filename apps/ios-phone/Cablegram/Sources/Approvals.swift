@@ -72,5 +72,9 @@ final class ApprovalNotificationHandler: NSObject, UNUserNotificationCenterDeleg
     }
 
     /// While the app is open the card shows the request; no second banner.
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions { [] }
+    /// The mobile-data question has no in-app card, and the app is almost always open when it comes (iOS serves only in the foreground),
+    /// so it is shown as a banner.
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        notification.request.content.categoryIdentifier == RelayConsentNotice.category ? [.banner, .sound] : []
+    }
 }

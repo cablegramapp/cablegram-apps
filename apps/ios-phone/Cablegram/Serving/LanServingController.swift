@@ -37,6 +37,8 @@ final class LanServingController {
     @ObservationIgnored private var foreground = true
     @ObservationIgnored private var userStopped = false
     @ObservationIgnored private var starting = false
+    /// Bumped by every `stop()`, so a `launch` that was still starting when serving was stopped can tell and undo itself.
+    @ObservationIgnored private var generation = 0
     @ObservationIgnored private var relayStartBytes: Int64 = 0
     @ObservationIgnored private var lastRelayNotice = Date.distantPast
     @ObservationIgnored private var backgroundTask = UIBackgroundTaskIdentifier.invalid
@@ -48,6 +50,7 @@ final class LanServingController {
         lanHostOverride = configuration.lanHostOverride.isEmpty ? nil : configuration.lanHostOverride
         media = AppMediaProvider(sources: sources)
         network.observe { [weak self] type in Task { @MainActor in self?.networkChanged(type) } }
+        liveActivity.endStale()
     }
 
     // MARK: Start and stop
@@ -69,6 +72,7 @@ final class LanServingController {
     func userStop() { userStopped = true; stop() }
 
     func stop() {
+        generation += 1
         watchers.forEach { $0.cancel() }
         watchers = []
         tunnel?.stop(); tunnel = nil
@@ -82,11 +86,11 @@ final class LanServingController {
         UIApplication.shared.isIdleTimerDisabled = false
         endBackgroundTask()
         liveActivity.end()
-        media.clearExports()
     }
 
     private func launch(_ tvs: [PairedTv]) async {
         defer { starting = false }
+        let attempt = generation
         let token: @Sendable () -> String? = { [pairing] in pairing.accountToken }
         let client = catalog()
         let passes = PrivatePassVerifier(verify: { pass in
@@ -107,7 +111,10 @@ final class LanServingController {
             let server = LanHTTPServer(router: router, port: LanLibraryRouter.port, tls: identity.serverOptions(),
                                        advertisement: .init(name: LanLibraryRouter.bonjourName, type: LanLibraryRouter.bonjourType,
                                                             txt: NetworkInfo.localIPv4().map { ["ip": $0] } ?? [:]))
+            server.onFailure = { [weak self] in Task { @MainActor in self?.serverFailed() } }
             _ = try await server.start()
+            // Stopped (sign-out, last TV removed, Stop) while the listener was coming up: undo.
+            guard attempt == generation else { server.stop(); return }
             self.server = server
             self.credentials = credentials
             running = true
@@ -115,12 +122,23 @@ final class LanServingController {
             startRelay(router: router)
             startWatchers(credentials)
             await announce(identity)
+            // TVs paired or removed while starting were skipped by `start()`; bring the accepted set up to date now.
+            credentials.sync(pairing.tvs)
+            if pairing.tvs.isEmpty { stop(); return }
+            tvNames = pairing.tvs.map(\.name)
             updateActivity()
         } catch {
             // Another app holds the port, or the identity could not be made: serving is off, and the screen says so.
             failure = error.localizedDescription
             running = false
         }
+    }
+
+    /// The listener died (iOS does this across a suspension): serving restarts at once if the app is on screen, otherwise on return.
+    private func serverFailed() {
+        guard running else { return }
+        stop()
+        if foreground { start() }
     }
 
     // MARK: TV address
@@ -149,7 +167,10 @@ final class LanServingController {
         let tunnel = RelayTunnel(
             relayURL: { RelayTunnel.phoneURL(apiBaseURL: pairing.apiBaseUrl) }, accountToken: { pairing.accountToken }, phoneDeviceId: { pairing.phoneDeviceId },
             networkType: { network.networkType },
-            admit: { type in RelayConsent.admit(network: type, policy: pairing.relayMobileData, allowedUntil: pairing.relayMobileAllowedUntil, ask: { RelayConsentNotice.ask() }) },
+            admit: { type in
+                if RelayConsent.shouldResetAllowance(network: type, allowedUntil: pairing.relayMobileAllowedUntil) { pairing.relayMobileAllowedUntil = 0 }
+                return RelayConsent.admit(network: type, policy: pairing.relayMobileData, allowedUntil: pairing.relayMobileAllowedUntil, ask: { RelayConsentNotice.ask() })
+            },
             router: router,
             onActivity: { [weak self] activity in Task { @MainActor in self?.relayActivity(activity) } })
         self.tunnel = tunnel
@@ -201,6 +222,8 @@ final class LanServingController {
     // MARK: App state
 
     func setForeground(_ value: Bool) {
+        // The owner's Stop lasts until the app is opened again.
+        if value && !foreground { userStopped = false }
         foreground = value
         lifetime.appForeground(value)
         if value {
@@ -209,8 +232,9 @@ final class LanServingController {
             streamsChanged()
         } else if running {
             // A few seconds of grace so a playing film survives a quick switch to another app.
+            // The system calls this on the main thread and wants the task ended before it returns.
             backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "cablegram-serving") { [weak self] in
-                Task { @MainActor in self?.stop() }
+                MainActor.assumeIsolated { self?.stop() }
             }
             updateActivity()
         }

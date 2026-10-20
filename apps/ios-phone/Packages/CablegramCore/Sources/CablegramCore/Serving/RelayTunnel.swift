@@ -25,7 +25,9 @@ public final class RelayTunnel: @unchecked Sendable {
     private let lock = NSLock()
     private var loop: Task<Void, Never>?
     private var socket: URLSessionWebSocketTask?
-    private var streams: [Int: Task<Void, Never>] = [:]
+    /// A stream is registered before its task starts, so a fast answer or a `cancel` always finds it.
+    private final class Entry: @unchecked Sendable { var task: Task<Void, Never>?; var cancelled = false }
+    private var streams: [Int: Entry] = [:]
     private var credits: [Int: CreditGate] = [:]
     private var connectedNetwork = "other"
     private var sent: Int64 = 0
@@ -149,8 +151,13 @@ public final class RelayTunnel: @unchecked Sendable {
         let request = HTTPRequest(method: method, target: target, headers: headers)
 
         lifetime?.streamStarted()
+        let entry = Entry()
+        // A repeated sid replaces the old stream: the old one is cancelled, not leaked.
+        let replaced: Entry? = lock.withLock { defer { streams[sid] = entry; credits[sid] = gate }; return streams[sid] }
+        if let replaced { replaced.cancelled = true; replaced.task?.cancel(); lifetime?.streamFinished() }
         let work = Task { [weak self] in
             guard let self else { return }
+            defer { self.finish(sid, entry: entry, cancel: false) }
             let response = await router.handle(request, acceptQueryToken: true)
             if Task.isCancelled { if case let .stream(_, source) = response.body { source.close() }; return }
             var head: [String: String] = [:]
@@ -169,28 +176,28 @@ public final class RelayTunnel: @unchecked Sendable {
             } catch {
                 if !Task.isCancelled { Self.sendText(task, ["t": "error", "sid": sid, "status": 502, "reason": "phone_error"]) }
             }
-            self.finish(sid, cancel: false)
         }
-        lock.withLock { streams[sid] = work; credits[sid] = gate }
+        lock.withLock { entry.task = work }
+        if lock.withLock({ entry.cancelled }) { work.cancel() }
         report(network)
-    }
-
-    private func pump(source: any ByteStream, sid: Int, gate: CreditGate, on task: URLSessionWebSocketTask, network: String) async throws {
-        while !Task.isCancelled {
-            let allowed = await gate.take(max: 64 * 1024)
-            guard let piece = try await source.next(limit: allowed) else { return }
-            await gate.giveBack(allowed - piece.count)
-            try await sendBinary(sid: sid, piece, on: task)
-            noteSent(piece.count, network)
-        }
     }
 
     private func pump(data: Data, sid: Int, gate: CreditGate, on task: URLSessionWebSocketTask, network: String) async throws {
         var offset = 0
         while offset < data.count && !Task.isCancelled {
-            let allowed = await gate.take(max: min(64 * 1024, data.count - offset))
+            let allowed = try await gate.take(max: min(64 * 1024, data.count - offset))
             let piece = data.subdata(in: offset..<(offset + allowed))
             offset += allowed
+            try await sendBinary(sid: sid, piece, on: task)
+            noteSent(piece.count, network)
+        }
+    }
+
+    private func pump(source: any ByteStream, sid: Int, gate: CreditGate, on task: URLSessionWebSocketTask, network: String) async throws {
+        while !Task.isCancelled {
+            let allowed = try await gate.take(max: 64 * 1024)
+            guard let piece = try await source.next(limit: allowed) else { return }
+            await gate.giveBack(allowed - piece.count)
             try await sendBinary(sid: sid, piece, on: task)
             noteSent(piece.count, network)
         }
@@ -213,10 +220,16 @@ public final class RelayTunnel: @unchecked Sendable {
         onActivity(activity)
     }
 
-    private func finish(_ sid: Int, cancel: Bool) {
-        let task = lock.withLock { () -> Task<Void, Never>? in credits.removeValue(forKey: sid); return streams.removeValue(forKey: sid) }
-        guard let task else { return }
-        if cancel { task.cancel() }
+    /// Ends a stream. `entry` pins the stream a task belongs to, so a reused sid is not removed by its predecessor.
+    private func finish(_ sid: Int, entry: Entry? = nil, cancel: Bool) {
+        let (removed, gate): (Entry?, CreditGate?) = lock.withLock {
+            guard let current = streams[sid], entry == nil || current === entry else { return (nil, nil) }
+            streams[sid] = nil
+            current.cancelled = cancel || current.cancelled
+            return (current, credits.removeValue(forKey: sid))
+        }
+        guard let removed else { return }
+        if cancel { removed.task?.cancel(); if let gate { Task { await gate.close() } } }
         lifetime?.streamFinished()
         report(networkType())
     }
@@ -235,23 +248,40 @@ public final class RelayTunnel: @unchecked Sendable {
 /// How many body bytes the relay has allowed for one stream.
 actor CreditGate {
     private var available: Int64
+    private var closed = false
     private var waiter: CheckedContinuation<Void, Never>?
 
     init(_ initial: Int64) { available = initial }
 
     func add(_ bytes: Int64) {
         available += bytes
-        if let waiter { self.waiter = nil; waiter.resume() }
+        wake()
     }
 
-    /// Waits for credit, then spends up to `max` bytes of it.
-    func take(max: Int) async -> Int {
-        while available <= 0 { await withCheckedContinuation { waiter = $0 } }
+    /// Stops the stream: a waiting `take` returns by throwing.
+    func close() {
+        closed = true
+        wake()
+    }
+
+    private func wake() { if let waiter { self.waiter = nil; waiter.resume() } }
+
+    /// Waits for credit, then spends up to `max` bytes of it. Throws when the stream was cancelled while waiting.
+    func take(max: Int) async throws -> Int {
+        while available <= 0 {
+            if closed || Task.isCancelled { throw CancellationError() }
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { waiter = $0 }
+            } onCancel: {
+                Task { await self.close() }
+            }
+        }
+        if closed { throw CancellationError() }
         let granted = Int(Swift.min(Int64(max), available))
         available -= Int64(granted)
         return granted
     }
 
     /// Returns credit that was taken but not used (a short read).
-    func giveBack(_ bytes: Int) { available += Int64(bytes) }
+    func giveBack(_ bytes: Int) { available += bytes > 0 ? Int64(bytes) : 0 }
 }

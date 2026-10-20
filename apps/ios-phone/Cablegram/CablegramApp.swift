@@ -33,7 +33,7 @@ struct CablegramApp: App {
                 }
                 .onAppear {
                     viewModel.tv.appVisible = true
-                    ApprovalNotificationHandler.relayAnswer = { action in RelayConsentNotice.apply(action, pairing: viewModel.pairing) }
+                    ApprovalNotificationHandler.relayAnswer = { action in RelayConsentNotice.apply(action, pairing: viewModel.pairing); viewModel.reloadRelayPolicy() }
                     ApprovalNotificationHandler.respond = { approval, allow in viewModel.tv.respondToApproval(approval, approve: allow, cancelNotification: Approvals.cancel) }
                 }
                 // A TV's QR code opens the app with https://app.cablegram.app/?pair=… (universal link, CAB-62).

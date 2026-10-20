@@ -13,6 +13,8 @@ final class AppMediaProvider: LanMediaProvider, @unchecked Sendable {
     init(sources: AppSources) {
         self.sources = sources
         exports = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("served-photos", isDirectory: true)
+        // Exports are copies from an earlier run; they are kept while serving starts and stops, and rebuilt on demand.
+        try? FileManager.default.removeItem(at: exports)
         try? FileManager.default.createDirectory(at: exports, withIntermediateDirectories: true)
     }
 

@@ -17,6 +17,11 @@ final class ServingLiveActivityController {
         }
     }
 
+    /// A Live Activity left behind by a process the system killed would stay on the Lock Screen for hours.
+    func endStale() {
+        Task.detached { for stale in Activity<ServingActivityAttributes>.activities { await stale.end(nil, dismissalPolicy: .immediate) } }
+    }
+
     func end() {
         guard let activity else { return }
         self.activity = nil

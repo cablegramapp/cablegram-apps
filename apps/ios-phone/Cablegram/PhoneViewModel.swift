@@ -525,6 +525,9 @@ final class PhoneViewModel {
 
     private(set) var relayMobileData: RelayMobileDataPolicy = .ask
 
+    /// The policy changed outside Settings (the notification's "Always allow").
+    func reloadRelayPolicy() { relayMobileData = pairing.relayMobileData }
+
     func updateRelayMobileData(_ policy: RelayMobileDataPolicy) {
         pairing.relayMobileData = policy
         relayMobileData = policy

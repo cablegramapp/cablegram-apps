@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Testing
 @testable import CablegramCore
@@ -172,5 +173,42 @@ import Testing
     @Test func manyRequestsReuseTheConnection() async throws {
         let f = try await Self.fixture(); defer { f.server.stop() }
         for _ in 0..<20 { #expect(try await f.get("/media/a", headers: ["Authorization": "Bearer capA", "Range": "bytes=0-99"]).1.statusCode == 206) }
+    }
+
+    /// Sends raw bytes and reads whatever comes back until the server closes (or `seconds` pass).
+    static func raw(_ port: UInt16, _ request: String, seconds: Int = 3) -> String {
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        defer { close(fd) }
+        var tv = timeval(tv_sec: seconds, tv_usec: 0)
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+        var address = sockaddr_in()
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = port.bigEndian
+        address.sin_addr.s_addr = inet_addr("127.0.0.1")
+        let connected = withUnsafePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
+        guard connected == 0 else { return "connect failed" }
+        _ = request.withCString { send(fd, $0, strlen($0), 0) }
+        var out = Data()
+        var buffer = [UInt8](repeating: 0, count: 4096)
+        while true {
+            let n = recv(fd, &buffer, buffer.count, 0)
+            if n <= 0 { break }
+            out.append(buffer, count: n)
+        }
+        return String(decoding: out, as: UTF8.self)
+    }
+
+    @Test func malformedContentLengthIsRefusedWithoutCrashing() async throws {
+        let f = try await Self.fixture(); defer { f.server.stop() }
+        for value in ["-1", "abc", "99999999999999999999", "9000"] {
+            let reply = Self.raw(f.port, "POST /commands HTTP/1.1\r\nHost: x\r\nContent-Length: \(value)\r\n\r\n")
+            #expect(reply.hasPrefix("HTTP/1.1 400"), "Content-Length \(value): \(reply.prefix(40))")
+        }
+        let chunked = Self.raw(f.port, "POST /commands HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n")
+        #expect(chunked.hasPrefix("HTTP/1.1 400"))
+        let getWithBody = Self.raw(f.port, "GET /library HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\n\r\nhello")
+        #expect(getWithBody.hasPrefix("HTTP/1.1 400"), "only POST carries a body")
+        // The server is still up.
+        #expect(try await f.get("/library").1.statusCode == 200)
     }
 }

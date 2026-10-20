@@ -48,6 +48,7 @@ final class NetworkInfo: @unchecked Sendable {
             if address.hasPrefix("169.254.") { continue }
             found.append((String(cString: interface.ifa_name), address))
         }
-        return (found.first { $0.name == "en0" } ?? found.first { $0.name.hasPrefix("en") } ?? found.first)?.address
+        // Wi-Fi or Ethernet only: a carrier (`pdp_ip`) or VPN (`utun`) address is no use to a TV on the LAN.
+        return (found.first { $0.name == "en0" } ?? found.first { $0.name.hasPrefix("en") })?.address
     }
 }

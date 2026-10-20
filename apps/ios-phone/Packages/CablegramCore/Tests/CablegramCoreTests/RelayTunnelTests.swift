@@ -77,7 +77,7 @@ private final class FakeRelay: @unchecked Sendable {
 }
 
 @Suite(.serialized) struct RelayTunnelTests {
-    func makeRouter() throws -> (LanLibraryRouter, Data) {
+    func makeRouter(lifetime: LanLibraryLifetime? = nil) throws -> (LanLibraryRouter, Data) {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("relay-\(UUID().uuidString)")
         let store = LibraryStore(root: root)
         let bytes = Data((0..<300_000).map { UInt8($0 % 241) })
@@ -87,7 +87,8 @@ private final class FakeRelay: @unchecked Sendable {
         try bytes.write(to: store.videoFile(item))
         let credentials = LanCredentials()
         credentials.sync([PairedTv(pin: "1", name: "Den", capability: "capA", deviceId: "tvA")])
-        return (LanLibraryRouter(store: store, commands: CommandQueue(root: root), credentials: credentials), bytes)
+        return (LanLibraryRouter(store: store, commands: CommandQueue(root: root), credentials: credentials,
+                                 onStreamStarted: { lifetime?.streamStarted() }, onStreamFinished: { lifetime?.streamFinished() }), bytes)
     }
 
     func tunnel(port: UInt16, router: LanLibraryRouter, admit: @escaping @Sendable (String) -> RelayRefusal? = { _ in nil }) -> RelayTunnel {
@@ -183,5 +184,36 @@ private final class FakeRelay: @unchecked Sendable {
         #expect(relay.messages("error", sid: 4).first?["status"] as? Int == 404)
         relay.send(["t": "ping"])
         #expect(await relay.wait { !relay.messages("pong").isEmpty })
+    }
+
+    @Test func aStreamCancelledWhileWaitingForCreditReleasesEverything() async throws {
+        let lifetime = LanLibraryLifetime(idleTimeout: 100)
+        let (router, _) = try makeRouter(lifetime: lifetime)
+        let relay = try FakeRelay()
+        let port = try await relay.start()
+        let phone = tunnel(port: port, router: router)
+        phone.start(); defer { phone.stop() }
+        #expect(await relay.wait { !relay.messages("hello").isEmpty })
+        for sid in 10..<15 {
+            relay.send(["t": "req", "sid": sid, "method": "GET", "path": "/media/a?token=capA", "headers": [:], "credit": 1000])
+            #expect(await relay.wait { relay.body(sid).count >= 1000 })
+            #expect(lifetime.activeStreams == 1, "waiting for credit holds the file open")
+            relay.send(["t": "cancel", "sid": sid])
+            #expect(await relay.wait { lifetime.activeStreams == 0 }, "cancel must release the stream (sid \(sid))")
+        }
+    }
+
+    @Test func aFastRefusalLeavesNoStreamBehind() async throws {
+        let lifetime = LanLibraryLifetime(idleTimeout: 100)
+        let (router, _) = try makeRouter(lifetime: lifetime)
+        let relay = try FakeRelay()
+        let port = try await relay.start()
+        let phone = RelayTunnel(relayURL: { URL(string: "ws://127.0.0.1:\(port)/relay/v1/phone") }, accountToken: { "jwt" }, phoneDeviceId: { "p" },
+                                networkType: { "wifi" }, admit: { _ in nil }, router: router, lifetime: lifetime)
+        phone.start(); defer { phone.stop() }
+        #expect(await relay.wait { !relay.messages("hello").isEmpty })
+        for sid in 20..<40 { relay.send(["t": "req", "sid": sid, "method": "GET", "path": "/media/a?token=wrong", "headers": [:]]) }
+        #expect(await relay.wait { relay.messages("end").count >= 20 })
+        #expect(await relay.wait { lifetime.activeStreams == 0 })
     }
 }
