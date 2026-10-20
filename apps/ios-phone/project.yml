@@ -20,6 +20,10 @@ packages:
   GoogleSignIn:
     url: https://github.com/google/GoogleSignIn-iOS
     exactVersion: 9.1.0
+  # Google Cast sender SDK; the receiver id comes from Local.xcconfig (empty hides Cast).
+  GoogleCast:
+    url: https://github.com/googlecast/google-cast-ios-sdk
+    exactVersion: 4.8.6
   # The TDLib version the Android app ships (tdl-coroutines-android 15.0.0 bundles TDLib 1.8.67). A 360 MB binary package.
   TDLibFramework:
     url: https://github.com/Swiftgram/TDLibFramework
@@ -40,6 +44,8 @@ targets:
         product: GoogleSignIn
       - package: TDLibFramework
         product: TDLibFramework
+      - package: GoogleCast
+        product: GoogleCastDynamic
       - target: ShareExtension
         embed: true
       - target: ServingWidget

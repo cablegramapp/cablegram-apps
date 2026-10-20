@@ -19,6 +19,8 @@ struct CablegramApp: App {
 
     private static func makeViewModel() -> PhoneViewModel {
         wipeKeychainOnFreshInstall()
+        // Empty receiver id: Cast stays off and every title goes through the relay.
+        CastSender.configure(appId: configuration.castAppId)
         let pairing = PairingStore(secrets: KeychainSecretStore(), defaultApiBase: configuration.apiBase.absoluteString)
         #if DEBUG
         // `-lanHostOverride 10.0.2.2` announces that address (an Android TV emulator reaches the host through it).
@@ -39,11 +41,13 @@ struct CablegramApp: App {
             PhoneRootView(viewModel: viewModel)
                 .onChange(of: scenePhase) { _, phase in
                     viewModel.tv.appVisible = phase == .active
+                    viewModel.tv.setCastVisible(phase == .active)
                     if phase != .inactive { viewModel.serving.setForeground(phase == .active) }
                     if phase == .active { viewModel.importSharedInbox(); viewModel.tv.refreshPendingApprovals() }
                 }
                 .onAppear {
                     viewModel.tv.appVisible = true
+                    viewModel.tv.setCastVisible(true)
                     ApprovalNotificationHandler.relayAnswer = { action in RelayConsentNotice.apply(action, pairing: viewModel.pairing); viewModel.reloadRelayPolicy() }
                     ApprovalNotificationHandler.respond = { approval, allow in viewModel.tv.respondToApproval(approval, approve: allow, cancelNotification: Approvals.cancel) }
                 }

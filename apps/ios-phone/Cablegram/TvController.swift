@@ -23,6 +23,9 @@ final class TvController {
     private(set) var working = false
     /// True while the app is on screen (the approvals poll is quick then).
     var appVisible = false
+    /// Cast devices found on the network while the app or the picker is visible; empty when Cast is off or hidden.
+    private(set) var castRoutes: [CastRoute] = []
+    private(set) var castPickerOpen = false
 
     @ObservationIgnored private let pairing: PairingStore
     @ObservationIgnored private let catalog: @Sendable () -> CatalogClient
@@ -44,6 +47,13 @@ final class TvController {
     @ObservationIgnored private var followTask: Task<Void, Never>?
     @ObservationIgnored private var approvalTask: Task<Void, Never>?
     @ObservationIgnored private var seenApprovals = Set<String>()
+    @ObservationIgnored private var castSender: CastSender?
+    @ObservationIgnored private var castVisible = false
+    @ObservationIgnored private var pickerTitle: LibraryItem?
+    @ObservationIgnored private var pickerDiscoveryTask: Task<Void, Never>?
+    @ObservationIgnored private var castRoutesTask: Task<Void, Never>?
+    @ObservationIgnored private var castPlaybackOwned = false
+    @ObservationIgnored private var lastCastDeviceStatus: CastDeviceStatus?
 
     init(pairing: PairingStore, catalog: @escaping @Sendable () -> CatalogClient, store: LibraryStore, items: @escaping () -> [LibraryItem],
          setStatus: @escaping (String?) -> Void, selectItem: @escaping (LibraryItem) -> Void, ensurePhoneDevice: @escaping () async -> Void,
@@ -223,6 +233,7 @@ final class TvController {
     func clearNowPlaying() { nowPlaying = nil }
 
     func reset() {
+        dismissCastPicker(); castPlaybackOwned = false
         followTask?.cancel(); approvalTask?.cancel(); approvalTask = nil
         tvs = []; paired = false; nowPlaying = nil; paused = false; remoteStatus = nil; pendingApprovals = []
         addingTv = false; pendingPair = nil; householdTvsCache = nil; seenApprovals = []
@@ -230,9 +241,81 @@ final class TvController {
 
     // MARK: Play on TV and the remote
 
-    func playOnTv(_ item: LibraryItem) { startTitleOnTv(item) }
+    // MARK: Cast (Android `PhoneViewModel`'s Cast part)
 
-    private func startTitleOnTv(_ item: LibraryItem) {
+    /// The app came to the front or left it: Cast devices are looked for only while it is on screen.
+    func setCastVisible(_ visible: Bool) {
+        castVisible = visible
+        if pairing.castConnect, castSender == nil, CastSender.configured {
+            let sender = CastSender()
+            sender.onDevice = { [weak self] status, routeId in
+                guard let self else { return }
+                lastCastDeviceStatus = status
+                // The server's household list and existing pairing bound this untrusted hint.
+                if householdTvsCache?.contains(where: { $0.id == status.deviceId }) == true {
+                    pairing.attachCastDeviceId(deviceId: status.deviceId, castDeviceId: routeId)
+                    tvs = pairing.tvs
+                }
+            }
+            sender.onPlayback = { [weak self] isPaused, terminal in
+                guard let self, castPlaybackOwned else { return }
+                if terminal { nowPlaying = nil; paused = false; castPlaybackOwned = false } else if let isPaused { paused = isPaused }
+            }
+            castSender = sender
+            castRoutesTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    if let self, let routes = self.castSender?.routes, routes != self.castRoutes { self.castRoutes = routes }
+                    try? await Task.sleep(for: .milliseconds(400))
+                }
+            }
+        }
+        castSender?.setVisible(visible)
+        if !visible { dismissCastPicker() }
+    }
+
+    func updateCastConnect(_ value: Bool) {
+        if !value {
+            dismissCastPicker(); castRoutesTask?.cancel(); castRoutesTask = nil
+            castSender?.release(); castSender = nil; castRoutes = []; castPlaybackOwned = false
+        } else { setCastVisible(castVisible) }
+    }
+
+    func dismissCastPicker() {
+        pickerDiscoveryTask?.cancel(); pickerDiscoveryTask = nil
+        castPickerOpen = false; pickerTitle = nil
+        castSender?.setVisible(castVisible)
+    }
+
+    func chooseCastRoute(_ route: CastRoute) {
+        guard castRoutes.contains(route), let title = pickerTitle else { return }
+        dismissCastPicker()
+        startTitleOnTv(title, route: route)
+    }
+
+    func playOnTv(_ item: LibraryItem) {
+        pickerDiscoveryTask?.cancel()
+        guard let sender = castSender, pairing.castConnect, sender.available, paired else { startTitleOnTv(item, route: nil); return }
+        if let route = matchingCastRoute(pairing.tvs.last, castRoutes) { startTitleOnTv(item, route: route); return }
+        pickerDiscoveryTask = Task {
+            sender.scanForPicker()
+            // Give discovery a bounded chance; no route keeps the existing relay behavior.
+            var routes = sender.routes
+            for _ in 0..<30 where routes.isEmpty && !Task.isCancelled { try? await Task.sleep(for: .milliseconds(100)); routes = sender.routes }
+            if Task.isCancelled { return }
+            if !useCastForTitle(enabled: pairing.castConnect, senderAvailable: sender.available, routeAvailable: !routes.isEmpty) {
+                sender.setVisible(castVisible)
+                startTitleOnTv(item, route: nil)
+            } else if let matching = matchingCastRoute(pairing.tvs.last, routes) {
+                sender.setVisible(castVisible)
+                startTitleOnTv(item, route: matching)
+            } else {
+                castRoutes = routes
+                pickerTitle = item; castPickerOpen = true
+            }
+        }
+    }
+
+    private func startTitleOnTv(_ item: LibraryItem, route: CastRoute?) {
         guard paired else {
             selectItem(item)
             startAddTv()
@@ -240,10 +323,13 @@ final class TvController {
             return
         }
         Task {
+            let castUsable = pairing.castConnect && castSender?.available == true
+            let effectiveRoute = castUsable ? route : nil
             // Only show "now playing" once the TV confirmed that playback started.
             titleStartToken += 1
             let token = titleStartToken
-            let sent = await sendCommand("play", videoId: item.id, wait: .titleStart) { [self] tv in
+            castPlaybackOwned = false
+            let sent = await sendCommand("play", videoId: item.id, wait: .titleStart, castRoute: effectiveRoute, castTitle: item) { [self] tv in
                 startingTitle = item.title
                 setStatus(text("ui_starting_on_bc52ee", item.title, tv))
             }
@@ -252,9 +338,11 @@ final class TvController {
             // A later command owns the status line; this one only applies what the TV confirmed.
             if sent.latest { setStatus(remoteStatus) }
             guard sent.latest, titleStartToken == token, sent.outcome.applies else { return }
+            if effectiveRoute != nil, castSender?.playbackTerminated != false { return }
+            castPlaybackOwned = effectiveRoute != nil
             playingTvDeviceId = sent.deviceId
             nowPlaying = item
-            paused = false
+            paused = effectiveRoute != nil && castSender?.playbackPaused == true
             store.setWatchProgress(item.id, positionSeconds: max(item.positionSeconds, 1))
             if sent.latest {
                 let line = sent.outcome == .confirmed ? text("ui_playing_on_8af952", item.title, sent.tvName) : text("ui_sent_to_not_confirmed_by_tv_8cbf56", item.title, sent.tvName)
@@ -308,7 +396,7 @@ final class TvController {
     /// the control service did not accept the command. `onAccepted` runs once the service accepted it, before the wait, and only
     /// while it is still the newest.
     private func sendCommand(_ command: String, videoId: String? = nil, arguments: [String: any Sendable] = [:], wait: ConfirmationWait = .control(),
-                             onAccepted: ((String) -> Void)? = nil) async -> SentCommand? {
+                             castRoute: CastRoute? = nil, castTitle: LibraryItem? = nil, onAccepted: ((String) -> Void)? = nil) async -> SentCommand? {
         commandGeneration += 1
         let generation = commandGeneration
         func report(_ line: String) { if generation == commandGeneration { remoteStatus = line } }
@@ -322,8 +410,16 @@ final class TvController {
         }
         report(L("ui_sending_b8ed52"))
         let client = catalog()
-        let result = await TvCommandSender.send(pairing: pairing, client: client, command: command, videoId: videoId, arguments: arguments, household: householdTvsCache)
-        guard case .sent(let sentName, let commandId, let token, let switchedFrom, let deviceId) = result else {
+        let castTarget = castRoute != nil ? pairing.tvs.last?.deviceId : nil
+        if castRoute != nil, castTarget == nil { reportFinal(L("ui_choose_a_paired_tv_in_settings_0b8448")); return nil }
+        var payload = arguments
+        if castRoute != nil, let castTitle {
+            payload["castLaunch"] = true
+            payload["title"] = String(castTitle.title.prefix(160))
+            payload["senderName"] = String((pairing.displayName.isEmpty ? L("ui_your_phone_807163") : pairing.displayName).prefix(80))
+        }
+        let result = await TvCommandSender.send(pairing: pairing, client: client, command: command, videoId: videoId, arguments: payload, household: householdTvsCache, castTargetDeviceId: castTarget)
+        guard case .sent(let sentName, var commandId, let token, let switchedFrom, var deviceId) = result else {
             if case .failed(let message) = result { reportFinal(message) }
             return nil
         }
@@ -339,6 +435,34 @@ final class TvController {
         }
         // Only the newest command may touch what the screens show.
         if generation == commandGeneration { onAccepted?(sentName) }
+        if let castRoute, let castTitle, let castTarget, let castSender {
+            do {
+                lastCastDeviceStatus = nil
+                let status = try await castSender.load(routeId: castRoute.deviceId, commandId: commandId, targetDeviceId: castTarget, videoId: castTitle.id,
+                                                       title: castTitle.title, poster: castTitle.posterUrl) ?? lastCastDeviceStatus
+                let household = await client.householdTvs(token: token)
+                if let household { householdTvsCache = household }
+                // A normal first LOAD must also persist its route mapping when discovery began before the household cache was populated.
+                // Fresh membership still bounds the hint.
+                if let status, household?.contains(where: { $0.id == status.deviceId }) == true {
+                    pairing.attachCastDeviceId(deviceId: status.deviceId, castDeviceId: castRoute.deviceId)
+                    tvs = pairing.tvs
+                }
+                let retry = wrongTvRetry(status, paired: pairing.tvs, householdIds: Set((household ?? []).map(\.id)), alreadyRetried: false)
+                if status?.wrongTv == true {
+                    guard let retry, let retryId = retry.deviceId else { reportFinal(L("ui_that_cast_device_isn_t_your_selected_tv_choose_a_paire_45fa19")); return nil }
+                    guard case .sent(_, let again, _, _, let againDevice) = await TvCommandSender.send(pairing: pairing, client: client, command: command, videoId: videoId, arguments: payload,
+                                                                                                   household: household, castTargetDeviceId: retryId) else { reportFinal(L("ui_tv_changed_choose_a_tv_and_try_again_69312c")); return nil }
+                    commandId = again; deviceId = againDevice
+                    let retried = try await castSender.load(routeId: castRoute.deviceId, commandId: again, targetDeviceId: retryId, videoId: castTitle.id, title: castTitle.title, poster: castTitle.posterUrl)
+                    if retried?.wrongTv == true { reportFinal(L("ui_tv_changed_choose_a_tv_and_try_again_69312c")); return nil }
+                    selectTv(retry)
+                    pairing.attachCastDeviceId(deviceId: retryId, castDeviceId: castRoute.deviceId)
+                    tvs = pairing.tvs
+                }
+            } catch is CancellationError { return nil }
+            catch { reportFinal((error as? LocalizedError)?.errorDescription ?? L("ui_could_not_open_the_tv_try_again_344ff8")); return nil }
+        }
         let outcome = await TvCommandSender.confirm(client: client, commandId: commandId, token: token, deviceId: deviceId, wait: wait)
         switch outcome {
         case .confirmed: reportFinal(text("ui_done_on_623a01", sentName))

@@ -38,6 +38,13 @@ struct PhoneRootView: View {
         .fullScreenCover(isPresented: Binding(get: { viewModel.artworkEditor.draft != nil }, set: { if !$0 { viewModel.artworkEditor.close() } })) {
             ArtworkEditorScreen(controller: viewModel.artworkEditor, viewModel: viewModel)
         }
+        // More than one Cast device and none is this TV's: ask which one (Android's "Play on TV" dialog).
+        .confirmationDialog(L("ui_play_on_tv_f47dcd"), isPresented: Binding(get: { viewModel.tv.castPickerOpen }, set: { if !$0 { viewModel.tv.dismissCastPicker() } }), titleVisibility: .visible) {
+            ForEach(viewModel.tv.castRoutes, id: \.deviceId) { route in Button(route.name) { viewModel.tv.chooseCastRoute(route) } }
+            Button(L("ui_cancel_19766e"), role: .cancel) { viewModel.tv.dismissCastPicker() }
+        } message: {
+            if viewModel.tv.castRoutes.isEmpty { Text(key: "ui_looking_for_tvs_8edf98") }
+        }
         .preferredColorScheme(.dark)
     }
 }

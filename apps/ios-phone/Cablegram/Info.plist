@@ -36,7 +36,7 @@
 	<key>NSCameraUsageDescription</key><string>Cablegram uses the camera to scan the pairing code shown on your TV.</string>
 	<key>NSLocalNetworkUsageDescription</key><string>Cablegram finds your TVs on your home network and serves videos to them.</string>
 	<key>NSBonjourServices</key>
-	<array><string>_cablegram._tcp</string><string>_googlecast._tcp</string></array>
+	<array><string>_cablegram._tcp</string><string>_googlecast._tcp</string><string>_$(CABLEGRAM_CAST_APP_ID)._googlecast._tcp</string></array>
 	<key>NSPhotoLibraryUsageDescription</key><string>Cablegram lists the videos in your Photos library so you can play them on your TV.</string>
 	<key>GIDClientID</key><string>$(GOOGLE_IOS_CLIENT_ID)</string>
 	<key>CablegramAPIBase</key><string>$(API_BASE)</string>

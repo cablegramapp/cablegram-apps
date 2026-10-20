@@ -344,6 +344,16 @@ public final class LibraryStore: @unchecked Sendable {
         }
     }
 
+    /// The enhanced file (one video and one audio track) replaces the title's video; the original is deleted.
+    public func markEnhanced(_ id: String, newFile: URL) {
+        guard let item = get(id) else { return }
+        let target = videoFile(item)
+        try? fm.removeItem(at: target)
+        if newFile.standardizedFileURL != target.standardizedFileURL { try? fm.copyItem(at: newFile, to: target) }
+        let size = (try? fm.attributesOfItem(atPath: target.path)[.size] as? Int64) ?? nil
+        updateItem(id) { var changed = $0; changed.enhanced = true; changed.fileSizeBytes = size ?? $0.fileSizeBytes; changed.copied = true; return changed }
+    }
+
     /// Frees the phone copy once a verified copy exists elsewhere (see `canRemoveLocalCopy`).
     @discardableResult
     public func removeLocalCopy(_ id: String) -> LibraryItem? {

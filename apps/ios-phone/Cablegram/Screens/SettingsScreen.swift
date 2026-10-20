@@ -124,9 +124,8 @@ struct SettingsScreen: View {
         case .account: account
         case .transfers:
             SectionCard(title: L("ui_transfers_privacy_af4a2f")) {
-                if !CablegramApp.configuration.castAppId.isEmpty {
-                    PrefSwitch(key: "ui_open_tv_with_cast_0dd4f2", isOn: Binding(get: { viewModel.castConnect }, set: { viewModel.updateCastConnect($0) }), id: MaestroIds.settingsCastConnect)
-                }
+                // Always listed, as on Android; without a receiver id the sender never starts and titles go through the relay.
+                PrefSwitch(key: "ui_open_tv_with_cast_0dd4f2", isOn: Binding(get: { viewModel.castConnect }, set: { viewModel.updateCastConnect($0) }), id: MaestroIds.settingsCastConnect)
                 PrefSwitch(key: "ui_show_remote_controls_b49919", isOn: Binding(get: { viewModel.legacyRemote }, set: { viewModel.updateLegacyRemote($0) }), id: MaestroIds.settingsLegacyRemote)
                 PrefSwitch(key: "ui_transfer_on_wi_fi_only_992dd6", isOn: Binding(get: { viewModel.cloud.wifiOnlyTransfers }, set: { viewModel.cloud.wifiOnlyTransfers = $0 }))
                 PrefSwitch(key: "ui_transfer_only_while_charging_645032", isOn: Binding(get: { viewModel.transferWhileCharging }, set: { viewModel.transferWhileCharging = $0 }))
@@ -250,6 +249,9 @@ struct PrefSwitch: View {
     var body: some View {
         Toggle(isOn: $isOn) { Text(key: key).foregroundStyle(.white) }
             .tint(.phoneAccent)
+            // The whole row switches it, like Android's, not only the switch.
+            .contentShape(Rectangle())
+            .onTapGesture { isOn.toggle() }
             .accessibilityIdentifier(id ?? "")
     }
 }

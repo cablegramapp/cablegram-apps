@@ -559,6 +559,7 @@ final class PhoneViewModel {
     func updateCastConnect(_ value: Bool) {
         pairing.castConnect = value
         castConnect = value
+        tv.updateCastConnect(value)
     }
 
     func updateLegacyRemote(_ value: Bool) {
@@ -585,6 +586,27 @@ final class PhoneViewModel {
         case .drive: tab = .storage; cloud.cloudSheet = .manage
         case .subtitles: tab = .settings; subtitles.accountsOpen = true
         case .welcome, .ready: tab = .browse
+        }
+    }
+
+    /// Keeps the first video and first audio track of a title held on this phone (Android `enhance`; AVFoundation reads MP4 and MOV only).
+    func enhance(_ item: LibraryItem) {
+        Task {
+            busy = true
+            defer { busy = false }
+            status = L("ui_enhancing_keeping_primary_audio_5ef242", item.title)
+            guard store.hasLocalBytes(item) else { status = L("ui_enhance_failed_for_this_file_f4b261"); return }
+            let input = store.videoFile(item)
+            let output = input.deletingLastPathComponent().appendingPathComponent("\(item.id).enhanced.mp4")
+            defer { try? FileManager.default.removeItem(at: output) }
+            do {
+                try await EnhanceAudio.remuxPrimaryTracks(input: input, output: output)
+                store.markEnhanced(item.id, newFile: output)
+                refresh()
+                status = L("ui_enhanced_43febe", item.title)
+            } catch {
+                status = L("ui_enhance_failed_for_this_file_f4b261")
+            }
         }
     }
 
