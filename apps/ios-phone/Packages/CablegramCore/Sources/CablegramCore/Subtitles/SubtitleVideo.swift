@@ -100,6 +100,25 @@ public enum SubtitleVideo {
         return t
     }
 
+    /// The sound format of a video whose audio this phone cannot play (DTS...), else nil. A video without any sound is not unsupported.
+    public static func unsupportedAudio(_ input: any SubtitleMediaInput) async -> String? {
+        let video = SubtitleVideoAsset(input: input)
+        defer { video.cancel() }
+        guard let audio = try? await video.asset.loadTracks(withMediaType: .audio), !audio.isEmpty else { return nil }
+        var playable = false
+        for track in audio where (try? await track.load(.isPlayable)) == true { playable = true }
+        if playable { return nil }
+        let subtype = (try? await audio[0].load(.formatDescriptions))?.first.map { CMFormatDescriptionGetMediaSubType($0) }
+        switch subtype {
+        case kAudioFormatAC3: return "Dolby Digital"
+        case kAudioFormatEnhancedAC3: return "Dolby Digital Plus"
+        case 0x6D6C7061: return "Dolby TrueHD"   // 'mlpa'
+        case 0x64747363, 0x64747368, 0x64747365, 0x64747369: return "DTS"   // dtsc dtsh dtse dtsi
+        case let code?: return String(bytes: [24, 16, 8, 0].map { UInt8((code >> $0) & 0xFF) }, encoding: .ascii)?.trimmingCharacters(in: .whitespaces) ?? "an unsupported format"
+        case nil: return "an unsupported format (usually Dolby Digital or DTS)"
+        }
+    }
+
     private static func mime(_ subtype: FourCharCode) -> String {
         switch subtype {
         case kCMVideoCodecType_H264: "video/avc"

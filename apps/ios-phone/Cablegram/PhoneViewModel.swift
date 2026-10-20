@@ -61,6 +61,7 @@ final class PhoneViewModel {
     private(set) var artworkEditor: ArtworkEditorController!
     private(set) var cloud: CloudController!
     private(set) var tv: TvController!
+    private(set) var subtitles: SubtitleController!
     private(set) var serving: LanServingController!
     private(set) var telegram: TelegramController!
     @ObservationIgnored private var syncing = false
@@ -130,6 +131,8 @@ final class PhoneViewModel {
                                           if selectedId == item.id { selectedId = nil }
                                       },
                                       syncLibrary: { [weak self] in await self?.syncLibrary() })
+        subtitles = SubtitleController(pairing: pairing, catalog: makeClient, store: libraryStore, media: mediaProvider, selectedId: { [weak self] in self?.selectedId },
+                                       setStatus: { [weak self] in self?.status = $0 })
         tv.onTvsChanged = { [weak self] in self?.serving.start() }
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()
@@ -179,7 +182,7 @@ final class PhoneViewModel {
     func findDetailsAndArtwork(_ item: LibraryItem) { artworkEditor.open(item) }
 
     func openItem(_ item: LibraryItem) { selectedId = item.id; editingMetadata = false }
-    func closeItem() { selectedId = nil; editingMetadata = false }
+    func closeItem() { selectedId = nil; editingMetadata = false; subtitles.titleClosed() }
     func openSeries(_ entry: LibraryEntry) { openSeriesKey = entry.key }
     func closeSeries() { openSeriesKey = nil }
 
@@ -580,7 +583,7 @@ final class PhoneViewModel {
         case .tv: startAddTvFromTour()
         case .telegram: tab = .browse; telegram.openSheet()
         case .drive: tab = .storage; cloud.cloudSheet = .manage
-        case .subtitles: tab = .settings   // Subtitle accounts arrive with phase 8
+        case .subtitles: tab = .settings; subtitles.accountsOpen = true
         case .welcome, .ready: tab = .browse
         }
     }
@@ -727,6 +730,8 @@ final class PhoneViewModel {
     }
 
     private func clearSignedInState() {
+        // First: the subtitle accounts are keyed by the signed-in account, which `clearAccount` forgets.
+        subtitles.signedOut()
         serving.stop()
         telegram.work.stop()
         pairing.clearAccount()

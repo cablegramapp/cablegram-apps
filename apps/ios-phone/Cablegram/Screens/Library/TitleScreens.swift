@@ -186,6 +186,23 @@ struct DetailOverlay: View {
         }
     }
 
+    /// Find, attach, adjust and remove the title's subtitle (Android's buttons under the summary).
+    @ViewBuilder private var subtitleButtons: some View {
+        let signedIn = viewModel.subtitles.accountToken != nil
+        let usable = !sourceUnavailable && signedIn
+        let saved = viewModel.subtitles.savedSubtitle
+        Color.clear.frame(height: 0).task(id: item.id) { viewModel.subtitles.refreshStatus(item) }
+        if saved != nil {
+            Button { viewModel.subtitles.removeSaved(item) } label: { Text(key: "ui_remove_saved_subtitle_4ed88f").frame(maxWidth: .infinity) }.buttonStyle(AccentTextButtonStyle())
+        }
+        Button { viewModel.subtitles.flowOpen = true } label: {
+            Text(saved.map { L("ui_subtitles_find_another_59ba49", $0) } ?? L("ui_find_subtitles_8a4dbc"))
+        }
+        .buttonStyle(OutlinedButtonStyle()).disabled(!usable).accessibilityIdentifier(MaestroIds.detailFindSubtitles)
+        if saved != nil { SavedSubtitleTimingButton(viewModel: viewModel, item: item, enabled: usable) }
+        LocalSubtitleAttachmentButton(viewModel: viewModel, item: item, enabled: usable)
+    }
+
     @ViewBuilder private var details: some View {
         if item.positionSeconds > 0 {
             VStack(alignment: .leading, spacing: 8) {
@@ -210,6 +227,7 @@ struct DetailOverlay: View {
         if let overview = item.overview, !overview.trimmingCharacters(in: .whitespaces).isEmpty {
             Text(overview).font(PhoneFont.bodyLarge).foregroundStyle(Color.phoneMuted)
         }
+        subtitleButtons
         SectionCard(title: L("ui_your_copy_c7710a")) {
             HStack {
                 Text("Location").foregroundStyle(Color.phoneMuted)

@@ -22,7 +22,13 @@ struct SettingsScreen: View {
                 ScreenHeading(title: L("ui_settings_74a883"),
                               subtitle: viewModel.householdName.isEmpty ? L("ui_make_cablegram_yours_13baae") : viewModel.householdName)
                     .accessibilityIdentifier(MaestroIds.settingsTitle)
-                if let current = page {
+                if viewModel.subtitles.accountsOpen {
+                    Button { viewModel.subtitles.accountsOpen = false } label: {
+                        HStack(spacing: 8) { Image(systemName: "arrow.backward").font(.system(size: 16)); Text(key: "ui_back_to_settings_ea37ec") }
+                    }
+                    .buttonStyle(AccentTextButtonStyle())
+                    SubtitleProviderSetup(viewModel: viewModel, onDone: { viewModel.subtitles.accountsOpen = false }, doneLabel: L("ui_done_11a676"), requireAccount: false)
+                } else if let current = page {
                     Button { page = nil } label: {
                         HStack(spacing: 8) { Image(systemName: "arrow.backward").font(.system(size: 16)); Text(key: "ui_back_to_settings_ea37ec") }
                     }
@@ -77,8 +83,7 @@ struct SettingsScreen: View {
                 row("ui_app_connection_535ee6", "gearshape.fill", "settings_category_connection") { page = .connection }
             }
             .background(Color.phonePanel, in: RoundedRectangle(cornerRadius: 20))
-            // Subtitle accounts open in phase 8.
-            row("ui_subtitle_accounts_9602a0", "books.vertical.fill", "settings_subtitle_accounts", card: true) {}
+            row("ui_subtitle_accounts_9602a0", "books.vertical.fill", "settings_subtitle_accounts", card: true) { viewModel.subtitles.accountsOpen = true }
             Button { viewModel.tab = .storage } label: {
                 HStack(spacing: 14) {
                     Image(systemName: "externaldrive.fill").foregroundStyle(Color.phoneAccent)

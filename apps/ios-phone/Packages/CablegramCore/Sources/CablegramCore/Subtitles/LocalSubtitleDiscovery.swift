@@ -97,10 +97,11 @@ public actor LocalSubtitleDiscovery {
     }
 
     init(credentials: [String: PersonalSubtitleCredentials], onClose: @escaping @Sendable () -> Void = {}, session: URLSession) {
-        self.credentials = credentials; self.onClose = onClose; self.session = session
+        self.credentials = credentials; self.onClose = onClose; self.session = session; hasCredentials = !credentials.isEmpty
     }
 
-    public var configured: Bool { !credentials.isEmpty }
+    private nonisolated let hasCredentials: Bool
+    public nonisolated var configured: Bool { hasCredentials && !gate.closed }
 
     /// Stops every running call and drops the credentials and everything fetched. Callable from anywhere, at any time.
     public nonisolated func close() {

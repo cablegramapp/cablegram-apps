@@ -112,6 +112,8 @@ struct PhoneTextField: View {
     var leftToRight = false
     /// Off for codes, ids and names that are typed exactly (bucket, access key): a capital first letter would make them wrong.
     var capitalizes = true
+    /// Dots instead of letters, for keys and passwords.
+    var secure = false
     var onSubmit: (() -> Void)?
     var id: String?
     @FocusState private var focused: Bool
@@ -125,7 +127,9 @@ struct PhoneTextField: View {
                     .background(Color.phoneBackground)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(label).font(.system(size: 12)).foregroundStyle(focused ? Color.phoneAccent : Color.phoneMuted)
-                    TextField("", text: $text)
+                    Group {
+                        if secure { SecureField("", text: $text) } else { TextField("", text: $text) }
+                    }
                         .focused($focused)
                         .font(PhoneFont.bodyLarge)
                         .foregroundStyle(.white)
