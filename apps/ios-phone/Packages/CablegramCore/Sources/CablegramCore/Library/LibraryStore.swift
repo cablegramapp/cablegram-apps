@@ -77,6 +77,14 @@ public final class LibraryStore: @unchecked Sendable {
 
     // MARK: Writing
 
+    private var importingIds = Set<String>()
+
+    func markImporting(_ id: String, _ on: Bool) { locked { if on { importingIds.insert(id) } else { importingIds.remove(id) } } }
+    func isImporting(_ id: String) -> Bool { locked { importingIds.contains(id) } }
+    /// Stored names of the files being copied in right now (`<id>.<ext>`), which a sweep must not touch.
+    func importingNames() -> Set<String> { locked { Set(snapshot().pendingSharedImports.filter { importingIds.contains($0.id) }.map { p in "\(p.id).\(p.displayName.contains(".") ? String(p.displayName.split(separator: ".").last!) : "mp4")" }) } }
+    func writeSnapshot(_ file: LibraryFile) { save(file) }
+
     private func save(_ file: LibraryFile) {
         locked {
             let encoder = JSONEncoder()
