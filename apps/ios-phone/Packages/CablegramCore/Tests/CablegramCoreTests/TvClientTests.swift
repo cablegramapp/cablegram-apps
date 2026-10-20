@@ -125,3 +125,22 @@ extension Network {
         }
     }
 }
+
+extension Network {
+    @Suite @MainActor struct RenameTests {
+        init() { MockHTTP.reset() }
+
+        @Test func renamingPatchesTheDeviceWithItsDisplayName() async {
+            MockHTTP.enqueue(200, #"{"ok":true}"#)
+            let ok = await CatalogClient(baseURL: MockHTTP.baseURL, tokens: nil, session: MockHTTP.session).renameDevice(token: "t", deviceId: "tv-1", name: "Living room")
+            #expect(ok && MockHTTP.requests[0].method == "PATCH" && MockHTTP.requests[0].path == "/api/devices/tv-1" && MockHTTP.requests[0].body["display_name"] as? String == "Living room")
+        }
+
+        @Test func aStoredTvCanBeRenamedLocally() {
+            let pairing = PairingStore(defaults: UserDefaults(suiteName: "rename-\(UUID().uuidString)")!, secrets: InMemorySecretStore())
+            pairing.addTv(pin: "1", name: "TV", deviceId: "d")
+            pairing.renameTv(pin: "1", name: "Den")
+            #expect(pairing.tvs.first?.name == "Den" && pairing.tvName == "Den")
+        }
+    }
+}

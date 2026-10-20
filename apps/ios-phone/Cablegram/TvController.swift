@@ -128,9 +128,13 @@ final class TvController {
         }
         // Trust follows the server: the end time may have been extended from another phone.
         let trustById = Dictionary(uniqueKeysWithValues: server.map { ($0.id, $0.trust) })
+        let nameById = Dictionary(uniqueKeysWithValues: server.map { ($0.id, $0.displayName ?? "") })
         let refreshed = kept.map { tv -> PairedTv in
             var t = tv
             if let id = tv.deviceId, let trust = trustById[id] { t.trust = trust }
+            // A TV paired without a name shows as "TV" until the server's name (the TV's own model name, or the one the owner gave it
+            // on another phone) is taken over.
+            if let id = tv.deviceId, tv.name == "TV", let name = nameById[id], !name.trimmingCharacters(in: .whitespaces).isEmpty { t.name = name }
             return t
         }
         let merged = adopted + refreshed // the selected (last) TV stays selected
@@ -172,6 +176,21 @@ final class TvController {
         } else {
             tvName = pairing.tvName
             setStatus(text("ui_removed_this_tv_still_paired_4ec21c", "\(pairing.tvs.count)"))
+        }
+    }
+
+    /// "Rename" under Your TVs: saved on the server first, so every phone shows the new name.
+    func renameTv(_ tv: PairedTv, to name: String) {
+        let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80))
+        guard !trimmed.isEmpty, let token, let id = tv.deviceId else { return }
+        Task {
+            if await catalog().renameDevice(token: token, deviceId: id, name: trimmed) {
+                pairing.renameTv(pin: tv.pin, name: trimmed)
+                tvs = pairing.tvs
+                tvName = pairing.tvName
+            } else {
+                setStatus(L("ui_couldn_t_reach_cablegram_check_your_connection_and_try_de82d8"))
+            }
         }
     }
 

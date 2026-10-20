@@ -71,6 +71,7 @@ public final class PairingStore: AccountTokens, @unchecked Sendable {
         }
     }
 
+    public func renameTv(pin: String, name: String) { tvs = tvs.map { var t = $0; if t.pin == pin { t.name = name }; return t } }
     public func removeTv(pin: String) { tvs = tvs.filter { $0.pin != pin } }
     public func clearTVs() { tvs = [] }
 

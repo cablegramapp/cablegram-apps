@@ -11,6 +11,8 @@ struct SettingsScreen: View {
     @State private var confirmSignOut = false
     @State private var showLegal = false
     @State private var tvToRemove: PairedTv?
+    @State private var tvToRename: PairedTv?
+    @State private var renameDraft = ""
     @State private var accountNameDraft = ""
     @Environment(\.openURL) private var openURL
 
@@ -50,6 +52,11 @@ struct SettingsScreen: View {
         } message: { Text(key: "ui_this_phone_stops_sharing_and_controlling_your_tvs_your_960038") }
         .sheet(isPresented: $showLegal) { LegalSheet() }
         .onAppear { viewModel.tv.loadProfileLock() }
+        .alert(L("ios_rename_tv"), isPresented: Binding(get: { tvToRename != nil }, set: { if !$0 { tvToRename = nil } })) {
+            TextField(L("ios_tv_name"), text: $renameDraft)
+            Button(L("ui_cancel_19766e"), role: .cancel) {}
+            Button(L("ui_save_changes_dd0ae7")) { if let tvToRename { viewModel.tv.renameTv(tvToRename, to: renameDraft) } }
+        }
         .alert(tvToRemove.map { L("ui_remove_e4dd7c", $0.name) } ?? "", isPresented: Binding(get: { tvToRemove != nil }, set: { if !$0 { tvToRemove = nil } })) {
             Button(L("ui_cancel_19766e"), role: .cancel) {}
             Button(L("ui_remove_tv_7c437e"), role: .destructive) { if let tvToRemove { viewModel.tv.unpair(tvToRemove) } }
@@ -189,6 +196,9 @@ struct SettingsScreen: View {
                         TvTrustActions(viewModel: viewModel, tv: item)
                     }
                     Spacer()
+                    if item.deviceId != nil {
+                        Button { renameDraft = item.name; tvToRename = item } label: { Text(key: "ios_rename").foregroundStyle(Color.phoneAccent) }.disabled(tv.working)
+                    }
                     Button { tvToRemove = item } label: { Text(key: "ui_remove_c3812f").foregroundStyle(Color.phoneError) }.disabled(tv.working)
                 }
             }

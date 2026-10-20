@@ -37,6 +37,11 @@ extension CatalogClient {
         }
     }
 
+    /// Renames a TV of the account ("Living room"). Phone-scope tokens only.
+    public func renameDevice(token: String, deviceId: String, name: String) async -> Bool {
+        await send("PATCH", "/api/devices/\(deviceId)", token: token, json: ["display_name": name]).isSuccess
+    }
+
     public func setTvTrust(token: String, tvDeviceId: String, trust: TvTrust) async -> Bool {
         var body: [String: Any] = ["trust_level": trust.temporary ? "temporary" : "home", "telegram_direct_allowed": trust.telegramDirect]
         if trust.temporary, let expires = trust.expiresAt { body["trust_expires_at"] = isoTimestamp(expires) }
