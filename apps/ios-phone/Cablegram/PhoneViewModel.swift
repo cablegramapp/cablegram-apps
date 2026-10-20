@@ -781,7 +781,7 @@ final class PhoneViewModel {
     private func wipeAfterAccountDeletion() async {
         // The same local path as "Disconnect Telegram", minus the server call: the link died with the account.
         if PhoneTelegram.existing() == nil && PhoneTelegram.wasLinked { _ = PhoneTelegram.session() }
-        telegram.wipeLocally()
+        await telegram.wipeLocallyAfterLogOut()
         telegram.clearDeletions()
         store.forgetHousehold()
         clearSignedInState()

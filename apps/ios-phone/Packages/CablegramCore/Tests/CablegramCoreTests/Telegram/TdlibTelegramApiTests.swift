@@ -193,8 +193,12 @@ private func videoMessage(id: Int64 = 5, chat: Int64 = -1001, caption: String = 
         #expect(progress.values.contains { $0 == (400, 1000) })
         let sent = try #require(td.sent("sendMessage").first)
         let content = try #require(sent["input_message_content"] as? [String: Any])
-        #expect(content["@type"] as? String == "inputMessageVideo" && content["supports_streaming"] as? Bool == true)
-        #expect((content["video"] as? [String: Any])?["path"] as? String == "/tmp/a.mp4")
+        // TDLib 1.8.67: inputMessageVideo { video: inputVideo { video: InputFile, supports_streaming, … }, caption, … }.
+        #expect(content["@type"] as? String == "inputMessageVideo")
+        let inputVideo = try #require(content["video"] as? [String: Any])
+        #expect(inputVideo["@type"] as? String == "inputVideo" && inputVideo["supports_streaming"] as? Bool == true)
+        let inputFile = try #require(inputVideo["video"] as? [String: Any])
+        #expect(inputFile["@type"] as? String == "inputFileLocal" && inputFile["path"] as? String == "/tmp/a.mp4")
         #expect(((content["caption"] as? [String: Any])?["text"]) as? String == "Cap")
     }
 
@@ -314,4 +318,53 @@ final class ProgressLog: @unchecked Sendable {
     private var all: [(Int64, Int64)] = []
     func add(_ a: Int64, _ b: Int64) { lock.withLock { all.append((a, b)) } }
     var values: [(Int64, Int64)] { lock.withLock { all } }
+}
+
+@Suite struct TimeoutTests {
+    @Test func aCallThatNeverAnswersTimesOutPromptly() async {
+        let start = Date()
+        do {
+            _ = try await withTimeout(seconds: 0.3) { () -> Int in
+                // Ignores cancellation, like a request waiting on the network.
+                await withCheckedContinuation { (_: CheckedContinuation<Void, Never>) in }
+                return 1
+            }
+            Issue.record("expected a timeout")
+        } catch is TimeoutError {}
+        catch { Issue.record("wrong error \(error)") }
+        #expect(Date().timeIntervalSince(start) < 2, "the caller is not held back by work that will not stop")
+    }
+
+    @Test func fastWorkReturnsItsValueAndSlowWorkIsCancelled() async throws {
+        #expect(try await withTimeout(seconds: 5) { 42 } == 42)
+        let cancelled = TgLocked(false)
+        do {
+            _ = try await withTimeout(seconds: 0.2) { () -> Int in
+                do { try await Task.sleep(nanoseconds: 5_000_000_000) } catch { cancelled.value = true; throw error }
+                return 1
+            }
+        } catch is TimeoutError {}
+        try await Task.sleep(nanoseconds: 200_000_000)
+        #expect(cancelled.value, "the abandoned work is told to stop")
+    }
+
+    @Test func cancellingTheCallerCancelsTheWork() async {
+        let task = Task { try await withTimeout(seconds: 30) { try await Task.sleep(nanoseconds: 20_000_000_000); return 1 } }
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        task.cancel()
+        do { _ = try await task.value; Issue.record("expected cancellation") } catch is CancellationError {} catch { Issue.record("wrong error \(error)") }
+    }
+
+    @Test func theMutexSerialisesAcrossAwaits() async {
+        let mutex = AsyncMutex()
+        let inside = TgLocked(0), maxInside = TgLocked(0)
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<8 { group.addTask { await mutex.withLock { inside.value += 1; maxInside.value = max(maxInside.value, inside.value); try? await Task.sleep(nanoseconds: 10_000_000); inside.value -= 1 } } }
+        }
+        #expect(maxInside.value == 1)
+    }
+
+    @Test func aRangeWithNoDashStartsThere() {
+        #expect(TelegramByteRange.parse("bytes=500", size: 5000) == .partial(start: 500, end: 4999, size: 5000))
+    }
 }

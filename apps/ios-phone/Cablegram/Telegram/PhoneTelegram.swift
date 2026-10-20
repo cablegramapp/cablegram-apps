@@ -41,6 +41,9 @@ enum PhoneTelegram {
         return created
     }
 
+    /// Identifies the running session, so things built on one client (a file reader, TDLib file ids) are dropped when it is replaced.
+    static var sessionIdentity: ObjectIdentifier? { current.map(ObjectIdentifier.init) }
+
     /// The running session if there is one; never starts TDLib.
     static func existing() -> TelegramSession? { current }
 
@@ -58,8 +61,10 @@ enum PhoneTelegram {
             #endif
             let credentials = try await catalog().telegramClientCredentials(token: token, allowInsecureLocal: insecure)
             let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0"
+            // A Keychain that cannot be read right now must not cost the person their Telegram session: nothing is wiped, startup is retried.
+            let key = try await MainActor.run { try Storage.databaseKey() }
             return await MainActor.run {
-                TgParameters(databaseDirectory: Storage.databaseDirectory.path, filesDirectory: Storage.filesDirectory.path, databaseKey: Storage.databaseKey(),
+                TgParameters(databaseDirectory: Storage.databaseDirectory.path, filesDirectory: Storage.filesDirectory.path, databaseKey: key,
                              apiId: credentials.apiId, apiHash: credentials.apiHash, deviceModel: deviceModel, systemVersion: "iOS \(UIDevice.current.systemVersion)",
                              applicationVersion: "Cablegram \(version)", useTestDc: testDc)
             }
@@ -134,9 +139,13 @@ enum PhoneTelegram {
             return url
         }
 
-        static func databaseKey() -> Data {
-            if let text = secrets.read(keyName), let key = Data(base64Encoded: text), key.count == 32 { return key }
-            // No readable key: whatever database exists cannot be opened, so start fresh.
+        static func databaseKey() throws -> Data {
+            switch secrets.lookup(keyName) {
+            case let .found(text): if let key = Data(base64Encoded: text), key.count == 32 { return key }
+            case .unavailable: throw TelegramClientUnavailable()
+            case .missing: break
+            }
+            // No key (or one that is not a key): whatever database exists cannot be opened, so start fresh.
             wipe()
             var bytes = [UInt8](repeating: 0, count: 32)
             _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)

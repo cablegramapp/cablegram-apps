@@ -52,6 +52,8 @@ final class TelegramTvWork {
     @ObservationIgnored private var trustTask: Task<Void, Never>?
     @ObservationIgnored private var libraryTask: Task<Void, Never>?
     @ObservationIgnored private var dismissedPasswords = Set<String>()
+    /// Requests being approved right now: they must not come back as a card while the approval runs (it takes seconds).
+    @ObservationIgnored private var inFlight = Set<String>()
     /// Called after the library channel changed the catalog, so the screens refresh.
     @ObservationIgnored var onCatalogChanged: (@Sendable () -> Void)?
 
@@ -85,11 +87,14 @@ final class TelegramTvWork {
                     let pending = await client.pendingTvLogins(token: token) ?? []
                     if !pending.isEmpty || !(passwords ?? []).isEmpty { activeAt = Date() }
                     var waiting: [PendingTvLogin] = []
-                    for request in pending {
+                    for request in pending where !inFlight.contains(request.requestId) {
                         // A TV this phone just typed the password for was already allowed by that.
                         let justTyped = RecentTvPasswords.covers(request.tvDeviceId)
                         if PhoneTelegram.autoApproveTvs || justTyped {
-                            if await Self.approve(client: client, token: token, request: request), justTyped { RecentTvPasswords.used(request.tvDeviceId) }
+                            inFlight.insert(request.requestId)
+                            let tried = await Self.approve(client: client, token: token, request: request)
+                            inFlight.remove(request.requestId)
+                            if tried, justTyped { RecentTvPasswords.used(request.tvDeviceId) }
                         } else {
                             waiting.append(request)
                             asked.insert(request.tvDeviceId + request.loginLink)
@@ -129,8 +134,10 @@ final class TelegramTvWork {
     func allow(_ request: PendingTvLogin) {
         guard let token else { return }
         pendingLogins.removeAll { $0.requestId == request.requestId }
+        guard inFlight.insert(request.requestId).inserted else { return }
         let client = catalog()
         Task {
+            defer { inFlight.remove(request.requestId) }
             // The TV may have posted a fresher link since the card was drawn; approve the current one of the same request. Never another
             // request: the user allowed this one only.
             guard let current = await client.pendingTvLogins(token: token)?.first(where: { $0.requestId == request.requestId }) else { return }
@@ -141,6 +148,7 @@ final class TelegramTvWork {
     func deny(_ request: PendingTvLogin) {
         guard let token else { return }
         pendingLogins.removeAll { $0.requestId == request.requestId }
+        guard !inFlight.contains(request.requestId) else { return }
         let client = catalog()
         Task { _ = await client.postTvLoginResult(token: token, requestId: request.requestId, outcome: "denied") }
     }
@@ -221,14 +229,19 @@ final class TelegramTvWork {
                 guard await session.first(timeout: 30, where: { if case .ready = $0 { true } else { false } }) != nil else { try? await Task.sleep(nanoseconds: 30_000_000_000); continue }
                 let pairing = self.pairing
                 let changed = self.onCatalogChanged
+                // Bound to the account this started under: after a sign-out and another sign-in nothing from this channel reaches the new account.
+                let startToken = token
+                @Sendable func current() -> String? { pairing.accountToken == startToken ? startToken : nil }
                 let sync = TelegramLibrarySync(
                     api: session.api, chatId: chatId,
-                    register: { video in if let token = pairing.accountToken { try await client.registerTelegramVideo(token: token, video: video) } },
-                    reconcile: { keys in if let token = pairing.accountToken { try? await client.reconcileTelegramVideos(token: token, present: keys) } },
+                    register: { video in if let token = current() { try await client.registerTelegramVideo(token: token, video: video) } },
+                    reconcile: { keys in if let token = current() { try? await client.reconcileTelegramVideos(token: token, present: keys) } },
                     onChanged: { changed?() },
-                    hints: { found in if let token = pairing.accountToken { try await client.postTelegramHints(token: token, hints: found) } })
+                    hints: { found in if let token = current() { try await client.postTelegramHints(token: token, hints: found) } })
                 _ = try? await sync.fullScan()
-                await sync.watch().value
+                let watching = sync.watch()
+                await withTaskCancellationHandler { await watching.value } onCancel: { watching.cancel() }
+                if Task.isCancelled { return }
             }
         }
     }

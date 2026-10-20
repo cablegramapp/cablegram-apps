@@ -42,6 +42,26 @@ public final class KeychainSecretStore: SecretStoring, @unchecked Sendable {
         return q
     }
 
+    public enum Lookup: Equatable, Sendable {
+        case found(String)
+        case missing
+        /// The Keychain could not be read right now (before the first unlock after a restart, say). The item may well exist.
+        case unavailable(OSStatus)
+    }
+
+    /// Like `read`, but says why nothing came back: only `missing` means there is no item.
+    public func lookup(_ key: String) -> Lookup {
+        var q = query(key)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: AnyObject?
+        let status = SecItemCopyMatching(q as CFDictionary, &out)
+        if status == errSecItemNotFound { return .missing }
+        guard status == errSecSuccess else { return .unavailable(status) }
+        guard let data = out as? Data, let text = String(data: data, encoding: .utf8) else { return .missing }
+        return .found(text)
+    }
+
     public func read(_ key: String) -> String? {
         var q = query(key)
         q[kSecReturnData as String] = true

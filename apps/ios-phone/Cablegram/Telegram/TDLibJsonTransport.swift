@@ -21,13 +21,32 @@ final class TDLibJsonTransport: TdTransport, @unchecked Sendable {
     var updates: AsyncStream<TdObject> { broadcaster.stream() }
 
     func send(_ request: TdObject) async throws -> TdObject {
-        try await withCheckedThrowingContinuation { continuation in
-            let extra: Int = lock.withLock { nextExtra += 1; pending[nextExtra] = continuation; return nextExtra }
-            var fields = request.fields
-            fields["@extra"] = extra
-            td_send(clientId, Self.json(fields))
+        let slot = ExtraSlot()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let extra: Int? = lock.withLock {
+                    if slot.cancelled { return nil }
+                    nextExtra += 1
+                    slot.extra = nextExtra
+                    pending[nextExtra] = continuation
+                    return nextExtra
+                }
+                guard let extra else { continuation.resume(throwing: CancellationError()); return }
+                var fields = request.fields
+                fields["@extra"] = extra
+                td_send(clientId, Self.json(fields))
+            }
+        } onCancel: {
+            // The caller gave up (a timeout, a closed screen): stop waiting. TDLib's late answer finds no taker and is dropped.
+            let waiter: CheckedContinuation<TdObject, Error>? = lock.withLock {
+                slot.cancelled = true
+                return slot.extra.flatMap { pending.removeValue(forKey: $0) }
+            }
+            waiter?.resume(throwing: CancellationError())
         }
     }
+
+    private final class ExtraSlot: @unchecked Sendable { var extra: Int?; var cancelled = false }
 
     /// Called on the receive thread.
     fileprivate func deliver(_ object: [String: Any]) {
@@ -40,6 +59,9 @@ final class TDLibJsonTransport: TdTransport, @unchecked Sendable {
             } else {
                 continuation.resume(returning: TdObject(answer))
             }
+        } else if object["@extra"] != nil {
+            // The answer to a request whose caller already stopped waiting.
+            return
         } else {
             var update = object
             update.removeValue(forKey: "@client_id")

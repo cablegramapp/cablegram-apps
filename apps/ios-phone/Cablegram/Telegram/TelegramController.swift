@@ -48,6 +48,8 @@ final class TelegramController {
     @ObservationIgnored var deletionsRunning = false
     @ObservationIgnored var saves = Set<String>()
     @ObservationIgnored private var finishJob: Task<Void, Never>?
+    /// True while a connect attempt is running (Kotlin `finishJob.isActive`).
+    @ObservationIgnored private var finishRunning = false
     @ObservationIgnored private var folderJob: Task<Void, Never>?
     @ObservationIgnored private var botsJob: Task<Void, Never>?
     @ObservationIgnored private var communitySaveJob: Task<Void, Never>?
@@ -170,14 +172,16 @@ final class TelegramController {
         message = nil
         sheetOpen = true
         started = true
-        if finishJob != nil, finishing { return }
+        if finishRunning { return }
         let session = PhoneTelegram.session()
         if link?.linked == true, health == .ok, PhoneTelegram.wasLinked {
             if let userId = link?.userId { prepareCommunityChannels(session, userId: userId) }
             return
         }
         finishJob?.cancel()
+        finishRunning = true
         finishJob = Task {
+            defer { finishRunning = false }
             // Once per attempt: the link PUT is idempotent for the same account and 409 for another.
             guard case let .ready(user)? = await session.first(timeout: 24 * 3600, where: { if case .ready = $0 { true } else { false } }) else { return }
             await finishLink(session, user: user)
@@ -199,7 +203,9 @@ final class TelegramController {
         viaTv = true
         let session = PhoneTelegram.session()
         finishJob?.cancel()
+        finishRunning = true
         finishJob = Task {
+            defer { finishRunning = false }
             // Never wait forever. A session already asking for a code, a password or failing can't switch to a QR login; the sheet
             // shows that step instead.
             let began = await session.first(timeout: 20, where: { if case .starting = $0 { false } else { true } })
@@ -208,6 +214,7 @@ final class TelegramController {
             case .waitingForApproval?, .ready?: break
             default:
                 viaTv = false
+                if Task.isCancelled { return }
                 if began == nil { message = L("ui_telegram_didn_t_start_check_your_connection_and_try_ag_f28228") }
                 return
             }
@@ -224,6 +231,7 @@ final class TelegramController {
             poster.cancel()
             guard let progressed else {
                 viaTv = false
+                if Task.isCancelled { return }
                 message = text("ui_didn_t_answer_open_cablegram_on_the_tv_and_check_setti_5aa87a", tv.name) + L("ui_or_connect_with_your_phone_number_instead_216b05")
                 return
             }
@@ -250,13 +258,12 @@ final class TelegramController {
         defer { finishing = false }
         do {
             let client = catalog(), knownChat = link?.chatId, phoneId = pairing.phoneDeviceId
-            let work = Task { @MainActor () throws -> (TgLibrary, TelegramLinkResult) in
+            let (library, result) = try await withTimeout(seconds: 60) { () -> (TgLibrary, TelegramLinkResult) in
                 guard let library = try await session.openLibrary(knownChatId: knownChat, allowCreate: true, logoPath: PhoneTelegram.logoPath()) else {
                     throw TgError(code: 0, name: "Could not open the Cablegram library channel")
                 }
                 return (library, try await client.putTelegramLink(token: token, telegramUserId: user.id, displayName: user.displayName, libraryChatId: library.chatId, phoneDeviceId: phoneId))
             }
-            let (library, result) = try await Self.withDeadline(seconds: 60, work)
             channelCreated = library.created
             if let conflict = result.conflictName {
                 message = text("ui_this_household_already_uses_the_telegram_account_of_7d8c2e", conflict) + L("ui_disconnect_it_first_or_sign_in_with_that_account_693723")
@@ -283,10 +290,6 @@ final class TelegramController {
     /// Called when Telegram was linked from this phone (starts the background work that approves TVs and syncs the channel).
     @ObservationIgnored var onLinked: (() -> Void)?
 
-    private static func withDeadline<T: Sendable>(seconds: Double, _ task: Task<T, Error>) async throws -> T {
-        try await withTimeout(seconds: seconds) { try await task.value }
-    }
-
     /// Closing half-way keeps the step: reopening continues where the user left off.
     func closeSheet() {
         botHubOnly = false
@@ -311,6 +314,7 @@ final class TelegramController {
 
     /// Logs this phone out of Telegram and deletes the local TDLib database, files and key.
     func wipeLocally() {
+        finishJob?.cancel()
         clearRecommendations()
         healthJob?.cancel()
         PhoneTelegram.existing()?.logOut()
@@ -322,6 +326,17 @@ final class TelegramController {
     }
 
     @ObservationIgnored var onUnlinked: (() -> Void)?
+
+    /// Like `wipeLocally`, but first lets Telegram end this phone's session: deleting the database and key first would orphan a Cablegram
+    /// session in the owner's Telegram → Devices, because the log-out could no longer be completed.
+    func wipeLocallyAfterLogOut() async {
+        finishJob?.cancel()
+        if let session = PhoneTelegram.existing(), case .ready = session.state {
+            let api = session.api
+            _ = try? await withTimeout(seconds: 10) { try await api.logOut() }
+        }
+        wipeLocally()
+    }
 
     func disconnect() {
         guard let token else { return }
@@ -335,7 +350,7 @@ final class TelegramController {
             // off or unplugged signed in to the account.
             await TelegramTvWork.endDueSessions(client: client, token: token)
             let unended = await client.dueTvTelegramSessions(token: token)?.count ?? -1
-            wipeLocally()
+            await wipeLocallyAfterLogOut()
             setStatus(L(unended == 0 ? "ui_telegram_disconnected_your_tvs_are_signed_out_of_teleg_5f064d" : "ui_telegram_disconnected_some_tvs_may_still_be_signed_in__3b14d3"))
         }
     }

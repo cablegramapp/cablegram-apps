@@ -32,6 +32,8 @@ final class PhoneTelegramMedia: TelegramMedia, @unchecked Sendable {
     private var lastUsed: [Int: Date] = [:]
     private var releaseTask: Task<Void, Never>?
     private var reader: TelegramFileReader?
+    /// The session everything cached here belongs to; TDLib file ids mean nothing in another client's database.
+    private var cachedFor: ObjectIdentifier?
 
     private static let idleRelease: TimeInterval = 60
 
@@ -39,8 +41,18 @@ final class PhoneTelegramMedia: TelegramMedia, @unchecked Sendable {
         self.removed = removed; self.chatId = chatId; self.window = window; self.refillAt = refillAt
     }
 
+    private func dropCachesIfSessionChanged() async {
+        let now = await MainActor.run { PhoneTelegram.sessionIdentity }
+        lock.withLock {
+            guard cachedFor != now else { return }
+            cachedFor = now
+            known = [:]; lastUsed = [:]; reader = nil
+        }
+    }
+
     func resolve(uniqueId: String) async -> TelegramFileRef? {
         guard await MainActor.run(body: { PhoneTelegram.wasLinked }) else { return nil }
+        await dropCachesIfSessionChanged()
         if await removed.contains("tgfile:\(uniqueId)") { return nil }
         let session = await MainActor.run { PhoneTelegram.session() }
         guard await session.first(timeout: 20, where: { if case .ready = $0 { true } else { false } }) != nil else { return nil }
@@ -55,6 +67,7 @@ final class PhoneTelegramMedia: TelegramMedia, @unchecked Sendable {
     }
 
     func read(fileId: Int, position: Int64, want: Int) async -> Data? {
+        await dropCachesIfSessionChanged()
         touch(fileId)
         let reader = await readerForSession()
         return try? await reader.read(fileId: fileId, position: position, want: want)

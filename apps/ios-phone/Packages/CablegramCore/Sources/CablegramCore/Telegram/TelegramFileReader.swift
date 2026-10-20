@@ -110,8 +110,9 @@ public enum TelegramByteRange: Equatable, Sendable {
     public static func parse(_ header: String?, size: Int64) -> TelegramByteRange {
         guard let header, header.hasPrefix("bytes="), size > 0 else { return .full(size: size) }
         let spec = String(header.dropFirst(6)).split(separator: ",", omittingEmptySubsequences: false).first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
+        // As Kotlin's substringBefore/After: with no dash the whole spec is the start ("bytes=500" is 500 to the end).
         let dash = spec.firstIndex(of: "-")
-        let first = dash.flatMap { Int64(spec[..<$0].trimmingCharacters(in: .whitespaces)) }
+        let first = Int64((dash.map { String(spec[..<$0]) } ?? spec).trimmingCharacters(in: .whitespaces))
         let last = dash.flatMap { Int64(spec[spec.index(after: $0)...].trimmingCharacters(in: .whitespaces)) }
         if let first, first >= size { return .unsatisfiable(size: size) }
         if let first {

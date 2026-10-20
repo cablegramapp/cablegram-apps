@@ -10,6 +10,8 @@ public final class TdlibTelegramApi: TelegramApi, @unchecked Sendable {
     private var discoveredLibraryBotIds = Set<Int64>()
     private let folderUpdates = Broadcaster<Void>()
     private var folderTask: Task<Void, Never>?
+    /// One organizer (and so one mutex) per client, as in Kotlin.
+    private lazy var organizer = CablegramFolderOrganizer(store: FolderStore(api: self))
 
     public init(transport: any TdTransport) {
         td = transport
@@ -100,16 +102,19 @@ public final class TdlibTelegramApi: TelegramApi, @unchecked Sendable {
     public func logOut() async throws { try await call("logOut") }
 
     public func close() async {
-        // Subscribe before asking, so the Closed update can't be missed.
-        let updates = td.updates
-        let closed = Task { () -> Bool in
-            for await update in updates where update.type == "updateAuthorizationState" && update.object("authorization_state")?.type == "authorizationStateClosed" { return true }
-            return false
+        let td = self.td
+        // Subscribe before asking, so the Closed update can't be missed; the whole exchange (including the request) gets 10 s.
+        _ = try? await withTimeout(seconds: 10) { () -> Bool in
+            let updates = td.updates
+            let closed = Task { () -> Bool in
+                for await update in updates where update.type == "updateAuthorizationState" && update.object("authorization_state")?.type == "authorizationStateClosed" { return true }
+                return false
+            }
+            do {
+                _ = try await td.send(TdObject(["@type": "close"]))
+                return await withTaskCancellationHandler { await closed.value } onCancel: { closed.cancel() }
+            } catch { closed.cancel(); return false }
         }
-        if (try? await call("close")) != nil {
-            _ = try? await withTimeout(seconds: 10) { await closed.value }
-        }
-        closed.cancel()
     }
 
     public func joinCommunityChannel(_ channel: CablegramChannel) async throws {
@@ -255,7 +260,7 @@ public final class TdlibTelegramApi: TelegramApi, @unchecked Sendable {
                 }
             }
         }
-        try await CablegramFolderOrganizer(store: FolderStore(api: self)).include(chats)
+        try await organizer.include(chats)
         var seen = Set<String>()
         return TgFolderResult(unlistedBots: unlisted.filter { seen.insert($0).inserted })
     }
@@ -406,9 +411,13 @@ public final class TdlibTelegramApi: TelegramApi, @unchecked Sendable {
             }
         }
         defer { listener.cancel() }
+        // inputMessageVideo { video: inputVideo { video: InputFile, … supports_streaming }, caption, … } (TDLib 1.8.67 schema).
         let content: [String: Any] = [
-            "@type": "inputMessageVideo", "video": ["@type": "inputFileLocal", "path": path], "added_sticker_file_ids": [Int](), "duration": 0, "width": 0, "height": 0,
-            "supports_streaming": true, "caption": ["@type": "formattedText", "text": caption ?? "", "entities": [Any]()], "show_caption_above_media": false, "has_spoiler": false,
+            "@type": "inputMessageVideo",
+            "video": ["@type": "inputVideo", "video": ["@type": "inputFileLocal", "path": path], "start_timestamp": 0, "added_sticker_file_ids": [Int](), "duration": 0,
+                      "width": 0, "height": 0, "supports_streaming": true] as [String: Any],
+            "caption": ["@type": "formattedText", "text": caption ?? "", "entities": [Any]()],
+            "show_caption_above_media": false, "has_spoiler": false,
         ]
         let sent = try await call("sendMessage", ["chat_id": chatId, "input_message_content": content])
         let temporaryId = sent.int64("id")
@@ -519,6 +528,7 @@ private final class UploadOutcomes: @unchecked Sendable {
     private let lock = NSLock()
     private var results: [Int64: Result<TdObject, TgError>] = [:]
     private var waiters: [Int64: CheckedContinuation<TdObject, Error>] = [:]
+    private var cancelled = Set<Int64>()
     private var uploading: Int?
 
     func set(_ oldId: Int64, _ result: Result<TdObject, TgError>) {
@@ -538,15 +548,26 @@ private final class UploadOutcomes: @unchecked Sendable {
         report(file.object("remote")?.int64("uploaded_size") ?? 0, size > 0 ? size : file.int64("expected_size"))
     }
 
+    /// The result for `id`, or a throw when TDLib failed it or the caller was cancelled. Checking for an answer, for a cancel and registering
+    /// the waiter happen under one lock, so neither can slip in between.
     func wait(for id: Int64) async throws -> TdObject {
         try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                let ready = lock.withLock { results.removeValue(forKey: id) }
-                if let ready { continuation.resume(with: ready.mapError { $0 as Error }) }
-                else { lock.withLock { waiters[id] = continuation } }
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<TdObject, Error>) in
+                enum Outcome { case ready(Result<TdObject, TgError>), cancelled, waiting }
+                let outcome: Outcome = lock.withLock {
+                    if let ready = results.removeValue(forKey: id) { return .ready(ready) }
+                    if cancelled.contains(id) { return .cancelled }
+                    waiters[id] = continuation
+                    return .waiting
+                }
+                switch outcome {
+                case let .ready(result): continuation.resume(with: result.mapError { $0 as Error })
+                case .cancelled: continuation.resume(throwing: CancellationError())
+                case .waiting: break
+                }
             }
         } onCancel: {
-            let waiter = lock.withLock { waiters.removeValue(forKey: id) }
+            let waiter = lock.withLock { () -> CheckedContinuation<TdObject, Error>? in cancelled.insert(id); return waiters.removeValue(forKey: id) }
             waiter?.resume(throwing: CancellationError())
         }
     }

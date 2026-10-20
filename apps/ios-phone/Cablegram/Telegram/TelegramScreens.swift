@@ -203,14 +203,18 @@ private struct SignInSteps: View {
     @State private var input = ""
 
     var body: some View {
-        content
-            // Each step starts empty (Android keys the field by the step).
-            .onChange(of: PhoneTelegram.session().state) { _, _ in input = "" }
+        // The session was started by Continue; drawing never starts or restarts one.
+        if let session = PhoneTelegram.existing() {
+            content(session)
+                // Each step starts empty (Android keys the field by the step).
+                .onChange(of: session.state) { _, _ in input = "" }
+        } else {
+            Working(L("ui_starting_telegram_44fd03"))
+        }
     }
 
-    @ViewBuilder private var content: some View {
+    @ViewBuilder private func content(_ session: TelegramSession) -> some View {
         let telegram: TelegramController = viewModel.telegram
-        let session = PhoneTelegram.session()
         let state = session.state
         Text(key: telegram.botHubOnly ? "ui_bot_hub_6dcb6e" : "ui_connect_telegram_00c799").font(PhoneFont.headlineSmall).foregroundStyle(.white)
         let linkedHere = telegram.link?.linked == true && telegram.health == .ok && PhoneTelegram.wasLinked
@@ -541,7 +545,7 @@ struct TelegramPasswordSheet: View {
             let key = request.tvPublicKey
             code = await Task.detached { PasswordSeal.checkCode(tvPublicKey: key) }.value
             // The hint from this phone's own Telegram session; the TV may not know it before it signs in.
-            let session = PhoneTelegram.session()
+            guard let session = PhoneTelegram.existing() else { return }
             if await session.first(timeout: 5, where: { if case .ready = $0 { true } else { false } }) != nil { hint = (try? await session.api.passwordState().hint) ?? "" }
         }
     }
@@ -560,6 +564,12 @@ struct TelegramPasswordSheet: View {
                 return
             }
             var sent = false
+            // The check code on screen belongs to the key shown to the owner: never seal to a different one a second fetch returned.
+            guard current.tvPublicKey == request.tvPublicKey else {
+                error = L("ui_couldn_t_send_it_check_your_connection_and_try_again_b8b4ee")
+                sending = false
+                return
+            }
             if let sealed = try? PasswordSeal.seal(tvPublicKey: current.tvPublicKey, requestId: request.requestId, password: typed) {
                 sent = await client.sealTvPassword(token: token, requestId: request.requestId, sealed: sealed)
             }

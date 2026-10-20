@@ -12,7 +12,7 @@ public struct TdObject: @unchecked Sendable {
     public func int(_ key: String) -> Int { Int(int64(key)) }
     public func int64(_ key: String) -> Int64 { Self.int64(fields[key]) }
     public func object(_ key: String) -> TdObject? { (fields[key] as? [String: Any]).map(TdObject.init) }
-    public func objects(_ key: String) -> [TdObject] { (fields[key] as? [[String: Any]] ?? []).map(TdObject.init) }
+    public func objects(_ key: String) -> [TdObject] { (fields[key] as? [Any] ?? []).compactMap { ($0 as? [String: Any]).map(TdObject.init) } }
     public func int64s(_ key: String) -> [Int64] { (fields[key] as? [Any] ?? []).map { Self.int64($0) } }
 
     static func int64(_ any: Any?) -> Int64 {

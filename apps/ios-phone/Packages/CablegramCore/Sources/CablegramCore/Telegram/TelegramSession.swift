@@ -47,6 +47,8 @@ public final class TelegramSession {
     @ObservationIgnored private var inputBusy = false
     @ObservationIgnored private var job: Task<Void, Never>?
     @ObservationIgnored private let identifyWait: Duration
+    /// One approval at a time: two running together would each see the other's new session as the one they just made.
+    @ObservationIgnored private let approvals = AsyncMutex()
 
     public init(api: any TelegramApi, role: TelegramRole, identifyWait: Duration = .seconds(2), parameters: @escaping @Sendable () async throws -> TgParameters) {
         self.api = api; self.role = role; self.parameters = parameters; self.identifyWait = identifyWait
@@ -98,6 +100,10 @@ public final class TelegramSession {
     ///  - the identified session is returned, so the phone can end exactly that one later, never an unrelated session such as the
     ///    owner's own desktop.
     private func approveVerified(_ link: String, _ ownApiId: Int) async -> Result<ApprovedLogin, TgError> {
+        await approvals.withLock { await self.approveLocked(link, ownApiId) }
+    }
+
+    private func approveLocked(_ link: String, _ ownApiId: Int) async -> Result<ApprovedLogin, TgError> {
         guard Self.isLoginLink(link) else { return .failure(TgError(code: 0, name: "NOT_A_LOGIN_LINK")) }
         let before: Set<Int64>
         do { before = Set(try await api.activeSessions().map(\.id)) } catch let error as TgError { return .failure(TgError(code: error.code, name: "SESSIONS_UNAVAILABLE")) } catch { return .failure(TgError(code: 0, name: "SESSIONS_UNAVAILABLE")) }
@@ -165,6 +171,7 @@ public final class TelegramSession {
         } catch let error as TgError {
             state = .failed(Self.describe(error))
         } catch {
+            startupUnavailable = true
             state = .failed(TelegramClientUnavailable.message)
         }
     }
