@@ -1,0 +1,335 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "ios_choose_from_files": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر من الملفات"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus Dateien wählen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose from Files"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir de Archivos"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انتخاب از فایل‌ها"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli da File"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрать из Файлов"
+          }
+        }
+      }
+    },
+    "ios_choose_from_photos": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر من الصور"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus Fotos wählen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose from Photos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir de Fotos"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "انتخاب از عکس‌ها"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli da Foto"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрать из Фото"
+          }
+        }
+      }
+    },
+    "ios_limited_photos_hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يرى Cablegram فقط الفيديوهات التي سمحت بها في الصور."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram sieht nur die Videos, die Sie in Fotos freigegeben haben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram can see only the videos you allowed in Photos."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram solo ve los vídeos que permitiste en Fotos."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram فقط ویدیوهایی را می‌بیند که در عکس‌ها اجازه داده‌اید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram vede solo i video che hai consentito in Foto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram видит только те видео, которые вы разрешили в Фото."
+          }
+        }
+      }
+    },
+    "ios_make_it_a_movie_night": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر فيديوهات من الصور أو الملفات، أو أضف مجلدًا. يعرضها Cablegram في مكانها دون نسخ أي شيء."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wählen Sie Videos aus Fotos oder Dateien oder fügen Sie einen Ordner hinzu. Cablegram listet sie dort auf, wo sie liegen, und kopiert nichts."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose videos from Photos or Files, or add a folder. Cablegram lists them where they are and copies nothing."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige vídeos de Fotos o Archivos, o añade una carpeta. Cablegram los lista donde están y no copia nada."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ویدیوها را از عکس‌ها یا فایل‌ها انتخاب کنید یا پوشه‌ای اضافه کنید. Cablegram آن‌ها را همان‌جا که هستند فهرست می‌کند و چیزی کپی نمی‌کند."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli video da Foto o File, oppure aggiungi una cartella. Cablegram li elenca dove si trovano e non copia nulla."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите видео из Фото или Файлов либо добавьте папку. Cablegram показывает их там, где они лежат, и ничего не копирует."
+          }
+        }
+      }
+    },
+    "ios_photos": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الصور"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fotos"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عکس‌ها"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Foto"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Фото"
+          }
+        }
+      }
+    },
+    "ios_photos_access_off": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الوصول إلى الصور متوقف. فعّله لـ Cablegram من الإعدادات لاختيار فيديوهات من الصور."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Zugriff auf Fotos ist aus. Aktivieren Sie ihn in den Einstellungen für Cablegram, um Videos aus Fotos zu wählen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos access is off. Turn it on for Cablegram in Settings to choose videos from Photos."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El acceso a Fotos está desactivado. Actívalo para Cablegram en Ajustes para elegir vídeos de Fotos."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دسترسی به عکس‌ها خاموش است. برای انتخاب ویدیو از عکس‌ها، آن را در تنظیمات برای Cablegram روشن کنید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'accesso a Foto è disattivato. Attivalo per Cablegram in Impostazioni per scegliere video da Foto."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Доступ к фото выключен. Включите его для Cablegram в настройках, чтобы выбирать видео из фото."
+          }
+        }
+      }
+    },
+    "ios_select_more_videos": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "السماح بمزيد من الفيديوهات"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weitere Videos erlauben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow more videos"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir más vídeos"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اجازهٔ ویدیوهای بیشتر"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti altri video"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разрешить больше видео"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -1,6 +1,8 @@
 import CablegramCore
+import AVFoundation
 import Observation
 import SwiftUI
+import Photos
 import UIKit
 
 /// Port of `PhoneViewModel.kt`. It grows with the phases; for now it owns the account, the welcome tour and the
@@ -40,6 +42,20 @@ final class PhoneViewModel {
     private(set) var paired = false
     private(set) var tvName = "TV"
 
+    // Import (Android Browse tab)
+    private(set) var browseSource: BrowseSource = .none
+    private(set) var browseEntries: [BrowseEntry] = []
+    private(set) var browseCrumbs: [BrowseCrumb] = []
+    private(set) var browseLoading = false
+    var selectedBrowseIds: Set<String> = []
+    private(set) var folders: [IndexedFolder] = []
+    private(set) var recentlyAddedIds: [String] = []
+    private(set) var pendingPrivacyItem: LibraryItem?
+    private(set) var photosStatus: PHAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    var importDestination: String { didSet { pairing.importDestination = importDestination } }
+    @ObservationIgnored private var pendingPrivacyItems: [LibraryItem] = []
+    @ObservationIgnored private var browseFolderId: String?
+    @ObservationIgnored let bookmarks: BookmarkStore
     @ObservationIgnored let store: LibraryStore
     private(set) var artworkEditor: ArtworkEditorController!
     @ObservationIgnored private var syncing = false
@@ -67,6 +83,8 @@ final class PhoneViewModel {
         legacyRemote = pairing.legacyRemote
         castConnect = pairing.castConnect
         store = libraryStore
+        bookmarks = BookmarkStore(root: PhoneViewModel.libraryRoot().deletingLastPathComponent())
+        importDestination = pairing.importDestination
         let makeClient: @Sendable () -> CatalogClient = { [pairing] in
             CatalogClient(baseURL: URL(string: pairing.apiBaseUrl) ?? AppConfiguration.defaultApiBase, tokens: pairing)
         }
@@ -77,7 +95,7 @@ final class PhoneViewModel {
             wipeLocal: { [weak self] in await self?.wipeAfterAccountDeletion() }
         )
         catalog = makeClient
-        artworkEditor = ArtworkEditorController(store: libraryStore, media: AppArtworkMedia(store: libraryStore), catalog: makeClient,
+        artworkEditor = ArtworkEditorController(store: libraryStore, media: AppArtworkMedia(store: libraryStore, sourceURL: { [bookmarks = self.bookmarks] item in item.sourceUri.flatMap(BookmarkStore.id(fromURI:)).flatMap { bookmarks.resolve($0)?.url } }), catalog: makeClient,
                                                 token: { [pairing] in pairing.accountToken }) { [weak self] _ in
             self?.refresh()
             self?.status = L("ui_changes_saved_16bf14")
@@ -85,6 +103,7 @@ final class PhoneViewModel {
         }
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()
+        recoverSharedImports()
         if needsAccount { loadSignInOptions() } else { checkTerms() }
     }
 
@@ -102,6 +121,7 @@ final class PhoneViewModel {
     func refresh() {
         items = store.list()
         collections = store.collections()
+        folders = store.folders()
         if let id = selectedId, !items.contains(where: { $0.id == id }) { selectedId = nil }
     }
 
@@ -182,7 +202,7 @@ final class PhoneViewModel {
         librarySyncState = .running
         defer { syncing = false; prepareStep = nil; prepareProgress = 0 }
         await ensurePhoneDevice()
-        var sync = LibrarySync(store: store, client: catalog(), token: token, phoneDeviceId: pairing.phoneDeviceId)
+        var sync = LibrarySync(store: store, client: catalog(), token: token, phoneDeviceId: pairing.phoneDeviceId, sources: AppSources(store: store, bookmarks: bookmarks))
         sync.progress = { [weak self] title, fraction in Task { @MainActor in self?.prepareStep = title.map { L("ui_syncing_6c2de6", $0) }; self?.prepareProgress = fraction } }
         do {
             try await sync.run()
@@ -217,6 +237,220 @@ final class PhoneViewModel {
             }
             status = ok ? done : pending
             refresh()
+        }
+    }
+
+    // MARK: Import (Browse)
+
+    func ensureBrowseRoot() {
+        browseSource = .roots
+        browseEntries = []
+        browseCrumbs = []
+        browseFolderId = nil
+        selectedBrowseIds = []
+    }
+
+    /// The Photos root: asks for access, lists the videos the app may see.
+    func openPhotos() {
+        Task {
+            let access = await PhotoSource.requestAccess()
+            photosStatus = access
+            guard access == .authorized || access == .limited else {
+                status = L("ios_photos_access_off")
+                return
+            }
+            browseSource = .photos
+            browseCrumbs = [BrowseCrumb(name: L("ios_photos"))]
+            selectedBrowseIds = []
+            browseLoading = true
+            browseEntries = await Task.detached { PhotoSource.videoEntries() }.value
+            browseLoading = false
+        }
+    }
+
+    /// The person picked a folder in Files: remember it (as a security-scoped bookmark) and open it.
+    func addBrowseFolder(_ url: URL) {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        guard let id = try? bookmarks.save(url) else {
+            status = L("ui_folder_access_could_not_be_saved_choose_the_folder_aga_68a028")
+            return
+        }
+        store.rememberFolder(uri: BookmarkStore.uri(for: id), name: url.lastPathComponent)
+        refresh()
+        openBrowseFolder(IndexedFolder(uri: BookmarkStore.uri(for: id), name: url.lastPathComponent))
+    }
+
+    func openBrowseFolder(_ folder: IndexedFolder) {
+        guard let id = BookmarkStore.id(fromURI: folder.uri) else { return }
+        browseSource = .folder
+        browseFolderId = id
+        browseCrumbs = [BrowseCrumb(name: folder.name, path: "")]
+        status = nil
+        reloadBrowse()
+    }
+
+    func removeBrowseFolder(_ folder: IndexedFolder) {
+        if let id = BookmarkStore.id(fromURI: folder.uri) { bookmarks.remove(id) }
+        store.forgetFolder(folder.uri)
+        refresh()
+        status = L("ui_removed_from_selected_folders_cb882a", folder.name)
+        if browseFolderId == BookmarkStore.id(fromURI: folder.uri) { ensureBrowseRoot() }
+    }
+
+    func openBrowseEntry(_ entry: BrowseEntry) {
+        if entry.isDirectory {
+            selectedBrowseIds = []
+            browseCrumbs.append(BrowseCrumb(name: entry.name, path: entry.id))
+            reloadBrowse()
+        } else if selectedBrowseIds.contains(entry.id) {
+            selectedBrowseIds.remove(entry.id)
+        } else {
+            selectedBrowseIds.insert(entry.id)
+        }
+    }
+
+    func selectAllBrowseFiles() {
+        let ids = Set(visibleBrowseEntries(browseEntries, videosOnly: true).filter { !$0.isDirectory }.map(\.id))
+        selectedBrowseIds = !ids.isEmpty && selectedBrowseIds.isSuperset(of: ids) ? [] : ids
+    }
+
+    func browseUp() {
+        selectedBrowseIds = []
+        if browseSource == .photos || browseSource == .cloud || browseCrumbs.count <= 1 { ensureBrowseRoot(); return }
+        browseCrumbs.removeLast()
+        reloadBrowse()
+    }
+
+    private func reloadBrowse() {
+        selectedBrowseIds = []
+        guard browseSource == .folder, let folderId = browseFolderId else { return }
+        let relative = browseCrumbs.last?.path ?? ""
+        browseLoading = true
+        let bookmarks = self.bookmarks
+        Task {
+            let entries = await Task.detached { () -> [BrowseEntry]? in
+                bookmarks.withAccess(folderId) { root -> [BrowseEntry] in
+                    let directory = relative.isEmpty ? root : root.appendingPathComponent(relative)
+                    let keys: [URLResourceKey] = [.isDirectoryKey, .fileSizeKey, .contentTypeKey]
+                    let urls = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: keys, options: [.skipsHiddenFiles])) ?? []
+                    return urls.map { url in
+                        let values = try? url.resourceValues(forKeys: Set(keys))
+                        let isDir = values?.isDirectory == true
+                        let mime = values?.contentType?.preferredMIMEType ?? ""
+                        let relativePath = (relative.isEmpty ? "" : relative + "/") + url.lastPathComponent
+                        return BrowseEntry(id: relativePath, name: url.lastPathComponent, isDirectory: isDir,
+                                           isVideo: !isDir && isVideoFile(name: url.lastPathComponent, mime: mime),
+                                           sizeBytes: values?.fileSize.map(Int64.init), mime: mime)
+                    }
+                }
+            }.value
+            browseLoading = false
+            if let entries { browseEntries = entries } else {
+                status = L("ui_folder_access_is_unavailable_choose_the_folder_again_2e4497")
+                browseEntries = []
+            }
+        }
+    }
+
+    /// Files picked one by one in Files (not through a folder).
+    func addPickedFiles(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        Task {
+            var refused = 0
+            var entries: [BrowseEntry] = []
+            for url in urls {
+                let scoped = url.startAccessingSecurityScopedResource()
+                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                guard let id = try? bookmarks.save(url) else { refused += 1; continue }
+                let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init)
+                entries.append(BrowseEntry(id: BookmarkStore.uri(for: id), name: url.lastPathComponent, isDirectory: false,
+                                           isVideo: looksLikeVideo(url.lastPathComponent), sizeBytes: size, uri: BookmarkStore.uri(for: id)))
+            }
+            await addBrowseFileEntries(entries.filter(\.isVideo))
+            if refused > 0 { status = L("ui_couldn_t_be_added_android_limits_how_many_f88239", refused, L("ui_video_d534be")) }
+        }
+    }
+
+    func addSelectedBrowseFiles() {
+        let chosen = visibleBrowseEntries(browseEntries, videosOnly: true).filter { selectedBrowseIds.contains($0.id) && !$0.isDirectory }
+        guard !chosen.isEmpty else { return }
+        selectedBrowseIds = []
+        let source = browseSource, folderId = browseFolderId
+        Task {
+            var entries: [BrowseEntry] = []
+            for entry in chosen {
+                if source == .folder, let folderId {
+                    // A bookmark per file keeps working when the folder bookmark is removed later.
+                    let id: String? = bookmarks.withAccess(folderId) { root in try? bookmarks.save(root.appendingPathComponent(entry.id)) } ?? nil
+                    if let id { var e = entry; e.uri = BookmarkStore.uri(for: id); entries.append(e) }
+                } else {
+                    entries.append(entry)
+                }
+            }
+            await addBrowseFileEntries(entries)
+        }
+    }
+
+    private func addBrowseFileEntries(_ files: [BrowseEntry]) async {
+        guard !files.isEmpty else { status = L("ui_pick_video_files_to_add_95b421"); return }
+        var imported: [LibraryItem] = []
+        for (index, entry) in files.enumerated() {
+            prepareProgress = Double(index + 1) / Double(files.count)
+            prepareStep = L("ui_adding_of_files_2dd9e6", index + 1, files.count)
+            guard let uri = entry.uri, let created = store.indexExternal(uri: uri, displayName: entry.name, sizeBytes: entry.sizeBytes, durationSeconds: entry.durationSeconds) else { continue }
+            imported.append(created)
+            // An offline cover for indexed sources too; a failure here is not fatal.
+            let jpeg: Data?
+            if let asset = PhotoSource.asset(uri) { jpeg = await PhotoSource.posterJPEG(asset) }
+            else if let id = BookmarkStore.id(fromURI: uri), let url = bookmarks.resolve(id)?.url { jpeg = await withScopedAccess(url) { await fileFrameJPEG(url) } }
+            else { jpeg = nil }
+            if let jpeg { store.setPosterFromFrame(created.id, jpeg: jpeg) }
+            if created.durationSeconds == nil, let id = BookmarkStore.id(fromURI: uri), let url = bookmarks.resolve(id)?.url {
+                let seconds = await withScopedAccess(url) { try? await AVURLAsset(url: url).load(.duration).seconds }
+                if let seconds, seconds.isFinite { store.updateItem(created.id) { var i = $0; i.durationSeconds = Int(seconds); return i } }
+            }
+            refresh()
+        }
+        prepareStep = nil
+        prepareProgress = 0
+        status = imported.isEmpty ? L("ui_those_files_are_already_in_your_library_9b2db9") : L("ui_added_files_fb53a9", imported.count)
+        recentlyAddedIds = imported.map(\.id)
+        selectTab(.library)
+        pendingPrivacyItems.append(contentsOf: imported.compactMap { store.get($0.id) })
+        showNextPrivacyPrompt()
+        Task { await syncLibrary() }
+    }
+
+    func dismissAddedVideos() { recentlyAddedIds = [] }
+
+    private func showNextPrivacyPrompt() {
+        pendingPrivacyItem = pendingPrivacyItems.isEmpty ? nil : pendingPrivacyItems.removeFirst()
+        if pendingPrivacyItem != nil { status = L("ui_should_this_require_phone_approval_92bae5") }
+    }
+
+    func choosePrivacy(_ isPrivate: Bool) {
+        guard var item = pendingPrivacyItem else { return }
+        pendingPrivacyItem = nil
+        item.isPrivate = isPrivate
+        store.update(item)
+        refresh()
+        Task { await syncLibrary() }
+        showNextPrivacyPrompt()
+        if pendingPrivacyItem == nil { status = L("ui_videos_added_3d5b7a") }
+    }
+
+    /// Cleans up after a process death mid-import, then finishes any shared import it left unfinished.
+    func recoverSharedImports() {
+        Task {
+            let store = self.store
+            let results = await Task.detached { store.sweepVideos(); return store.resumeSharedImports() }.value
+            guard !results.isEmpty else { return }
+            refresh()
+            let dropped = results.compactMap { if case .dropped(let name) = $0 { name } else { nil } }
+            status = dropped.isEmpty
+                ? L("ui_finished_importing_6d8eef", results.compactMap { if case .imported(let i) = $0 { i.title } else { nil } }.joined(separator: ", "))
+                : L("ui_could_not_finish_importing_the_file_is_no_longer_avail_63e50e", dropped.joined(separator: ", "))
         }
     }
 

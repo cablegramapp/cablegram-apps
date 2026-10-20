@@ -21,6 +21,7 @@ struct PhoneRootView: View {
                 LibraryShell(viewModel: viewModel)
             }
         }
+        .modifier(PrivacyPrompt(viewModel: viewModel))
         .fullScreenCover(isPresented: Binding(get: { viewModel.artworkEditor.draft != nil }, set: { if !$0 { viewModel.artworkEditor.close() } })) {
             ArtworkEditorScreen(controller: viewModel.artworkEditor, viewModel: viewModel)
         }
@@ -35,6 +36,15 @@ struct LibraryShell: View {
     var body: some View {
         // Storage is a screen under Settings: the bar keeps highlighting Settings while it is open.
         let selection = Binding<PhoneTab>(get: { viewModel.tab.barItem }, set: { viewModel.selectTab($0) })
+        VStack(spacing: 0) {
+            AddedVideosCard(viewModel: viewModel)
+            PrepareCard(viewModel: viewModel)
+            tabs(selection)
+        }
+        .phoneScreenBackground()
+    }
+
+    private func tabs(_ selection: Binding<PhoneTab>) -> some View {
         TabView(selection: selection) {
             ForEach(PhoneTab.barItems(legacyRemote: viewModel.legacyRemote), id: \.self) { tab in
                 content(for: tab)
@@ -51,6 +61,7 @@ struct LibraryShell: View {
         ZStack {
             switch tab {
             case .library: LibraryHome(viewModel: viewModel)
+            case .browse: BrowseScreen(viewModel: viewModel)
             case .settings:
                 if viewModel.tab == .storage { PlaceholderTabView(tab: .storage) } else { SettingsScreen(viewModel: viewModel) }
             case .remote where !viewModel.legacyRemote: LibraryHome(viewModel: viewModel)

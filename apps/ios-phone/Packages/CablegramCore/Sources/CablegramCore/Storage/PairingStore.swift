@@ -56,6 +56,27 @@ public final class PairingStore: AccountTokens, @unchecked Sendable {
         set { defaults.set(newValue, forKey: "api_base_url") }
     }
 
+    public var wifiOnlyTransfers: Bool {
+        get { defaults.object(forKey: "wifi_only_transfers") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "wifi_only_transfers") }
+    }
+
+    public var transferWhileCharging: Bool {
+        get { defaults.bool(forKey: "transfer_while_charging") }
+        set { defaults.set(newValue, forKey: "transfer_while_charging") }
+    }
+
+    public var syncLibraryToApi: Bool {
+        get { defaults.object(forKey: "sync_library_to_api") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "sync_library_to_api") }
+    }
+
+    /// Where new imports go: `local`, or `both` (phone and cloud).
+    public var importDestination: String {
+        get { defaults.string(forKey: "import_destination") ?? storageLocal }
+        set { defaults.set(newValue, forKey: "import_destination") }
+    }
+
     /// Signing out or deleting the account: forget the credentials (preferences such as the tour stay).
     public func clearAccount() {
         accountToken = nil
