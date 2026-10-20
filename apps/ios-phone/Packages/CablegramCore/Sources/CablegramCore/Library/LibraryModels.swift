@@ -178,7 +178,7 @@ public func isWeakCatalogLabel(_ value: String?) -> Bool {
     if matches(#"^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$"#, stem) { return true }
     if matches(#"^[0-9a-fA-F]{12,}$"#, stem) { return true }
     if matches(#"^(AgA|BAA|AQA)[A-Za-z0-9_-]{8,}$"#, stem) { return true }
-    if matches(#"^[0-9]+_[0-9]+"#, stem) { return true }
+    if matches(#"^[0-9]+_[0-9]+$"#, stem) { return true }
     // Camera-generated names identify a capture time, not the video's title (Pixel: PXL_yyyyMMdd_HHmmssSSS).
     if matches(#"^(PXL|MVIMG|VID|IMG)[-_]?[0-9]{8}[-_]?[0-9]{6,}.*$"#, stem, caseInsensitive: true) { return true }
     if matches(#"^(video|audio|document|photo|image|img|vid)[-_].*"#, stem, caseInsensitive: true) { return true }

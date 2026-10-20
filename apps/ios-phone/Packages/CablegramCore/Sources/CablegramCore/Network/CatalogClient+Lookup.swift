@@ -5,6 +5,19 @@ public struct TitleSuggestion: Codable, Sendable, Equatable {
     public var year: Int?
     public var mediaType: String
     public var source: String
+    public init(title: String, year: Int? = nil, mediaType: String = "movie", source: String = "library", maxSeason: Int? = nil, maxEpisode: Int? = nil) {
+        self.title = title; self.year = year; self.mediaType = mediaType; self.source = source; self.maxSeason = maxSeason; self.maxEpisode = maxEpisode
+    }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        title = try c.decode(String.self, forKey: .title)
+        year = try? c.decodeIfPresent(Int.self, forKey: .year)
+        mediaType = (try? c.decodeIfPresent(String.self, forKey: .mediaType)) ?? "movie"
+        source = (try? c.decodeIfPresent(String.self, forKey: .source)) ?? "library"
+        maxSeason = try? c.decodeIfPresent(Int.self, forKey: .maxSeason)
+        maxEpisode = try? c.decodeIfPresent(Int.self, forKey: .maxEpisode)
+    }
+    private enum CodingKeys: String, CodingKey { case title, year, mediaType, source, maxSeason, maxEpisode }
     /// Highest known season for this series title in the local library.
     public var maxSeason: Int?
     public var maxEpisode: Int?
@@ -19,7 +32,23 @@ public struct TitleResolveResponse: Sendable, Equatable {
     }
 }
 
-private struct SuggestResponse: Decodable { var suggestions: [TitleSuggestion] }
+extension CharacterSet {
+    /// What Java's `URLEncoder` leaves alone: `&`, `+`, `=` and the like are escaped so a title such as "Tom & Jerry" or "C++" survives.
+    static let queryValueAllowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~")
+}
+
+private struct SuggestResponse: Decodable {
+    var suggestions: [TitleSuggestion]
+    init(from decoder: Decoder) throws {
+        // One malformed suggestion must not empty the whole list (kotlinx defaults: mediaType "movie", source "library").
+        var list = try decoder.container(keyedBy: CodingKeys.self).nestedUnkeyedContainer(forKey: .suggestions)
+        var items: [TitleSuggestion] = []
+        while !list.isAtEnd { if let item = try? list.decode(TitleSuggestion.self) { items.append(item) } else { _ = try? list.decode(Discard.self) } }
+        suggestions = items
+    }
+    private enum CodingKeys: String, CodingKey { case suggestions }
+    private struct Discard: Decodable {}
+}
 private struct MatchResponse: Decodable { var metadata: CatalogMetadata }
 private struct ResolveResponse: Decodable { var found: Bool?; var metadata: CatalogMetadata? }
 
@@ -28,7 +57,7 @@ extension CatalogClient {
     public func suggestTitles(query: String, token: String?) async -> [TitleSuggestion] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let token, !token.isEmpty, trimmed.count >= 2,
-              let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return [] }
+              let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .queryValueAllowed) else { return [] }
         let reply = await send("GET", "/api/library/suggest?q=\(encoded)", token: token)
         return reply.isSuccess ? (reply.decode(SuggestResponse.self)?.suggestions ?? []) : []
     }

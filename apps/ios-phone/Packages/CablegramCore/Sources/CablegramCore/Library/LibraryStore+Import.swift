@@ -11,7 +11,7 @@ extension LibraryStore {
     public func indexExternal(uri: String, displayName: String, sizeBytes: Int64?, durationSeconds: Int?) -> LibraryItem? {
         guard !list().contains(where: { $0.sourceUri == uri }) else { return nil }
         let id = UUID().uuidString.lowercased()
-        let ext = displayName.contains(".") ? String(displayName.split(separator: ".").last!) : "mp4"
+        let ext = fileExtension(of: displayName, fallback: "mp4")
         let stem = displayName.contains(".") ? String(displayName[..<displayName.lastIndex(of: ".")!]) : displayName
         let item = LibraryItem(
             id: id, title: firstCatalogHint(displayName) ?? stem, filename: displayName, fileName: "\(id).\(ext)",
@@ -75,7 +75,7 @@ extension LibraryStore {
 
     /// Copies to `<name>.part`, renames it into place in one step, then registers it.
     private func copyShared(_ pending: PendingSharedImport, from source: URL, metadata: CatalogMetadata?, probe: (URL) -> ImportProbe) throws -> LibraryItem {
-        let ext = pending.displayName.contains(".") ? String(pending.displayName.split(separator: ".").last!) : "mp4"
+        let ext = fileExtension(of: pending.displayName, fallback: "mp4")
         let storedName = "\(pending.id).\(ext.isEmpty ? "mp4" : ext)"
         let dest = videosDir.appendingPathComponent(storedName)
         let part = videosDir.appendingPathComponent("\(storedName).part")
@@ -125,7 +125,10 @@ extension LibraryStore {
     /// set-aside one). Does nothing if a set-aside library can't be read.
     @discardableResult
     public func sweepVideos(now: Date = Date()) -> Int {
-        var referenced = Set(list().map(\.fileName))
+        // An index that could not be read says nothing about which files are in use.
+        let referencedList = list()
+        guard indexTrusted else { return 0 }
+        var referenced = Set(referencedList.map(\.fileName))
         let stashes = ((try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [])
             .filter { $0.lastPathComponent.hasPrefix("index-") && $0.pathExtension == "json" }
         for stash in stashes {

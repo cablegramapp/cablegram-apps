@@ -325,7 +325,8 @@ public struct DriveUploader: Sendable {
             offset = min(max(try await api.session(uploadId: start.uploadId).receivedBytes, 0), size)
             log("Drive upload: after the failure Drive holds \(offset) of \(size)")
             onProgress(offset, size)
-        } catch let refused as R2ApiError {
+        } catch let refused as R2ApiError where refused.status != 0 {
+            // A real answer from the server (the session is gone): stop. Status 0 is only "no network", which is waited out.
             throw refused
         } catch is CancellationError {
             throw CancellationError()

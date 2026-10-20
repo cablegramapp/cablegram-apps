@@ -26,7 +26,12 @@ public final class LibraryStore: @unchecked Sendable {
     private let lock = NSRecursiveLock()
     private let fm = FileManager.default
     /// Called after every write to the index, so screens can redraw when a background transfer finishes (CAB-51).
-    public var onWrite: (@Sendable () -> Void)?
+    private var writeHandler: (@Sendable () -> Void)?
+    private let handlerLock = NSLock()
+    public var onWrite: (@Sendable () -> Void)? {
+        get { handlerLock.withLock { writeHandler } }
+        set { handlerLock.withLock { writeHandler = newValue } }
+    }
 
     public init(root: URL) {
         self.root = root
@@ -47,10 +52,24 @@ public final class LibraryStore: @unchecked Sendable {
 
     // MARK: Reading
 
+    /// False while the index file exists but cannot be read or understood. Then nothing is written over it and no video is swept:
+    /// treating it as an empty library would delete the person's copied videos (Android throws instead of returning empty).
+    public private(set) var indexTrusted = true
+
     public func snapshot() -> LibraryFile {
         locked {
-            guard let data = try? Data(contentsOf: indexFile) else { return LibraryFile() }
-            return (try? JSONDecoder().decode(LibraryFile.self, from: data)) ?? LibraryFile()
+            let data: Data
+            do { data = try Data(contentsOf: indexFile) } catch {
+                // No file is a new library; a file that cannot be read (before first unlock, a disk error) is not.
+                indexTrusted = !fm.fileExists(atPath: indexFile.path)
+                return LibraryFile()
+            }
+            if let file = try? JSONDecoder().decode(LibraryFile.self, from: data) { indexTrusted = true; return file }
+            // Keep the unreadable file for support; the library starts empty and stays protected from the sweep.
+            indexTrusted = false
+            let aside = root.appendingPathComponent("index.unreadable-\(Int(Date().timeIntervalSince1970)).json")
+            if !fm.fileExists(atPath: aside.path) { try? fm.copyItem(at: indexFile, to: aside) }
+            return LibraryFile()
         }
     }
 
@@ -61,8 +80,15 @@ public final class LibraryStore: @unchecked Sendable {
     public func dismissedRemoteIds() -> Set<String> { Set(snapshot().dismissedRemoteIds) }
     public func promptedTelegramIds() -> Set<String> { Set(snapshot().promptedTelegramIds) }
 
-    public func videoFile(_ item: LibraryItem) -> URL { videosDir.appendingPathComponent(item.fileName) }
-    public func cloudFile(_ item: LibraryItem) -> URL { cloudDir.appendingPathComponent(item.fileName) }
+    /// Catalog ids and file names come from a server: only plain ids are accepted, and a stored name can never leave its folder.
+    public static func isSafeId(_ id: String) -> Bool { id.range(of: #"^[A-Za-z0-9_-]{1,200}$"#, options: .regularExpression) != nil }
+    static func safeFileName(_ name: String) -> String {
+        let flat = name.replacingOccurrences(of: "/", with: "_")
+        return flat == "." || flat == ".." || flat.isEmpty ? "_" : flat
+    }
+
+    public func videoFile(_ item: LibraryItem) -> URL { videosDir.appendingPathComponent(Self.safeFileName(item.fileName)) }
+    public func cloudFile(_ item: LibraryItem) -> URL { cloudDir.appendingPathComponent(Self.safeFileName(item.fileName)) }
 
     /// The poster file if it exists on disk.
     public func posterFile(_ item: LibraryItem) -> URL? {
@@ -82,15 +108,21 @@ public final class LibraryStore: @unchecked Sendable {
     func markImporting(_ id: String, _ on: Bool) { locked { if on { importingIds.insert(id) } else { importingIds.remove(id) } } }
     func isImporting(_ id: String) -> Bool { locked { importingIds.contains(id) } }
     /// Stored names of the files being copied in right now (`<id>.<ext>`), which a sweep must not touch.
-    func importingNames() -> Set<String> { locked { Set(snapshot().pendingSharedImports.filter { importingIds.contains($0.id) }.map { p in "\(p.id).\(p.displayName.contains(".") ? String(p.displayName.split(separator: ".").last!) : "mp4")" }) } }
+    func importingNames() -> Set<String> { locked { Set(snapshot().pendingSharedImports.filter { importingIds.contains($0.id) }.map { p in "\(p.id).\(fileExtension(of: p.displayName, fallback: "mp4"))" }) } }
     func writeSnapshot(_ file: LibraryFile) { save(file) }
 
-    private func save(_ file: LibraryFile) {
-        locked {
-            let encoder = JSONEncoder()
-            if let data = try? encoder.encode(file) { try? data.write(to: indexFile, options: .atomic) }
+    /// Writes the index; false when it could not (the previous file is then still intact).
+    @discardableResult
+    private func save(_ file: LibraryFile) -> Bool {
+        let written: Bool = locked {
+            // An index that could not be read is never overwritten with what was built from nothing.
+            if !indexTrusted && fm.fileExists(atPath: indexFile.path) { return false }
+            guard let data = try? JSONEncoder().encode(file), (try? data.write(to: indexFile, options: .atomic)) != nil else { return false }
+            indexTrusted = true
+            return true
         }
-        onWrite?()
+        if written { onWrite?() }
+        return written
     }
 
     public func update(_ item: LibraryItem) {
@@ -133,8 +165,8 @@ public final class LibraryStore: @unchecked Sendable {
                 save(bound)
                 return false
             }
-            let encoder = JSONEncoder()
-            try? encoder.encode(current).write(to: root.appendingPathComponent("index-\(previous).json"), options: .atomic)
+            // The other account's library must be safely set aside before this one replaces it; if it cannot be (disk full), keep it.
+            guard let stashed = try? JSONEncoder().encode(current), (try? stashed.write(to: root.appendingPathComponent("index-\(previous).json"), options: .atomic)) != nil else { return false }
             let stash = root.appendingPathComponent("index-\(householdId).json")
             var next = (try? Data(contentsOf: stash)).flatMap { try? JSONDecoder().decode(LibraryFile.self, from: $0) }
                 ?? LibraryFile(householdId: householdId)
@@ -168,7 +200,7 @@ public final class LibraryStore: @unchecked Sendable {
         locked {
             if let existing = get(remote.id) { return existing }
             let name = nonBlank(source.originFilename) ?? remote.title ?? "Video"
-            let ext = name.contains(".") ? String(name.split(separator: ".").last!) : "mp4"
+            let ext = fileExtension(of: name, fallback: "mp4")
             let item = LibraryItem(
                 id: remote.id,
                 title: nonBlank(remote.title) ?? (name.contains(".") ? String(name[..<name.lastIndex(of: ".")!]) : name),
@@ -447,7 +479,7 @@ public final class LibraryStore: @unchecked Sendable {
     @discardableResult
     public func writeCatalogPoster(_ id: String, bytes: Data) -> String? {
         locked {
-            guard var current = get(id), catalogMayReplaceArtwork(current) else { return nil }
+            guard Self.isSafeId(id), var current = get(id), catalogMayReplaceArtwork(current) else { return nil }
             let relative = "posters/\(id).jpg"
             guard (try? bytes.write(to: root.appendingPathComponent(relative), options: .atomic)) != nil else { return nil }
             current.posterVersion += 1

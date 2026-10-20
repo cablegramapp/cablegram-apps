@@ -53,7 +53,7 @@ private let hiddenBrowseNames: Set<String> = ["android", "lost+found", "thumbnai
 
 public func looksLikeVideo(_ name: String) -> Bool {
     guard name.contains(".") else { return false }
-    return videoExtensions.contains(name.split(separator: ".").last!.lowercased())
+    return videoExtensions.contains(fileExtension(of: name).lowercased())
 }
 
 public func isVideoFile(name: String, mime: String) -> Bool {
@@ -72,7 +72,7 @@ public func canAddAsVideo(_ entry: BrowseEntry) -> Bool {
     if entry.isVideo { return true }
     let type = entry.mime.lowercased()
     if type.hasPrefix("image/") || type.hasPrefix("audio/") || type.hasPrefix("text/") || type == "application/pdf" { return false }
-    let ext = entry.name.contains(".") ? entry.name.split(separator: ".").last!.lowercased() : ""
+    let ext = fileExtension(of: entry.name).lowercased()
     if nonVideoExtensions.contains(ext) { return false }
     // Unknown/generic mime: only recognise known video extensions.
     if type.hasPrefix("video/") || type == "application/vnd.rn-realmedia" { return true }

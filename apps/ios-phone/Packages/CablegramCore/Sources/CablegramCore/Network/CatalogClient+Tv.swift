@@ -65,7 +65,8 @@ extension CatalogClient {
 
     /// The one-time token the TV redeems, or nil when the request was not accepted.
     public func approvePrivatePlayback(token: String, attemptId: String) async -> Bool {
-        await send("POST", "/api/playback/private-approvals/\(attemptId)/approve", token: token, json: [:]).isSuccess
+        let reply = await send("POST", "/api/playback/private-approvals/\(attemptId)/approve", token: token, json: [:])
+        return reply.isSuccess && ((reply.object?["token"] as? String)?.isEmpty == false)
     }
 
     public func denyPrivatePlayback(token: String, attemptId: String) async -> Bool {

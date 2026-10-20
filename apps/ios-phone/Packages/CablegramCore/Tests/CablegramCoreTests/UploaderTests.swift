@@ -63,6 +63,7 @@ private final class FakeApi: OwnCloudApi, @unchecked Sendable {
     var started = 0, sessions = 0, completedCount = 0, aborted = 0, urlRequests = 0
     var completedParts: [R2PartRef]?
     var loseUploadOnce = false
+    var offlineSessions = 0
 
     init(provider: FakeProvider, partSize: Int64 = 10_000, chunk: Int64 = 256 * 1024, protocolName: String = "s3_multipart") {
         self.provider = provider; self.partSize = partSize; self.chunk = chunk; self.protocolName = protocolName
@@ -85,7 +86,11 @@ private final class FakeApi: OwnCloudApi, @unchecked Sendable {
     }
 
     func complete(uploadId: String, parts: [R2PartRef]) async throws -> R2Done { completedParts = parts; return R2Done(sourceId: "source-1", mediaItemId: "item-1", bytes: fileSize) }
-    func session(uploadId: String) async throws -> DriveSession { sessions += 1; return DriveSession(sessionUrl: "https://drive.test/upload?id=s1", receivedBytes: Int64(provider.stored.count)) }
+    func session(uploadId: String) async throws -> DriveSession {
+        sessions += 1
+        if offlineSessions > 0 && sessions > 1 { offlineSessions -= 1; throw R2ApiError(status: 0, code: "offline") }
+        return DriveSession(sessionUrl: "https://drive.test/upload?id=s1", receivedBytes: Int64(provider.stored.count))
+    }
     func complete(uploadId: String) async throws -> R2Done { completedCount += 1; return R2Done(sourceId: "source-1", mediaItemId: "item-1", bytes: fileSize) }
     func abort(uploadId: String) async throws { aborted += 1; if provider.expired { provider.expired = false; provider.stored = Data() } }
 }
@@ -211,6 +216,15 @@ private func makeFile(_ size: Int) throws -> (URL, Data) {
         provider.driveFailNext = 2
         _ = try await upload(api, provider, file)
         #expect(provider.stored == bytes && api.sessions >= 3)
+    }
+
+    @Test func aDriveUploadRidesOutTheNetworkBeingDownWhenItAsksWhereItStands() async throws {
+        let (file, bytes) = try makeFile(300 * 1024)
+        let provider = FakeProvider(), api = FakeApi(provider: provider, protocolName: "gdrive_resumable")
+        provider.driveFailNext = 1
+        api.offlineSessions = 3   // the control plane cannot be reached either: airplane mode, a lift
+        _ = try await upload(api, provider, file)
+        #expect(provider.stored == bytes)
     }
 
     @Test func aDriveChunkThatKeepsFailingEndsTheUploadWithoutCompletingIt() async throws {

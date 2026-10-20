@@ -130,7 +130,9 @@ public struct LibrarySync: Sendable {
 
     /// Restores household titles this phone doesn't list (reinstall, new phone): re-links the files the person selected
     /// again by fingerprint, keeps the rest as "not on this phone". Returns the items that were re-linked.
-    private func merge(_ remotes: [RemoteCatalogItem]) async -> [LibraryItem] {
+    private func merge(_ allRemotes: [RemoteCatalogItem]) async -> [LibraryItem] {
+        // Ids become file names: anything that is not a plain id from our own server is ignored.
+        let remotes = allRemotes.filter { LibraryStore.isSafeId($0.id) }
         let deviceVideos = sources.selectedVideosByFingerprint()
         let dismissed = store.dismissedRemoteIds()
         var relinked: [LibraryItem] = []

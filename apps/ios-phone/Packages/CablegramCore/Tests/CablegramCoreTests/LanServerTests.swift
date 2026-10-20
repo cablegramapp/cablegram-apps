@@ -26,7 +26,7 @@ import Testing
         }
     }
 
-    static func fixture(privatePasses: PrivatePassVerifier? = nil) async throws -> Fixture {
+    static func fixture(privatePasses: PrivatePassVerifier? = nil, headDeadline: TimeInterval = 10) async throws -> Fixture {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("lan-\(UUID().uuidString)")
         let store = LibraryStore(root: root)
         let bytes = Data((0..<10_000).map { UInt8($0 % 251) })
@@ -42,7 +42,7 @@ import Testing
         credentials.sync([PairedTv(pin: "1", name: "Den", capability: "capA", deviceId: "tvA")])
         let commands = CommandQueue(root: root)
         let router = LanLibraryRouter(store: store, commands: commands, credentials: credentials, privatePasses: privatePasses)
-        let server = LanHTTPServer(router: router, port: 0)
+        let server = LanHTTPServer(router: router, port: 0, headDeadline: headDeadline)
         let port = try await server.start()
         return Fixture(server: server, router: router, store: store, commands: commands, port: port, bytes: bytes, session: URLSession(configuration: .ephemeral))
     }
@@ -185,7 +185,7 @@ import Testing
         address.sin_family = sa_family_t(AF_INET)
         address.sin_port = port.bigEndian
         address.sin_addr.s_addr = inet_addr("127.0.0.1")
-        let connected = withUnsafePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
+        let connected = withUnsafePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
         guard connected == 0 else { return "connect failed" }
         _ = request.withCString { send(fd, $0, strlen($0), 0) }
         var out = Data()
@@ -210,5 +210,54 @@ import Testing
         #expect(getWithBody.hasPrefix("HTTP/1.1 400"), "only POST carries a body")
         // The server is still up.
         #expect(try await f.get("/library").1.statusCode == 200)
+    }
+
+    static func openSocket(_ port: UInt16) -> Int32 {
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        var on: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, socklen_t(MemoryLayout<Int32>.size))
+        var address = sockaddr_in()
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = port.bigEndian
+        address.sin_addr.s_addr = inet_addr("127.0.0.1")
+        _ = withUnsafePointer(to: &address) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
+        return fd
+    }
+
+    /// True when the server has closed `fd` (a read returns 0 or fails) within `seconds`.
+    static func closedByServer(_ fd: Int32, within seconds: Int) -> Bool {
+        var tv = timeval(tv_sec: seconds, tv_usec: 0)
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+        var byte: UInt8 = 0
+        let n = recv(fd, &byte, 1, 0)
+        // A close with unread data arrives as a reset, which is still the server hanging up (not a timeout).
+        return n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+    }
+
+    @Test func aRequestHeadThatTricklesInIsCutOffAtTheDeadline() async throws {
+        let f = try await Self.fixture(headDeadline: 1); defer { f.server.stop() }
+        let fd = Self.openSocket(f.port); defer { close(fd) }
+        let start = Date()
+        // One byte every 0.3 s would hold the connection for minutes if each byte restarted the timeout.
+        for byte in "GET /library HTTP/1.1\r\nHost: x\r\n".utf8 where Date().timeIntervalSince(start) < 1.6 {
+            var b = byte
+            if send(fd, &b, 1, 0) <= 0 { break }
+            usleep(300_000)
+        }
+        #expect(Self.closedByServer(fd, within: 3))
+        #expect(Date().timeIntervalSince(start) < 4)
+        #expect(try await f.get("/library").1.statusCode == 200)
+    }
+
+    @Test func oneHostCannotTakeAllTheConnections() async throws {
+        let f = try await Self.fixture(); defer { f.server.stop() }
+        let held = (0..<8).map { _ in Self.openSocket(f.port) }
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let ninth = Self.openSocket(f.port)
+        #expect(Self.closedByServer(ninth, within: 3), "the ninth connection from one address is refused")
+        close(ninth)
+        held.forEach { close($0) }
+        try await Task.sleep(nanoseconds: 400_000_000)
+        #expect(try await f.get("/library").1.statusCode == 200, "closing the others frees the slots")
     }
 }

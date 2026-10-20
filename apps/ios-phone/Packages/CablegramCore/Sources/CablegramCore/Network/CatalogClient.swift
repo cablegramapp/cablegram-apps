@@ -1,10 +1,22 @@
 import Foundation
 
-/// Serialises token renewal so concurrent 401s renew only once (Android `AccountAuthenticator.lock`).
+/// Serialises token renewal so concurrent 401s renew only once (Android `AccountAuthenticator.lock`). An actor alone is not
+/// enough: it is reentrant, so a second caller would enter while the first waits on the network and refresh with a refresh
+/// token the server has already rotated. Callers arriving during a renewal wait for that same renewal.
 private actor RenewalGate {
     static let shared = RenewalGate()
+    private var inFlight: Task<String?, Never>?
 
-    func run(_ body: @Sendable () async -> String?) async -> String? { await body() }
+    func renew(after sent: String, current: @Sendable () -> String?, _ body: @escaping @Sendable () async -> String?) async -> String? {
+        // Another request may already have renewed the token while this one was in flight.
+        if let now = current(), !now.isEmpty, now != sent { return now }
+        if let running = inFlight { return await running.value }
+        let task = Task { await body() }
+        inFlight = task
+        let result = await task.value
+        inFlight = nil
+        return result
+    }
 }
 
 /// Port of `CatalogClient.kt`, in the same order. Account and sign-in endpoints come first; the rest of the Android
@@ -58,10 +70,7 @@ public struct CatalogClient: Sendable {
     /// Another request may already have renewed the token while this one was in flight.
     private func freshToken(after sent: String) async -> String? {
         guard let tokens else { return nil }
-        return await RenewalGate.shared.run {
-            if let current = tokens.accountToken, !current.isEmpty, current != sent { return current }
-            return await renewAccessToken()
-        }
+        return await RenewalGate.shared.renew(after: sent, current: { tokens.accountToken }) { await renewAccessToken() }
     }
 
     /// Exchanges the refresh token for a new access token. A rejected refresh token clears the dead access token so

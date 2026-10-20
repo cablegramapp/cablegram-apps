@@ -159,7 +159,7 @@ public final class LanLibraryRouter: Sendable {
 
     /// Send the real media type when known; do not assume video/mp4 (R-6).
     static func contentType(for item: LibraryItem) -> String {
-        switch (item.filename.split(separator: ".").last.map { $0.lowercased() } ?? "") {
+        switch fileExtension(of: item.filename).lowercased() {
         case "mkv": "video/x-matroska"
         case "mp4", "m4v": "video/mp4"
         case "mov": "video/quicktime"

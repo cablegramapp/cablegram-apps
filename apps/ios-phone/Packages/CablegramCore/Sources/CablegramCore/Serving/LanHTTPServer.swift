@@ -27,6 +27,11 @@ public final class LanHTTPServer: @unchecked Sendable {
     private let lock = NSLock()
     private var listener: NWListener?
     private var connections: [ObjectIdentifier: NWConnection] = [:]
+    private var perHost: [String: Int] = [:]
+    private var hostOf: [ObjectIdentifier: String] = [:]
+    private static let maxPerHost = 8
+    /// The whole request head must arrive within this, however slowly the bytes trickle in.
+    private let headDeadline: TimeInterval
 
     private static let maxHeaderBytes = 16 * 1024
     /// Only `POST /commands` has a body, and it is a few dozen bytes.
@@ -38,8 +43,8 @@ public final class LanHTTPServer: @unchecked Sendable {
     /// A peer that takes no bytes for this long while a body is being sent is dropped.
     private static let writeTimeout: TimeInterval = 30
 
-    public init(router: LanLibraryRouter, port: UInt16, tls: NWProtocolTLS.Options? = nil, advertisement: Advertisement? = nil) {
-        self.router = router; requestedPort = port; self.tls = tls; self.advertisement = advertisement
+    public init(router: LanLibraryRouter, port: UInt16, tls: NWProtocolTLS.Options? = nil, advertisement: Advertisement? = nil, headDeadline: TimeInterval = 10) {
+        self.router = router; requestedPort = port; self.tls = tls; self.advertisement = advertisement; self.headDeadline = headDeadline
     }
 
     /// Starts listening and returns the port actually bound (port 0 asks the system for one).
@@ -75,7 +80,7 @@ public final class LanHTTPServer: @unchecked Sendable {
 
     public func stop() {
         let (listener, open) = lock.withLock { () -> (NWListener?, [NWConnection]) in
-            defer { self.listener = nil; connections = [:] }
+            defer { self.listener = nil; connections = [:]; perHost = [:]; hostOf = [:] }
             return (self.listener, Array(connections.values))
         }
         listener?.cancel()
@@ -85,9 +90,13 @@ public final class LanHTTPServer: @unchecked Sendable {
     // MARK: Connections
 
     private func accept(_ connection: NWConnection) {
+        var host = ""
+        if case let .hostPort(h, _) = connection.endpoint { host = "\(h)" }
         let admitted = lock.withLock { () -> Bool in
-            guard connections.count < Self.maxConnections else { return false }
+            guard connections.count < Self.maxConnections, perHost[host, default: 0] < Self.maxPerHost else { return false }
             connections[ObjectIdentifier(connection)] = connection
+            perHost[host, default: 0] += 1
+            hostOf[ObjectIdentifier(connection)] = host
             return true
         }
         guard admitted else { connection.cancel(); return }
@@ -97,18 +106,24 @@ public final class LanHTTPServer: @unchecked Sendable {
             if case .cancelled = state { self?.drop(connection) }
         }
         connection.start(queue: queue)
-        Task { [router] in
-            await Self.serve(connection, router: router)
+        Task { [router, headDeadline] in
+            await Self.serve(connection, router: router, headDeadline: headDeadline)
             connection.cancel()
         }
     }
 
-    private func drop(_ connection: NWConnection) { lock.withLock { _ = connections.removeValue(forKey: ObjectIdentifier(connection)) } }
+    private func drop(_ connection: NWConnection) {
+        lock.withLock {
+            let id = ObjectIdentifier(connection)
+            guard connections.removeValue(forKey: id) != nil else { return }
+            if let host = hostOf.removeValue(forKey: id) { perHost[host, default: 1] -= 1; if perHost[host] ?? 0 <= 0 { perHost[host] = nil } }
+        }
+    }
 
-    private static func serve(_ connection: NWConnection, router: LanLibraryRouter) async {
+    private static func serve(_ connection: NWConnection, router: LanLibraryRouter, headDeadline: TimeInterval) async {
         var buffer = Data()
         while true {
-            guard let head = await readHead(connection, &buffer) else { return }
+            guard let head = await readHead(connection, &buffer, deadline: headDeadline) else { return }
             guard let request = parse(head) else { await reject(connection); return }
             // Only a plain Content-Length body is understood; anything else is refused before it can be buffered.
             if request.headers["transfer-encoding"] != nil { await reject(connection); return }
@@ -134,8 +149,10 @@ public final class LanHTTPServer: @unchecked Sendable {
     }
 
     /// Reads up to the blank line ending the headers; bytes after it stay in `buffer`.
-    private static func readHead(_ connection: NWConnection, _ buffer: inout Data) async -> Data? {
+    private static func readHead(_ connection: NWConnection, _ buffer: inout Data, deadline headDeadline: TimeInterval) async -> Data? {
         let marker = Data("\r\n\r\n".utf8)
+        // The clock starts with the first byte of a request: an idle keep-alive connection is limited by `readTimeout` instead.
+        var began: Date? = buffer.isEmpty ? nil : Date()
         while true {
             if let range = buffer.range(of: marker) {
                 let head = buffer.subdata(in: buffer.startIndex..<range.lowerBound)
@@ -143,7 +160,10 @@ public final class LanHTTPServer: @unchecked Sendable {
                 return head
             }
             if buffer.count > maxHeaderBytes { return nil }
-            guard let more = await receive(connection) else { return nil }
+            // Waiting for the next request on an idle connection is limited by `readTimeout`; a request that has begun, by the deadline.
+            let remaining = began.map { min(readTimeout, $0.addingTimeInterval(headDeadline).timeIntervalSinceNow) } ?? readTimeout
+            guard remaining > 0, let more = await receive(connection, timeout: remaining) else { return nil }
+            if began == nil { began = Date() }
             buffer.append(more)
         }
     }
@@ -210,10 +230,10 @@ public final class LanHTTPServer: @unchecked Sendable {
         }
     }
 
-    private static func receive(_ connection: NWConnection) async -> Data? {
+    private static func receive(_ connection: NWConnection, timeout: TimeInterval = readTimeout) async -> Data? {
         await withCheckedContinuation { continuation in
             nonisolated(unsafe) let watchdog = DispatchWorkItem { connection.cancel() }
-            DispatchQueue.global().asyncAfter(deadline: .now() + readTimeout, execute: watchdog)
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: watchdog)
             connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { data, _, _, _ in
                 watchdog.cancel()
                 if let data, !data.isEmpty { continuation.resume(returning: data) } else { continuation.resume(returning: nil) }

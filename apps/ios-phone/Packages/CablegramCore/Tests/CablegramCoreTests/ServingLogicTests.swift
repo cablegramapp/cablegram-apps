@@ -96,19 +96,34 @@ import Testing
 
     @Test func otherPhonesTvIsVerifiedWithControlPlane() async {
         let calls = Counter()
-        let verifier = LanCapabilityVerifier(verify: { cap in calls.bump(); return cap == "foreign" ? "F" : nil })
+        let verifier = LanCapabilityVerifier(verify: { cap in calls.bump(); return cap == "foreign-capability-0123" ? "F" : nil })
         let creds = LanCredentials(verifier: verifier)
-        #expect(await creds.authorized(["foreign"]))
-        #expect(await creds.authorized(["foreign"]))
+        #expect(await creds.authorized(["foreign-capability-0123"]))
+        #expect(await creds.authorized(["foreign-capability-0123"]))
         #expect(calls.value == 1, "accepted answers are cached")
         creds.revokeDevice("F")
-        #expect(await creds.authorized(["foreign"]) == false)
+        #expect(await creds.authorized(["foreign-capability-0123"]) == false)
+    }
+
+    @Test func valuesThatCannotBeCapabilitiesNeverReachTheControlPlane() async {
+        let calls = Counter()
+        let verifier = LanCapabilityVerifier(verify: { _ in calls.bump(); return "tv" })
+        for junk in ["", "short", "has spaces in it 0123456789", String(repeating: "a", count: 300), "1"] { #expect(await verifier.tvDeviceId(junk) == nil) }
+        #expect(calls.value == 0)
+        #expect(await verifier.tvDeviceId("abcdefghijklmnop0123456789_-") == "tv")
+    }
+
+    @Test func aFloodOfDifferentValuesCostsOnlyABoundedNumberOfCalls() async {
+        let calls = Counter()
+        let verifier = LanCapabilityVerifier(verify: { _ in calls.bump(); return nil }, maxCalls: 5, callWindow: 60)
+        for i in 0..<200 { _ = await verifier.tvDeviceId("flood-value-\(String(format: "%04d", i))-xxxxxxxx") }
+        #expect(calls.value == 5)
     }
 
     @Test func rejectedAnswerIsCachedBriefly() async {
         let calls = Counter()
         let verifier = LanCapabilityVerifier(verify: { _ in calls.bump(); return nil })
-        _ = await verifier.tvDeviceId("x"); _ = await verifier.tvDeviceId("x")
+        _ = await verifier.tvDeviceId("unknown-capability-0123"); _ = await verifier.tvDeviceId("unknown-capability-0123")
         #expect(calls.value == 1)
     }
 }

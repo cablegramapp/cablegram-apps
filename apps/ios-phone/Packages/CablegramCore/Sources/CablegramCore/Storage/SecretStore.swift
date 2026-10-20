@@ -52,11 +52,22 @@ public final class KeychainSecretStore: SecretStoring, @unchecked Sendable {
     }
 
     public func write(_ key: String, _ value: String?) {
-        SecItemDelete(query(key) as CFDictionary)
-        guard let value, !value.isEmpty else { return }
+        guard let value, !value.isEmpty else { SecItemDelete(query(key) as CFDictionary); return }
+        // Update in place: deleting first would lose a rotated refresh token if the add then failed.
+        let data = Data(value.utf8)
+        let status = SecItemUpdate(query(key) as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        guard status == errSecItemNotFound else { return }
         var q = query(key)
-        q[kSecValueData as String] = Data(value.utf8)
+        q[kSecValueData as String] = data
         q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         SecItemAdd(q as CFDictionary, nil)
+    }
+
+    /// Removes every item of this service. iOS keeps Keychain items when the app is deleted; a fresh install must not come back
+    /// signed in as the previous one (Android loses everything with the app).
+    public func removeAll() {
+        var q: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
+        if let accessGroup { q[kSecAttrAccessGroup as String] = accessGroup }
+        SecItemDelete(q as CFDictionary)
     }
 }

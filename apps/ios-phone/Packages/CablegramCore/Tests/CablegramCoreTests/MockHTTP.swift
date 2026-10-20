@@ -20,10 +20,12 @@ final class MockHTTP: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var requests: [RecordedRequest] = []
     /// When set, routes by path instead of the FIFO queue.
     nonisolated(unsafe) static var routes: [String: Reply] = [:]
+    /// When set, answers each request (by path and Authorization) before the queue or routes; `delay` slows the answer down.
+    nonisolated(unsafe) static var handler: (@Sendable (RecordedRequest) -> (reply: Reply, delay: TimeInterval)?)?
     private static let lock = NSLock()
 
     static func reset() {
-        lock.withLock { queue = []; requests = []; routes = [:] }
+        lock.withLock { queue = []; requests = []; routes = [:]; handler = nil }
     }
 
     static func enqueue(_ status: Int, _ body: String = "{}") { lock.withLock { queue.append(.response(status, body)) } }
@@ -55,12 +57,16 @@ final class MockHTTP: URLProtocol, @unchecked Sendable {
         }
         let path = request.url?.path ?? ""
         let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+        var delay: TimeInterval = 0
         let reply: Reply = Self.lock.withLock {
-            Self.requests.append(RecordedRequest(method: request.httpMethod ?? "GET", path: path,
-                                                 authorization: request.value(forHTTPHeaderField: "Authorization"), body: body))
+            let recorded = RecordedRequest(method: request.httpMethod ?? "GET", path: path,
+                                           authorization: request.value(forHTTPHeaderField: "Authorization"), body: body)
+            Self.requests.append(recorded)
+            if let answer = Self.handler?(recorded) { delay = answer.delay; return answer.reply }
             if let routed = Self.routes[path] { return routed }
             return Self.queue.isEmpty ? .response(500, "{}") : Self.queue.removeFirst()
         }
+        if delay > 0 { Thread.sleep(forTimeInterval: delay) }
         switch reply {
         case .failure:
             client?.urlProtocol(self, didFailWithError: URLError(.cannotConnectToHost))
