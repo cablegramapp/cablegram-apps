@@ -10,3 +10,16 @@ paths = [
   '''src/test/.*''',
   '''contracts/.*''',
 ]
+
+# iOS: localization keys passed to Text(key: "...") look like secrets to the generic-key rule,
+# `let privateKey: ` declares a type rather than holding a value, and the Core tests use a fake token.
+[[allowlists]]
+description = "iOS false positives"
+regexTarget = "line"
+regexes = [
+  '''Text\(key: "[a-z0-9_]+"''',
+  '''let privateKey: ''',
+]
+paths = [
+  '''apps/ios-phone/Packages/CablegramCore/Tests/.*''',
+]
