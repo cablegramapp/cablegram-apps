@@ -13,6 +13,8 @@ struct PhoneRootView: View {
                 DeleteAccountScreen(viewModel: viewModel)
             } else if viewModel.termsRequired {
                 TermsScreen(viewModel: viewModel)
+            } else if viewModel.tv.addingTv {
+                PairingForm(viewModel: viewModel)
             } else if viewModel.needsName {
                 NameForm(viewModel: viewModel)
             } else if viewModel.welcomeTourOpen {
@@ -22,6 +24,10 @@ struct PhoneRootView: View {
             }
         }
         .modifier(PrivacyPrompt(viewModel: viewModel))
+        // A TV scanned before signing in waits here until there is an account to pair it to (CAB-62).
+        .sheet(isPresented: Binding(get: { viewModel.tv.pendingPair != nil && !viewModel.needsAccount && !viewModel.termsRequired }, set: { if !$0 { viewModel.tv.cancelPendingPair() } })) {
+            PairTrustDialog(viewModel: viewModel)
+        }
         .fullScreenCover(isPresented: Binding(get: { viewModel.artworkEditor.draft != nil }, set: { if !$0 { viewModel.artworkEditor.close() } })) {
             ArtworkEditorScreen(controller: viewModel.artworkEditor, viewModel: viewModel)
         }
@@ -39,7 +45,9 @@ struct LibraryShell: View {
         VStack(spacing: 0) {
             AddedVideosCard(viewModel: viewModel)
             PrepareCard(viewModel: viewModel)
+            if !viewModel.tv.pendingApprovals.isEmpty { ApprovalCard(viewModel: viewModel) }
             TransferCard(viewModel: viewModel)
+            RemoteBar(viewModel: viewModel)
             tabs(selection)
         }
         .phoneScreenBackground()
@@ -63,6 +71,7 @@ struct LibraryShell: View {
             switch tab {
             case .library: LibraryHome(viewModel: viewModel)
             case .browse: BrowseScreen(viewModel: viewModel)
+            case .remote where viewModel.legacyRemote: RemoteScreen(viewModel: viewModel)
             case .settings:
                 if viewModel.tab == .storage { StorageScreen(viewModel: viewModel) } else { SettingsScreen(viewModel: viewModel) }
             case .remote where !viewModel.legacyRemote: LibraryHome(viewModel: viewModel)

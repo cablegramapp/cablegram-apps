@@ -193,14 +193,14 @@ struct DetailOverlay: View {
                 if let left = remainingDuration(item) { Text(L("ui_left_bc8cab", left)).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
             }
         }
-        // Play on TV starts in phase 5, with pairing.
-        Button {} label: {
+        Button { viewModel.tv.playOnTv(item) } label: {
             HStack(spacing: 8) {
                 Image(systemName: "play.fill")
                 Text(key: sourceUnavailable ? "ui_source_unavailable_a3feb8" : viewModel.paired ? "ui_play_on_tv_f47dcd" : "ui_connect_a_tv_to_play_c4ff0b")
             }
         }
-        .buttonStyle(PrimaryButtonStyle()).disabled(true).accessibilityIdentifier(MaestroIds.detailPlayTv)
+        .buttonStyle(PrimaryButtonStyle()).disabled(sourceUnavailable || viewModel.busy).accessibilityIdentifier(MaestroIds.detailPlayTv)
+        if let status = viewModel.tv.remoteStatus { Text(status).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
         if sourceUnavailable {
             Text(key: item.householdOnly ? "ui_this_title_is_in_your_household_library_but_its_file_i_7fef21" : "ui_reconnect_the_original_storage_or_restore_the_file_on__42719e")
                 .font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted)

@@ -86,8 +86,7 @@ struct LibraryHome: View {
             }
             Spacer()
             if !viewModel.paired || viewModel.legacyRemote {
-                // Pairing arrives with phase 5; until then Connect opens Settings, where Your TVs will live.
-                Button { viewModel.selectTab(viewModel.paired ? .remote : .settings) } label: { Text(key: viewModel.paired ? "ui_remote_ffa98e" : "ui_connect_1a2303") }
+                Button { if viewModel.paired { viewModel.selectTab(.remote) } else { viewModel.tv.startAddTv() } } label: { Text(key: viewModel.paired ? "ui_remote_ffa98e" : "ui_connect_1a2303") }
                     .buttonStyle(AccentTextButtonStyle())
             }
         }
@@ -305,7 +304,8 @@ struct ItemMenu: View {
     let viewModel: PhoneViewModel
 
     var body: some View {
-        // Play and Save to Telegram join with phases 5 and 7.
+        Button { viewModel.tv.playOnTv(item) } label: { Text(key: "ui_play_436e61") }
+            .disabled(!(item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy || item.sourceKind == "telegram"))
         if canSaveToCloud(item) { Button { viewModel.cloud.beginSaveToCloud(item) } label: { Text(key: "ui_save_to_cloud_0fd280") } }
         if (item.cloudObjectPresent || item.ownCloudCopy) && !item.copied { Button { viewModel.cloud.downloadFromCloud(item) } label: { Text(key: "ui_download_from_cloud_14cd0d") } }
         if canRemoveLocalCopy(item) { Button { viewModel.cloud.askFreeUp(item) } label: { Text(key: "ui_free_up_phone_space_6d089c") } }

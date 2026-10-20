@@ -130,7 +130,7 @@ extension CatalogClient {
     /// Sends a remote-control command to one TV. `.accepted` means the server stored it, not that the TV ran it; see
     /// `commandStatus`. A network error is retried once with the same body, so the same client-generated id makes the retry
     /// harmless. If both attempts fail on the network, the status is read once: the first attempt may have reached the server.
-    public func postCommand(token: String, command: String, videoId: String? = nil, targetDeviceId: String?, arguments: [String: Any] = [:]) async -> CommandSend {
+    public func postCommand(token: String, command: String, videoId: String? = nil, targetDeviceId: String?, arguments: [String: any Sendable] = [:]) async -> CommandSend {
         guard let targetDeviceId, !targetDeviceId.trimmingCharacters(in: .whitespaces).isEmpty else { return .failed }
         let id = UUID().uuidString.lowercased()
         guard let body = try? remoteCommandBody(command: command, targetDeviceId: targetDeviceId, videoId: videoId, arguments: arguments, id: id) else { return .failed }

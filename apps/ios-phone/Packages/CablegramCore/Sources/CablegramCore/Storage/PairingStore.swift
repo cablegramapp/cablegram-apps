@@ -29,6 +29,51 @@ public final class PairingStore: AccountTokens, @unchecked Sendable {
         set { lock.withLock { secrets.write("phone_device_id", newValue) } }
     }
 
+    private static let tvsKey = "paired_tvs"
+    private static let pairingLock = NSRecursiveLock()
+
+    /// The whole pairing record is stored in the secret store: no LAN capability or pairing PIN is kept in plain preferences. The last
+    /// TV is the selected one.
+    public var tvs: [PairedTv] {
+        get {
+            Self.pairingLock.withLock {
+                guard let raw = secrets.read(Self.tvsKey), let data = raw.data(using: .utf8) else { return [] }
+                return (try? JSONDecoder().decode([PairedTv].self, from: data)) ?? []
+            }
+        }
+        set {
+            Self.pairingLock.withLock {
+                if let data = try? JSONEncoder().encode(newValue), let raw = String(data: data, encoding: .utf8) { secrets.write(Self.tvsKey, newValue.isEmpty ? nil : raw) }
+                defaults.set(newValue.last?.name ?? "TV", forKey: "tv_name")
+            }
+        }
+    }
+
+    public var tvName: String { tvs.last?.name ?? defaults.string(forKey: "tv_name") ?? "TV" }
+
+    public func addTv(pin: String, name: String, capability: String? = nil, deviceId: String? = nil, trust: TvTrust = .home) {
+        tvs = tvs.filter { $0.pin != pin } + [PairedTv(pin: pin, name: name, capability: capability, deviceId: deviceId, trust: trust)]
+    }
+
+    /// Upgrade an existing pairing with the capability minted at claim time.
+    public func attachCapability(pin: String, capability: String) { tvs = tvs.map { var t = $0; if t.pin == pin { t.capability = capability }; return t } }
+
+    /// Record the server-side device id for this TV (used for revocation checks).
+    public func attachDeviceId(pin: String, deviceId: String) { tvs = tvs.map { var t = $0; if t.pin == pin { t.deviceId = deviceId }; return t } }
+
+    /// A Cast status may associate a route with an existing pairing, never create one.
+    public func attachCastDeviceId(deviceId: String, castDeviceId: String) {
+        guard tvs.contains(where: { $0.deviceId == deviceId }) else { return }
+        tvs = tvs.map { tv in
+            var t = tv
+            if tv.deviceId == deviceId { t.castDeviceId = castDeviceId } else if tv.castDeviceId == castDeviceId { t.castDeviceId = nil }
+            return t
+        }
+    }
+
+    public func removeTv(pin: String) { tvs = tvs.filter { $0.pin != pin } }
+    public func clearTVs() { tvs = [] }
+
     public var displayName: String {
         get { defaults.string(forKey: "display_name") ?? "" }
         set { defaults.set(newValue, forKey: "display_name") }
@@ -83,5 +128,6 @@ public final class PairingStore: AccountTokens, @unchecked Sendable {
         refreshToken = nil
         phoneDeviceId = nil
         displayName = ""
+        clearTVs()
     }
 }

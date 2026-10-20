@@ -10,6 +10,7 @@ struct SettingsScreen: View {
     @State private var page: SettingsPage?
     @State private var confirmSignOut = false
     @State private var showLegal = false
+    @State private var tvToRemove: PairedTv?
     @State private var accountNameDraft = ""
     @Environment(\.openURL) private var openURL
 
@@ -46,6 +47,11 @@ struct SettingsScreen: View {
             Button(L("ui_sign_out_48f0d3"), role: .destructive) { viewModel.signOut() }
         } message: { Text(key: "ui_this_phone_stops_sharing_and_controlling_your_tvs_your_960038") }
         .sheet(isPresented: $showLegal) { LegalSheet() }
+        .onAppear { viewModel.tv.loadProfileLock() }
+        .alert(tvToRemove.map { L("ui_remove_e4dd7c", $0.name) } ?? "", isPresented: Binding(get: { tvToRemove != nil }, set: { if !$0 { tvToRemove = nil } })) {
+            Button(L("ui_cancel_19766e"), role: .cancel) {}
+            Button(L("ui_remove_tv_7c437e"), role: .destructive) { if let tvToRemove { viewModel.tv.unpair(tvToRemove) } }
+        } message: { Text(key: "ui_the_tv_will_be_signed_out_and_lose_access_to_your_libr_699735") }
     }
 
     private var overview: some View {
@@ -113,7 +119,8 @@ struct SettingsScreen: View {
                 Divider().overlay(Color.phoneOutline)
                 PrefSwitch(key: "ui_sync_library_titles_b3b6cc", isOn: Binding(get: { viewModel.syncLibraryToApi }, set: { viewModel.syncLibraryToApi = $0 }))
             }
-        case .tvs, .profiles, .collections, .connection: EmptyView()
+        case .tvs: tvsPage
+        case .profiles, .collections, .connection: EmptyView()
         }
     }
 
@@ -127,6 +134,7 @@ struct SettingsScreen: View {
                     .disabled(accountNameDraft.trimmingCharacters(in: .whitespaces).isEmpty
                               || accountNameDraft.trimmingCharacters(in: .whitespaces) == viewModel.householdName || viewModel.busy)
             }
+            lockSection
             Button { confirmSignOut = true } label: { Text(key: "ui_sign_out_48f0d3") }
                 .buttonStyle(OutlinedButtonStyle(color: .phoneError))
                 .disabled(viewModel.busy)
@@ -138,6 +146,52 @@ struct SettingsScreen: View {
                     .accessibilityIdentifier("settings_delete_account")
                 Text(key: "delete_account_entry_hint").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
             }
+        }
+    }
+
+    /// "Lock account on TVs": a TV opens a profile only once a phone allows it (CAB-67 idle time for shared TVs).
+    private var lockSection: some View {
+        let tv = viewModel.tv!
+        return VStack(alignment: .leading, spacing: 12) {
+            Divider().overlay(Color.phoneOutline)
+            if let locked = tv.profileLock {
+                PrefSwitch(key: "ui_lock_account_on_tvs_011bbe", isOn: Binding(get: { locked }, set: { tv.updateProfileLock($0) }), id: MaestroIds.settingsProfileLock)
+            }
+            Text(key: tv.profileLock == true ? "ui_a_tv_asks_this_phone_before_it_opens_any_profile_a60f8b"
+                 : tv.profileLock == false ? "ui_a_tv_opens_profiles_without_asking_unless_other_accoun_d6d7d4" : "ui_couldn_t_load_the_account_lock_check_your_connection_85acd6")
+                .font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            if let minutes = tv.sharedTvIdleMinutes {
+                Text(key: "ui_on_a_tv_shared_with_other_accounts_ask_again_after_f81d7a").foregroundStyle(.white)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach([(30, "ui_30_min_f69fa2"), (60, "ui_1_hour_f8b888"), (240, "ui_4_hours_e5bc99"), (720, "ui_12_hours_ff6272")], id: \.0) { value, label in
+                            FilterChip(label: label, selected: minutes == value) { tv.updateSharedTvIdleMinutes(value) }.accessibilityIdentifier("settings_shared_tv_idle_\(value)")
+                        }
+                    }
+                }
+                Text(key: "ui_without_use_the_tv_then_goes_back_to_who_s_watching_an_cef3ab").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            }
+        }
+    }
+
+    private var tvsPage: some View {
+        let tv = viewModel.tv!
+        return SectionCard(title: L("ui_your_tvs_427608")) {
+            if !tv.paired { Text(key: "ui_connect_a_tv_to_enjoy_your_library_on_a_bigger_screen_a1212f").foregroundStyle(Color.phoneMuted) }
+            ForEach(tv.tvs, id: \.pin) { item in
+                HStack(spacing: 12) {
+                    Image(systemName: "tv").foregroundStyle(Color.phoneAccent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: item.name).foregroundStyle(.white)
+                        Text(key: item == tv.tvs.last ? "ui_current_tv_55310c" : "ui_paired_tv_68fdc7").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                        TvTrustActions(viewModel: viewModel, tv: item)
+                    }
+                    Spacer()
+                    Button { tvToRemove = item } label: { Text(key: "ui_remove_c3812f").foregroundStyle(Color.phoneError) }.disabled(tv.working)
+                }
+            }
+            Button { tv.startAddTv() } label: { Text(key: "ui_connect_a_tv_0ff3f5") }
+                .buttonStyle(PrimaryButtonStyle(minHeight: 48)).accessibilityIdentifier(MaestroIds.settingsAddTv)
         }
     }
 
@@ -185,6 +239,23 @@ private struct LegalSheet: View {
                 .navigationTitle(L("ui_licence_and_notices_ded184"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button(L("ui_close_7d9eb7")) { dismiss() } } }
+        }
+    }
+}
+
+/// Trust line and Telegram actions under a TV in Settings → Your TVs.
+struct TvTrustActions: View {
+    let viewModel: PhoneViewModel
+    let tv: PairedTv
+
+    var body: some View {
+        if tv.trust.temporary {
+            Text(L("ui_temporary_unpaired_d52b66", tv.trust.expiresAt.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "soon") + (tv.trust.telegramDirect ? L("ui_uses_telegram_directly_f552f4") : ""))
+                .font(.system(size: 12)).foregroundStyle(Color.phoneAccent)
+        }
+        if tv.deviceId != nil, tv.trust.temporary, let expires = tv.trust.expiresAt {
+            Button { var trust = tv.trust; trust.expiresAt = expires.addingTimeInterval(TvTrustRules.extendBy); viewModel.tv.updateTvTrust(tv, trust) } label: { Text(key: "ui_extend_a_day_c30370") }
+                .buttonStyle(AccentTextButtonStyle())
         }
     }
 }

@@ -38,9 +38,8 @@ final class PhoneViewModel {
     var collectionsDialogOpen = false
     var collectionDraft = ""
     var deleteTarget: LibraryItem?
-    /// Telegram first-run notices and the like arrive with their phases; the library only needs the TV name for its header.
-    private(set) var paired = false
-    private(set) var tvName = "TV"
+    var paired: Bool { tv.paired }
+    var tvName: String { tv.tvName }
 
     // Import (Android Browse tab)
     private(set) var browseSource: BrowseSource = .none
@@ -61,6 +60,7 @@ final class PhoneViewModel {
     @ObservationIgnored let store: LibraryStore
     private(set) var artworkEditor: ArtworkEditorController!
     private(set) var cloud: CloudController!
+    private(set) var tv: TvController!
     @ObservationIgnored private var syncing = false
 
     // Delete account
@@ -112,13 +112,24 @@ final class PhoneViewModel {
         cloud = CloudController(pairing: pairing, store: libraryStore, catalog: makeClient, manager: manager, items: { [weak self] in self?.items ?? [] },
                                 setStatus: { [weak self] in self?.status = $0 }, showTab: { [weak self] in self?.tab = $0 },
                                 refresh: { [weak self] in self?.refresh() }, syncLibrary: { [weak self] in await self?.syncLibrary() })
+        tv = TvController(pairing: pairing, catalog: makeClient, store: libraryStore, items: { [weak self] in self?.items ?? [] },
+                          setStatus: { [weak self] in self?.status = $0 }, selectItem: { [weak self] in self?.openItem($0) },
+                          ensurePhoneDevice: { [weak self] in await self?.ensurePhoneDevice() }, syncLibrary: { [weak self] in await self?.syncLibrary() },
+                          onPairedChanged: { _ in /* the LAN server starts and stops with the first and last TV in phase 6 */ })
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()
         recoverSharedImports()
         importSharedInbox()
         cloud.refreshStorage()
         cloud.resumeSaves()
-        if needsAccount { loadSignInOptions() } else { checkTerms() }
+        if needsAccount { loadSignInOptions() } else { checkTerms(); Task { await tv.syncHouseholdTvs() } }
+        startApprovalWatchIfSignedIn()
+    }
+
+    /// Everything TVs wait for appears as a card and a notification while the phone is signed in (no push: only while the app runs).
+    func startApprovalWatchIfSignedIn() {
+        guard !needsAccount else { return }
+        tv.startApprovalWatch(notify: { Approvals.notify($0) }, cancelNotification: { Approvals.cancel($0) })
     }
 
     /// `Application Support/library`: not user-visible, backed up with the device, kept across updates.
@@ -155,6 +166,8 @@ final class PhoneViewModel {
     func closeSeries() { openSeriesKey = nil }
 
     /// Leaving for another tab must not leave a title page or a series page covering it.
+    private func startAddTvFromTour() { tv.startAddTv() }
+
     func selectTab(_ tab: PhoneTab) {
         // A cloud sheet, a title page and a series page are full-screen overlays: leaving for another tab must not leave them covering it.
         cloud.dismissCloudSheet()
@@ -529,7 +542,7 @@ final class PhoneViewModel {
     func startFromTour(_ step: TourStep) {
         closeWelcomeTour()
         switch step {
-        case .tv: tab = .settings          // Connect a TV arrives with phase 5
+        case .tv: startAddTvFromTour()
         case .telegram: tab = .browse      // Telegram sheet arrives with phase 7
         case .drive: tab = .storage; cloud.cloudSheet = .manage
         case .subtitles: tab = .settings   // Subtitle accounts arrive with phase 8
@@ -571,8 +584,16 @@ final class PhoneViewModel {
         let setAside = result.householdId.map { store.bindHousehold($0) } ?? false
         refresh()
         await ensurePhoneDevice()
-        // "Signed in. Scan the TV PIN to pair." returns with the pairing screen in phase 5.
-        status = result.needsName ? L("ui_choose_an_account_name_to_continue_8eba6d") : nil
+        if tv.paired {
+            // Signing in again after an expired session: the TVs stay paired.
+            status = result.needsName ? L("ui_choose_an_account_name_to_continue_8eba6d") : L("ui_signed_in_again_00397a")
+            tv.addingTv = false
+        } else {
+            status = result.needsName ? L("ui_choose_an_account_name_to_continue_8eba6d") : L("ui_signed_in_scan_the_tv_pin_to_pair_14c21b")
+            // A TV scanned before signing in goes straight to "Is this your TV?" (CAB-62); otherwise pairing comes next.
+            tv.addingTv = !result.needsName && tv.pendingPair == nil
+        }
+        await tv.syncHouseholdTvs()
         if setAside { status = L("ui_signed_in_the_previous_account_s_library_is_kept_aside_45bf31") }
         checkTerms()
         Task { await syncLibrary() }
@@ -667,6 +688,7 @@ final class PhoneViewModel {
 
     private func clearSignedInState() {
         pairing.clearAccount()
+        tv.reset()
         items = []
         selectedId = nil
         openSeriesKey = nil

@@ -22,7 +22,18 @@ struct CablegramApp: App {
     var body: some Scene {
         WindowGroup {
             PhoneRootView(viewModel: viewModel)
-                .onChange(of: scenePhase) { _, phase in if phase == .active { viewModel.importSharedInbox() } }
+                .onChange(of: scenePhase) { _, phase in
+                    viewModel.tv.appVisible = phase == .active
+                    if phase == .active { viewModel.importSharedInbox(); viewModel.tv.refreshPendingApprovals() }
+                }
+                .onAppear {
+                    viewModel.tv.appVisible = true
+                    ApprovalNotificationHandler.respond = { approval, allow in viewModel.tv.respondToApproval(approval, approve: allow, cancelNotification: Approvals.cancel) }
+                }
+                // A TV's QR code opens the app with https://app.cablegram.app/?pair=… (universal link, CAB-62).
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL { viewModel.tv.applyPairUri(url.absoluteString, webOrigins: pairWebOrigins(CablegramApp.configuration.webAppBase)) }
+                }
                 .tint(.phoneAccent)
                 .onOpenURL { url in
                     if url.host == "storage" { viewModel.cloud.applyStorageReturn(url.absoluteString) } else { GoogleSignInURLHandler.handle(url) }
