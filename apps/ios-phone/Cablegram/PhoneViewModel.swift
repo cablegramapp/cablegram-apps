@@ -62,6 +62,7 @@ final class PhoneViewModel {
     private(set) var cloud: CloudController!
     private(set) var tv: TvController!
     private(set) var serving: LanServingController!
+    private(set) var telegram: TelegramController!
     @ObservationIgnored private var syncing = false
     @ObservationIgnored private var syncAgain = false
 
@@ -119,7 +120,16 @@ final class PhoneViewModel {
                           setStatus: { [weak self] in self?.status = $0 }, selectItem: { [weak self] in self?.openItem($0) },
                           ensurePhoneDevice: { [weak self] in await self?.ensurePhoneDevice() }, syncLibrary: { [weak self] in await self?.syncLibrary() },
                           onPairedChanged: { _ in })
-        serving = LanServingController(pairing: pairing, store: libraryStore, root: PhoneViewModel.libraryRoot().deletingLastPathComponent(), sources: appSources, configuration: config, catalog: makeClient)
+        let mediaProvider = AppMediaProvider(sources: appSources)
+        serving = LanServingController(pairing: pairing, store: libraryStore, root: PhoneViewModel.libraryRoot().deletingLastPathComponent(), media: mediaProvider, configuration: config, catalog: makeClient)
+        telegram = TelegramController(pairing: pairing, catalog: makeClient, store: libraryStore, media: mediaProvider, root: PhoneViewModel.libraryRoot().deletingLastPathComponent(),
+                                      appVisible: { [weak self] in self?.tv.appVisible ?? false }, setStatus: { [weak self] in self?.status = $0 }, refresh: { [weak self] in self?.refresh() },
+                                      didRemove: { [weak self] item in
+                                          guard let self else { return }
+                                          if tv.nowPlaying?.id == item.id { tv.clearNowPlaying() }
+                                          if selectedId == item.id { selectedId = nil }
+                                      },
+                                      syncLibrary: { [weak self] in await self?.syncLibrary() })
         tv.onTvsChanged = { [weak self] in self?.serving.start() }
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()
@@ -130,6 +140,7 @@ final class PhoneViewModel {
         if needsAccount { loadSignInOptions() } else { checkTerms(); Task { await tv.syncHouseholdTvs() } }
         startApprovalWatchIfSignedIn()
         serving.start()
+        if !needsAccount { telegram.resume() }
     }
 
     /// Everything TVs wait for appears as a card and a notification while the phone is signed in (no push: only while the app runs).
@@ -567,7 +578,7 @@ final class PhoneViewModel {
         closeWelcomeTour()
         switch step {
         case .tv: startAddTvFromTour()
-        case .telegram: tab = .browse      // Telegram sheet arrives with phase 7
+        case .telegram: tab = .browse; telegram.openSheet()
         case .drive: tab = .storage; cloud.cloudSheet = .manage
         case .subtitles: tab = .settings   // Subtitle accounts arrive with phase 8
         case .welcome, .ready: tab = .browse
@@ -622,6 +633,7 @@ final class PhoneViewModel {
         // Sign-out stopped the approval watcher; a TV asking for a private title must reach this phone again.
         startApprovalWatchIfSignedIn()
         serving.start()
+        telegram.resume()
         if setAside { status = L("ui_signed_in_the_previous_account_s_library_is_kept_aside_45bf31") }
         checkTerms()
         Task { await syncLibrary() }
@@ -716,6 +728,7 @@ final class PhoneViewModel {
 
     private func clearSignedInState() {
         serving.stop()
+        telegram.work.stop()
         pairing.clearAccount()
         tv.reset()
         items = []
@@ -766,6 +779,10 @@ final class PhoneViewModel {
 
     /// The server deleted the account: sign out completely and forget everything tied to it on this phone.
     private func wipeAfterAccountDeletion() async {
+        // The same local path as "Disconnect Telegram", minus the server call: the link died with the account.
+        if PhoneTelegram.existing() == nil && PhoneTelegram.wasLinked { _ = PhoneTelegram.session() }
+        telegram.wipeLocally()
+        telegram.clearDeletions()
         store.forgetHousehold()
         clearSignedInState()
         refresh()

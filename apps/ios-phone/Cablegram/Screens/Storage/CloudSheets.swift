@@ -236,7 +236,7 @@ private struct ConnectR2Sheet: View {
     }
 }
 
-private struct SecretField: View {
+struct SecretField: View {
     let label: String
     @Binding var text: String
     var supporting: String

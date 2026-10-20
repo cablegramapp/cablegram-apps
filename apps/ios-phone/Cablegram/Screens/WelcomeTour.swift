@@ -51,12 +51,13 @@ struct WelcomeTour: View {
     @State private var page = 0
     private let pages = tourPages()
 
-    /// Already set up: the page shows that instead of its setup button. The TV and cloud pages are wired up; Telegram and subtitles follow with phases 7 and 8.
+    /// Already set up: the page shows that instead of its setup button. The TV and cloud pages are wired up; subtitles follow with phase 8.
     private func connectedLabel(_ step: TourStep) -> String? {
         switch step {
         case .tv: viewModel.tv.paired ? L("ui_tv_connected_5710cb") : nil
+        case .telegram: viewModel.telegram.signedInHere ? L("ui_telegram_connected_815464") : nil
         case .drive: viewModel.cloud.cloudConnected ? L("ui_cloud_storage_connected_fe282c") : nil
-        default: nil   // Telegram and subtitles arrive with phases 7 and 8
+        default: nil   // Subtitles arrive with phase 8
         }
     }
 

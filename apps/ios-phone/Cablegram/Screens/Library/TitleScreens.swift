@@ -224,11 +224,16 @@ struct DetailOverlay: View {
                 }
             }
             let cloud = viewModel.cloud!
-            if item.transferStatus == transferFailed && !sourceUnavailable && item.sourceKind != "web" {
+            if item.transferStatus == transferFailed && item.webTransferError == telegramSaveFailed && !sourceUnavailable {
+                Button { viewModel.telegram.saveToTelegram(item) } label: { Text(key: "ui_retry_saving_to_telegram_eed237") }.buttonStyle(OutlinedButtonStyle())
+            } else if item.transferStatus == transferFailed && !sourceUnavailable && item.sourceKind != "web" {
                 Button { cloud.retrySave(item) } label: { Text(key: "ui_retry_cloud_save_6ac597") }.buttonStyle(OutlinedButtonStyle())
             } else if canSaveToCloud(item) {
                 Button { cloud.beginSaveToCloud(item) } label: { Text(key: "ui_save_a_cloud_copy_dbaf92") }
                     .buttonStyle(OutlinedButtonStyle()).accessibilityIdentifier(MaestroIds.detailSaveCloud)
+            }
+            if viewModel.telegram.signedInHere && canSaveToTelegram(item) && item.webTransferError != telegramSaveFailed {
+                Button { viewModel.telegram.saveToTelegram(item) } label: { Text(key: "ui_save_to_telegram_f6c595") }.buttonStyle(OutlinedButtonStyle())
             }
             if (item.cloudObjectPresent || item.ownCloudCopy) && !item.copied {
                 Button { cloud.downloadFromCloud(item) } label: { Text(key: "ui_download_to_phone_6265e3") }.buttonStyle(OutlinedButtonStyle())
@@ -273,7 +278,7 @@ struct FilterChipText: View {
     }
 }
 
-/// Remove from library / delete the file (Android `DeleteDialog`; the Telegram variants arrive with phase 7).
+/// Remove from library / delete the file (Android `DeleteDialog`); a Telegram title is hidden or deleted from the channel.
 struct DeleteConfirmation: ViewModifier {
     let viewModel: PhoneViewModel
 
@@ -284,13 +289,21 @@ struct DeleteConfirmation: ViewModifier {
             isPresented: Binding(get: { item != nil }, set: { if !$0 { viewModel.deleteTarget = nil } }),
             titleVisibility: .visible
         ) {
-            if let item {
+            if let item, item.sourceKind == "telegram" {
+                Button(L("ui_delete_permanently_280b10"), role: .destructive) { viewModel.deleteTarget = nil; viewModel.telegram.removeTitle(item, permanently: true) }
+                Button(L("ui_remove_from_library_8e7161")) { viewModel.deleteTarget = nil; viewModel.telegram.removeTitle(item, permanently: false) }
+                Button(L("ui_cancel_19766e"), role: .cancel) { viewModel.deleteTarget = nil }
+            } else if let item {
                 Button(L("ui_delete_file_permanently_7afb48"), role: .destructive) { viewModel.deleteFilePermanently(item) }
                 Button(L("ui_remove_from_library_8e7161")) { viewModel.removeFromLibrary(item) }
                 Button(L("ui_cancel_19766e"), role: .cancel) { viewModel.deleteTarget = nil }
             }
         } message: {
-            Text(key: "ui_remove_from_library_keeps_the_file_delete_file_permane_9b57b7")
+            if item?.sourceKind == "telegram" {
+                Text(verbatim: L("ui_this_video_is_stored_in_your_telegram_channel_not_on_t_c9f607") + L("ui_on_the_phone_and_every_tv_and_you_can_restore_it_later_69a576") + L("ui_from_the_channel_in_telegram_and_can_t_be_undone_732b94"))
+            } else {
+                Text(key: "ui_remove_from_library_keeps_the_file_delete_file_permane_9b57b7")
+            }
         }
     }
 }

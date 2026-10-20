@@ -7,6 +7,7 @@ struct BrowseScreen: View {
     let viewModel: PhoneViewModel
     @State private var picker: DocumentPicker.Mode?
     @State private var chooseSource = false
+    @State private var accountHelp = false
     @State private var folderToRemove: IndexedFolder?
 
     var body: some View {
@@ -17,7 +18,8 @@ struct BrowseScreen: View {
             if atRoots { roots } else { listing }
         }
         .phoneScreenBackground()
-        .onAppear { if viewModel.browseSource == .none { viewModel.ensureBrowseRoot() } }
+        .onAppear { if viewModel.browseSource == .none { viewModel.ensureBrowseRoot() }; viewModel.telegram.loadLink() }
+        .sheet(isPresented: $accountHelp) { TelegramAccountHelp { accountHelp = false }.background(Color.phoneBackground).preferredColorScheme(.dark) }
         .sheet(item: $picker) { mode in
             DocumentPicker(mode: mode) { urls in
                 if mode == .folder { urls.first.map(viewModel.addBrowseFolder) } else { viewModel.addPickedFiles(urls) }
@@ -67,7 +69,7 @@ struct BrowseScreen: View {
     private var roots: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // The Telegram library card (phase 7) goes here, as on Android.
+                TelegramLibraryCard(viewModel: viewModel)
                 SectionCard(title: L("ui_from_your_phone_624fe9")) {
                     Image(systemName: "folder").font(.system(size: 30)).foregroundStyle(Color.phoneAccent)
                     Text(key: "ui_make_it_a_movie_night_95d58f").font(PhoneFont.titleLarge).foregroundStyle(.white)
@@ -93,7 +95,7 @@ struct BrowseScreen: View {
                     }
                 }
                 SectionCard(title: L("ui_connected_storage_ead366")) {
-                    // Telegram (phase 7) and cloud storage (this phase, next step) are listed here.
+                    TelegramStorageEntry(viewModel: viewModel) { accountHelp = true }
                     Text(key: "ui_keep_a_cloud_copy_for_more_ways_to_watch_you_can_conne_2f290d").font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted)
                     Button { viewModel.selectTab(.storage) } label: { Text(key: "ui_manage_storage_654d16") }.buttonStyle(OutlinedButtonStyle())
                 }

@@ -78,7 +78,7 @@ private final class TDLibReceiver: @unchecked Sendable {
 
     private func loop() {
         while true {
-            guard let text = td_receive(5.0), let data = text.data(using: .utf8),
+            guard let raw = td_receive(5.0), case let data = Data(bytes: raw, count: strlen(raw)),
                   let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { continue }
             let id = (object["@client_id"] as? NSNumber)?.int32Value ?? 0
             lock.withLock { transports[id]?.transport }?.deliver(object)

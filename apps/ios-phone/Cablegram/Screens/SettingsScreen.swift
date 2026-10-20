@@ -286,5 +286,8 @@ struct TvTrustActions: View {
             Button { var trust = tv.trust; trust.expiresAt = expires.addingTimeInterval(TvTrustRules.extendBy); viewModel.tv.updateTvTrust(tv, trust) } label: { Text(key: "ui_extend_a_day_c30370") }
                 .buttonStyle(AccentTextButtonStyle())
         }
+        if tv.deviceId != nil, viewModel.telegram.link?.linked == true {
+            Button { viewModel.telegram.signOutTv(tv) } label: { Text(key: "ui_sign_out_of_telegram_1f1dc3") }.buttonStyle(AccentTextButtonStyle())
+        }
     }
 }

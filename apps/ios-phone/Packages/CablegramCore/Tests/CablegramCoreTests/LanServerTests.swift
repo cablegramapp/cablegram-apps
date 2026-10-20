@@ -261,3 +261,82 @@ import Testing
         #expect(try await f.get("/library").1.statusCode == 200, "closing the others frees the slots")
     }
 }
+
+/// `/telegram/<id>`: titles in the household's Telegram channel, streamed through this phone's session.
+@Suite(.serialized) struct TelegramRouteTests {
+    final class FakeTelegramMedia: TelegramMedia, @unchecked Sendable {
+        let bytes = Data((0..<5000).map { UInt8($0 % 249) })
+        private let lock = NSLock()
+        private(set) var released: [Int] = []
+        func resolve(uniqueId: String) async -> TelegramFileRef? { uniqueId == "abcdefgh1234" ? TelegramFileRef(fileId: 9, size: Int64(bytes.count), mime: "video/x-matroska") : nil }
+        func read(fileId: Int, position: Int64, want: Int) async -> Data? { bytes.subdata(in: Int(position)..<min(Int(position) + want, bytes.count)) }
+        func release(fileId: Int) { lock.withLock { released.append(fileId) } }
+    }
+
+    func router(telegram: TelegramMedia?) -> LanLibraryRouter {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("tgr-\(UUID().uuidString)")
+        let credentials = LanCredentials()
+        credentials.sync([PairedTv(pin: "1", name: "Den", capability: "capA", deviceId: "tvA")])
+        return LanLibraryRouter(store: LibraryStore(root: root), commands: CommandQueue(root: root), credentials: credentials, telegram: telegram)
+    }
+
+    func body(_ response: HTTPResponse) async -> Data {
+        guard case let .stream(_, source) = response.body else { if case let .data(d) = response.body { return d }; return Data() }
+        var all = Data()
+        while let piece = try? await source.next(limit: 700) { all.append(piece) }
+        source.close()
+        return all
+    }
+
+    @Test func serveARangeOfATelegramFile() async {
+        let media = FakeTelegramMedia()
+        let r = router(telegram: media)
+        let response = await r.handle(HTTPRequest(method: "GET", target: "/telegram/abcdefgh1234", headers: ["authorization": "Bearer capA", "range": "bytes=100-1999"]))
+        #expect(response.status == 206)
+        #expect(response.header("Content-Range") == "bytes 100-1999/5000" && response.header("Content-Type") == "video/x-matroska")
+        #expect(await body(response) == media.bytes.subdata(in: 100..<2000))
+        #expect(media.released == [9], "the download window is dropped when the stream ends")
+    }
+
+    @Test func noRangeIsTheWholeFileAndAMalformedRangeToo() async {
+        let media = FakeTelegramMedia()
+        let r = router(telegram: media)
+        for range in [nil, "bytes=oops", "items=1-2"] as [String?] {
+            var headers = ["authorization": "Bearer capA"]; headers["range"] = range
+            let response = await r.handle(HTTPRequest(method: "GET", target: "/telegram/abcdefgh1234", headers: headers))
+            #expect(response.status == 200 && response.header("Content-Range") == nil, "\(String(describing: range))")
+            #expect(await body(response) == media.bytes)
+        }
+    }
+
+    @Test func aRangePastTheEndIs416AndHeadHasNoBody() async {
+        let r = router(telegram: FakeTelegramMedia())
+        let past = await r.handle(HTTPRequest(method: "GET", target: "/telegram/abcdefgh1234", headers: ["authorization": "Bearer capA", "range": "bytes=5000-"]))
+        #expect(past.status == 416 && past.header("Content-Range") == "bytes */5000")
+        let head = await r.handle(HTTPRequest(method: "HEAD", target: "/telegram/abcdefgh1234", headers: ["authorization": "Bearer capA"]))
+        #expect(head.status == 200 && head.header("Content-Length") == "5000")
+        if case .empty = head.body {} else { Issue.record("HEAD must carry no body") }
+    }
+
+    @Test func unknownIdsMalformedIdsAndNoTelegramAre404() async {
+        let r = router(telegram: FakeTelegramMedia())
+        for id in ["unknownid123", "short", "has%20space%20in%20it", "../etc/passwd"] {
+            let status = await r.handle(HTTPRequest(method: "GET", target: "/telegram/\(id)", headers: ["authorization": "Bearer capA"])).status
+            #expect(status == 404, Comment(rawValue: id))
+        }
+        let none = router(telegram: nil)
+        #expect(await none.handle(HTTPRequest(method: "GET", target: "/telegram/abcdefgh1234", headers: ["authorization": "Bearer capA"])).status == 404)
+    }
+
+    @Test func aTelegramTitleNeedsACapabilityOrALink() async throws {
+        let r = router(telegram: FakeTelegramMedia())
+        #expect(await r.handle(HTTPRequest(method: "GET", target: "/telegram/abcdefgh1234")).status == 401)
+        let issued = await r.handle(HTTPRequest(method: "GET", target: "/links/telegram/abcdefgh1234", headers: ["authorization": "Bearer capA"]))
+        #expect(issued.status == 200)
+        guard case let .data(data) = issued.body, let link = (try JSONSerialization.jsonObject(with: data) as? [String: Any])?["link"] as? String else { Issue.record("no link"); return }
+        let played = await r.handle(HTTPRequest(method: "GET", target: "/telegram/abcdefgh1234?link=\(link)"))
+        #expect(played.status == 200)
+        _ = await body(played)
+        #expect(await r.handle(HTTPRequest(method: "GET", target: "/links/telegram/nope", headers: ["authorization": "Bearer capA"])).status == 404)
+    }
+}

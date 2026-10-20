@@ -84,7 +84,7 @@ public final class TdlibTelegramApi: TelegramApi, @unchecked Sendable {
 
     public func start(_ parameters: TgParameters) async throws {
         try await call("setTdlibParameters", [
-            "use_test_dc": false, "database_directory": parameters.databaseDirectory, "files_directory": parameters.filesDirectory,
+            "use_test_dc": parameters.useTestDc, "database_directory": parameters.databaseDirectory, "files_directory": parameters.filesDirectory,
             "database_encryption_key": parameters.databaseKey.base64EncodedString(), "use_file_database": true, "use_chat_info_database": true,
             "use_message_database": true, "use_secret_chats": false, "api_id": parameters.apiId, "api_hash": parameters.apiHash,
             "system_language_code": "en", "device_model": parameters.deviceModel, "system_version": parameters.systemVersion,

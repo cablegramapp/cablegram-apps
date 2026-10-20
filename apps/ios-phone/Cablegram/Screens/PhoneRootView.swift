@@ -24,6 +24,13 @@ struct PhoneRootView: View {
             }
         }
         .modifier(PrivacyPrompt(viewModel: viewModel))
+        .fullScreenCover(isPresented: Binding(get: { viewModel.telegram.sheetOpen && !viewModel.needsAccount }, set: { if !$0 { viewModel.telegram.closeSheet() } })) {
+            TelegramConnectSheet(viewModel: viewModel)
+        }
+        // A TV needs the two-step password: typed here, sealed to the TV's key (a sheet that opens by itself while Cablegram is open).
+        .sheet(item: Binding(get: { viewModel.needsAccount ? nil : viewModel.telegram.work.passwordRequest }, set: { if $0 == nil, let open = viewModel.telegram.work.passwordRequest { viewModel.telegram.work.dismissPasswordRequest(open.requestId) } })) { request in
+            TelegramPasswordSheet(request: request, work: viewModel.telegram.work, catalog: viewModel.catalog, token: { viewModel.pairing.accountToken })
+        }
         // A TV scanned before signing in waits here until there is an account to pair it to (CAB-62).
         .sheet(isPresented: Binding(get: { viewModel.tv.pendingPair != nil && !viewModel.needsAccount && !viewModel.termsRequired }, set: { if !$0 { viewModel.tv.cancelPendingPair() } })) {
             PairTrustDialog(viewModel: viewModel)
@@ -46,6 +53,7 @@ struct LibraryShell: View {
             AddedVideosCard(viewModel: viewModel)
             PrepareCard(viewModel: viewModel)
             if !viewModel.tv.pendingApprovals.isEmpty { ApprovalCard(viewModel: viewModel) }
+            TelegramApprovalCard(work: viewModel.telegram.work)
             TransferCard(viewModel: viewModel)
             RemoteBar(viewModel: viewModel)
             ServingBanner(serving: viewModel.serving)

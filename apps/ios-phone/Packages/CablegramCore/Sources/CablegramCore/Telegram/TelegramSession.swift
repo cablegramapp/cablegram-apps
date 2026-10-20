@@ -31,7 +31,7 @@ public enum TelegramRole: Sendable { case phone, tv }
 @MainActor @Observable
 public final class TelegramSession {
     /// The Telegram layer this session signs in with; the library sync and file reader use it too.
-    @ObservationIgnored public let api: any TelegramApi
+    @ObservationIgnored public nonisolated let api: any TelegramApi
     public private(set) var state: TelegramState = .starting
     /// True while a phone number, code or password is being checked.
     public private(set) var busy = false

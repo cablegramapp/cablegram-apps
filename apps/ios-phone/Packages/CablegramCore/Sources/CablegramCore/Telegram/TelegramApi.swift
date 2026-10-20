@@ -88,7 +88,10 @@ public struct TgParameters: Sendable {
     public var deviceModel: String
     public var systemVersion: String
     public var applicationVersion: String
-    public init(databaseDirectory: String, filesDirectory: String, databaseKey: Data, apiId: Int, apiHash: String, deviceModel: String, systemVersion: String, applicationVersion: String) {
+    /// Telegram's test servers (debug builds only, for end-to-end checks without a real account).
+    public var useTestDc: Bool
+    public init(databaseDirectory: String, filesDirectory: String, databaseKey: Data, apiId: Int, apiHash: String, deviceModel: String, systemVersion: String, applicationVersion: String, useTestDc: Bool = false) {
+        self.useTestDc = useTestDc
         self.databaseDirectory = databaseDirectory; self.filesDirectory = filesDirectory; self.databaseKey = databaseKey; self.apiId = apiId
         self.apiHash = apiHash; self.deviceModel = deviceModel; self.systemVersion = systemVersion; self.applicationVersion = applicationVersion
     }

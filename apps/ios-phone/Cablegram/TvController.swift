@@ -219,6 +219,9 @@ final class TvController {
     }
 
     /// Everything this phone holds about TVs, when the account signs out or is deleted.
+    /// The title being played was removed from the library.
+    func clearNowPlaying() { nowPlaying = nil }
+
     func reset() {
         followTask?.cancel(); approvalTask?.cancel(); approvalTask = nil
         tvs = []; paired = false; nowPlaying = nil; paused = false; remoteStatus = nil; pendingApprovals = []

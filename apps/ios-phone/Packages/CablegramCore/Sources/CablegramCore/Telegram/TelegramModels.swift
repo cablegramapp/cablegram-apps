@@ -51,7 +51,8 @@ public struct TelegramDeletionOrder: Sendable, Equatable {
 }
 
 /// `GET /api/telegram/tv-password-requests/pending`: a TV waiting for the Telegram two-step password.
-public struct PendingTvPasswordRequest: Sendable, Equatable {
+public struct PendingTvPasswordRequest: Sendable, Equatable, Identifiable {
+    public var id: String { requestId }
     public var requestId: String
     /// The TV that asked; its sign-in is approved without asking again once the password went to it.
     public var tvDeviceId: String?

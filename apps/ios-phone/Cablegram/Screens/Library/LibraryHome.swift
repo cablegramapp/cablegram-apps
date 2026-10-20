@@ -307,6 +307,7 @@ struct ItemMenu: View {
         Button { viewModel.tv.playOnTv(item) } label: { Text(key: "ui_play_436e61") }
             .disabled(!(item.sourceAvailable != false || item.cloudObjectPresent || item.telegramCopy || item.ownCloudCopy || item.sourceKind == "telegram"))
         if canSaveToCloud(item) { Button { viewModel.cloud.beginSaveToCloud(item) } label: { Text(key: "ui_save_to_cloud_0fd280") } }
+        if canSaveToTelegram(item) && viewModel.telegram.signedInHere { Button { viewModel.telegram.saveToTelegram(item) } label: { Text(key: "ui_save_to_telegram_f6c595") } }
         if (item.cloudObjectPresent || item.ownCloudCopy) && !item.copied { Button { viewModel.cloud.downloadFromCloud(item) } label: { Text(key: "ui_download_from_cloud_14cd0d") } }
         if canRemoveLocalCopy(item) { Button { viewModel.cloud.askFreeUp(item) } label: { Text(key: "ui_free_up_phone_space_6d089c") } }
         if canRemoveOwnCloudCopy(item) { Button { viewModel.cloud.askRemoveCloudCopy(item) } label: { Text(key: "ui_remove_cloud_copy_0b8eaf") } }

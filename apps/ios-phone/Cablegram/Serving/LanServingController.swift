@@ -44,11 +44,11 @@ final class LanServingController {
     @ObservationIgnored private var backgroundTask = UIBackgroundTaskIdentifier.invalid
     @ObservationIgnored private let liveActivity = ServingLiveActivityController()
 
-    init(pairing: PairingStore, store: LibraryStore, root: URL, sources: AppSources, configuration: AppConfiguration, catalog: @escaping @Sendable () -> CatalogClient) {
+    init(pairing: PairingStore, store: LibraryStore, root: URL, media: AppMediaProvider, configuration: AppConfiguration, catalog: @escaping @Sendable () -> CatalogClient) {
         self.pairing = pairing; self.store = store; self.root = root; self.catalog = catalog
         lifetime = LanLibraryLifetime(idleTimeout: min(Double(configuration.lanIdleTimeoutMs) / 1000, Self.backgroundGrace))
         lanHostOverride = configuration.lanHostOverride.isEmpty ? nil : configuration.lanHostOverride
-        media = AppMediaProvider(sources: sources)
+        self.media = media
         network.observe { [weak self] type in Task { @MainActor in self?.networkChanged(type) } }
         liveActivity.endStale()
     }
@@ -103,7 +103,10 @@ final class LanServingController {
         }))
         credentials.sync(tvs)
         let lifetime = self.lifetime
-        let router = LanLibraryRouter(store: store, commands: CommandQueue(root: root), credentials: credentials, privatePasses: passes, media: media,
+        let pairing = self.pairing
+        let telegram = PhoneTelegramMedia(removed: RemovedTelegramSources(client: { client }, token: { pairing.accountToken }),
+                                          chatId: { guard let token = pairing.accountToken else { return nil }; return await client.telegramLink(token: token)?.chatId })
+        let router = LanLibraryRouter(store: store, commands: CommandQueue(root: root), credentials: credentials, privatePasses: passes, media: media, telegram: telegram,
                                       onTvRequest: { lifetime.tvRequest() }, onStreamStarted: { [weak self] in lifetime.streamStarted(); Task { @MainActor in self?.streamsChanged() } },
                                       onStreamFinished: { [weak self] in lifetime.streamFinished(); Task { @MainActor in self?.streamsChanged() } })
         do {
