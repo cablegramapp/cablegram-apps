@@ -16,9 +16,12 @@ struct CablegramApp: App {
         #endif
     }
 
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
             PhoneRootView(viewModel: viewModel)
+                .onChange(of: scenePhase) { _, phase in if phase == .active { viewModel.importSharedInbox() } }
                 .tint(.phoneAccent)
                 .onOpenURL { GoogleSignInURLHandler.handle($0) }
         }

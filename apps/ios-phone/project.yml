@@ -34,6 +34,8 @@ targets:
       - package: CablegramCore
       - package: GoogleSignIn
         product: GoogleSignIn
+      - target: ShareExtension
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_BUNDLE_IDENTIFIER)
@@ -50,6 +52,20 @@ targets:
         outputFiles:
           - $(SRCROOT)/Cablegram/Resources/legal/LICENSE
           - $(SRCROOT)/Cablegram/Resources/legal/NOTICE
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ShareExtension
+      - path: Cablegram/Shared
+      - path: Cablegram/Resources/Localizable.xcstrings
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_BUNDLE_IDENTIFIER).share
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ShareExtension/Info.plist
+        CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+        SKIP_INSTALL: YES
   CablegramTests:
     type: bundle.unit-test
     platform: iOS

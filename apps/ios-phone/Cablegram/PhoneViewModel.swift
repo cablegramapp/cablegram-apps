@@ -104,6 +104,7 @@ final class PhoneViewModel {
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()
         recoverSharedImports()
+        importSharedInbox()
         if needsAccount { loadSignInOptions() } else { checkTerms() }
     }
 
@@ -420,6 +421,39 @@ final class PhoneViewModel {
         pendingPrivacyItems.append(contentsOf: imported.compactMap { store.get($0.id) })
         showNextPrivacyPrompt()
         Task { await syncLibrary() }
+    }
+
+    /// Videos shared into Cablegram from other apps (Share Extension) are copied into the library here, when the app is open.
+    func importSharedInbox() {
+        let pending = SharedInbox.pending()
+        guard !pending.isEmpty, !busy else { return }
+        Task {
+            busy = true
+            defer { busy = false }
+            var imported: [LibraryItem] = []
+            let store = self.store
+            for share in pending {
+                status = L("ui_copying_26b256", share.entry.displayName)
+                let item = await Task.detached { try? store.importFile(from: share.url, displayName: share.entry.displayName) { url in
+                    // The probe runs off the main thread on a file that is already local, so reading the duration directly is fine.
+                    let seconds = AVURLAsset(url: url).duration.seconds
+                    return LibraryStore.ImportProbe(durationSeconds: seconds.isFinite ? Int(seconds) : nil)
+                } }.value
+                SharedInbox.remove(share)
+                if let item {
+                    if let jpeg = await fileFrameJPEG(store.videoFile(item)) { store.setPosterFromFrame(item.id, jpeg: jpeg) }
+                    imported.append(store.get(item.id) ?? item)
+                }
+            }
+            refresh()
+            if imported.isEmpty { status = L("ui_could_not_import_that_file_3e92a3"); return }
+            recentlyAddedIds = imported.map(\.id)
+            status = L(imported.count == 1 ? "ui_video_added_08c7ee" : "ui_videos_added_3d5b7a")
+            selectTab(.library)
+            pendingPrivacyItems.append(contentsOf: imported)
+            showNextPrivacyPrompt()
+            Task { await syncLibrary() }
+        }
     }
 
     func dismissAddedVideos() { recentlyAddedIds = [] }
