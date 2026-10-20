@@ -329,6 +329,194 @@
           }
         }
       }
+    },
+    "ios_serving_keep_open": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أبقِ Cablegram مفتوحًا أثناء تشغيل التلفزيون لمقاطع الفيديو من هذا الـ iPhone."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lass Cablegram geöffnet, solange dein Fernseher Videos von diesem iPhone abspielt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Cablegram open while your TV plays videos from this iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén Cablegram abierto mientras tu TV reproduce vídeos de este iPhone."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تا وقتی تلویزیون ویدیوهای این آیفون را پخش می‌کند، Cablegram را باز نگه دارید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni Cablegram aperto mentre la TV riproduce video da questo iPhone."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не закрывайте Cablegram, пока телевизор воспроизводит видео с этого iPhone."
+          }
+        }
+      }
+    },
+    "ios_serving_relay_mb": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بث عبر المُرحِّل · %1$@ ميغابايت"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streaming über Relay · %1$@ MB"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streaming via relay · %1$@ MB"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transmitiendo por relé · %1$@ MB"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پخش از طریق رله · %1$@ مگابایت"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streaming tramite relay · %1$@ MB"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Передача через ретранслятор · %1$@ МБ"
+          }
+        }
+      }
+    },
+    "ios_serving_relay_mobile": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بث عبر المُرحِّل · %1$@ ميغابايت من بيانات الجوال"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streaming über Relay · %1$@ MB mobile Daten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streaming via relay · %1$@ MB of mobile data"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transmitiendo por relé · %1$@ MB de datos móviles"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "پخش از طریق رله · %1$@ مگابایت داده همراه"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streaming tramite relay · %1$@ MB di dati mobili"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Передача через ретранслятор · %1$@ МБ мобильных данных"
+          }
+        }
+      }
+    },
+    "ios_serving_to": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ البث إلى %1$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird an %1$@ übertragen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Serving to %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enviando a %1$@"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "در حال پخش برای %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trasmissione a %1$@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Передача на %1$@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -18,6 +18,7 @@ enum Approvals {
         }
         UNUserNotificationCenter.current().setNotificationCategories([
             category(playbackCategory, allow: L("ui_allow_once_168511")), category(profileCategory, allow: L("ui_allow_e213c1")),
+            RelayConsentNotice.categoryDefinition,
         ])
     }
 
@@ -49,8 +50,15 @@ enum Approvals {
 /// Handles Allow / Not now from an approval notification.
 final class ApprovalNotificationHandler: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
     @MainActor static var respond: ((PendingApproval, Bool) -> Void)?
+    /// Answers the mobile-data question of the relay (Allow this time / Always allow / Don't allow).
+    @MainActor static var relayAnswer: ((String) -> Void)?
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        if response.notification.request.content.categoryIdentifier == RelayConsentNotice.category {
+            let action = response.actionIdentifier
+            await MainActor.run { Self.relayAnswer?(action) }
+            return
+        }
         let info = response.notification.request.content.userInfo
         guard let attemptId = info["attempt_id"] as? String else { return }
         let kind = ApprovalKind(rawValue: info["kind"] as? String ?? "") ?? .playback

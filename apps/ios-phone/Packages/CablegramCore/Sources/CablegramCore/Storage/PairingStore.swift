@@ -123,6 +123,18 @@ public final class PairingStore: AccountTokens, @unchecked Sendable {
         set { defaults.set(newValue, forKey: "import_destination") }
     }
 
+    /// Spec 003: serving relay streams over mobile data (default: ask).
+    public var relayMobileData: RelayMobileDataPolicy {
+        get { RelayMobileDataPolicy(rawValue: defaults.string(forKey: "relay_mobile_data") ?? "") ?? .ask }
+        set { defaults.set(newValue.rawValue, forKey: "relay_mobile_data") }
+    }
+
+    /// "Allow this time": mobile-data relay is allowed until this time (seconds since 1970) or until the phone leaves mobile data.
+    public var relayMobileAllowedUntil: TimeInterval {
+        get { defaults.double(forKey: "relay_mobile_allowed_until") }
+        set { defaults.set(newValue, forKey: "relay_mobile_allowed_until") }
+    }
+
     /// Signing out or deleting the account: forget the credentials (preferences such as the tour stay).
     public func clearAccount() {
         accountToken = nil

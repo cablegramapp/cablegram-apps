@@ -61,6 +61,7 @@ final class PhoneViewModel {
     private(set) var artworkEditor: ArtworkEditorController!
     private(set) var cloud: CloudController!
     private(set) var tv: TvController!
+    private(set) var serving: LanServingController!
     @ObservationIgnored private var syncing = false
 
     // Delete account
@@ -85,6 +86,7 @@ final class PhoneViewModel {
         welcomeTourOpen = !pairing.welcomeTourSeen
         legacyRemote = pairing.legacyRemote
         castConnect = pairing.castConnect
+        relayMobileData = pairing.relayMobileData
         store = libraryStore
         bookmarks = BookmarkStore(root: PhoneViewModel.libraryRoot().deletingLastPathComponent())
         importDestination = pairing.importDestination
@@ -115,7 +117,9 @@ final class PhoneViewModel {
         tv = TvController(pairing: pairing, catalog: makeClient, store: libraryStore, items: { [weak self] in self?.items ?? [] },
                           setStatus: { [weak self] in self?.status = $0 }, selectItem: { [weak self] in self?.openItem($0) },
                           ensurePhoneDevice: { [weak self] in await self?.ensurePhoneDevice() }, syncLibrary: { [weak self] in await self?.syncLibrary() },
-                          onPairedChanged: { _ in /* the LAN server starts and stops with the first and last TV in phase 6 */ })
+                          onPairedChanged: { _ in })
+        serving = LanServingController(pairing: pairing, store: libraryStore, root: PhoneViewModel.libraryRoot().deletingLastPathComponent(), sources: appSources, catalog: makeClient)
+        tv.onTvsChanged = { [weak self] in self?.serving.start() }
         store.onWrite = { [weak self] in Task { @MainActor in self?.refresh() } }
         refresh()
         recoverSharedImports()
@@ -124,6 +128,7 @@ final class PhoneViewModel {
         cloud.resumeSaves()
         if needsAccount { loadSignInOptions() } else { checkTerms(); Task { await tv.syncHouseholdTvs() } }
         startApprovalWatchIfSignedIn()
+        serving.start()
     }
 
     /// Everything TVs wait for appears as a card and a notification while the phone is signed in (no push: only while the app runs).
@@ -518,6 +523,13 @@ final class PhoneViewModel {
 
     // MARK: Preferences
 
+    private(set) var relayMobileData: RelayMobileDataPolicy = .ask
+
+    func updateRelayMobileData(_ policy: RelayMobileDataPolicy) {
+        pairing.relayMobileData = policy
+        relayMobileData = policy
+    }
+
     func updateCastConnect(_ value: Bool) {
         pairing.castConnect = value
         castConnect = value
@@ -687,6 +699,7 @@ final class PhoneViewModel {
     }
 
     private func clearSignedInState() {
+        serving.stop()
         pairing.clearAccount()
         tv.reset()
         items = []

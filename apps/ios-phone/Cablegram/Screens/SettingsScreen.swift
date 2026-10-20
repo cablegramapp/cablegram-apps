@@ -127,9 +127,26 @@ struct SettingsScreen: View {
                 PrefSwitch(key: "ui_transfer_only_while_charging_645032", isOn: Binding(get: { viewModel.transferWhileCharging }, set: { viewModel.transferWhileCharging = $0 }))
                 Divider().overlay(Color.phoneOutline)
                 PrefSwitch(key: "ui_sync_library_titles_b3b6cc", isOn: Binding(get: { viewModel.syncLibraryToApi }, set: { viewModel.syncLibraryToApi = $0 }))
+                Divider().overlay(Color.phoneOutline)
+                relayPolicy
             }
         case .tvs: tvsPage
         case .profiles, .collections, .connection: EmptyView()
+        }
+    }
+
+    /// "Relay over mobile data": who pays for a stream the TV could not take over Wi-Fi.
+    private var relayPolicy: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(key: "ui_relay_over_mobile_data_a8efaa").foregroundStyle(.white)
+            Text(key: "ui_when_your_tv_can_t_reach_this_phone_on_wi_fi_cablegram_b99318").font(.footnote).foregroundStyle(Color.phoneMuted)
+            Picker("", selection: Binding(get: { viewModel.relayMobileData }, set: { viewModel.updateRelayMobileData($0) })) {
+                Text(key: "ui_ask_b8c209").tag(RelayMobileDataPolicy.ask)
+                Text(key: "ui_always_de9f05").tag(RelayMobileDataPolicy.always)
+                Text(key: "ui_never_6300ef").tag(RelayMobileDataPolicy.never)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("relay_mobile_data")
         }
     }
 

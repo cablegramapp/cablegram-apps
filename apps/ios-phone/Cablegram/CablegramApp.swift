@@ -24,10 +24,12 @@ struct CablegramApp: App {
             PhoneRootView(viewModel: viewModel)
                 .onChange(of: scenePhase) { _, phase in
                     viewModel.tv.appVisible = phase == .active
+                    if phase != .inactive { viewModel.serving.setForeground(phase == .active) }
                     if phase == .active { viewModel.importSharedInbox(); viewModel.tv.refreshPendingApprovals() }
                 }
                 .onAppear {
                     viewModel.tv.appVisible = true
+                    ApprovalNotificationHandler.relayAnswer = { action in RelayConsentNotice.apply(action, pairing: viewModel.pairing) }
                     ApprovalNotificationHandler.respond = { approval, allow in viewModel.tv.respondToApproval(approval, approve: allow, cancelNotification: Approvals.cancel) }
                 }
                 // A TV's QR code opens the app with https://app.cablegram.app/?pair=… (universal link, CAB-62).

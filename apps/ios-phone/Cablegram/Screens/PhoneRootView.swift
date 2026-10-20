@@ -48,6 +48,7 @@ struct LibraryShell: View {
             if !viewModel.tv.pendingApprovals.isEmpty { ApprovalCard(viewModel: viewModel) }
             TransferCard(viewModel: viewModel)
             RemoteBar(viewModel: viewModel)
+            ServingBanner(serving: viewModel.serving)
             tabs(selection)
         }
         .phoneScreenBackground()

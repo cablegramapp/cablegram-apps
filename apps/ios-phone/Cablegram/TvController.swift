@@ -33,6 +33,8 @@ final class TvController {
     @ObservationIgnored private let ensurePhoneDevice: () async -> Void
     @ObservationIgnored private let syncLibrary: () async -> Void
     @ObservationIgnored private let onPairedChanged: (Bool) -> Void
+    /// Called whenever the list of paired TVs changes, so the media server accepts exactly the TVs that are paired (CAB-37).
+    @ObservationIgnored var onTvsChanged: () -> Void = {}
     @ObservationIgnored private var householdTvsCache: [MeDevice]?
     @ObservationIgnored private var commandGeneration = 0
     @ObservationIgnored private var titleStartToken = 0
@@ -99,6 +101,7 @@ final class TvController {
             if let capability = claim.lanCapability { pairing.attachCapability(pin: parsed.pin, capability: capability) }
             if let deviceId = claim.deviceId { pairing.attachDeviceId(pin: parsed.pin, deviceId: deviceId) }
             tvs = pairing.tvs
+            onTvsChanged()
             addingTv = false
             tvName = pairing.tvName
             paired = true
@@ -142,6 +145,7 @@ final class TvController {
         let wasPaired = paired
         pairing.tvs = merged
         tvs = merged
+        onTvsChanged()
         tvName = pairing.tvName
         paired = !merged.isEmpty
         if paired != wasPaired { onPairedChanged(paired) }
@@ -167,6 +171,7 @@ final class TvController {
     private func forgetTv(_ tv: PairedTv) {
         pairing.removeTv(pin: tv.pin)
         tvs = pairing.tvs
+        onTvsChanged()
         if pairing.tvs.isEmpty {
             paired = false
             nowPlaying = nil

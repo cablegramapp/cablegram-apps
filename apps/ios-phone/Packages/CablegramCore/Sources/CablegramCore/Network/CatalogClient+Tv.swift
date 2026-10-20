@@ -177,4 +177,29 @@ extension CatalogClient {
             return .known(state: body["status"] as? String ?? "", reason: body["reason"] as? String, expiresInMs: (body["expires_in_ms"] as? NSNumber)?.int64Value)
         }
     }
+
+    // MARK: Serving (LAN capability, private passes, revocation)
+
+    /// The TV device id owning `capability` in this household; nil when unknown or offline.
+    public func verifyLanCapability(token: String, capability: String) async -> String? {
+        let reply = await send("POST", "/api/lan-capabilities/verify", token: token, json: ["capability": capability])
+        return reply.isSuccess ? reply.object?["tv_device_id"] as? String : nil
+    }
+
+    /// Confirms a TV's LAN pass for a private title; nil when invalid or offline.
+    public func verifyLanPass(token: String, pass: String) async -> VerifiedPass? {
+        let reply = await send("POST", "/api/playback/lan-passes/verify", token: token, json: ["pass": pass])
+        guard reply.isSuccess, let body = reply.object, let expires = body["expires_at"] as? String, let date = parseISO8601(expires) else { return nil }
+        return VerifiedPass(originIdentities: Set(body["origin_identities"] as? [String] ?? []), tvDeviceId: body["tv_device_id"] as? String, expiresAt: date)
+    }
+
+    /// R-2: the household devices the control plane reports revoked (empty when offline or on error).
+    public func fetchRevokedDeviceIds(token: String) async -> Set<String> {
+        let reply = await send("GET", "/api/me", token: token)
+        guard reply.isSuccess, let devices = reply.object?["devices"] as? [[String: Any]] else { return [] }
+        return Set(devices.compactMap { dict in
+            guard let id = dict["id"] as? String, let revoked = dict["revoked_at"] as? String, !revoked.isEmpty else { return nil }
+            return id
+        })
+    }
 }
