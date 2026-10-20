@@ -12,9 +12,14 @@ public enum TvCommandSender {
     /// Sends to the TV selected on this phone. A selected TV the account no longer lists fails instead of falling back to another TV.
     /// `household` is the caller's cached list; it is refreshed from the server only when it does not already contain the selected TV.
     public static func send(pairing: PairingStore, client: CatalogClient, command: String, videoId: String? = nil, arguments: [String: any Sendable] = [:],
-                            household: [MeDevice]? = nil) async -> Result {
+                            household: [MeDevice]? = nil, castTargetDeviceId: String? = nil) async -> Result {
         guard let token = pairing.accountToken, !token.isEmpty else { return .failed("Sign in to use the remote.") }
-        let selected = pairing.tvs.last
+        // A Cast launch goes to the TV the Cast device belongs to, which need not be the last selected one.
+        let selected: PairedTv?
+        if let castTargetDeviceId {
+            guard let match = pairing.tvs.first(where: { $0.deviceId == castTargetDeviceId }) else { return .failed("Choose a paired TV in Settings.") }
+            selected = match
+        } else { selected = pairing.tvs.last }
         var list = household
         // A failed refresh means offline (nil), not the stale cache: offline sends to the stored device ID, and the server refuses a
         // revoked TV. A title start always asks afresh which TVs are on.
@@ -23,7 +28,7 @@ public enum TvCommandSender {
             list = await client.householdTvs(token: token)
         }
         let target: (deviceId: String, name: String, offline: Bool, switchedFrom: String?)
-        switch resolveTarget(selected: selected, household: list) {
+        switch castTargetDeviceId != nil ? castCommandTarget(selected, household: list) : resolveTarget(selected: selected, household: list) {
         case .failed(let message): return .failed(message)
         case .target(let id, let name, let offline, let from): target = (id, name, offline, from)
         }
