@@ -3,7 +3,7 @@
 MARKETING_VERSION = 0.3.0
 CURRENT_PROJECT_VERSION = 1
 PRODUCT_BUNDLE_IDENTIFIER = app.cablegram.phone
-DEVELOPMENT_TEAM =
+DEVELOPMENT_TEAM = 3S2K758XUS
 API_BASE = https:/$()/api.cablegram.app/
 WEB_APP_BASE = https:/$()/app.cablegram.app
 // Empty hides Cast (same as Android CABLEGRAM_CAST_APP_ID).
