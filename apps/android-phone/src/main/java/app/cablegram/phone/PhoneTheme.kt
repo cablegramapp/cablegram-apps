@@ -17,6 +17,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,6 +31,15 @@ val VlcPanel = Color(0xFF1B1D22)
 val VlcMuted = Color(0xFFAAADB7)
 val PhoneOutline = Color(0xFF34363E)
 val PhoneSuccess = Color(0xFFA5CBB1)
+
+/**
+ * The headline styles pull Latin letters together (a negative letter spacing). Arabic and Persian letters join, so any spacing, even a
+ * negative one, breaks the joins and makes the line measure wider than it draws: a heading wrapped inside a word with room to spare.
+ */
+internal fun phoneTypography(joinedScript: Boolean): Typography = if (!joinedScript) PhoneTypography else PhoneTypography.run {
+    fun TextStyle.joined() = copy(letterSpacing = TextUnit.Unspecified)
+    copy(headlineLarge = headlineLarge.joined(), headlineMedium = headlineMedium.joined(), headlineSmall = headlineSmall.joined())
+}
 
 private val PhoneTypography = Typography(
     headlineLarge = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 34.sp, lineHeight = 40.sp, letterSpacing = (-1).sp),
@@ -64,7 +76,8 @@ fun PhoneTheme(content: @Composable () -> Unit) {
             surfaceContainer = VlcPanel,
             surfaceContainerHigh = Color(0xFF25272E),
         ),
-        typography = PhoneTypography,
+        // Arabic and Persian are the app's right-to-left languages, and the cursive ones.
+        typography = phoneTypography(joinedScript = LocalLayoutDirection.current == LayoutDirection.Rtl),
         shapes = Shapes(
             small = RoundedCornerShape(12.dp),
             medium = RoundedCornerShape(18.dp),
