@@ -222,7 +222,7 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
       state: "playing" | "paused" | "stopped" | "completed") {
       await call(`api/profiles/${profileId}/progress/${itemId}`, {
         method: "PUT",
-        body: JSON.stringify({ position_seconds: Math.floor(positionSeconds), duration_seconds: durationSeconds, state,
+        body: JSON.stringify({ position_seconds: Math.floor(positionSeconds), duration_seconds: durationSeconds === undefined ? undefined : Math.round(durationSeconds), state,
           client_updated_at: new Date().toISOString() }),
       });
     },

@@ -1005,7 +1005,7 @@ private data class CatalogItemDto(
     @kotlinx.serialization.SerialName("created_at") val createdAt: String? = null,
     @kotlinx.serialization.SerialName("in_my_list") val inMyList: Boolean = false,
     val title: String? = null,
-    @kotlinx.serialization.SerialName("duration_seconds") val durationSeconds: Int? = null,
+    @kotlinx.serialization.SerialName("duration_seconds") @kotlinx.serialization.Serializable(with = WholeSecondsSerializer::class) val durationSeconds: Int? = null,
     @kotlinx.serialization.SerialName("poster_url") val posterUrl: String? = null,
     @kotlinx.serialization.SerialName("backdrop_url") val backdropUrl: String? = null,
     val genres: List<String> = emptyList(),
@@ -1035,10 +1035,20 @@ private data class CatalogSourceDto(
     @kotlinx.serialization.SerialName("archive_state") val archiveState: String? = null,
 )
 
+/** Reads a seconds value that may arrive fractional (the web TV reports the player's time, e.g. 3662.465) as whole seconds. */
+private object WholeSecondsSerializer : kotlinx.serialization.KSerializer<Int> {
+    override val descriptor = kotlinx.serialization.descriptors.PrimitiveSerialDescriptor(
+        "WholeSeconds", kotlinx.serialization.descriptors.PrimitiveKind.INT,
+    )
+    override fun deserialize(decoder: kotlinx.serialization.encoding.Decoder): Int =
+        kotlin.math.round(decoder.decodeDouble()).toInt()
+    override fun serialize(encoder: kotlinx.serialization.encoding.Encoder, value: Int) = encoder.encodeInt(value)
+}
+
 @Serializable
 private data class CatalogProgressDto(
-    @kotlinx.serialization.SerialName("position_seconds") val positionSeconds: Int? = null,
-    @kotlinx.serialization.SerialName("duration_seconds") val durationSeconds: Int? = null,
+    @kotlinx.serialization.SerialName("position_seconds") @kotlinx.serialization.Serializable(with = WholeSecondsSerializer::class) val positionSeconds: Int? = null,
+    @kotlinx.serialization.SerialName("duration_seconds") @kotlinx.serialization.Serializable(with = WholeSecondsSerializer::class) val durationSeconds: Int? = null,
     val state: String? = null,
 )
 
