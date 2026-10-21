@@ -116,4 +116,16 @@ class CatalogClientCommandTest {
         }
         assertTrue(server.requestCount == 2)
     }
+
+    @Test
+    fun `renaming a TV patches its display name`() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"ok":true}"""))
+        assertTrue(runBlocking { client().renameDevice("t", "tv-1", "Living room") })
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/devices/tv-1", request.path)
+        assertEquals("Living room", Json.parseToJsonElement(request.body.readUtf8()).jsonObject["display_name"]?.jsonPrimitive?.content)
+        server.enqueue(MockResponse().setResponseCode(403))
+        assertEquals(false, runBlocking { client().renameDevice("t", "tv-1", "x") })
+    }
 }

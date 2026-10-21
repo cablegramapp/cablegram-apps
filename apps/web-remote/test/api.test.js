@@ -175,3 +175,13 @@ test("profile lock: list and answer TV profile requests, read and change the loc
   assert.equal(fetch.calls[4].method, "PATCH");
   assert.deepEqual(fetch.calls[4].body, { profile_lock: false });
 });
+
+test("renaming a TV patches its display name, trimmed and capped", async () => {
+  const fetch = fakeFetch([200, { access_token: "a", refresh_token: "r" }], [200, { ok: true }]);
+  const api = createApi({ base: BASE, storage: memoryStorage(), fetch });
+  await api.verifyCode("a@b.co", "123456");
+  await api.renameTv("tv-1", `  ${"x".repeat(100)}  `);
+  assert.equal(fetch.calls[1].url, `${BASE}/api/devices/tv-1`);
+  assert.equal(fetch.calls[1].method, "PATCH");
+  assert.equal(fetch.calls[1].body.display_name.length, 80);
+});

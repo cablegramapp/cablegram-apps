@@ -146,4 +146,12 @@ class RemoteCommandsTest {
     fun `the mini-player is hidden with nothing playing or starting`() {
         assertNull(miniPlayerLines(null, null, "Den", "Done on Den"))
     }
+
+    @Test
+    fun `a TV paired without a name takes the server's name, and a named TV keeps its own`() {
+        val local = listOf(PairedTv(pin = "1", name = "TV", deviceId = "tv-1"), PairedTv(pin = "2", name = "Den", deviceId = "tv-2"), PairedTv(pin = "3", name = "TV"))
+        val server = listOf(device("tv-1", "Google sdk_atv"), device("tv-2", "Living room"))
+        assertEquals(listOf("Google sdk_atv", "Den", "TV"), adoptServerTvNames(local, server).map { it.name })
+        assertEquals("TV", adoptServerTvNames(local, listOf(device("tv-1", "  "))).first().name)
+    }
 }

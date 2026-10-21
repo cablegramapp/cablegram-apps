@@ -1,0 +1,147 @@
+{
+  "sourceLanguage": "en",
+  "version": "1.0",
+  "strings": {
+    "NSCameraUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستخدم Cablegram الكاميرا لمسح رمز الإقران المعروض على تلفزيونك."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram verwendet die Kamera, um den auf deinem Fernseher angezeigten Kopplungscode zu scannen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram uses the camera to scan the pairing code shown on your TV."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram usa la cámara para escanear el código de vinculación que aparece en tu TV."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram از دوربین برای اسکن کد جفت‌سازی نمایش‌داده‌شده روی تلویزیون شما استفاده می‌کند."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram usa la fotocamera per scansionare il codice di abbinamento mostrato sulla TV."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram использует камеру, чтобы сканировать код сопряжения на экране телевизора."
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يعثر Cablegram على أجهزة التلفزيون في شبكتك المنزلية ويقدّم لها مقاطع الفيديو."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram findet deine Fernseher in deinem Heimnetzwerk und stellt ihnen Videos bereit."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram finds your TVs on your home network and serves videos to them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram encuentra tus TV en tu red doméstica y les sirve vídeos."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram تلویزیون‌های شما را در شبکه خانگی پیدا می‌کند و ویدیوها را برای آن‌ها ارسال می‌کند."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram trova le tue TV sulla rete domestica e invia loro i video."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram находит ваши телевизоры в домашней сети и передаёт им видео."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يعرض Cablegram مقاطع الفيديو في مكتبة الصور لديك لتتمكن من تشغيلها على تلفزيونك."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram listet die Videos in deiner Fotomediathek auf, damit du sie auf deinem Fernseher abspielen kannst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram lists the videos in your Photos library so you can play them on your TV."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram muestra los vídeos de tu fototeca para que puedas reproducirlos en tu TV."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram ویدیوهای کتابخانه عکس شما را فهرست می‌کند تا بتوانید آن‌ها را روی تلویزیون پخش کنید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram elenca i video della tua libreria Foto così puoi riprodurli sulla TV."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cablegram показывает видео из вашей медиатеки «Фото», чтобы вы могли воспроизводить их на телевизоре."
+          }
+        }
+      }
+    }
+  }
+}

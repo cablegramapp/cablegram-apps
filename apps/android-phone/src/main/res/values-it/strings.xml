@@ -1046,4 +1046,7 @@
     <string name="ui_badge_save_failed">"Salvataggio non riuscito"</string>
     <string name="ui_badge_unavailable">"Non disponibile"</string>
     <string name="ui_badge_not_on_phone">"Non su questo telefono"</string>
+    <string name="tv_rename" formatted="false">"Rinomina"</string>
+    <string name="tv_rename_title" formatted="false">"Rinomina la TV"</string>
+    <string name="tv_name_label" formatted="false">"Nome della TV"</string>
 </resources>

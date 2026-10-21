@@ -1,0 +1,69 @@
+import CablegramCore
+import SwiftUI
+
+@main
+struct CablegramApp: App {
+    nonisolated static let configuration = AppConfiguration(infoDictionary: Bundle.main.infoDictionary ?? [:])
+
+    @State private var viewModel = CablegramApp.makeViewModel()
+
+    /// iOS keeps Keychain items when an app is deleted, so a reinstall (or a new owner's install) would come back signed in as the
+    /// previous person, with their TVs. A fresh install has neither the sentinel nor a library; an update of an existing install has one.
+    private static func wipeKeychainOnFreshInstall() {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: "install_sentinel") == nil else { return }
+        let hasLibrary = FileManager.default.fileExists(atPath: PhoneViewModel.libraryRoot().appendingPathComponent("index.json").path)
+        if !hasLibrary { KeychainSecretStore().removeAll() }
+        defaults.set(true, forKey: "install_sentinel")
+    }
+
+    private static func makeViewModel() -> PhoneViewModel {
+        wipeKeychainOnFreshInstall()
+        // Empty receiver id: Cast stays off and every title goes through the relay.
+        CastSender.configure(appId: configuration.castAppId)
+        let pairing = PairingStore(secrets: KeychainSecretStore(), defaultApiBase: configuration.apiBase.absoluteString)
+        #if DEBUG
+        // `-lanHostOverride 10.0.2.2` announces that address (an Android TV emulator reaches the host through it).
+        var info = Bundle.main.infoDictionary ?? [:]
+        if let host = UserDefaults.standard.string(forKey: "lanHostOverride") { info["CablegramLanHostOverride"] = host }
+        let configuration = AppConfiguration(infoDictionary: info)
+        return PhoneViewModel(config: configuration, pairing: pairing, applyDebugSeed: { DebugAccountSeed.apply(to: pairing, store: $0) })
+        #else
+        return PhoneViewModel(config: configuration, pairing: pairing)
+        #endif
+    }
+
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some Scene {
+        WindowGroup {
+            PhoneRootView(viewModel: viewModel)
+                .onChange(of: scenePhase) { _, phase in
+                    viewModel.tv.appVisible = phase == .active
+                    viewModel.tv.setCastVisible(phase == .active)
+                    if phase != .inactive { viewModel.serving.setForeground(phase == .active) }
+                    if phase == .active { viewModel.importSharedInbox(); viewModel.tv.refreshPendingApprovals(); viewModel.syncDeviceLanguage() }
+                }
+                .onAppear {
+                    viewModel.tv.appVisible = true
+                    viewModel.tv.setCastVisible(true)
+                    ApprovalNotificationHandler.relayAnswer = { action in RelayConsentNotice.apply(action, pairing: viewModel.pairing); viewModel.reloadRelayPolicy() }
+                    ApprovalNotificationHandler.respond = { approval, allow in viewModel.tv.respondToApproval(approval, approve: allow, cancelNotification: Approvals.cancel) }
+                }
+                // A TV's QR code opens the app with https://app.cablegram.app/?pair=… (universal link, CAB-62).
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL { viewModel.tv.applyPairUri(url.absoluteString, webOrigins: pairWebOrigins(CablegramApp.configuration.webAppBase)) }
+                }
+                .tint(.phoneAccent)
+                .onOpenURL { url in
+                    switch url.host {
+                    case "storage": viewModel.cloud.applyStorageReturn(url.absoluteString)
+                    // A TV's QR scanned with the Camera app, or `cablegram://pair?token=<PIN>`: the same "Is this your TV?" step as the in-app scanner.
+                    case "pair": viewModel.tv.applyPairUri(url.absoluteString, webOrigins: pairWebOrigins(CablegramApp.configuration.webAppBase))
+                    default: GoogleSignInURLHandler.handle(url)
+                    }
+                }
+        }
+    }
+}
