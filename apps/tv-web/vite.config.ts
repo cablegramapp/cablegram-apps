@@ -6,7 +6,10 @@ import { defineConfig, loadEnv } from "vite";
 // legacy (nomodule, polyfilled) bundle and relative asset paths.
 export default defineConfig(({ mode }) => ({
   base: "./",
-  plugins: [legacy({ targets: ["chrome >= 53"], modernTargets: ["chrome >= 80"] })],
+  // plugin-legacy's inline module detector checks up to Chrome 64 features (import.meta.url, dynamic import, async
+  // generator), so modernTargets must be chrome >= 64 (otherwise webOS 5 / Chromium 68 and webOS 6 / Chromium 79 pass
+  // the detector and then fail with SyntaxError on Chrome 80's `??` / `?.`).
+  plugins: [legacy({ targets: ["chrome >= 53"], modernTargets: ["chrome >= 64"] })],
   // GramJS (loaded only in VITE_TG_DIRECT builds) refers to Node's `global`.
   // An explicit constant, so builds without VITE_TG_DIRECT=1 drop the Telegram chunk instead of shipping it unused.
   define: { global: "window", "import.meta.env.VITE_TG_DIRECT": JSON.stringify(loadEnv(mode, process.cwd(), "VITE_").VITE_TG_DIRECT ?? "") },
