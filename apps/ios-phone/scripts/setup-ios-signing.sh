@@ -36,15 +36,6 @@ rm -f "${CERT_PATH}"
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}" > /dev/null
 security list-keychains -d user -s "${KEYCHAIN}" $(security list-keychains -d user | tr -d '"')
 
-# Fail here, not after a ten-minute archive, when the .p12 has no private key or the certificate is not trusted.
-echo "Certificates: $(security find-certificate -a "${KEYCHAIN}" | grep -c '"labl"'), private keys: $(security dump-keychain "${KEYCHAIN}" | grep -c 'class: 0x00000010')"
-security find-identity -p codesigning "${KEYCHAIN}"
-if ! security find-identity -v -p codesigning "${KEYCHAIN}" | grep -q "Apple Distribution: .*(${TEAM_ID})"; then
-  echo "ERROR: no valid \"Apple Distribution\" identity for ${TEAM_ID}. Export the certificate with its private key (Keychain Access," \
-    "My Certificates, the entry with a key under it) as .p12; an invalid identity above means the certificate is not trusted." >&2
-  exit 1
-fi
-
 PROFILES_DIR="${HOME}/Library/MobileDevice/Provisioning Profiles"
 mkdir -p "${PROFILES_DIR}"
 
@@ -73,6 +64,23 @@ install_profile() {
 PROFILE_APP="$(install_profile "${IOS_PROFILE_APP_BASE64}" "${BUNDLE_ID}")"
 PROFILE_SHARE="$(install_profile "${IOS_PROFILE_SHARE_BASE64}" "${BUNDLE_ID}.share")"
 PROFILE_SERVING="$(install_profile "${IOS_PROFILE_SERVING_BASE64}" "${BUNDLE_ID}.serving")"
+
+# A .p12 exported from the key row holds only the private key. The certificate is public and every profile carries it: import the
+# app profile's copy, so the key and the certificate make an identity either way (a duplicate import is refused, which is fine).
+CERT_DER="${TMP}/profile-certificate.cer"
+python3 -I -c 'import plistlib, sys; sys.stdout.buffer.write(plistlib.load(open(sys.argv[1], "rb"))["DeveloperCertificates"][0])' \
+  "${TMP}/${BUNDLE_ID}.mobileprovision.plist" > "${CERT_DER}"
+security import "${CERT_DER}" -k "${KEYCHAIN}" -T /usr/bin/codesign -T /usr/bin/security 2>/dev/null || true
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}" > /dev/null
+
+# Fail here, not after a ten-minute archive, when the key does not belong to the profiles' certificate or the certificate is not trusted.
+echo "Certificates: $(security find-certificate -a "${KEYCHAIN}" | grep -c '"labl"'), private keys: $(security dump-keychain "${KEYCHAIN}" | grep -c 'class: 0x00000010')"
+security find-identity -p codesigning "${KEYCHAIN}"
+if ! security find-identity -v -p codesigning "${KEYCHAIN}" | grep -q "Apple Distribution: .*(${TEAM_ID})"; then
+  echo "ERROR: no valid \"Apple Distribution\" identity for ${TEAM_ID}: the .p12 key does not match the certificate in the profiles," \
+    "or the certificate is not trusted (see the identities above)." >&2
+  exit 1
+fi
 
 cat >> "${ROOT}/Config/Local.xcconfig" <<EOF
 // Written by scripts/setup-ios-signing.sh for the release build.
