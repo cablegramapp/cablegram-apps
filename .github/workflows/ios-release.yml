@@ -113,3 +113,6 @@ jobs:
           api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
           uses-non-exempt-encryption: "false"
+          # Apple's processing can outlast the action's API token (a 401 after ~12 minutes, seen with build 1005), and a rejected
+          # build never appears at all. The job ends after the upload; App Store Connect reports processing and rejections by email.
+          wait-for-processing: "false"
