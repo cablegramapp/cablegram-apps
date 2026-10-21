@@ -18,6 +18,8 @@ LAN_HOST_OVERRIDE =
 GOOGLE_IOS_CLIENT_ID =
 // Harmless placeholder scheme until the real reversed client id is set in Local.xcconfig.
 GOOGLE_REVERSED_CLIENT_ID = app.cablegram.phone.google-unset
+// Set on each signed target (XcodeGen would otherwise write "iPhone Developer" into the app target). The release script sets Apple Distribution.
+CABLEGRAM_CODE_SIGN_IDENTITY = Apple Development
 // App Store profile names per target, for manual signing in the release workflow (scripts/setup-ios-signing.sh writes them into
 // Local.xcconfig). Empty: Xcode's automatic signing picks the profiles, as for local builds.
 CABLEGRAM_PROFILE_APP =
