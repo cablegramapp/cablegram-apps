@@ -165,13 +165,12 @@ struct SettingsScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(key: "ui_relay_over_mobile_data_a8efaa").foregroundStyle(.white)
             Text(key: "ui_when_your_tv_can_t_reach_this_phone_on_wi_fi_cablegram_b99318").font(.footnote).foregroundStyle(Color.phoneMuted)
-            Picker("", selection: Binding(get: { viewModel.relayMobileData }, set: { viewModel.updateRelayMobileData($0) })) {
-                Text(key: "ui_ask_b8c209").tag(RelayMobileDataPolicy.ask)
-                Text(key: "ui_always_de9f05").tag(RelayMobileDataPolicy.always)
-                Text(key: "ui_never_6300ef").tag(RelayMobileDataPolicy.never)
+            HStack(spacing: 8) {
+                ForEach([(RelayMobileDataPolicy.ask, "ui_ask_b8c209", "relay_mobile_ask"), (.always, "ui_always_de9f05", "relay_mobile_always"), (.never, "ui_never_6300ef", "relay_mobile_never")], id: \.2) { policy, label, id in
+                    FilterChip(label: label, selected: viewModel.relayMobileData == policy) { viewModel.updateRelayMobileData(policy) }.accessibilityIdentifier(id)
+                }
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("relay_mobile_data")
+            Text(key: "ui_share_your_catalog_with_your_household_your_video_file_fc6c1f").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
         }
     }
 
