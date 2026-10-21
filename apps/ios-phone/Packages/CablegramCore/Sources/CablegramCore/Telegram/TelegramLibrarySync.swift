@@ -73,12 +73,12 @@ public final class TelegramLibrarySync: @unchecked Sendable {
                     for await message in new where message.chatId == chat {
                         guard let self else { return }
                         if let video = message.video {
-                            remember(video.file.uniqueId)
-                            try? await register(video)
-                            await onChanged()
+                            self.remember(video.file.uniqueId)
+                            try? await self.register(video)
+                            await self.onChanged()
                         }
-                        let found = ChannelHints.from(message, known: knownIds)
-                        await sendHints(found)
+                        let found = ChannelHints.from(message, known: self.knownIds)
+                        await self.sendHints(found)
                         if let video = message.video, !found.contains(where: { $0.uniqueId == video.file.uniqueId }) {
                             let uniqueId = video.file.uniqueId
                             Task { [weak self] in await self?.lookAgain(uniqueId) }
@@ -86,7 +86,7 @@ public final class TelegramLibrarySync: @unchecked Sendable {
                     }
                 }
                 group.addTask { [weak self] in
-                    for await message in edited where message.chatId == chat { guard let self else { return }; await sendHints(ChannelHints.from(message, known: knownIds)) }
+                    for await message in edited where message.chatId == chat { guard let self else { return }; await self.sendHints(ChannelHints.from(message, known: self.knownIds)) }
                 }
                 group.addTask { [weak self] in
                     for await gone in deleted where gone.chatId == chat { _ = try? await self?.fullScan() }

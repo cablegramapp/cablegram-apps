@@ -96,10 +96,13 @@ jobs:
   ios:
     needs: changes
     if: needs.changes.outputs.ios == 'true'
-    runs-on: macos-15
+    # The app is built and tested locally with Xcode 26; the macos-15 image's default Xcode 16 compiler rejects code Xcode 26 accepts.
+    runs-on: macos-26
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Xcode version
+        run: xcodebuild -version
       - name: String Catalog is up to date
         run: python3 scripts/localization/android-to-xcstrings.py --check
       - name: Install XcodeGen
