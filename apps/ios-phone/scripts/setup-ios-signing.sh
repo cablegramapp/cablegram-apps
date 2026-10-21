@@ -26,6 +26,7 @@ KEYCHAIN_PASSWORD="$(uuidgen)"
 security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
 security set-keychain-settings -lut 21600 "${KEYCHAIN}"
 security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}"
+security default-keychain -s "${KEYCHAIN}"
 
 CERT_PATH="${TMP}/distribution.p12"
 echo "${IOS_DISTRIBUTION_CERTIFICATE_BASE64}" | base64 -d > "${CERT_PATH}"
@@ -34,6 +35,15 @@ security import "${CERT_PATH}" -k "${KEYCHAIN}" -P "${IOS_DISTRIBUTION_CERTIFICA
 rm -f "${CERT_PATH}"
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN}" > /dev/null
 security list-keychains -d user -s "${KEYCHAIN}" $(security list-keychains -d user | tr -d '"')
+
+# Fail here, not after a ten-minute archive, when the .p12 has no private key or the certificate is not trusted.
+echo "Certificates: $(security find-certificate -a "${KEYCHAIN}" | grep -c '"labl"'), private keys: $(security dump-keychain "${KEYCHAIN}" | grep -c 'class: 0x00000010')"
+security find-identity -p codesigning "${KEYCHAIN}"
+if ! security find-identity -v -p codesigning "${KEYCHAIN}" | grep -q "Apple Distribution: .*(${TEAM_ID})"; then
+  echo "ERROR: no valid \"Apple Distribution\" identity for ${TEAM_ID}. Export the certificate with its private key (Keychain Access," \
+    "My Certificates, the entry with a key under it) as .p12; an invalid identity above means the certificate is not trusted." >&2
+  exit 1
+fi
 
 PROFILES_DIR="${HOME}/Library/MobileDevice/Provisioning Profiles"
 mkdir -p "${PROFILES_DIR}"
