@@ -45,9 +45,14 @@ jobs:
         run: ./gradlew testDebugUnitTest
       - name: Build release APKs (one per ABI)
         working-directory: apps/${{ matrix.app }}
+        env:
+          # Cast console receiver ID, shared by phone, TV and iPhone; empty keeps Cast disabled.
+          ORG_GRADLE_PROJECT_CABLEGRAM_CAST_APP_ID: ${{ secrets.CABLEGRAM_CAST_APP_ID }}
         run: ./gradlew assembleRelease
       - name: Build release bundle
         working-directory: apps/${{ matrix.app }}
+        env:
+          ORG_GRADLE_PROJECT_CABLEGRAM_CAST_APP_ID: ${{ secrets.CABLEGRAM_CAST_APP_ID }}
         # A separate invocation: with a bundle task in the same build, the ABI splits are switched off.
         run: ./gradlew bundleRelease
       - uses: actions/setup-node@v4
