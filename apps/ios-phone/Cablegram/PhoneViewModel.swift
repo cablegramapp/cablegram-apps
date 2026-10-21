@@ -632,7 +632,17 @@ final class PhoneViewModel {
         }
     }
 
-    /// The server returned an account (Google, an email code, or Create your account).
+    /// The Apple sheet finished: the identity token goes to the server like Google's.
+    func signInWithApple(_ result: Result<AppleIdResult, Error>) {
+        switch result {
+        case .success(let apple):
+            Task { await signIn.apple(idToken: apple.idToken, nonce: apple.nonce, authorizationCode: apple.authorizationCode, name: apple.name) }
+        case .failure(let error):
+            if !AppleSignInRequest.wasCancelled(error) { signIn.message = StatusMessage("ios_apple_sign_in_failed") }
+        }
+    }
+
+    /// The server returned an account (Google, Apple, an email code, or Create your account).
     private func completeSignIn(_ result: PhonePairResponse) async {
         pairing.accountToken = result.token
         pairing.refreshToken = result.refreshToken

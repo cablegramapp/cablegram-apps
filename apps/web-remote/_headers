@@ -20,3 +20,8 @@
 /.well-known/assetlinks.json
   Content-Type: application/json
   Cache-Control: max-age=300
+
+# CAB-62: iOS checks this file (no extension, served as JSON) to let the Cablegram app open TV pairing links. Team ID 3S2K758XUS.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+  Cache-Control: max-age=300

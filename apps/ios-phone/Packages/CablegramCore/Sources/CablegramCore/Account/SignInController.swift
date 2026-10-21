@@ -76,6 +76,11 @@ public final class SignInController {
         await run { await handle(client().googleSignIn(idToken: idToken, nonce: nonce)) }
     }
 
+    /// `idToken` came from Apple for this sign-in's raw `nonce`; `name` is what Apple gave on the first authorization.
+    public func apple(idToken: String, nonce: String, authorizationCode: String?, name: String?) async {
+        await run { await handle(client().appleSignIn(idToken: idToken, nonce: nonce, authorizationCode: authorizationCode, name: name)) }
+    }
+
     public func createAccount(name: String) async {
         guard case .createAccount(let ticket, _, _) = step else { return }
         await run {

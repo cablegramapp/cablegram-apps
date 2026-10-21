@@ -129,6 +129,15 @@ public struct CatalogClient: Sendable {
         await signInStep("/api/auth/google", ["id_token": idToken, "nonce": nonce])
     }
 
+    /// Signs in with an Apple identity token. `nonce` is the raw one this sign-in made (Apple's token carries its SHA-256); `name` is what Apple
+    /// gave the app on the first authorization (Apple never repeats it); `authorizationCode` lets the server revoke the token at account deletion.
+    public func appleSignIn(idToken: String, nonce: String, authorizationCode: String?, name: String?) async -> SignInResult {
+        var body: [String: Any] = ["id_token": idToken, "nonce": nonce]
+        if let authorizationCode, !authorizationCode.isEmpty { body["authorization_code"] = authorizationCode }
+        if let name, !name.isEmpty { body["name"] = name }
+        return await signInStep("/api/auth/apple", body)
+    }
+
     /// Create your account: the person accepted these Terms and Privacy Policy versions and is 18 or older.
     public func signUp(ticket: String, name: String, legal: LegalDocuments) async -> SignInResult {
         await signInStep("/api/auth/signup", [

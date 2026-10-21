@@ -1,3 +1,4 @@
+import AuthenticationServices
 import CablegramCore
 import SwiftUI
 
@@ -41,6 +42,8 @@ private struct StartForm: View {
             BrandMark()
             Spacer().frame(height: 12)
             ScreenHeading(title: L("ui_your_library_your_big_screen_1ff86b"), subtitle: L("ui_sign_in_or_create_an_account_to_bring_your_own_videos__e9e560"))
+            // App Store guideline 4.8: Sign in with Apple is offered above any other sign-in service.
+            if signIn.methods?.apple != nil { AppleSignInButton(viewModel: viewModel, busy: signIn.busy) }
             if signIn.methods?.google != nil {
                 Button { viewModel.signInWithGoogle() } label: {
                     HStack(spacing: 12) {
@@ -62,6 +65,32 @@ private struct StartForm: View {
             if let note = signIn.message.map({ L($0.key) }) ?? viewModel.status { StatusNote(message: note) }
             PrivacyLine(documents: signIn.documents)
         }
+    }
+}
+
+/// The system "Sign in with Apple" button, with a fresh nonce for each sheet.
+private struct AppleSignInButton: View {
+    let viewModel: PhoneViewModel
+    let busy: Bool
+    @State private var nonce = ""
+
+    var body: some View {
+        SignInWithAppleButton(.continue) { request in
+            nonce = AppleSignInRequest.randomNonce()
+            AppleSignInRequest.configure(request, nonce: nonce)
+        } onCompletion: { outcome in
+            switch outcome {
+            case .success(let authorization):
+                if let result = AppleSignInRequest.result(from: authorization, nonce: nonce) { viewModel.signInWithApple(.success(result)) }
+                else { viewModel.signInWithApple(.failure(URLError(.userAuthenticationRequired))) }
+            case .failure(let error): viewModel.signInWithApple(.failure(error))
+            }
+        }
+        .signInWithAppleButtonStyle(.white)
+        .frame(height: 54)
+        .clipShape(Capsule())
+        .disabled(busy)
+        .accessibilityIdentifier("sign_in_apple")
     }
 }
 

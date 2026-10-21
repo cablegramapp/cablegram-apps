@@ -194,6 +194,39 @@ extension Network {
         #expect(c.step == .createAccount(ticket: "t-2", email: "g@gmail.com", name: "Ana Lima"))
     }
 
+    @Test func appleSendsTokenNonceCodeAndTheNameOnlyWhenThereIsOne() async {
+        MockHTTP.enqueue(200, #"{"status":"signup_required","signup_ticket":"t-a","email":"x@privaterelay.appleid.com","name":"Ana Lima"}"#)
+        MockHTTP.enqueue(200, #"{"status":"signup_required","signup_ticket":"t-b","email":"y@b.co"}"#)
+        let c = controller(Box())
+        await c.apple(idToken: "id-token", nonce: "raw-nonce-1", authorizationCode: "code-1", name: "Ana Lima")
+        #expect(MockHTTP.requests[0].path == "/api/auth/apple")
+        #expect(MockHTTP.requests[0].body as? [String: String] == ["id_token": "id-token", "nonce": "raw-nonce-1", "authorization_code": "code-1", "name": "Ana Lima"])
+        #expect(c.step == .createAccount(ticket: "t-a", email: "x@privaterelay.appleid.com", name: "Ana Lima"))
+        await c.apple(idToken: "id-2", nonce: "raw-nonce-2", authorizationCode: nil, name: "")
+        #expect(MockHTTP.requests[1].body as? [String: String] == ["id_token": "id-2", "nonce": "raw-nonce-2"])
+    }
+
+    @Test func appleFailuresSayWhatToDo() async {
+        for (error, key) in [("invalid_apple_token", "ios_apple_sign_in_failed"), ("apple_email_missing", "ios_apple_email_missing"),
+                             ("apple_email_unverified", "ios_apple_email_unverified"), ("apple_account_mismatch", "ios_apple_account_mismatch"),
+                             ("apple_not_configured", "ios_apple_not_configured")] {
+            MockHTTP.reset()
+            MockHTTP.enqueue(error == "apple_not_configured" ? 503 : 400, #"{"error":"\#(error)"}"#)
+            let c = controller(Box())
+            await c.apple(idToken: "id", nonce: "nonce-123", authorizationCode: nil, name: nil)
+            #expect(c.message == StatusMessage(key), "\(error)")
+        }
+    }
+
+    @Test func methodsOfferAppleWhenTheServerHasIt() async {
+        MockHTTP.route("/api/auth/methods", 200, #"{"google":null,"apple":{"client_id":"app.cablegram.phone"},"email_code":true}"#)
+        MockHTTP.route("/api/legal", 200, legalJSON)
+        let c = controller(Box())
+        await c.load()
+        #expect(c.methods?.apple == AppleMethod(clientId: "app.cablegram.phone"))
+        #expect(c.methods?.google == nil)
+    }
+
     @Test func aWrongCodeStaysOnTheCodeScreenWithAClearMessage() async {
         MockHTTP.enqueue(202, #"{"sent":true}"#)
         MockHTTP.enqueue(400, #"{"error":"invalid_code"}"#)

@@ -1,0 +1,20 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "3S2K758XUS.app.cablegram.phone"
+        ],
+        "components": [
+          {
+            "/": "/",
+            "?": {
+              "pair": "*"
+            },
+            "comment": "TV pairing links"
+          }
+        ]
+      }
+    ]
+  }
+}

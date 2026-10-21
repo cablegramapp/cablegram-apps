@@ -1,22 +1,32 @@
 import Foundation
 
-/// How this server lets people in (spec 007). `google` is nil when the server has no Google client (self-hosted).
+/// How this server lets people in (spec 007). `google` is nil when the server has no Google client (self-hosted); `apple` is nil
+/// until the server is set up for Sign in with Apple (iPhone only).
 public struct SignInMethods: Codable, Sendable, Equatable {
     public var google: GoogleMethod?
+    public var apple: AppleMethod?
     public var emailCode: Bool
 
-    public init(google: GoogleMethod? = nil, emailCode: Bool = true) {
+    public init(google: GoogleMethod? = nil, apple: AppleMethod? = nil, emailCode: Bool = true) {
         self.google = google
+        self.apple = apple
         self.emailCode = emailCode
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         google = try c.decodeIfPresent(GoogleMethod.self, forKey: .google)
+        apple = try c.decodeIfPresent(AppleMethod.self, forKey: .apple)
         emailCode = try c.decodeIfPresent(Bool.self, forKey: .emailCode) ?? true
     }
 
-    enum CodingKeys: String, CodingKey { case google, emailCode = "email_code" }
+    enum CodingKeys: String, CodingKey { case google, apple, emailCode = "email_code" }
+}
+
+public struct AppleMethod: Codable, Sendable, Equatable {
+    public var clientId: String
+    public init(clientId: String) { self.clientId = clientId }
+    enum CodingKeys: String, CodingKey { case clientId = "client_id" }
 }
 
 public struct GoogleMethod: Codable, Sendable, Equatable {
@@ -131,6 +141,11 @@ public struct SignInFailure: Sendable, Equatable, Error {
         case "google_email_unverified": "ui_your_google_account_s_email_isn_t_verified_sign_in_wit_c385f8"
         case "google_account_mismatch": "ui_this_email_is_already_linked_to_another_google_account_05cce9"
         case "google_not_configured": "ui_google_sign_in_isn_t_available_on_this_server_abf693"
+        case "invalid_apple_token": "ios_apple_sign_in_failed"
+        case "apple_email_missing": "ios_apple_email_missing"
+        case "apple_email_unverified": "ios_apple_email_unverified"
+        case "apple_account_mismatch": "ios_apple_account_mismatch"
+        case "apple_not_configured": "ios_apple_not_configured"
         case "terms_not_accepted": "ui_tick_the_box_to_accept_the_terms_first_5e5035"
         case "terms_outdated": "ui_the_terms_just_changed_please_read_them_again_648707"
         default:

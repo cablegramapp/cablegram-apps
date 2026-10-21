@@ -1,6 +1,241 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "ios_apple_account_mismatch": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا البريد الإلكتروني مرتبط بالفعل بحساب Apple آخر."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese E-Mail-Adresse ist bereits mit einem anderen Apple-Konto verknüpft."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This email is already linked to another Apple account."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este correo ya está vinculado a otra cuenta de Apple."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "این ایمیل از قبل به حساب Apple دیگری وصل است."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa email è già collegata a un altro account Apple."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот адрес уже связан с другим аккаунтом Apple."
+          }
+        }
+      }
+    },
+    "ios_apple_email_missing": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم تشارك Apple عنوان بريد إلكتروني. اسمح بمشاركة بريدك (أو إخفاء بريدي الإلكتروني) وحاول مرة أخرى."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple hat keine E-Mail-Adresse weitergegeben. Erlaube das Teilen deiner E-Mail (oder „E-Mail-Adresse verbergen“) und versuche es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple didn't share an email address. Allow sharing your email (or Hide My Email) and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple no compartió una dirección de correo. Permite compartir tu correo (u Ocultar mi correo) e inténtalo de nuevo."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple نشانی ایمیلی به اشتراک نگذاشت. اجازهٔ اشتراک ایمیل (یا «پنهان کردن ایمیل من») را بدهید و دوباره تلاش کنید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple non ha condiviso un indirizzo email. Consenti la condivisione dell'email (o Nascondi la mia email) e riprova."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple не передал адрес электронной почты. Разрешите передачу почты (или «Скрыть e-mail») и попробуйте снова."
+          }
+        }
+      }
+    },
+    "ios_apple_email_unverified": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "البريد الإلكتروني لحسابك في Apple غير مؤكد. سجّل الدخول برمز عبر البريد الإلكتروني بدلًا من ذلك."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die E-Mail-Adresse deines Apple-Kontos ist nicht bestätigt. Melde dich stattdessen mit einem E-Mail-Code an."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your Apple account's email isn't verified. Sign in with an email code instead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El correo de tu cuenta de Apple no está verificado. Inicia sesión con un código por correo."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ایمیل حساب Apple شما تأیید نشده است. به‌جای آن با کد ایمیل وارد شوید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'email del tuo account Apple non è verificata. Accedi invece con un codice via email."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Адрес почты вашего аккаунта Apple не подтверждён. Войдите с помощью кода из письма."
+          }
+        }
+      }
+    },
+    "ios_apple_not_configured": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تسجيل الدخول باستخدام Apple غير متاح على هذا الخادم."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Anmeldung mit Apple ist auf diesem Server nicht verfügbar."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in with Apple isn't available on this server."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión con Apple no está disponible en este servidor."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ورود با Apple روی این سرور در دسترس نیست."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'accesso con Apple non è disponibile su questo server."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вход через Apple недоступен на этом сервере."
+          }
+        }
+      }
+    },
+    "ios_apple_sign_in_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لم ينجح تسجيل الدخول باستخدام Apple. حاول مرة أخرى أو استخدم رمزًا عبر البريد الإلكتروني."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Anmeldung mit Apple hat nicht geklappt. Versuche es erneut oder nutze einen E-Mail-Code."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in with Apple didn't work. Try again or use an email code."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo iniciar sesión con Apple. Inténtalo de nuevo o usa un código por correo."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ورود با Apple انجام نشد. دوباره تلاش کنید یا از کد ایمیل استفاده کنید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'accesso con Apple non è riuscito. Riprova o usa un codice via email."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось войти через Apple. Попробуйте ещё раз или используйте код из письма."
+          }
+        }
+      }
+    },
     "ios_choose_from_files": {
       "extractionState": "manual",
       "localizations": {
