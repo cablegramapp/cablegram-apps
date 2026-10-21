@@ -55,6 +55,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_BUNDLE_IDENTIFIER)
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: Config/Cablegram.entitlements
+        PROVISIONING_PROFILE_SPECIFIER: $(CABLEGRAM_PROFILE_APP)
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Cablegram/Info.plist
         SWIFT_EMIT_LOC_STRINGS: YES
@@ -79,6 +80,7 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ShareExtension/Info.plist
         CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
+        PROVISIONING_PROFILE_SPECIFIER: $(CABLEGRAM_PROFILE_SHARE)
         SKIP_INSTALL: YES
   ServingWidget:
     type: app-extension
@@ -91,6 +93,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(PRODUCT_BUNDLE_IDENTIFIER).serving
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ServingWidget/Info.plist
+        PROVISIONING_PROFILE_SPECIFIER: $(CABLEGRAM_PROFILE_SERVING)
         SKIP_INSTALL: YES
   CablegramTests:
     type: bundle.unit-test
