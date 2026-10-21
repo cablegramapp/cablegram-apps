@@ -5,6 +5,7 @@
 #
 # Env: IOS_DISTRIBUTION_CERTIFICATE_BASE64, IOS_DISTRIBUTION_CERTIFICATE_PASSWORD, IOS_PROFILE_APP_BASE64,
 #      IOS_PROFILE_SHARE_BASE64, IOS_PROFILE_SERVING_BASE64, MARKETING_VERSION, BUILD_NUMBER.
+#      Optional: CABLEGRAM_CAST_APP_ID (Cast console receiver ID; empty keeps Cast off, as in Base.xcconfig).
 # Writes IOS_EXPORT_OPTIONS_PLIST to $GITHUB_ENV.
 set -euo pipefail
 
@@ -93,6 +94,19 @@ CABLEGRAM_PROFILE_APP = ${PROFILE_APP}
 CABLEGRAM_PROFILE_SHARE = ${PROFILE_SHARE}
 CABLEGRAM_PROFILE_SERVING = ${PROFILE_SERVING}
 EOF
+
+# The Cast receiver ID also names the Bonjour service in Info.plist (_<id>._googlecast._tcp), so only a real ID goes in.
+CAST_APP_ID="${CABLEGRAM_CAST_APP_ID:-}"
+if [[ -n "${CAST_APP_ID}" ]]; then
+  if [[ ! "${CAST_APP_ID}" =~ ^[0-9A-Fa-f]{8}$ ]]; then
+    echo "ERROR: CABLEGRAM_CAST_APP_ID is not an 8-character Cast application ID" >&2
+    exit 1
+  fi
+  echo "CABLEGRAM_CAST_APP_ID = ${CAST_APP_ID}" >> "${ROOT}/Config/Local.xcconfig"
+  echo "Cast receiver ID set"
+else
+  echo "No Cast receiver ID: Cast stays off in this build"
+fi
 
 EXPORT_OPTIONS="${TMP}/ExportOptions.plist"
 cat > "${EXPORT_OPTIONS}" <<EOF

@@ -69,6 +69,7 @@ jobs:
           IOS_PROFILE_APP_BASE64: ${{ secrets.IOS_PROFILE_APP_BASE64 }}
           IOS_PROFILE_SHARE_BASE64: ${{ secrets.IOS_PROFILE_SHARE_BASE64 }}
           IOS_PROFILE_SERVING_BASE64: ${{ secrets.IOS_PROFILE_SERVING_BASE64 }}
+          CABLEGRAM_CAST_APP_ID: ${{ secrets.CABLEGRAM_CAST_APP_ID }}
         run: apps/ios-phone/scripts/setup-ios-signing.sh
       - name: Core tests
         if: env.HAS_SIGNING == 'true'
