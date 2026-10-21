@@ -1,0 +1,48 @@
+name: TV web
+# Publishes apps/tv-web to Cloudflare (tv.cablegram.app, Workers static assets) from a tagged commit and attaches the webOS wrapper
+# package to a GitHub release. Tag it `tv-v1.0.0`; the Android releases use `v*` tags and the web remote `web-v*`, neither is affected.
+on:
+  push:
+    tags: ["tv-v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tv-web-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        working-directory: apps/tv-web
+        run: npm ci
+      - name: Tests
+        working-directory: apps/tv-web
+        run: npm test
+      - name: Build
+        working-directory: apps/tv-web
+        run: npm run build
+      - name: Publish with Wrangler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/tv-web
+          # The action installs Wrangler 3.90 by default, which cannot deploy an assets-only Worker (no `main`).
+          wranglerVersion: "4"
+          command: deploy
+      - name: Package the webOS wrapper
+        # The wrapper only redirects to tv.cablegram.app, so it changes when platforms/webos-hosted does, not with every app release.
+        working-directory: apps/tv-web
+        run: npx --yes -p @webos-tools/cli ares-package platforms/webos-hosted -o build
+      - name: Attach it to a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" apps/tv-web/build/*.ipk --latest=false --title "TV web ${GITHUB_REF_NAME#tv-v}" --notes "Hosted at https://tv.cablegram.app. Install the .ipk on an LG TV in Developer Mode; it opens the hosted app."

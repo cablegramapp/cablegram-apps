@@ -854,7 +854,10 @@ class CablegramApi(
     ): PlaybackResponse? {
         val uniqueId = source.stableSourceKey?.removePrefix("tgfile:")?.takeIf { it.isNotBlank() } ?: return null
         val me = execute<MeDto>(authenticatedRequest("api/me", token).get().build())
-        val phone = me.devices.firstOrNull { it.kind == "phone" && it.revokedAt.isNullOrBlank() && (phoneId == null || it.id == phoneId) } ?: return null
+        // The id the TV remembers is from when it last loaded the library. A phone that re-linked Telegram since (reinstall,
+        // cleared data) has a new device id and the old record stays behind, offline: ask the server who serves it now.
+        val servingId = runCatching { telegramLink(token).phoneDeviceId }.getOrNull() ?: phoneId
+        val phone = me.devices.firstOrNull { it.kind == "phone" && it.revokedAt.isNullOrBlank() && (servingId == null || it.id == servingId) } ?: return null
         val lan = if (!phone.lastLanHost.isNullOrBlank()) lanStreamUrl(phone, "telegram/$uniqueId", lanPin) else null
         val relay = relayUrl(phone, "telegram/$uniqueId", lanPin, null, token)
         val primary = lan ?: relay ?: return null
