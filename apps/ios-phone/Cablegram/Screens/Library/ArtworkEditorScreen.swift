@@ -69,7 +69,7 @@ struct ArtworkEditorScreen: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(draft.title.isEmpty ? L("ui_your_video_6e928e") : draft.title).font(PhoneFont.titleLarge).foregroundStyle(.white)
                 Text(key: statusKey).foregroundStyle(Color.phoneMuted).accessibilityIdentifier("artwork_cover_status")
-                Text(key: "ui_changes_are_saved_only_when_you_tap_save_changes_3d07da").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_changes_are_saved_only_when_you_tap_save_changes_3d07da").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             }
         }
     }
@@ -134,7 +134,7 @@ struct ArtworkEditorScreen: View {
                         Text(candidate.title).font(PhoneFont.titleMedium).foregroundStyle(.white).accessibilityIdentifier("artwork_match_title")
                         Text([candidate.year.map(String.init), L(candidate.mediaType == "tv" ? "ui_series_a8295e" : "ui_movie_941de4")].compactMap { $0 }.joined(separator: " · "))
                             .foregroundStyle(Color.phoneMuted)
-                        if let overview = candidate.overview { Text(String(overview.prefix(220))).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+                        if let overview = candidate.overview { Text(String(overview.prefix(220))).font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
                     }
                 }
                 Button { controller.useDetails() } label: { Text(key: "ui_use_these_details_780f71") }
@@ -171,13 +171,13 @@ struct ArtworkEditorScreen: View {
                 }
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(key: "ui_summary_optional_c6c899").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_summary_optional_c6c899").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 TextField("", text: Binding(get: { draft.overview }, set: { v in controller.update { $0.overview = String(v.prefix(10000)) } }), axis: .vertical)
                     .lineLimit(3...8).foregroundStyle(.white).disabled(draft.saving)
                     .padding(12).overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.phoneOutline, lineWidth: 1))
                     .accessibilityIdentifier("artwork_summary")
             }
-            Text(L("ui_original_file_9088ed", draft.base.filename)).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            Text(L("ui_original_file_9088ed", draft.base.filename)).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
         }
     }
 }

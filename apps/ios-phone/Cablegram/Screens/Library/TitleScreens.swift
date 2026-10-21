@@ -14,7 +14,7 @@ struct SeriesOverlay: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Button { viewModel.closeSeries() } label: {
-                        HStack(spacing: 8) { Image(systemName: "arrow.backward").font(.system(size: 16)); Text(key: "ui_library_dc20b3") }
+                        HStack(spacing: 8) { Image(systemName: "arrow.backward").font(.system(.callout)); Text(key: "ui_library_dc20b3") }
                     }
                     .buttonStyle(AccentTextButtonStyle())
                     HStack(spacing: 20) {
@@ -47,8 +47,8 @@ private struct EpisodeRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(episodeBadge(episode) ?? L("ui_episode_b19c45")).foregroundStyle(.white)
                 Text(episode.filename.contains(".") ? String(episode.filename[..<episode.filename.lastIndex(of: ".")!]) : episode.filename)
-                    .font(.system(size: 12)).foregroundStyle(Color.phoneMuted).lineLimit(1)
-                Text(key: storageBadge(episode).statusLineKey).font(.system(size: 11)).foregroundStyle(Color.phoneMuted).lineLimit(1)
+                    .font(.system(.caption)).foregroundStyle(Color.phoneMuted).lineLimit(1)
+                Text(key: storageBadge(episode).statusLineKey).font(.system(.caption2)).foregroundStyle(Color.phoneMuted).lineLimit(1)
                 if episode.positionSeconds > 0 {
                     ProgressView(value: Double(watchFraction(episode))).tint(.phoneAccent).padding(.top, 6)
                 }
@@ -114,7 +114,7 @@ struct DetailOverlay: View {
         HStack {
             Button { if viewModel.editingMetadata { viewModel.editingMetadata = false } else { viewModel.closeItem() } } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "arrow.backward").font(.system(size: 16))
+                    Image(systemName: "arrow.backward").font(.system(.callout))
                     Text(key: viewModel.editingMetadata ? "ui_cancel_19766e" : "ui_library_dc20b3")
                 }
             }
@@ -137,8 +137,8 @@ struct DetailOverlay: View {
                     .font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted)
                 if item.isPrivate {
                     HStack(spacing: 6) {
-                        Image(systemName: "lock.fill").font(.system(size: 14)).foregroundStyle(Color.phoneMuted)
-                        Text(key: "ui_phone_approval_required_112e8c").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                        Image(systemName: "lock.fill").font(.system(.subheadline)).foregroundStyle(Color.phoneMuted)
+                        Text(key: "ui_phone_approval_required_112e8c").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                     }
                 }
             }
@@ -150,7 +150,7 @@ struct DetailOverlay: View {
             let saved = artworkSavedToHousehold(item)
             HStack {
                 Text(key: saved ? "ui_cover_saved_to_your_household_762369" : "ui_cover_kept_on_this_phone_tvs_show_it_while_this_phone__7b244e")
-                    .font(.system(size: 12)).foregroundStyle(Color.phoneMuted).accessibilityIdentifier("detail_artwork_household_status")
+                    .font(.system(.caption)).foregroundStyle(Color.phoneMuted).accessibilityIdentifier("detail_artwork_household_status")
                 Spacer()
                 if saved {
                     Button { viewModel.keepArtworkOnPhone(item) } label: { Text(key: "ui_remove_c3812f") }
@@ -166,7 +166,7 @@ struct DetailOverlay: View {
     private var editor: some View {
         SectionCard(title: L("ui_edit_details_fd9c61")) {
             Text(L("ui_message_13326c", L(item.sourceKind == "web" ? "ui_original_link_1f7d58" : "ui_original_file_0ee08b"), item.filename))
-                .font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                .font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             PhoneTextField(label: L("ui_title_7e8cd2"), text: $title).onChange(of: title) { _, v in if v.count > 500 { title = String(v.prefix(500)) } }
             PhoneTextField(label: L("ui_year_89f683"), text: $year, keyboard: .numberPad).onChange(of: year) { _, v in year = String(v.filter(\.isNumber).prefix(4)) }
             HStack(spacing: 8) {
@@ -174,7 +174,7 @@ struct DetailOverlay: View {
                 FilterChip(label: "ui_tv_show_0f6684", selected: mediaType == "tv") { mediaType = "tv" }
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(key: "ui_summary_8e76a9").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_summary_8e76a9").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 TextField("", text: $overview, axis: .vertical).lineLimit(3...8).foregroundStyle(.white)
                     .padding(12).overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.phoneOutline, lineWidth: 1))
             }
@@ -207,7 +207,7 @@ struct DetailOverlay: View {
         if item.positionSeconds > 0 {
             VStack(alignment: .leading, spacing: 8) {
                 ProgressView(value: Double(watchFraction(item))).tint(.phoneAccent)
-                if let left = remainingDuration(item) { Text(L("ui_left_bc8cab", left)).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+                if let left = remainingDuration(item) { Text(L("ui_left_bc8cab", left)).font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
             }
         }
         Button { viewModel.tv.playOnTv(item) } label: {
@@ -217,7 +217,7 @@ struct DetailOverlay: View {
             }
         }
         .buttonStyle(PrimaryButtonStyle()).disabled(sourceUnavailable || viewModel.busy).accessibilityIdentifier(MaestroIds.detailPlayTv)
-        if let status = viewModel.tv.remoteStatus { Text(status).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+        if let status = viewModel.tv.remoteStatus { Text(status).font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
         if sourceUnavailable {
             Text(key: item.householdOnly ? "ui_this_title_is_in_your_household_library_but_its_file_i_7fef21" : "ui_reconnect_the_original_storage_or_restore_the_file_on__42719e")
                 .font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted)
@@ -284,7 +284,6 @@ struct FilterChipText: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if selected { Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)) }
                 Text(verbatim: label).font(PhoneFont.labelLarge)
             }
             .foregroundStyle(selected ? Color.phoneSuccess : .white)

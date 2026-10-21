@@ -51,7 +51,7 @@ private struct SaveSetupSheet: View {
         SheetScaffold(title: L("ui_save_to_cloud_0fd280"), onClose: cloud.dismissCloudSheet) {
             Text(key: "ui_keep_your_videos_available_even_when_your_phone_is_off_b72efb").foregroundStyle(Color.phoneMuted)
             Text(offered.isEmpty ? L("ui_your_own_storage_isn_t_available_on_this_server_d34244") : offered.map(\.name).joined(separator: " · "))
-                .font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                .font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             if !offered.isEmpty {
                 Button { cloud.openOwnCloudSetup() } label: { Text(key: "ui_connect_your_storage_04561b") }
                     .buttonStyle(PrimaryButtonStyle()).accessibilityIdentifier(MaestroIds.cloudContinue)
@@ -109,10 +109,10 @@ private struct ProviderRowView: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(verbatim: row.name).font(.system(size: 14, weight: .medium)).foregroundStyle(enabled ? .white : Color.phoneMuted)
-                Text("\(L(row.summaryKey)) · \(L(row.durationKey))").font(.system(size: 13)).foregroundStyle(Color.phoneMuted)
+                Text(verbatim: row.name).font(.system(.subheadline).weight(.medium)).foregroundStyle(enabled ? .white : Color.phoneMuted)
+                Text("\(L(row.summaryKey)) · \(L(row.durationKey))").font(.system(.footnote)).foregroundStyle(Color.phoneMuted)
                 if let note = row.note {
-                    Text(fillPlaceholders(L(note.key), note.args)).font(.system(size: 13)).foregroundStyle(row.state == .needsSignIn ? Color(hex: 0xFFB74D) : Color.phoneMuted)
+                    Text(fillPlaceholders(L(note.key), note.args)).font(.system(.footnote)).foregroundStyle(row.state == .needsSignIn ? Color(hex: 0xFFB74D) : Color.phoneMuted)
                 }
                 if row.state == .needsSignIn { Text(key: "ui_sign_in_again_51fbe1").foregroundStyle(Color.phoneAccent) }
             }
@@ -136,7 +136,7 @@ private struct ManageCloudSheet: View {
             Text(key: "ui_your_own_storage_6765b7").font(PhoneFont.titleMedium).foregroundStyle(.white).padding(.top, 8)
             if let connection {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(verbatim: providerName(connection.provider, status: cloud.storage, yourOwnStorage: own)).font(.system(size: 14, weight: .medium)).foregroundStyle(.white)
+                    Text(verbatim: providerName(connection.provider, status: cloud.storage, yourOwnStorage: own)).font(.system(.subheadline).weight(.medium)).foregroundStyle(.white)
                     Text(connectedSummary(connection, status: cloud.storage, yourOwnStorage: own) { L("ui_free_97e1da", $0) }).foregroundStyle(Color(hex: 0x79D6B0))
                     Button { cloud.disconnectStorage() } label: { Text(L("ui_disconnect_7d073a", providerName(connection.provider, status: cloud.storage, yourOwnStorage: own))) }
                         .buttonStyle(OutlinedButtonStyle()).disabled(cloud.working)
@@ -175,10 +175,10 @@ private struct GuideStep<Extra: View>: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Text("\(number)").font(.system(size: 14)).foregroundStyle(.black).frame(width: 28, height: 28).background(Color.phoneAccent, in: Circle())
+            Text("\(number)").font(.system(.subheadline)).foregroundStyle(.black).frame(width: 28, height: 28).background(Color.phoneAccent, in: Circle())
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.system(size: 14, weight: .medium)).foregroundStyle(.white)
-                ForEach(lines, id: \.self) { Text($0).font(.system(size: 14)).foregroundStyle(Color.phoneMuted) }
+                Text(title).font(.system(.subheadline).weight(.medium)).foregroundStyle(.white)
+                ForEach(lines, id: \.self) { Text($0).font(.system(.subheadline)).foregroundStyle(Color.phoneMuted) }
                 if let openLabel, let openUrl {
                     Button { if let url = URL(string: openUrl) { openURL(url) } } label: { Text(openLabel).padding(.horizontal, 12) }
                         .buttonStyle(OutlinedButtonStyle(minHeight: 40)).fixedSize()
@@ -230,8 +230,8 @@ private struct ConnectR2Sheet: View {
                 secret = ""
             } label: { Text(key: cloud.working ? "ui_checking_ec963f" : "ui_connect_1a2303") }
                 .buttonStyle(PrimaryButtonStyle()).disabled(cloud.working || !complete)
-            Text(key: "ui_what_it_costs_r2_includes_10_gb_free_after_that_cloudf_499770").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
-            Text(key: "ui_cablegram_keeps_the_keys_encrypted_and_uses_them_only__5e4393").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            Text(key: "ui_what_it_costs_r2_includes_10_gb_free_after_that_cloudf_499770").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+            Text(key: "ui_cablegram_keeps_the_keys_encrypted_and_uses_them_only__5e4393").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
         }
     }
 }
@@ -245,12 +245,12 @@ struct SecretField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(label).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 SecureField("", text: $text).textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never).foregroundStyle(.white)
             }
             .padding(.horizontal, 14).padding(.vertical, 8).frame(minHeight: 58, alignment: .leading)
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(isError ? Color.phoneError : Color.phoneOutline, lineWidth: 1))
-            Text(supporting).font(.system(size: 12)).foregroundStyle(isError ? Color.phoneError : Color.phoneMuted).padding(.horizontal, 14)
+            Text(supporting).font(.system(.caption)).foregroundStyle(isError ? Color.phoneError : Color.phoneMuted).padding(.horizontal, 14)
         }
     }
 }

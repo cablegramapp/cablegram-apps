@@ -11,7 +11,7 @@ struct ServingBanner: View {
                 Image(systemName: serving.activeStreams > 0 ? "tv.and.mediabox" : "tv").foregroundStyle(Color.phoneAccent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: L("ios_serving_to", serving.tvNames.last ?? L("ui_your_tv_f04452"))).font(PhoneFont.titleMedium).foregroundStyle(.white).lineLimit(1)
-                    Text(verbatim: serving.relayText ?? L("ios_serving_keep_open")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted).lineLimit(2)
+                    Text(verbatim: serving.relayText ?? L("ios_serving_keep_open")).font(.system(.caption)).foregroundStyle(Color.phoneMuted).lineLimit(2)
                 }
                 Spacer()
                 Button { serving.userStop() } label: { Text(key: "ui_stop_cae7d5").foregroundStyle(Color.phoneAccent).frame(minHeight: 44) }

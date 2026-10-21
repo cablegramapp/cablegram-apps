@@ -15,7 +15,7 @@ private struct TourPage {
 
 private func tourPages() -> [TourPage] {
     [
-        TourPage(step: .welcome, symbol: "film", title: L("ui_your_videos_your_big_screen_b7a07b"),
+        TourPage(step: .welcome, symbol: "movieclapper", title: L("ui_your_videos_your_big_screen_b7a07b"),
                  body: L("ui_cablegram_turns_your_phone_into_the_library_and_remote_68c907"),
                  points: [L("ui_your_phone_keeps_the_library_and_does_the_setup_e69ab1"), L("ui_your_tv_plays_your_videos_759124"),
                           L("ui_your_videos_stay_in_storage_you_own_cablegram_doesn_t__0ccf72")]),
@@ -115,7 +115,7 @@ private struct TourPageContent: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 HStack(spacing: 14) {
-                    Image(systemName: page.symbol).font(.system(size: 36)).foregroundStyle(Color.phoneAccent)
+                    Image(systemName: page.symbol).font(.system(.largeTitle)).foregroundStyle(Color.phoneAccent)
                         .padding(20).background(Color.phonePanel, in: RoundedRectangle(cornerRadius: 24))
                     if page.recommended {
                         Text(key: "ui_recommended_d70604").font(PhoneFont.labelMedium).foregroundStyle(Color.phoneAccent)
@@ -129,7 +129,7 @@ private struct TourPageContent: View {
                     VStack(alignment: .leading, spacing: 12) {
                         ForEach(page.points, id: \.self) { point in
                             HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: "checkmark.circle.fill").font(.system(size: 18)).foregroundStyle(Color.phoneSuccess).padding(.top, 2)
+                                Image(systemName: "checkmark.circle.fill").font(.system(.body)).foregroundStyle(Color.phoneSuccess).padding(.top, 2)
                                 Text(point).font(PhoneFont.bodyMedium).foregroundStyle(.white)
                             }
                         }

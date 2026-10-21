@@ -24,6 +24,11 @@ final class PhoneViewModel {
     private(set) var welcomeTourOpen: Bool
     private(set) var legacyRemote: Bool
     private(set) var castConnect: Bool
+    /// Household profiles (owner first), for Settings → Profiles; empty until loaded.
+    var profiles: [HouseholdProfile] = []
+    var relayUsage: RelayUsage?
+    var apiBaseUrl: String
+    var tunnelUrl: String
 
     // Library
     private(set) var items: [LibraryItem] = []
@@ -89,6 +94,8 @@ final class PhoneViewModel {
         welcomeTourOpen = !pairing.welcomeTourSeen
         legacyRemote = pairing.legacyRemote
         castConnect = pairing.castConnect
+        apiBaseUrl = pairing.apiBaseUrl
+        tunnelUrl = pairing.tunnelUrl
         relayMobileData = pairing.relayMobileData
         store = libraryStore
         bookmarks = BookmarkStore(root: PhoneViewModel.libraryRoot().deletingLastPathComponent())
@@ -139,6 +146,7 @@ final class PhoneViewModel {
         recoverSharedImports()
         importSharedInbox()
         cloud.refreshStorage()
+        syncDeviceLanguage()
         cloud.resumeSaves()
         if needsAccount { loadSignInOptions() } else { checkTerms(); Task { await tv.syncHouseholdTvs() } }
         startApprovalWatchIfSignedIn()

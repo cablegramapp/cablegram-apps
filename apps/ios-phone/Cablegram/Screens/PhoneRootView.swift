@@ -46,6 +46,8 @@ struct PhoneRootView: View {
             if viewModel.tv.castRoutes.isEmpty { Text(key: "ui_looking_for_tvs_8edf98") }
         }
         .preferredColorScheme(.dark)
+        // Dynamic Type up to "XXX Large"; beyond that the fixed-height cards (artwork, tab bar) would no longer hold their layout.
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 }
 

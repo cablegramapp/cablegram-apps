@@ -126,7 +126,7 @@ struct PhoneTextField: View {
                     .stroke(isError ? Color.phoneError : (focused ? Color.phoneAccent : Color.phoneOutline), lineWidth: focused ? 2 : 1)
                     .background(Color.phoneBackground)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(label).font(.system(size: 12)).foregroundStyle(focused ? Color.phoneAccent : Color.phoneMuted)
+                    Text(label).font(.system(.caption)).foregroundStyle(focused ? Color.phoneAccent : Color.phoneMuted)
                     Group {
                         if secure { SecureField("", text: $text) } else { TextField("", text: $text) }
                     }
@@ -155,7 +155,7 @@ struct PhoneTextField: View {
             }
             .frame(minHeight: 58)
             if let supporting {
-                Text(supporting).font(.system(size: 12)).foregroundStyle(isError ? Color.phoneError : Color.phoneMuted).padding(.horizontal, 14)
+                Text(supporting).font(.system(.caption)).foregroundStyle(isError ? Color.phoneError : Color.phoneMuted).padding(.horizontal, 14)
             }
         }
     }

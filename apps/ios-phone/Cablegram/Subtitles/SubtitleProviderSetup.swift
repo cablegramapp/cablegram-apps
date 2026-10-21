@@ -58,7 +58,7 @@ struct SubtitleProviderSetup: View {
             PrivacyAndTerms()
             let any = subdl || openSubtitles
             Button(action: onDone) { Text(doneLabel ?? L("ui_find_subtitles_e39ed2")) }.buttonStyle(PrimaryButtonStyle(minHeight: 48)).disabled(!(any || !requireAccount))
-            if !any && requireAccount { Text(key: "ui_connect_at_least_one_account_to_search_9f3093").font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+            if !any && requireAccount { Text(key: "ui_connect_at_least_one_account_to_search_9f3093").font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
         }
         .id(revision)
     }
@@ -72,7 +72,7 @@ struct SubtitleProviderSetup: View {
     }
 
     private func link(_ label: String, _ url: URL) -> some View {
-        Button { openURL(url) } label: { HStack(spacing: 8) { Text(label); Image(systemName: "arrow.up.right.square").font(.system(size: 14)) } }.buttonStyle(OutlinedButtonStyle())
+        Button { openURL(url) } label: { HStack(spacing: 8) { Text(label); Image(systemName: "arrow.up.right.square").font(.system(.subheadline)) } }.buttonStyle(OutlinedButtonStyle())
     }
 }
 
@@ -130,7 +130,7 @@ private struct ProviderForm: View {
                 }
             }
             if let note {
-                Text(note).font(.system(size: 12)).foregroundStyle(refused ? Color.phoneError : Color.phoneMuted).accessibilityIdentifier("subtitle_\(provider)_note")
+                Text(note).font(.system(.caption)).foregroundStyle(refused ? Color.phoneError : Color.phoneMuted).accessibilityIdentifier("subtitle_\(provider)_note")
             }
         }
     }
@@ -172,14 +172,14 @@ private struct PrivacyAndTerms: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L("ui_searches_go_straight_from_this_phone_to_the_site_you_c_3c8a91") + L("ui_only_the_subtitle_you_pick_is_saved_for_your_tvs_ab5d20")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            Text(L("ui_searches_go_straight_from_this_phone_to_the_site_you_c_3c8a91") + L("ui_only_the_subtitle_you_pick_is_saved_for_your_tvs_ab5d20")).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             Button { open.toggle() } label: {
                 HStack(spacing: 4) { Text(key: open ? "ui_hide_privacy_and_terms_942d73" : "ui_privacy_and_terms_9b68c4"); Image(systemName: open ? "chevron.up" : "chevron.down") }
             }.buttonStyle(AccentTextButtonStyle())
             if open {
-                Text(key: "ui_the_subtitle_sites_see_your_ip_address_the_title_file__cc820e").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
-                Text(key: "ui_only_the_subtitle_you_choose_its_language_provider_ref_abd48f").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
-                Text(key: "ui_personal_keys_do_not_grant_copyright_permission_use_tr_003d6d").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_the_subtitle_sites_see_your_ip_address_the_title_file__cc820e").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_only_the_subtitle_you_choose_its_language_provider_ref_abd48f").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_personal_keys_do_not_grant_copyright_permission_use_tr_003d6d").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             }
         }
     }

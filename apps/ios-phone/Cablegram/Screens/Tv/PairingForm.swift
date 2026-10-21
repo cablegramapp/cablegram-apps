@@ -16,7 +16,7 @@ struct PairingForm: View {
                 ScreenHeading(title: L(tv.paired ? "ui_one_more_big_screen_3514a4" : "ui_meet_your_tv_4d8c97"), subtitle: L("pairing_setup_steps"))
                 Button { if let url = URL(string: "https://cablegram.app/#downloads") { openURL(url) } } label: { Text(key: "pairing_get_tv_app") }.buttonStyle(AccentTextButtonStyle())
                 VStack(alignment: .leading, spacing: 16) {
-                    Image(systemName: "tv").font(.system(size: 36)).foregroundStyle(Color.phoneAccent)
+                    Image(systemName: "tv").font(.system(.largeTitle)).foregroundStyle(Color.phoneAccent)
                     PhoneTextField(label: L("ui_tv_code_8c33e0"), text: $pin, keyboard: .numberPad, leftToRight: true, id: MaestroIds.pairingEnterPin)
                         .onChange(of: pin) { _, value in pin = String(value.filter(\.isNumber).prefix(6)) }
                     Button { tv.applyPairUri(pin, webOrigins: pairWebOrigins(CablegramApp.configuration.webAppBase)) } label: {
@@ -63,7 +63,7 @@ struct PairTrustDialog: View {
                     choiceRow(L("ui_my_tv_home_4a4daa"), L("ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf"), !temporary) { temporary = false }
                     choiceRow(L("ui_temporary_tv_2b77cf"), L("ui_a_hotel_a_friend_s_or_a_rental_it_is_unpaired_at_the_t_312310"), temporary) { temporary = true }
                     if temporary {
-                        Text(key: "ui_unpair_it_at_e679be").font(.system(size: 12)).foregroundStyle(Color.phoneMuted).padding(.top, 8)
+                        Text(key: "ui_unpair_it_at_e679be").font(.system(.caption)).foregroundStyle(Color.phoneMuted).padding(.top, 8)
                         ForEach(Array(choices.enumerated()), id: \.offset) { index, choice in
                             choiceRow(choice.label, choice.date.formatted(date: .abbreviated, time: .shortened), selected == index) { selected = index }
                         }
@@ -96,7 +96,7 @@ struct PairTrustDialog: View {
                 Image(systemName: isOn ? "largecircle.fill.circle" : "circle").foregroundStyle(isOn ? Color.phoneAccent : Color.phoneMuted)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).foregroundStyle(.white)
-                    Text(detail).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                    Text(detail).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 }
                 Spacer()
             }

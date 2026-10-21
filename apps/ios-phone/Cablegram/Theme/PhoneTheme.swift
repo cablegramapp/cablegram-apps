@@ -26,16 +26,17 @@ enum PhoneRadius {
 }
 
 /// Material typography mapped to fixed point sizes that still scale with Dynamic Type.
+/// Text styles, so the app follows Dynamic Type (Android follows the font scale). The sizes are the platform's defaults for each style.
 enum PhoneFont {
-    static let headlineLarge = Font.system(size: 34, weight: .semibold)
-    static let headlineMedium = Font.system(size: 28, weight: .semibold)
-    static let headlineSmall = Font.system(size: 26, weight: .semibold)
-    static let titleLarge = Font.system(size: 22, weight: .semibold)
-    static let titleMedium = Font.system(size: 17, weight: .semibold)
-    static let bodyLarge = Font.system(size: 16)
-    static let bodyMedium = Font.system(size: 14)
-    static let labelLarge = Font.system(size: 14, weight: .medium)
-    static let labelMedium = Font.system(size: 12, weight: .medium)
+    static let headlineLarge = Font.system(.largeTitle).weight(.semibold)
+    static let headlineMedium = Font.system(.title).weight(.semibold)
+    static let headlineSmall = Font.system(.title).weight(.semibold)
+    static let titleLarge = Font.system(.title2).weight(.semibold)
+    static let titleMedium = Font.system(.headline)
+    static let bodyLarge = Font.system(.callout)
+    static let bodyMedium = Font.system(.subheadline)
+    static let labelLarge = Font.system(.subheadline).weight(.medium)
+    static let labelMedium = Font.system(.caption).weight(.medium)
 }
 
 extension View {

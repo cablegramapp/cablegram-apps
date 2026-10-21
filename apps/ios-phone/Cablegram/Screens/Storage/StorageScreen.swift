@@ -13,7 +13,7 @@ struct StorageScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 Button { viewModel.selectTab(.settings) } label: {
-                    HStack(spacing: 8) { Image(systemName: "arrow.backward").font(.system(size: 16)); Text(key: "ui_settings_74a883") }
+                    HStack(spacing: 8) { Image(systemName: "arrow.backward").font(.system(.callout)); Text(key: "ui_settings_74a883") }
                 }
                 .buttonStyle(AccentTextButtonStyle())
                 ScreenHeading(title: L("ui_storage_a69c4d"), subtitle: L("ui_your_files_wherever_you_keep_them_b9f61b")).accessibilityIdentifier(MaestroIds.storageTitle)
@@ -45,7 +45,7 @@ struct StorageScreen: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(verbatim: item.title).foregroundStyle(.white).lineLimit(1)
-                                    Text(item.fileSizeBytes.map(formatBytes) ?? "").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                                    Text(item.fileSizeBytes.map(formatBytes) ?? "").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right").foregroundStyle(Color.phoneMuted).accessibilityLabel(L("ui_view_title_c9916d"))
@@ -89,14 +89,14 @@ struct TransferCard: View {
                 Text(L("ui_saving_to_a516ef", cloud.saveDestinationName)).font(PhoneFont.titleMedium).foregroundStyle(.white)
                 Text(verbatim: item.title).foregroundStyle(.white)
                 ProgressView(value: Double(transferFraction(item))).tint(.phoneAccent)
-                Text(L("ui_message_f1c1f8", formatBytes(done), formatBytes(total))).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(L("ui_message_f1c1f8", formatBytes(done), formatBytes(total))).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 let rate = formatRate(item.transferBytesPerSec)
                 let eta: String = switch transferEta(remainingBytes: max(total - done, 0), bytesPerSec: item.transferBytesPerSec) {
                 case .seconds(let s)?: L("ui_sec_remaining_209f74", s)
                 case .minutes(let m)?: L("ui_min_remaining_9ef9c7", m)
                 case nil: ""
                 }
-                if !rate.isEmpty || !eta.isEmpty { Text([rate, eta].filter { !$0.isEmpty }.joined(separator: " · ")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+                if !rate.isEmpty || !eta.isEmpty { Text([rate, eta].filter { !$0.isEmpty }.joined(separator: " · ")).font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
                 Button { cloud.runSaveInBackground() } label: { Text(key: "ui_hide_keep_saving_e0c66f") }.buttonStyle(AccentTextButtonStyle())
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)

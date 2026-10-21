@@ -43,7 +43,7 @@ struct LibraryHome: View {
 
     private func squareButton(_ symbol: String, label: String, id: String?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 18)).foregroundStyle(Color.phoneAccent)
+            Image(systemName: symbol).font(.system(.body)).foregroundStyle(Color.phoneAccent)
                 .frame(width: 48, height: 48).background(Color.phonePanel, in: RoundedRectangle(cornerRadius: 16))
         }
         .accessibilityLabel(L(label))
@@ -80,9 +80,9 @@ struct LibraryHome: View {
     private var tvLine: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(viewModel.paired ? viewModel.tvName : L("ui_made_for_your_big_screen_eb0ced")).font(.system(size: 14, weight: .medium)).foregroundStyle(.white)
+                Text(viewModel.paired ? viewModel.tvName : L("ui_made_for_your_big_screen_eb0ced")).font(.system(.subheadline).weight(.medium)).foregroundStyle(.white)
                 Text(key: viewModel.paired ? "ui_keep_your_phone_on_the_same_wi_fi_e373e7" : "ui_connect_a_tv_when_you_re_ready_to_watch_d1ae74")
-                    .font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                    .font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             }
             Spacer()
             if !viewModel.paired || viewModel.legacyRemote {
@@ -96,7 +96,7 @@ struct LibraryHome: View {
         let state = viewModel.librarySyncState
         return Button { viewModel.syncNow() } label: {
             HStack(spacing: 8) {
-                Image(systemName: state == .completed ? "checkmark" : "arrow.triangle.2.circlepath").font(.system(size: 13))
+                Image(systemName: state == .completed ? "checkmark" : "arrow.triangle.2.circlepath").font(.system(.footnote))
                 Text(key: state == .running ? "ui_syncing_library_8e43e6" : state == .completed ? "ui_library_synced_704162"
                      : state == .failed ? "ui_sync_needs_attention_retry_f4d943" : "ui_sync_library_dd3492").font(PhoneFont.labelMedium)
             }
@@ -106,7 +106,7 @@ struct LibraryHome: View {
 
     @ViewBuilder private func content(_ filtered: [LibraryItem]) -> some View {
         if viewModel.items.isEmpty {
-            EmptyState(symbol: "film", title: L("ui_a_home_for_your_favorites_1b3984"),
+            EmptyState(symbol: "movieclapper", title: L("ui_a_home_for_your_favorites_1b3984"),
                        message: L("ui_import_a_few_videos_from_your_phone_your_personal_cine_1f8181"), action: L("ui_import_videos_fec728")) { viewModel.selectTab(.browse) }
         } else if filtered.isEmpty {
             EmptyState(symbol: "magnifyingglass", title: L("ui_no_titles_found_2aeb6d"), message: L("ui_try_another_title_or_clear_your_filters_to_see_the_who_ab222f"),
@@ -135,7 +135,6 @@ struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                if selected { Image(systemName: "checkmark").font(.system(size: 12, weight: .semibold)) }
                 Text(key: label).font(PhoneFont.labelLarge)
             }
             .foregroundStyle(selected ? Color.phoneSuccess : .white)
@@ -157,7 +156,7 @@ struct EmptyState: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: symbol).font(.system(size: 36)).foregroundStyle(Color.phoneAccent)
+            Image(systemName: symbol).font(.system(.largeTitle)).foregroundStyle(Color.phoneAccent)
                 .padding(22).background(Color.phonePanel, in: RoundedRectangle(cornerRadius: 24))
             Text(title).font(PhoneFont.titleLarge).foregroundStyle(.white).multilineTextAlignment(.center)
             Text(message).font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted).multilineTextAlignment(.center)
@@ -197,7 +196,7 @@ private struct Badge: View {
     let text: String
 
     var body: some View {
-        Text(text).font(.system(size: 10)).foregroundStyle(.white)
+        Text(text).font(.system(.caption2)).foregroundStyle(.white)
             .padding(.horizontal, 5).padding(.vertical, 2)
             .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 4))
     }
@@ -232,7 +231,7 @@ struct PosterCard: View {
                     VStack {
                         HStack(alignment: .top) {
                             if item.isPrivate {
-                                Image(systemName: "lock.fill").font(.system(size: 16)).foregroundStyle(.white).accessibilityLabel(L("ui_private_video_f0d5d4"))
+                                Image(systemName: "lock.fill").font(.system(.callout)).foregroundStyle(.white).accessibilityLabel(L("ui_private_video_f0d5d4"))
                             }
                             Spacer()
                             Badge(text: L(storageBadge(item).labelKey))
@@ -243,11 +242,11 @@ struct PosterCard: View {
                     }
                 }
                 .frame(width: 144, height: 210).clipShape(RoundedRectangle(cornerRadius: 16))
-                Text(item.title).font(.system(size: 14)).foregroundStyle(.white).lineLimit(2).multilineTextAlignment(.leading).padding(.top, 10)
+                Text(item.title).font(.system(.subheadline)).foregroundStyle(.white).lineLimit(2).multilineTextAlignment(.leading).padding(.top, 10)
                 Text(key: storageBadge(item).statusLineKey)
-                    .font(.system(size: 11)).foregroundStyle(storageBadge(item) == .failed ? Color(hex: 0xFFB74D) : Color.phoneMuted).lineLimit(2).multilineTextAlignment(.leading)
+                    .font(.system(.caption2)).foregroundStyle(storageBadge(item) == .failed ? Color(hex: 0xFFB74D) : Color.phoneMuted).lineLimit(2).multilineTextAlignment(.leading)
                 if showProgress {
-                    Text(remainingDuration(item).map { L("ui_left_bc8cab", $0) } ?? percentText(item)).font(.system(size: 11)).foregroundStyle(Color.phoneMuted)
+                    Text(remainingDuration(item).map { L("ui_left_bc8cab", $0) } ?? percentText(item)).font(.system(.caption2)).foregroundStyle(Color.phoneMuted)
                 }
             }
             .frame(width: 144, alignment: .leading)
@@ -276,11 +275,11 @@ struct SeriesCard: View {
                     }
                 }
                 .frame(width: 144, height: 210).clipShape(RoundedRectangle(cornerRadius: 16))
-                Text(entry.title).font(.system(size: 14)).foregroundStyle(.white).lineLimit(2).multilineTextAlignment(.leading).padding(.top, 10)
-                Text(seriesSummary(entry)).font(.system(size: 11)).foregroundStyle(Color.phoneMuted).lineLimit(1)
+                Text(entry.title).font(.system(.subheadline)).foregroundStyle(.white).lineLimit(2).multilineTextAlignment(.leading).padding(.top, 10)
+                Text(seriesSummary(entry)).font(.system(.caption2)).foregroundStyle(Color.phoneMuted).lineLimit(1)
                 if showProgress {
                     let parts = [episodeBadge(lead), remainingDuration(lead).map { L("ui_left_bc8cab", $0) }].compactMap { $0 }
-                    Text(parts.isEmpty ? percentText(lead) : parts.joined(separator: " · ")).font(.system(size: 11)).foregroundStyle(Color.phoneMuted)
+                    Text(parts.isEmpty ? percentText(lead) : parts.joined(separator: " · ")).font(.system(.caption2)).foregroundStyle(Color.phoneMuted)
                 }
             }
             .frame(width: 144, alignment: .leading)

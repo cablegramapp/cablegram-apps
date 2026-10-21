@@ -195,7 +195,7 @@ private struct AgreeRow: View {
             Button { checked.toggle() } label: {
                 HStack(spacing: 12) {
                     Image(systemName: checked ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 22)).foregroundStyle(checked ? Color.phoneAccent : Color.phoneMuted)
+                        .font(.system(.title2)).foregroundStyle(checked ? Color.phoneAccent : Color.phoneMuted)
                     Text(lead + L("ui_terms_of_service_d9f3cc")).font(PhoneFont.bodyMedium).foregroundStyle(.white)
                         .multilineTextAlignment(.leading)
                 }
@@ -222,7 +222,7 @@ private struct PrivacyLine: View {
             (Text(L("ui_how_cablegram_uses_your_data_89560e"))
                 + Text(L("ui_privacy_policy_506ff3")).foregroundColor(.phoneAccent).underline()
                 + Text("."))
-                .font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                .font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

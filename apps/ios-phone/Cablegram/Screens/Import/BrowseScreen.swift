@@ -47,10 +47,10 @@ struct BrowseScreen: View {
                     .accessibilityIdentifier(MaestroIds.browseTitle)
             }
             if !atRoots {
-                Text(viewModel.browseCrumbs.map(\.name).joined(separator: " / ")).font(.system(size: 13)).foregroundStyle(Color.phoneMuted)
-                Text(key: "ui_select_the_videos_you_want_to_add_to_your_library_896a64").font(.system(size: 13)).foregroundStyle(Color.phoneAccent)
+                Text(viewModel.browseCrumbs.map(\.name).joined(separator: " / ")).font(.system(.footnote)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_select_the_videos_you_want_to_add_to_your_library_896a64").font(.system(.footnote)).foregroundStyle(Color.phoneAccent)
                 if viewModel.browseSource == .photos && viewModel.photosStatus == .limited {
-                    Text(key: "ios_limited_photos_hint").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                    Text(key: "ios_limited_photos_hint").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                     Button { PhotoSource.presentLimitedPicker() } label: { Text(key: "ios_select_more_videos") }.buttonStyle(AccentTextButtonStyle())
                 } else if viewModel.browseSource == .folder {
                     Button { picker = .folder } label: { Text(key: "ui_add_or_reselect_folder_e5a07e") }.buttonStyle(AccentTextButtonStyle())
@@ -61,7 +61,7 @@ struct BrowseScreen: View {
                 }
                 .buttonStyle(AccentTextButtonStyle()).disabled(fileCount == 0)
             }
-            if let status = viewModel.status { Text(status).font(.system(size: 13)).foregroundStyle(Color.phoneMuted) }
+            if let status = viewModel.status { Text(status).font(.system(.footnote)).foregroundStyle(Color.phoneMuted) }
         }
         .padding(.horizontal, 16).padding(.vertical, 12)
     }
@@ -71,7 +71,7 @@ struct BrowseScreen: View {
             VStack(alignment: .leading, spacing: 24) {
                 TelegramLibraryCard(viewModel: viewModel)
                 SectionCard(title: L("ui_from_your_phone_624fe9")) {
-                    Image(systemName: "folder").font(.system(size: 30)).foregroundStyle(Color.phoneAccent)
+                    Image(systemName: "folder").font(.system(.title)).foregroundStyle(Color.phoneAccent)
                     Text(key: "ui_make_it_a_movie_night_95d58f").font(PhoneFont.titleLarge).foregroundStyle(.white)
                     Text(key: "ios_make_it_a_movie_night").font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted)
                     Button { chooseSource = true } label: {
@@ -81,7 +81,7 @@ struct BrowseScreen: View {
                     Button { picker = .folder } label: { Text(key: "ui_add_folder_5bbfc5") }
                         .buttonStyle(OutlinedButtonStyle()).accessibilityIdentifier(MaestroIds.browseOpenFolder)
                     if !viewModel.folders.isEmpty {
-                        Text(key: "ui_selected_folders_52fbae").font(.system(size: 14, weight: .medium)).foregroundStyle(.white)
+                        Text(key: "ui_selected_folders_52fbae").font(.system(.subheadline).weight(.medium)).foregroundStyle(.white)
                     }
                     ForEach(viewModel.folders, id: \.uri) { folder in
                         HStack {
@@ -99,7 +99,7 @@ struct BrowseScreen: View {
                     Text(key: "ui_keep_a_cloud_copy_for_more_ways_to_watch_you_can_conne_2f290d").font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted)
                     Button { viewModel.selectTab(.storage) } label: { Text(key: "ui_manage_storage_654d16") }.buttonStyle(OutlinedButtonStyle())
                 }
-                Text(key: "ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_your_videos_stay_in_your_own_storage_cablegram_keeps_y_89b144").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             }
             .padding(20)
         }
@@ -138,7 +138,7 @@ private struct BrowseRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 if !entry.isDirectory {
-                    Image(systemName: selected ? "checkmark.square.fill" : "square").font(.system(size: 22)).foregroundStyle(selected ? Color.phoneAccent : Color.phoneMuted)
+                    Image(systemName: selected ? "checkmark.square.fill" : "square").font(.system(.title2)).foregroundStyle(selected ? Color.phoneAccent : Color.phoneMuted)
                 }
                 Image(systemName: entry.isDirectory ? "folder.fill" : entry.isVideo ? "film" : "doc")
                     .foregroundStyle(entry.isVideo || entry.isDirectory ? Color.phoneAccent : Color.phoneMuted)
@@ -147,7 +147,7 @@ private struct BrowseRow: View {
                     Text(entry.isDirectory ? L("ui_folder_74ccd4")
                          : entry.isVideo ? [L("ui_video_d534be"), entry.sizeBytes.map(formatBytes)].compactMap { $0 }.joined(separator: " · ")
                          : (entry.mime.isEmpty ? L("ui_file_50009c") : entry.mime))
-                        .font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                        .font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 }
                 Spacer()
             }
@@ -203,7 +203,7 @@ struct PrepareCard: View {
         if let step = viewModel.prepareStep {
             VStack(alignment: .leading, spacing: 8) {
                 Text(key: "ui_preparing_cf1aa6").font(PhoneFont.titleMedium).foregroundStyle(.white)
-                Text(step).font(.system(size: 13)).foregroundStyle(Color.phoneMuted)
+                Text(step).font(.system(.footnote)).foregroundStyle(Color.phoneMuted)
                 ProgressView(value: viewModel.prepareProgress).tint(.phoneAccent)
             }
             .padding(16).background(Color(hex: 0x1A1A1A).opacity(0.93), in: RoundedRectangle(cornerRadius: 12))

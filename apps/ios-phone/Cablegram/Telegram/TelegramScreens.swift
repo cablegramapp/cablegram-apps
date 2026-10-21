@@ -23,7 +23,7 @@ struct TelegramLibraryCard: View {
         let link = telegram.link
         let linked = link?.linked == true
         SectionCard(title: L("telegram_library_title")) {
-            Image(systemName: "paperplane.fill").font(.system(size: 30)).foregroundStyle(Color.phoneAccent)
+            Image(systemName: "paperplane.fill").font(.system(.title)).foregroundStyle(Color.phoneAccent)
             Text(verbatim: TelegramSession.libraryTitle).font(PhoneFont.titleLarge).foregroundStyle(.white)
             Text(key: "telegram_library_help").foregroundStyle(Color.phoneMuted)
             if telegram.health == .channelLost && linked && !telegram.notHere {
@@ -33,7 +33,7 @@ struct TelegramLibraryCard: View {
                 Text(key: "ui_this_phone_isn_t_signed_in_to_telegram_yet_so_it_can_t_a21b4f").foregroundStyle(Color.phoneAccent)
                 Button { telegram.openSheet() } label: { Text(key: "ui_sign_in_on_this_phone_1bc154") }.buttonStyle(PrimaryButtonStyle(minHeight: 52))
             } else if linked, let chatId = link?.chatId {
-                Text(verbatim: L("ui_connected_as_767c2d", telegram.accountName)).font(.system(size: 13)).foregroundStyle(Color.phoneMuted)
+                Text(verbatim: L("ui_connected_as_767c2d", telegram.accountName)).font(.system(.footnote)).foregroundStyle(Color.phoneMuted)
                 Button { openInTelegram(chatId) { viewModel.status = L("telegram_library_install_telegram") } } label: { Text(key: "telegram_library_open") }
                     .buttonStyle(PrimaryButtonStyle(minHeight: 52)).accessibilityIdentifier(MaestroIds.telegramLibraryOpen)
                 Button {
@@ -41,7 +41,7 @@ struct TelegramLibraryCard: View {
                     viewModel.status = L("telegram_library_copied")
                 } label: { Text(key: "telegram_library_copy") }
                     .buttonStyle(OutlinedButtonStyle(minHeight: 48)).accessibilityIdentifier(MaestroIds.telegramLibraryCopy)
-                Text(key: "telegram_library_members_link").font(.system(size: 13)).foregroundStyle(Color.phoneMuted)
+                Text(key: "telegram_library_members_link").font(.system(.footnote)).foregroundStyle(Color.phoneMuted)
             } else {
                 Button { telegram.openSheet() } label: { Text(key: "ui_connect_telegram_00c799") }.buttonStyle(PrimaryButtonStyle(minHeight: 52))
             }
@@ -66,7 +66,7 @@ struct TelegramStorageEntry: View {
                 Image(systemName: "paperplane.fill").foregroundStyle(Color.phoneAccent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: linked ? L("ui_telegram_4bdd3a", TelegramSession.libraryTitle) : "Telegram").foregroundStyle(.white)
-                    Text(verbatim: statusLine(telegram, linked: linked)).font(.system(size: 12)).foregroundStyle(warn ? Color.phoneAccent : Color.phoneMuted)
+                    Text(verbatim: statusLine(telegram, linked: linked)).font(.system(.caption)).foregroundStyle(warn ? Color.phoneAccent : Color.phoneMuted)
                 }
             }
             .accessibilityElement(children: .contain).accessibilityIdentifier(MaestroIds.telegramEntry)
@@ -92,7 +92,7 @@ struct TelegramStorageEntry: View {
                 Toggle(isOn: Binding(get: { PhoneTelegram.autoApproveTvs }, set: { PhoneTelegram.autoApproveTvs = $0 })) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(key: "ui_approve_my_tvs_automatically_23e7c5").foregroundStyle(.white)
-                        Text(key: "ui_off_a_notification_asks_before_each_tv_signs_in_to_tel_6f98b3").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                        Text(key: "ui_off_a_notification_asks_before_each_tv_signs_in_to_tel_6f98b3").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                     }
                 }.tint(.phoneAccent)
             }
@@ -171,14 +171,14 @@ private struct BeforeYouConnect: View {
         TrustPoint(L("ui_you_stay_in_control_faa171"), L("ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486"))
         TrustPoint(L("ui_you_can_check_this_ba4981"), L("ui_the_cablegram_apps_are_open_source_anyone_can_check_wh_3a0623"))
         Link(destination: telegramCodeURL) { Text(key: "ui_read_the_code_f049d5").foregroundStyle(Color.phoneAccent) }
-        Text(key: "ui_cablegram_is_an_unofficial_app_it_isn_t_made_or_endors_7e0562").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+        Text(key: "ui_cablegram_is_an_unofficial_app_it_isn_t_made_or_endors_7e0562").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
         TrustPoint(L("telegram_separate_title"), L("telegram_separate_intro"))
         Button(action: onAccountHelp) { Text(key: "telegram_separate_learn") }.buttonStyle(AccentTextButtonStyle()).accessibilityIdentifier(MaestroIds.telegramAccountHelp)
         Button { telegram.connect() } label: { Text(key: "ui_continue_31fbef") }.buttonStyle(PrimaryButtonStyle(minHeight: 52)).accessibilityIdentifier(MaestroIds.telegramContinue)
         // Only when a Home TV is paired; it must already be signed in to the household's Telegram.
         if telegram.homeTv != nil && telegram.link?.linked == true {
             Button { telegram.connectViaTv() } label: { Text(key: "ui_use_the_qr_code_on_your_tv_instead_7c5651") }.buttonStyle(OutlinedButtonStyle())
-            Text(key: "ui_your_tv_is_already_signed_in_to_your_telegram_it_appro_6e35a3").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            Text(key: "ui_your_tv_is_already_signed_in_to_your_telegram_it_appro_6e35a3").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
         }
         Button { telegram.closeSheet() } label: { Text(key: "ui_not_now_a0e63d") }.buttonStyle(OutlinedButtonStyle())
         Link(destination: privacyURL) { Text(key: "ui_how_this_works_bdbd77").foregroundStyle(Color.phoneAccent) }
@@ -245,12 +245,12 @@ private struct SignInSteps: View {
                     .onChange(of: input) { _, v in input = String(v.prefix(20)) }
             case .needsCode:
                 Text(key: "ui_telegram_sent_a_login_code_to_your_telegram_app_or_by__0317af").foregroundStyle(Color.phoneMuted)
-                Text(verbatim: L("ui_telegram_s_message_says_not_to_give_this_code_to_anyon_7277cb") + L("ui_cablegram_uses_it_to_sign_in_with_telegram_directly_li_f3fc01")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(verbatim: L("ui_telegram_s_message_says_not_to_give_this_code_to_anyon_7277cb") + L("ui_cablegram_uses_it_to_sign_in_with_telegram_directly_li_f3fc01")).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 Step(label: L("ui_login_code_95e717"), hint: "5 digits", value: $input, keyboard: .numberPad, busy: session.busy, error: session.lastError, action: L("ui_continue_31fbef"), enabled: input.count >= 5) { session.submitCode(input) }
                     .onChange(of: input) { _, v in input = String(v.filter(\.isNumber).prefix(8)) }
             case let .needsPassword(hint):
                 Text(key: "ui_your_account_has_two_step_verification_enter_your_tele_9e706f").foregroundStyle(Color.phoneMuted)
-                Text(key: "ui_cablegram_passes_your_password_to_telegram_to_sign_in__0bb35c").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_cablegram_passes_your_password_to_telegram_to_sign_in__0bb35c").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 Step(label: L("ui_telegram_password_65d868"), hint: hint.isEmpty ? "" : L("ui_hint_3033f3", hint), value: $input, keyboard: .default, busy: session.busy, error: session.lastError,
                      action: L("ui_sign_in_bfd402"), enabled: !input.isEmpty, secret: true) { session.submitPassword(input) }
             case let .failed(message):
@@ -278,13 +278,13 @@ private struct CommunityChannelsOptions: View {
                 let joined = state.joined.contains(channel)
                 Button { channels.select(channel, selected: !state.selected.contains(channel)) } label: {
                     HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: state.selected.contains(channel) ? "checkmark.square.fill" : "square").font(.system(size: 22)).foregroundStyle(state.selected.contains(channel) ? Color.phoneAccent : Color.phoneMuted)
+                        Image(systemName: state.selected.contains(channel) ? "checkmark.square.fill" : "square").font(.system(.title2)).foregroundStyle(state.selected.contains(channel) ? Color.phoneAccent : Color.phoneMuted)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(verbatim: channel.title).foregroundStyle(.white)
-                            Text(verbatim: channel.url).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                            Text(verbatim: channel.url).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                             if channel == .botHubs {
-                                Text(key: "ui_discover_useful_telegram_bots_that_make_managing_organ_090372").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
-                                Text(key: "ui_these_are_independent_third_party_bots_and_are_not_dev_296876").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                                Text(key: "ui_discover_useful_telegram_bots_that_make_managing_organ_090372").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+                                Text(key: "ui_these_are_independent_third_party_bots_and_are_not_dev_296876").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                             }
                             if joined { Text(key: "ui_joined_69318b").foregroundStyle(Color.phoneAccent) }
                             if state.failed.contains(channel) { Text(key: "ui_couldn_t_join_try_save_again_or_uncheck_to_continue_02e0d9").foregroundStyle(Color.phoneAccent) }
@@ -317,7 +317,7 @@ private struct LibraryBotOptions: View {
             Text(key: "ui_optional_bots_for_your_library_0e5b67").font(PhoneFont.headlineSmall).foregroundStyle(.white)
             Text(key: "ui_discover_useful_telegram_bots_that_make_managing_organ_090372").foregroundStyle(Color.phoneMuted)
             Text(key: "ui_these_are_independent_third_party_bots_and_are_not_dev_296876").foregroundStyle(Color.phoneMuted)
-            Text(key: "ui_recommendations_come_from_posts_in_cablegrambothubs_yo_812f39").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            Text(key: "ui_recommendations_come_from_posts_in_cablegrambothubs_yo_812f39").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             if state.added > 0 { Text(verbatim: L("ui_added_to_your_library_392ec3", "\(state.added)")).foregroundStyle(Color.phoneAccent) }
             if !state.loaded {
                 if state.busy { Working(L("ui_finding_bots_in_cablegram_bot_hubs_6632c3")) }
@@ -336,7 +336,7 @@ private struct LibraryBotOptions: View {
                 Text(key: "ui_this_recommendation_is_shared_for_informational_purpos_02f61b").foregroundStyle(.white).accessibilityIdentifier("telegram_bot_disclaimer")
                 Button { bots.acceptDisclaimer(!state.disclaimerAccepted) } label: {
                     HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: state.disclaimerAccepted ? "checkmark.square.fill" : "square").font(.system(size: 22)).foregroundStyle(state.disclaimerAccepted ? Color.phoneAccent : Color.phoneMuted)
+                        Image(systemName: state.disclaimerAccepted ? "checkmark.square.fill" : "square").font(.system(.title2)).foregroundStyle(state.disclaimerAccepted ? Color.phoneAccent : Color.phoneMuted)
                         Text(verbatim: L("ui_i_have_reviewed_this_bot_s_permissions_and_agree_to_th_07cab6", bot.username)).foregroundStyle(.white).multilineTextAlignment(.leading)
                     }.frame(minHeight: 56, alignment: .leading)
                 }
@@ -421,12 +421,12 @@ struct TelegramAccountHelp: View {
                                ("ui_you_stay_in_control_faa171", "ui_you_ll_see_cablegram_in_telegram_settings_devices_and__e6a486")].enumerated()), id: \.offset) { _, pair in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(key: pair.0).font(PhoneFont.titleMedium).foregroundStyle(.white)
-                        if pair.0 == "telegram_separate_temporary_title" { Text(key: "telegram_separate_temporary_price").font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+                        if pair.0 == "telegram_separate_temporary_title" { Text(key: "telegram_separate_temporary_price").font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
                         Text(key: pair.1).font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted)
                         if pair.0 == "telegram_separate_temporary_title" {
                             Link("Grizzly SMS", destination: URL(string: "https://grizzlysms.com/telegram?utm_source=cablegram.app")!).foregroundStyle(Color.phoneAccent)
                             Link("5SIM", destination: URL(string: "https://5sim.net/?utm_source=cablegram.app")!).foregroundStyle(Color.phoneAccent)
-                            Text(key: "telegram_separate_provider_disclaimer").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                            Text(key: "telegram_separate_provider_disclaimer").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                         }
                     }
                 }
@@ -456,7 +456,7 @@ struct HiddenVideosSheet: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(verbatim: title.title).lineLimit(2).foregroundStyle(.white)
                                     if title.state == "deleting" {
-                                        Text(verbatim: title.lastError.map { L("ui_deleting_from_telegram_retrying_b48c27", $0) } ?? L("ui_deleting_from_telegram_230981")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                                        Text(verbatim: title.lastError.map { L("ui_deleting_from_telegram_retrying_b48c27", $0) } ?? L("ui_deleting_from_telegram_230981")).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                                     }
                                 }
                                 Spacer()
@@ -486,7 +486,7 @@ struct TelegramApprovalCard: View {
         if let request = work.pendingLogins.first {
             VStack(alignment: .leading, spacing: 8) {
                 Text(verbatim: L("ui_let_use_your_telegram_814f87", request.tvName)).font(PhoneFont.titleMedium).foregroundStyle(.white)
-                Text(verbatim: L("ui_wants_to_play_videos_from_your_cablegram_library_chann_84f55e", request.tvName)).font(.system(size: 13)).foregroundStyle(Color.phoneMuted)
+                Text(verbatim: L("ui_wants_to_play_videos_from_your_cablegram_library_chann_84f55e", request.tvName)).font(.system(.footnote)).foregroundStyle(Color.phoneMuted)
                 HStack(spacing: 12) {
                     Button { work.allow(request) } label: { Text(key: "ui_allow_e213c1") }.buttonStyle(PrimaryButtonStyle(minHeight: 44)).accessibilityIdentifier("telegram_tv_allow")
                     Button { work.deny(request) } label: { Text(key: "ui_don_t_allow_9803bd") }.buttonStyle(OutlinedButtonStyle(minHeight: 44)).accessibilityIdentifier("telegram_tv_deny")
@@ -517,18 +517,18 @@ struct TelegramPasswordSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(key: "ui_telegram_password_65d868").font(.system(size: 26, weight: .bold)).foregroundStyle(.white)
-            Text(verbatim: L("ui_is_signing_in_to_your_telegram_type_your_two_step_veri_999fde", request.tvName)).font(.system(size: 15)).foregroundStyle(Color.phoneMuted)
+            Text(key: "ui_telegram_password_65d868").font(.system(.title).weight(.bold)).foregroundStyle(.white)
+            Text(verbatim: L("ui_is_signing_in_to_your_telegram_type_your_two_step_veri_999fde", request.tvName)).font(.system(.subheadline)).foregroundStyle(Color.phoneMuted)
             SecureField(L("ui_password_e7cf3e"), text: $password).textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
                 .focused($focused).disabled(sending).padding(14).background(Color.phoneBackground, in: RoundedRectangle(cornerRadius: 4))
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.phoneOutline)).foregroundStyle(.white).submitLabel(.send).onSubmit(send)
             if let code {
-                Text(key: "ui_check_code_9a5af9").font(.system(size: 13)).foregroundStyle(Color.phoneMuted)
-                Text(verbatim: code).font(.system(size: 30, weight: .bold)).tracking(3).foregroundStyle(Color.phoneAccent)
-                Text(verbatim: L("ui_shows_a_code_too_send_your_password_only_if_both_codes_12e5fa", request.tvName)).font(.system(size: 13)).foregroundStyle(Color.phoneMuted)
+                Text(key: "ui_check_code_9a5af9").font(.system(.footnote)).foregroundStyle(Color.phoneMuted)
+                Text(verbatim: code).font(.system(.title).weight(.bold)).tracking(3).foregroundStyle(Color.phoneAccent)
+                Text(verbatim: L("ui_shows_a_code_too_send_your_password_only_if_both_codes_12e5fa", request.tvName)).font(.system(.footnote)).foregroundStyle(Color.phoneMuted)
             }
-            if !hint.isEmpty { Text(verbatim: L("ui_hint_3033f3", hint)).font(.system(size: 14)).foregroundStyle(Color.phoneMuted) }
-            if let error { Text(verbatim: error).font(.system(size: 14)).foregroundStyle(Color.phoneError) }
+            if !hint.isEmpty { Text(verbatim: L("ui_hint_3033f3", hint)).font(.system(.subheadline)).foregroundStyle(Color.phoneMuted) }
+            if let error { Text(verbatim: error).font(.system(.subheadline)).foregroundStyle(Color.phoneError) }
             HStack(spacing: 12) {
                 Button(action: send) { Text(verbatim: sending ? L("ui_sending_b8ed52") : L("ui_send_to_0ddfbe", request.tvName)) }.buttonStyle(PrimaryButtonStyle(minHeight: 48)).disabled(password.isEmpty || sending)
                 Button { work.cancelPassword(request.requestId); dismiss() } label: { Text(key: "ui_cancel_19766e") }.buttonStyle(OutlinedButtonStyle(minHeight: 48))

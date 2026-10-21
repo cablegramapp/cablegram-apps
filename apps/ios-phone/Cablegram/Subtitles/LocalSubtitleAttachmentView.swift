@@ -88,7 +88,7 @@ private struct LocalSubtitleAttachment: View {
                 Text(L("ui_cues_752a1f", "\(file.cues.count)", languageName(language))).foregroundStyle(Color.phoneMuted)
                 SectionCard(title: L("ui_preview_324b13")) { ForEach(Array(file.cues.prefix(3).enumerated()), id: \.offset) { Text($1.text).foregroundStyle(.white) } }
             }
-            Text(L("ui_attaching_uploads_the_selected_subtitle_text_to_cableg_49b856") + L("ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008") + L("ui_only_attach_subtitles_you_have_permission_to_use_22c046")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            Text(L("ui_attaching_uploads_the_selected_subtitle_text_to_cableg_49b856") + L("ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008") + L("ui_only_attach_subtitles_you_have_permission_to_use_22c046")).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             Button(action: attach) { Text(key: saving ? "ui_attaching_513d9a" : "ui_attach_to_video_e7fae7") }
                 .buttonStyle(PrimaryButtonStyle(minHeight: 48)).disabled(file == nil || source == nil || !validLanguage || reading || saving).accessibilityIdentifier("local_subtitle_attach")
         }

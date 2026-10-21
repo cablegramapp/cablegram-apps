@@ -97,6 +97,12 @@ public final class PairingStore: AccountTokens, @unchecked Sendable {
         set { defaults.set(newValue, forKey: "welcome_tour_seen") }
     }
 
+    /// An optional public https address of this phone (advanced settings); shown to the person, not sent to the control plane (as on Android).
+    public var tunnelUrl: String {
+        get { defaults.string(forKey: "tunnel_url") ?? "" }
+        set { defaults.set(newValue, forKey: "tunnel_url") }
+    }
+
     public var apiBaseUrl: String {
         get { defaults.string(forKey: "api_base_url").flatMap { $0.isEmpty ? nil : $0 } ?? defaultApiBase }
         set { defaults.set(newValue, forKey: "api_base_url") }

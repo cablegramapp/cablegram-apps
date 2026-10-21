@@ -31,7 +31,7 @@ struct MediaArtwork: View {
             if let image {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
-                Image(systemName: "film").font(.system(size: 30)).foregroundStyle(Color.phoneMuted.opacity(0.65))
+                Image(systemName: "film").font(.system(.title)).foregroundStyle(Color.phoneMuted.opacity(0.65))
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 16))

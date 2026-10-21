@@ -29,7 +29,7 @@ struct SubtitleFlow: View {
                 Button {
                     if case .adjust(let discovery, _, _) = model.stage { model.backToResults(discovery) } else { model.cancelSearch(); onClose() }
                 } label: {
-                    HStack(spacing: 8) { Image(systemName: "arrow.backward").font(.system(size: 16)); Text(key: "ui_back_76900f") }
+                    HStack(spacing: 8) { Image(systemName: "arrow.backward").font(.system(.callout)); Text(key: "ui_back_76900f") }
                 }
                 .buttonStyle(AccentTextButtonStyle()).accessibilityIdentifier(MaestroIds.subtitlesBack)
                 Spacer()
@@ -64,8 +64,8 @@ struct SubtitleFlow: View {
         case .searching:
             HStack(spacing: 14) { ProgressView().tint(.phoneAccent); Text(model.progress).foregroundStyle(.white) }
                 .accessibilityElement(children: .combine).accessibilityIdentifier(MaestroIds.subtitlesSearching)
-            if model.fetchedMb > 0 { Text(L("ui_fetched_mb_from_telegram_so_far_827c43", String(format: "%.1f", model.fetchedMb))).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
-            Text(key: "ui_video_and_timing_patterns_stay_on_this_phone_searches__db1095").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            if model.fetchedMb > 0 { Text(L("ui_fetched_mb_from_telegram_so_far_827c43", String(format: "%.1f", model.fetchedMb))).font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
+            Text(key: "ui_video_and_timing_patterns_stay_on_this_phone_searches__db1095").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             Button { model.cancelled() } label: { Text(key: "ui_cancel_19766e") }.buttonStyle(OutlinedButtonStyle())
         case .failed(let message):
             StatusNote(message: message)
@@ -184,8 +184,8 @@ private struct OptionCard: View {
             Text(h.trust).foregroundStyle(h.verified ? Color.phoneAccent : .white)
             Text(h.timing).font(PhoneFont.bodyMedium).foregroundStyle(Color.phoneMuted)
             if details {
-                Text([match.provider, match.releaseName].filter { !$0.isEmpty }.joined(separator: " · ")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
-                if !match.explanations.isEmpty { Text(match.explanations.joined(separator: " · ")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+                Text([match.provider, match.releaseName].filter { !$0.isEmpty }.joined(separator: " · ")).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+                if !match.explanations.isEmpty { Text(match.explanations.joined(separator: " · ")).font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
             }
             if primary {
                 Button(action: onUse) { Text(key: busy ? "ui_saving_23e392" : "ui_use_subtitle_0f7916") }
@@ -291,7 +291,7 @@ struct AdjustContent: View {
                     if preview.error == nil, !preview.ready || preview.buffering || preview.seeking {
                         VStack(spacing: 8) {
                             ProgressView().tint(.phoneAccent)
-                            Text(loadingText(preview)).font(.system(size: 12)).foregroundStyle(.white)
+                            Text(loadingText(preview)).font(.system(.caption)).foregroundStyle(.white)
                         }
                     }
                 }
@@ -339,7 +339,7 @@ struct AdjustContent: View {
             }
             HStack(spacing: 8) {
                 Button { preview.togglePlayback() } label: {
-                    HStack(spacing: 6) { Image(systemName: preview.playing ? "pause.fill" : "play.fill").font(.system(size: 14)); Text(key: preview.playing ? "ui_pause_858e4b" : "ui_play_436e61") }
+                    HStack(spacing: 6) { Image(systemName: preview.playing ? "pause.fill" : "play.fill").font(.system(.subheadline)); Text(key: preview.playing ? "ui_pause_858e4b" : "ui_play_436e61") }
                 }
                 .buttonStyle(OutlinedButtonStyle()).disabled(!preview.ready).accessibilityIdentifier(MaestroIds.subtitlesPlay)
                 Button { preview.seek(preview.positionMs - 10_000) } label: { Text("−10 s") }.buttonStyle(OutlinedButtonStyle()).disabled(!preview.ready)
@@ -352,18 +352,18 @@ struct AdjustContent: View {
     private var tvSection: some View {
         SectionCard(title: L("ui_line_it_up_on_your_tv_bedcd2")) {
             Text((audioNote != nil ? L("ui_your_tv_can_play_this_with_sound_fda245") : L("ui_want_to_hear_it_8c3862")) + L("ui_start_it_there_then_use_the_shift_buttons_above_the_su_b40115"))
-                .font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                .font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             Button {
                 Task { if await persist(SyncRequest(offset: offset, scale: scale)) { tvBase = offset; viewModel.tv.playOnTv(item) } }
             } label: { Text(key: tvBase == nil ? "ui_play_on_tv_and_adjust_there_43cf9e" : "ui_restart_on_tv_32b64b") }
                 .buttonStyle(PrimaryButtonStyle(minHeight: 48)).accessibilityIdentifier(MaestroIds.subtitlesOnTv)
-            if let base = tvBase { Text(L("ui_live_on_your_tv_from_what_it_loaded_tap_save_timing_wh_600c3a", formatSyncOffset(offset - base))).font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+            if let base = tvBase { Text(L("ui_live_on_your_tv_from_what_it_loaded_tap_save_timing_wh_600c3a", formatSyncOffset(offset - base))).font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
         }
     }
 
     private var twoPointSection: some View {
         SectionCard(title: L("ui_two_point_sync_ec7d52")) {
-            Text(key: "ui_play_to_a_line_near_the_start_tap_the_line_you_are_hea_1a15b0").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+            Text(key: "ui_play_to_a_line_near_the_start_tap_the_line_you_are_hea_1a15b0").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
             ForEach(Array(nearbyCues(cues, video: position, offset: offset, scale: scale).enumerated()), id: \.offset) { _, cue in
                 Button { picked = cue } label: { Text(String(cue.text.prefix(80))).frame(maxWidth: .infinity, alignment: .leading) }
                     .buttonStyle(OutlinedButtonStyle()).overlay(RoundedRectangle(cornerRadius: 27).stroke(picked == cue ? Color.phoneAccent : Color.clear, lineWidth: 1))
@@ -376,7 +376,7 @@ struct AdjustContent: View {
             }
             Text([pointA.map { L("ui_point_1_at_891c8a", clock($0.video)) }, pointB.map { L("ui_point_2_at_45bead", clock($0.video)) }].compactMap { $0 }.joined(separator: " · ")).foregroundStyle(Color.phoneMuted)
             let a = pointA.map { (cue: $0.cue, video: $0.video) }, b = pointB.map { (cue: $0.cue, video: $0.video) }
-            if a != nil, b != nil, !canApplyTwoPoint(a, b) { Text(key: "ui_choose_points_at_least_a_minute_apart_in_order_421ffd").font(.system(size: 12)).foregroundStyle(Color.phoneMuted) }
+            if a != nil, b != nil, !canApplyTwoPoint(a, b) { Text(key: "ui_choose_points_at_least_a_minute_apart_in_order_421ffd").font(.system(.caption)).foregroundStyle(Color.phoneMuted) }
             Button {
                 if let a, let b { save(SyncRequest(points: [SyncPointDto(subtitle: a.cue.start, video: a.video), SyncPointDto(subtitle: b.cue.start, video: b.video)])) }
             } label: { Text(key: "ui_apply_31e392") }.buttonStyle(PrimaryButtonStyle(minHeight: 48)).disabled(!canApplyTwoPoint(a, b))

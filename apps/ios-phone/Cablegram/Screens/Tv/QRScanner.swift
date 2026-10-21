@@ -42,7 +42,7 @@ struct PairingScanner: View {
             } else {
                 CaptureScannerView(onCode: handler)
             }
-            Text(key: "ui_point_the_camera_at_the_qr_on_the_tv_f4e744").font(.system(size: 13)).foregroundStyle(.white)
+            Text(key: "ui_point_the_camera_at_the_qr_on_the_tv_f4e744").font(.system(.footnote)).foregroundStyle(.white)
                 .padding(8).background(.black.opacity(0.5), in: Capsule()).padding(.bottom, 8)
         }
         .frame(height: 240).clipShape(RoundedRectangle(cornerRadius: 20))

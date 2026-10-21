@@ -43,7 +43,7 @@ struct CablegramApp: App {
                     viewModel.tv.appVisible = phase == .active
                     viewModel.tv.setCastVisible(phase == .active)
                     if phase != .inactive { viewModel.serving.setForeground(phase == .active) }
-                    if phase == .active { viewModel.importSharedInbox(); viewModel.tv.refreshPendingApprovals() }
+                    if phase == .active { viewModel.importSharedInbox(); viewModel.tv.refreshPendingApprovals(); viewModel.syncDeviceLanguage() }
                 }
                 .onAppear {
                     viewModel.tv.appVisible = true

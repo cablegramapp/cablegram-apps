@@ -23,7 +23,7 @@ struct RemoteScreen: View {
                         HStack(spacing: 14) {
                             Image(systemName: "tv").foregroundStyle(Color.phoneAccent)
                             VStack(alignment: .leading) {
-                                Text(key: "ui_controlling_2084c5").font(.system(size: 11)).foregroundStyle(Color.phoneMuted)
+                                Text(key: "ui_controlling_2084c5").font(.system(.caption2)).foregroundStyle(Color.phoneMuted)
                                 Text(verbatim: tv.tvName).font(PhoneFont.titleMedium).foregroundStyle(.white)
                             }
                             Spacer()
@@ -39,7 +39,7 @@ struct RemoteScreen: View {
                             key("backward.fill", L("ui_back_seconds_fa7e12", "\(remoteSeekSeconds)")) { tv.skipSeconds(-remoteSeekSeconds) }
                             Spacer()
                             Button { tv.togglePlayPause() } label: {
-                                Image(systemName: tv.paused ? "play.fill" : "pause.fill").font(.system(size: 28)).foregroundStyle(.black)
+                                Image(systemName: tv.paused ? "play.fill" : "pause.fill").font(.system(.title)).foregroundStyle(.black)
                                     .frame(width: 64, height: 64).background(Color.phoneAccent, in: Circle())
                             }
                             .accessibilityLabel(L(tv.paused ? "ui_resume_playback_b19825" : "ui_pause_playback_65a4a8"))
@@ -47,15 +47,15 @@ struct RemoteScreen: View {
                             key("forward.fill", L("ui_forward_seconds_55855b", "\(remoteSeekSeconds)")) { tv.skipSeconds(remoteSeekSeconds) }
                         }
                         .environment(\.layoutDirection, .leftToRight)
-                        Text(L("ui_seek_seconds_at_a_time_43ffed", "\(remoteSeekSeconds)")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted).frame(maxWidth: .infinity)
+                        Text(L("ui_seek_seconds_at_a_time_43ffed", "\(remoteSeekSeconds)")).font(.system(.caption)).foregroundStyle(Color.phoneMuted).frame(maxWidth: .infinity)
                         Button { tv.remoteStop() } label: { HStack { Image(systemName: "stop.fill"); Text(key: "ui_stop_playback_19b81a") } }.buttonStyle(OutlinedButtonStyle())
                     }
                     SectionCard(title: L("ui_set_tv_volume_43ad09")) {
                         Slider(value: $volume, in: 0...1) { editing in if !editing { tv.remoteVolume(Int(volume * 100)) } }.tint(.phoneAccent)
-                        Text(L("ui_drag_to_set_the_volume_to_448bd2", "\(Int(volume * 100))")).font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                        Text(L("ui_drag_to_set_the_volume_to_448bd2", "\(Int(volume * 100))")).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                     }
                     if let status = tv.remoteStatus { StatusNote(message: status).accessibilityIdentifier("remote_status") }
-                    Text(key: "ui_commands_use_your_household_connection_keep_the_tv_con_b044c4").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                    Text(key: "ui_commands_use_your_household_connection_keep_the_tv_con_b044c4").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 }
             }
             .padding(20)
@@ -78,7 +78,7 @@ struct RemoteScreen: View {
     }
 
     private func key(_ symbol: String, _ label: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: symbol).font(.system(size: 24)).foregroundStyle(.white).frame(width: 56, height: 56) }
+        Button(action: action) { Image(systemName: symbol).font(.system(.title2)).foregroundStyle(.white).frame(width: 56, height: 56) }
             .accessibilityLabel(label).accessibilityIdentifier("remote_\(symbol)")
     }
 }
@@ -93,7 +93,7 @@ struct RemoteBar: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: lines.title).font(PhoneFont.titleMedium).foregroundStyle(.white).lineLimit(1)
-                    Text(verbatim: lines.caption).font(.system(size: 12)).foregroundStyle(Color.phoneMuted).lineLimit(1)
+                    Text(verbatim: lines.caption).font(.system(.caption)).foregroundStyle(Color.phoneMuted).lineLimit(1)
                 }
                 Spacer()
                 if lines.canToggle {
@@ -126,7 +126,7 @@ struct ApprovalCard: View {
                 Text((approval.title ?? "").isEmpty ? L(profile ? "ui_a_profile_c3d18a" : "ui_a_private_title_wants_to_play_on_the_tv_840767") : approval.title!)
                     .font(PhoneFont.titleMedium).foregroundStyle(.white)
                 if profile && approval.sharedTv {
-                    Text(key: "ui_other_accounts_use_this_tv_too_allow_it_only_if_you_ar_7a66a8").font(.system(size: 12)).foregroundStyle(Color.phoneMuted)
+                    Text(key: "ui_other_accounts_use_this_tv_too_allow_it_only_if_you_ar_7a66a8").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                 }
                 HStack(spacing: 10) {
                     Button { tv.respondToApproval(approval, approve: true, cancelNotification: Approvals.cancel) } label: {
