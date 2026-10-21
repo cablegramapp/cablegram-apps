@@ -1,11 +1,12 @@
 name: iOS release
 # Archives the iPhone app from a tagged commit, signs it for the App Store and uploads it to TestFlight (internal testing only;
-# App Review and the App Store release stay manual). Same tags as release.yml (Android). A manual run, or a push to the
+# App Review and the App Store release stay manual). Same v* tags as release.yml (Android); an ios-v* tag (ios-v0.3.0) releases
+# the iPhone app alone, since release.yml does not match it. A manual run, or a push to the
 # ios-release-dry-run branch, builds and signs without uploading (a manual run uploads when `upload` is ticked). Without the
 # signing secrets the job skips with a notice, so an Android release still works.
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*", "ios-v*"]
     # Manual runs need this file on main; until then, push a branch with this name to try the signing.
     branches: ["ios-release-dry-run"]
   workflow_dispatch:
@@ -46,7 +47,7 @@ jobs:
           set -euo pipefail
           # CFBundleShortVersionString takes digits only: v0.3.0-rc1 ships as 0.3.0. A manual run keeps the version in Base.xcconfig.
           if [ "$REF_TYPE" = tag ]; then
-            version="${REF_NAME#v}"; version="${version%%-*}"
+            version="${REF_NAME#ios-}"; version="${version#v}"; version="${version%%-*}"
           else
             version=$(sed -nE 's/^MARKETING_VERSION = (.*)$/\1/p' apps/ios-phone/Config/Base.xcconfig)
           fi
