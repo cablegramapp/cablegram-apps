@@ -640,6 +640,14 @@ class CatalogClient(
     // ---- TV trust and Telegram sessions (spec 004 US8) ----
 
     /** Changes a TV's trust (extend the end time, or opt in to direct Telegram). */
+    /** Renames a TV of the account ("Living room"); phone-scope tokens only. */
+    suspend fun renameDevice(token: String, deviceId: String, name: String): Boolean = withContext(Dispatchers.IO) {
+        val body = json.encodeToString(buildJsonObject { put("display_name", name) })
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/devices/$deviceId")
+            .header("Authorization", "Bearer $token").patch(body.toRequestBody("application/json".toMediaType())).build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
     suspend fun setTvTrust(token: String, tvDeviceId: String, trust: TvTrust): Boolean = withContext(Dispatchers.IO) {
         val body = json.encodeToString(buildJsonObject {
             put("trust_level", if (trust.temporary) "temporary" else "home")

@@ -19,8 +19,22 @@ for (const [a, b] of pairs) {
     else if (readFileSync(pa, "utf8") !== readFileSync(pb, "utf8")) problems.push(`${name}: differs between ${a} and ${b}`);
   }
 }
+// The iPhone app keeps its own copy of the allowed Telegram surface (Swift cannot reflect over a protocol): it must name exactly the
+// members of the Android allowlist, with Kotlin's `getX` property accessors written as `x`.
+function allowlist(file, pattern) {
+  const text = readFileSync(join(root, file), "utf8");
+  const block = text.match(pattern);
+  if (!block) { problems.push(`${file}: allowlist not found`); return new Set(); }
+  return new Set([...block[1].matchAll(/"([A-Za-z]+)"/g)].map((m) => m[1]));
+}
+const lower = (name) => name.replace(/^get([A-Z])/, (_, c) => c.toLowerCase());
+const android = new Set([...allowlist("apps/android-phone/src/test/java/app/cablegram/telegram/TelegramApiSurfaceTest.kt", /setOf\(([\s\S]*?)\n    \)/)].map(lower));
+const ios = allowlist("apps/ios-phone/Packages/CablegramCore/Tests/CablegramCoreTests/Telegram/TelegramApiSurfaceTests.swift", /Set<String> = \[([\s\S]*?)\n    \]/);
+for (const name of android) if (!ios.has(name)) problems.push(`iOS Telegram surface is missing ${name}`);
+for (const name of ios) if (!android.has(name)) problems.push(`iOS Telegram surface has ${name}, which Android does not allow`);
+
 if (problems.length) {
   console.error("Telegram package out of sync:\n  " + problems.join("\n  "));
   process.exit(1);
 }
-console.log(`Telegram package in sync (${pairs.length} directories).`);
+console.log(`Telegram package in sync (${pairs.length} directories, iOS surface matches Android: ${android.size} members).`);

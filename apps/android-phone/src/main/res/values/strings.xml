@@ -36,4 +36,7 @@
     <string name="delete_account_error_offline">Can\'t reach Cablegram. Nothing was deleted. Check your connection and try again.</string>
     <string name="delete_account_error_failed">Something went wrong and your account was not deleted. Try again in a moment.</string>
     <string name="account_deleted_message">Your account was deleted.</string>
+    <string name="tv_rename">Rename</string>
+    <string name="tv_rename_title">Rename TV</string>
+    <string name="tv_name_label">TV name</string>
 </resources>

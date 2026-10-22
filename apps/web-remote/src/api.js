@@ -219,6 +219,8 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
         sharedTvIdleMinutes: me.household?.shared_tv_idle_minutes ?? 240,
       };
     },
+    /** Renames one of the account's TVs (the owner's own client only; a TV cannot rename itself). */
+    renameTv: (id, name) => send(`/api/devices/${encodeURIComponent(id)}`, { method: "PATCH", body: { display_name: String(name).trim().slice(0, 80) } }),
     claimTv: (pin, name) => send("/api/auth/device/claim", { method: "POST", body: { pin, ...(name ? { tv_display_name: name } : {}) } }),
     library: async () => (await send("/api/catalog/items")).items || [],
     command: (body) => send("/api/control/commands", { method: "POST", body }),

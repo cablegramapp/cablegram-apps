@@ -1,0 +1,30 @@
+// Shared build settings. URLs use the $() trick because xcconfig treats // as a comment.
+// Override locally in Local.xcconfig (gitignored); see Local.xcconfig.example.
+MARKETING_VERSION = 0.3.0
+CURRENT_PROJECT_VERSION = 1
+PRODUCT_BUNDLE_IDENTIFIER = app.cablegram.phone
+DEVELOPMENT_TEAM = 3S2K758XUS
+API_BASE = https:/$()/api.cablegram.app/
+WEB_APP_BASE = https:/$()/app.cablegram.app
+// Empty hides Cast (same as Android CABLEGRAM_CAST_APP_ID).
+CABLEGRAM_CAST_APP_ID =
+// First-release scope: speech-based subtitle sync stays off (CAB-77, CAB-80).
+SUBTITLE_SPEECH_SYNC = NO
+// Android keeps serving 30 minutes in the background; iOS caps this at the few seconds the system grants (LanServingController.backgroundGrace).
+LAN_IDLE_TIMEOUT_MS = 1800000
+// Test-only (Android LAN_HOST_OVERRIDE): announce this host instead of the phone's own address.
+LAN_HOST_OVERRIDE =
+// Google sign-in iOS OAuth client (founder input, see the plan). Empty client id hides the Google button.
+GOOGLE_IOS_CLIENT_ID =
+// Harmless placeholder scheme until the real reversed client id is set in Local.xcconfig.
+GOOGLE_REVERSED_CLIENT_ID = app.cablegram.phone.google-unset
+// Set on each signed target (XcodeGen would otherwise write "iPhone Developer" into the app target). The release script sets Apple Distribution.
+CABLEGRAM_CODE_SIGN_IDENTITY = Apple Development
+// App Store profile names per target, for manual signing in the release workflow (scripts/setup-ios-signing.sh writes them into
+// Local.xcconfig). Empty: Xcode's automatic signing picks the profiles, as for local builds.
+CABLEGRAM_PROFILE_APP =
+CABLEGRAM_PROFILE_SHARE =
+CABLEGRAM_PROFILE_SERVING =
+#include? "Local.xcconfig"
+// A release build never announces a test address, whatever Local.xcconfig says.
+LAN_HOST_OVERRIDE[config=Release] =

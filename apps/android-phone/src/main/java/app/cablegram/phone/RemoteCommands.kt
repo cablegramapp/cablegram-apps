@@ -94,3 +94,12 @@ internal fun miniPlayerLines(playing: String?, starting: String?, tvName: String
     if (playing != null) return MiniPlayerLines(playing, status ?: tvName, canToggle = true)
     return null
 }
+
+/**
+ * A TV paired without a name shows as "TV" until the server's name (the TV's own model name, or the one the owner gave it on another
+ * phone) is taken over. A name the owner already sees is never replaced by a different generic one.
+ */
+fun adoptServerTvNames(local: List<PairedTv>, server: List<MeDevice>): List<PairedTv> = local.map { tv ->
+    val name = server.firstOrNull { it.id == tv.deviceId }?.displayName?.takeIf { it.isNotBlank() }
+    if (tv.name == "TV" && name != null) tv.copy(name = name) else tv
+}

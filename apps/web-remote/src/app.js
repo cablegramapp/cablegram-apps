@@ -909,6 +909,9 @@ function tvsView() {
   return [
     state.tvs.length ? h("h2", {}, "Your TVs") : null,
     state.tvs.length ? tvList(() => { render(); toast(`Controlling ${tvName()}`); }) : null,
+    state.tvs.length ? h("div", { class: "list" }, state.tvs.map((t) => h("div", { class: "list-row" },
+      icon("tv"), h("span", { class: "grow" }, t.display_name || "TV"),
+      h("button", { class: "small", "aria-label": `Rename ${t.display_name || "TV"}`, onclick: () => renameTv(t) }, "Rename")))) : null,
     h("h2", {}, state.tvs.length ? "Add a TV" : "Pair your TV"),
     h("p", {}, "Open Cablegram on your TV. It shows a 6-digit code: enter it here."),
     pairForm(),
@@ -1020,6 +1023,20 @@ async function setIdle(minutes) {
   try {
     state.idle = (await api.setSharedTvIdleMinutes(minutes)) ?? state.idle;
     toast("Saved.");
+  } catch (e) {
+    if (signedOut(e)) return;
+    toast(message(e));
+  }
+  render();
+}
+
+async function renameTv(tv) {
+  const name = (globalThis.prompt("TV name", tv.display_name || "") || "").trim();
+  if (!name || name === tv.display_name) return;
+  try {
+    await api.renameTv(tv.id, name);
+    state.tvs = state.tvs.map((t) => (t.id === tv.id ? { ...t, display_name: name.slice(0, 80) } : t));
+    toast("Renamed.");
   } catch (e) {
     if (signedOut(e)) return;
     toast(message(e));

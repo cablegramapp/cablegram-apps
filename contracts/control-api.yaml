@@ -331,6 +331,11 @@ paths:
               properties:
                 lan_host: { type: string }
                 lan_port: { type: integer }
+                display_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                  description: Rename a TV. Phone-scope tokens only; a TV cannot rename itself.
       responses:
         "200":
           description: Updated

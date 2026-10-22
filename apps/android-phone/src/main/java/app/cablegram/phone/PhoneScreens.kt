@@ -940,6 +940,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
     var tunnelDraft by remember(viewModel.tunnelUrl) { mutableStateOf(viewModel.tunnelUrl) }
     var accountNameDraft by remember(viewModel.householdName) { mutableStateOf(viewModel.householdName) }
     var tvToRemove by remember { mutableStateOf<PairedTv?>(null) }
+    var tvToRename by remember { mutableStateOf<PairedTv?>(null) }
     var confirmSignOut by remember { mutableStateOf(false) }
     var showLegal by remember { mutableStateOf(false) }
     var profileToDelete by remember { mutableStateOf<HouseholdProfile?>(null) }
@@ -1025,6 +1026,9 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                         Text(tv.name, color = Color.White)
                         Text(if (tv == viewModel.tvs.lastOrNull()) ui.getString(R.string.ui_current_tv_55310c) else ui.getString(R.string.ui_paired_tv_68fdc7), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
                         TvTrustActions(viewModel, tv)
+                    }
+                    if (tv.deviceId != null) TextButton(onClick = { tvToRename = tv }, enabled = !viewModel.busy, modifier = Modifier.maestro("tv_rename_${tv.pin}")) {
+                        Text(stringResource(R.string.tv_rename))
                     }
                     TextButton(onClick = { tvToRemove = tv }, enabled = !viewModel.busy) {
                         Text(ui.getString(R.string.ui_remove_c3812f), color = MaterialTheme.colorScheme.error)
@@ -1149,6 +1153,17 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             title = { Text(ui.getString(R.string.ui_licence_and_notices_ded184)) },
             text = { Text(legal, modifier = Modifier.verticalScroll(rememberScrollState()), style = MaterialTheme.typography.bodySmall) },
             confirmButton = { TextButton(onClick = { showLegal = false }) { Text(ui.getString(R.string.ui_close_7d9eb7)) } },
+        )
+    }
+    tvToRename?.let { tv ->
+        var draft by remember(tv.pin) { mutableStateOf(tv.name) }
+        AlertDialog(
+            modifier = Modifier.maestroRoot(),
+            onDismissRequest = { tvToRename = null },
+            title = { Text(stringResource(R.string.tv_rename_title)) },
+            text = { OutlinedTextField(draft, { draft = it.take(80) }, Modifier.fillMaxWidth().maestro("tv_rename_field"), singleLine = true, label = { Text(stringResource(R.string.tv_name_label)) }) },
+            confirmButton = { TextButton(onClick = { viewModel.renameTv(tv, draft); tvToRename = null }, enabled = draft.isNotBlank()) { Text(ui.getString(R.string.ui_save_changes_dd0ae7)) } },
+            dismissButton = { TextButton(onClick = { tvToRename = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
         )
     }
     tvToRemove?.let { tv ->

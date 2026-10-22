@@ -32,6 +32,7 @@ jobs:
       contents: read
     outputs:
       android: ${{ steps.filter.outputs.android }}
+      ios: ${{ steps.filter.outputs.ios }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -43,6 +44,7 @@ jobs:
         # Anything but a pull request (push to main, manual run) always runs the Android tests.
         run: |
           android=true
+          ios=true
           if [ "$EVENT" = pull_request ]; then
             # Capture first: diff errors must fail the job, and grep -q must not give git SIGPIPE
             # on large PRs (under pipefail that could incorrectly skip the Android tests).
@@ -50,8 +52,12 @@ jobs:
             if ! grep -qE '^(apps/android-(phone|tv)/|scripts/release/|\.github/workflows/(ci|release)\.yml$)' <<< "$changed_files"; then
               android=false
             fi
+            if ! grep -qE '^(apps/ios-phone/|apps/android-phone/src/main/res/|scripts/localization/android-to-xcstrings\.py$|\.github/workflows/ci\.yml$)' <<< "$changed_files"; then
+              ios=false
+            fi
           fi
           echo "android=$android" >> "$GITHUB_OUTPUT"
+          echo "ios=$ios" >> "$GITHUB_OUTPUT"
 
   android:
     needs: changes
@@ -86,6 +92,28 @@ jobs:
           path: apps/${{ matrix.app }}/build/reports/tests/testDebugUnitTest
           if-no-files-found: ignore
           retention-days: 7
+
+  ios:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    # The app is built and tested locally with Xcode 26; the macos-15 image's default Xcode 16 compiler rejects code Xcode 26 accepts.
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode version
+        run: xcodebuild -version
+      - name: String Catalog is up to date
+        run: python3 scripts/localization/android-to-xcstrings.py --check
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project, build and test
+        working-directory: apps/ios-phone
+        run: |
+          # Whatever iPhone simulator this runner image has: the Makefile default names a model a given image may not ship.
+          device=$(xcrun simctl list devices available | grep -m1 -oE 'iPhone [0-9A-Za-z ]+[A-Za-z0-9]' | head -1)
+          echo "Testing on: $device"
+          make project test DEST="platform=iOS Simulator,name=$device"
 
   web-remote:
     runs-on: ubuntu-latest

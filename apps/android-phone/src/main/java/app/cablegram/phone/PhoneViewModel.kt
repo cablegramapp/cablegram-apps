@@ -1058,6 +1058,23 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         }
     }
 
+    /** "Rename" under Your TVs: saved on the server first, so every phone shows the new name. */
+    fun renameTv(tv: PairedTv, name: String) {
+        val trimmed = name.trim().take(80)
+        val token = pairing.accountToken ?: return
+        val id = tv.deviceId ?: return
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch {
+            if (catalog().renameDevice(token, id, trimmed)) {
+                pairing.tvs = pairing.tvs.map { if (it.pin == tv.pin) it.copy(name = trimmed) else it }
+                tvs = pairing.tvs
+                tvName = pairing.tvName
+            } else {
+                status = uiText(R.string.ui_couldn_t_reach_cablegram_check_your_connection_and_try_de82d8)
+            }
+        }
+    }
+
     /** Extends a temporary TV's end time by a day, or turns direct Telegram on or off for it. */
     fun updateTvTrust(tv: PairedTv, trust: TvTrust) {
         val token = pairing.accountToken ?: return
@@ -1107,7 +1124,7 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         }
         // Trust follows the server: the end time may have been extended from another phone.
         val trustById = server.associate { it.id to it.toTrust() }
-        val refreshed = kept.map { tv -> tv.deviceId?.let(trustById::get)?.let { tv.copy(trust = it) } ?: tv }
+        val refreshed = adoptServerTvNames(kept.map { tv -> tv.deviceId?.let(trustById::get)?.let { tv.copy(trust = it) } ?: tv }, server)
         val merged = adopted + refreshed // the selected (last) TV stays selected
         if (merged == local) return
         val wasPaired = paired
