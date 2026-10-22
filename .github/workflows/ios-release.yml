@@ -112,7 +112,8 @@ jobs:
           issuer-id: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
-          uses-non-exempt-encryption: "false"
+          # No uses-non-exempt-encryption here: Info.plist already sets ITSAppUsesNonExemptEncryption = false, and App Store
+          # Connect refuses to set it a second time (409 after build 1006 had processed).
           # Apple's processing can outlast the action's API token (a 401 after ~12 minutes, seen with build 1005), and a rejected
           # build never appears at all. The job ends after the upload; App Store Connect reports processing and rejections by email.
           wait-for-processing: "false"
