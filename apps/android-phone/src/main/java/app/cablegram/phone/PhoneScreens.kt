@@ -350,13 +350,14 @@ fun ApprovalCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
                     when {
                         viewModel.pendingApprovals.size > 1 -> ui.getString(R.string.ui_tv_approval_requests_f2f42a, (viewModel.pendingApprovals.size).toString())
                         profile -> ui.getString(R.string.ui_wants_to_open_a_profile_56a29f, approval.tvName?.takeIf { it.isNotBlank() } ?: ui.getString(R.string.ui_a_tv_bf791d))
+                        approval.kind == ApprovalKind.PhoneJoin -> "A phone wants to join this server"
                         else -> ui.getString(R.string.ui_tv_playback_approval_4438c0)
                     },
                     color = VlcOrange,
                     style = MaterialTheme.typography.labelMedium,
                 )
                 Text(
-                    approval.title?.takeIf { it.isNotBlank() } ?: if (profile) ui.getString(R.string.ui_a_profile_c3d18a) else ui.getString(R.string.ui_a_private_title_wants_to_play_on_the_tv_840767),
+                    approval.title?.takeIf { it.isNotBlank() } ?: if (profile) ui.getString(R.string.ui_a_profile_c3d18a) else if (approval.kind == ApprovalKind.PhoneJoin) "A new phone" else ui.getString(R.string.ui_a_private_title_wants_to_play_on_the_tv_840767),
                     color = Color.White,
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -369,7 +370,7 @@ fun ApprovalCard(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
                         colors = ButtonDefaults.buttonColors(containerColor = VlcOrange),
                         modifier = Modifier.maestro(MaestroIds.APPROVAL_ALLOW),
                     ) {
-                        Text(if (profile) ui.getString(R.string.ui_allow_e213c1) else ui.getString(R.string.ui_allow_once_168511), color = VlcBlack)
+                        Text(if (profile || approval.kind == ApprovalKind.PhoneJoin) ui.getString(R.string.ui_allow_e213c1) else ui.getString(R.string.ui_allow_once_168511), color = VlcBlack)
                     }
                     OutlinedButton(onClick = { viewModel.respondToApproval(approval, approve = false) }, modifier = Modifier.maestro(MaestroIds.APPROVAL_DENY)) {
                         Text(ui.getString(R.string.ui_not_now_a0e63d), color = Color.White)
@@ -970,7 +971,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                     SettingsNavigationRow(ui.getString(R.string.ui_app_connection_535ee6), Icons.Default.Settings, "settings_category_connection") { page = "connection" }
                 }
             }
-            SettingsNavigationRow(ui.getString(R.string.ui_subtitle_accounts_9602a0), Icons.AutoMirrored.Filled.LibraryBooks, "settings_subtitle_accounts") { viewModel.subtitleAccountsOpen = true }
+            if (viewModel.features.subtitles) SettingsNavigationRow(ui.getString(R.string.ui_subtitle_accounts_9602a0), Icons.AutoMirrored.Filled.LibraryBooks, "settings_subtitle_accounts") { viewModel.subtitleAccountsOpen = true }
         }
         if (page == "account") SectionCard(ui.getString(R.string.ui_account_7e1b0d)) {
             OutlinedTextField(
@@ -1032,7 +1033,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             }
             Button(onClick = viewModel::startAddTv, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_ADD_TV)) { Text(ui.getString(R.string.ui_connect_a_tv_0ff3f5)) }
         }
-        if (page == "transfers") viewModel.relayUsage?.let { usage -> SectionCard(ui.getString(R.string.ui_relay_c226b0)) { RelayUsageCard(usage) } }
+        if (page == "transfers" && viewModel.features.relay) viewModel.relayUsage?.let { usage -> SectionCard(ui.getString(R.string.ui_relay_c226b0)) { RelayUsageCard(usage) } }
         if (page == "profiles") SectionCard(ui.getString(R.string.ui_profiles_535e52)) {
             viewModel.profiles.forEach { profile ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1063,7 +1064,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             }
             Text(ui.getString(R.string.ui_add_profiles_on_the_tv_deleting_one_removes_its_progre_22f2f3), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
-        if (page == null) Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp), onClick = { viewModel.tab = PhoneTab.Storage }, modifier = Modifier.maestro(MaestroIds.NAV_STORAGE)) {
+        if (page == null && viewModel.features.cloudStorage) Surface(color = VlcPanel, shape = RoundedCornerShape(20.dp), onClick = { viewModel.tab = PhoneTab.Storage }, modifier = Modifier.maestro(MaestroIds.NAV_STORAGE)) {
             Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Icon(Icons.Default.Storage, null, tint = VlcOrange)
                 Column(Modifier.weight(1f)) {
@@ -1117,6 +1118,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.SETTINGS_SIGN_OUT),
             ) { Text(ui.getString(R.string.ui_sign_out_48f0d3), color = MaterialTheme.colorScheme.error) }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (viewModel.accountDeletionAvailable) {
                 OutlinedButton(
                     onClick = viewModel::openDeleteAccount,
                     enabled = !viewModel.busy,
@@ -1124,6 +1126,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro("settings_delete_account"),
                 ) { Text(stringResource(R.string.delete_account_entry), color = MaterialTheme.colorScheme.error) }
                 Text(stringResource(R.string.delete_account_entry_hint), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
         viewModel.status?.let { StatusNote(it) }
@@ -1132,9 +1135,9 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             TextButton(onClick = { showLegal = true }) { Text(ui.getString(R.string.ui_licence_and_third_party_notices_0dcfa5)) }
             Text(ui.getString(R.string.ui_cablegram_your_videos_your_screen_your_space_b83cca, BuildConfig.VERSION_NAME), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
-        if (page == "account") {
+        if (page == "account" && viewModel.accountDeletionAvailable) {
             val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-            TextButton(onClick = { uriHandler.openUri(DELETE_ACCOUNT_WEB_URL) }) { Text(stringResource(R.string.delete_account_web_link)) }
+            TextButton(onClick = { uriHandler.openUri("${viewModel.apiBaseUrl.trimEnd('/')}/delete-account") }) { Text(stringResource(R.string.delete_account_web_link)) }
         }
     }
     if (showLegal) {
@@ -1334,11 +1337,11 @@ private fun DetailOverlay(viewModel: PhoneViewModel, item: LibraryItem) {
             item.overview?.takeIf { it.isNotBlank() }?.let { Text(it, color = VlcMuted, style = MaterialTheme.typography.bodyLarge) }
             LaunchedEffect(item.id) { viewModel.refreshSubtitleStatus(item) }
             if (viewModel.savedSubtitle != null) TextButton(onClick = { viewModel.removeSavedSubtitle(item) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_remove_saved_subtitle_4ed88f)) }
-            OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
+            if (viewModel.features.subtitles) OutlinedButton(onClick = { viewModel.subtitleFlowOpen = true }, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).maestro(MaestroIds.DETAIL_FIND_SUBTITLES)) {
                 Text(viewModel.savedSubtitle?.let { ui.getString(R.string.ui_subtitles_find_another_59ba49, it) } ?: ui.getString(R.string.ui_find_subtitles_8a4dbc))
             }
             if (viewModel.savedSubtitle != null) SavedSubtitleTimingButton(viewModel, item, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null)
-            LocalSubtitleAttachmentButton(viewModel, item, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null)
+            if (viewModel.features.subtitles) LocalSubtitleAttachmentButton(viewModel, item, enabled = !sourceUnavailable && viewModel.accountTokenOrNull() != null)
             SectionCard(ui.getString(R.string.ui_your_copy_c7710a)) {
                 StorageMetric("Location", storageStatusLine(item, resources = ui))
                 item.fileSizeBytes?.let { StorageMetric(ui.getString(R.string.ui_file_size_ff0442), formatBytes(it)) }

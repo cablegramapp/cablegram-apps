@@ -14,6 +14,52 @@ paths:
       responses:
         "200":
           description: OK
+  /api/server:
+    get:
+      security: []
+      summary: Server edition, sign-in mode, feature capabilities, and legal documents
+      responses:
+        "200":
+          description: Server capabilities descriptor (see server-capabilities.md)
+  /api/auth/setup/claim:
+    post:
+      security: []
+      summary: Claim first-start or recovery 6-digit setup code (Community device sign-in)
+      responses:
+        "201":
+          description: Phone session tokens + household + device
+  /api/auth/join-requests:
+    post:
+      security: []
+      summary: Start a phone join request for approval by an existing phone
+      responses:
+        "201":
+          description: Join request id, short_code, and poll_secret
+  /api/auth/join-requests/pending:
+    get:
+      summary: List pending phone join requests for the household
+      responses:
+        "200":
+          description: Pending join requests
+  /api/auth/join-requests/{id}:
+    get:
+      security: []
+      summary: Poll a phone join request with Authorization Join <poll_secret>
+      responses:
+        "200":
+          description: pending, approved (with session tokens once), denied, or expired
+  /api/auth/join-requests/{id}/approve:
+    post:
+      summary: Approve a pending phone join request
+      responses:
+        "200":
+          description: Approved
+  /api/auth/join-requests/{id}/deny:
+    post:
+      summary: Deny a pending phone join request
+      responses:
+        "200":
+          description: Denied
   /api/auth/register:
     post:
       security: []

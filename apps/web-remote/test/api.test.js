@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createApi, REMOTE, ApiError } from "../src/api.js";
+import { createApi, REMOTE, ApiError, validateServerUrl } from "../src/api.js";
 
 function memoryStorage() {
   const data = new Map();
@@ -174,4 +174,52 @@ test("profile lock: list and answer TV profile requests, read and change the loc
   assert.equal(await api.setProfileLock(false), false);
   assert.equal(fetch.calls[4].method, "PATCH");
   assert.deepEqual(fetch.calls[4].body, { profile_lock: false });
+});
+
+test("validateServerUrl accepts HTTPS and private LAN HTTP, rejects public HTTP", () => {
+  assert.deepEqual(validateServerUrl("https://tv.example.com/"), { ok: true, url: "https://tv.example.com", insecureLan: false });
+  assert.deepEqual(validateServerUrl("http://192.168.1.50:3000/"), { ok: true, url: "http://192.168.1.50:3000", insecureLan: true });
+  assert.deepEqual(validateServerUrl("http://cablegram.local:3000"), { ok: true, url: "http://cablegram.local:3000", insecureLan: true });
+  assert.equal(validateServerUrl("http://tv.example.com").ok, false);
+  assert.equal(validateServerUrl("ftp://tv.example.com").ok, false);
+});
+
+test("device sign-in: server capabilities, setup code claim, join requests and server switching", async () => {
+  const fetch = fakeFetch(
+    [200, { api_version: 1, edition: "community", auth: { mode: "device" }, features: { artwork: false } }],
+    [200, { access_token: "a-setup", refresh_token: "r-setup", display_name: "Home" }],
+    [201, { id: "jr-1", poll_secret: "sec-1", short_code: "123-456" }],
+    [200, { status: "approved", access_token: "a-join", refresh_token: "r-join", display_name: "Home" }],
+    [200, { requests: [{ id: "jr-2", device_name: "Phone 2", short_code: "654-321" }] }],
+    [200, { status: "approved" }],
+  );
+  const storage = memoryStorage();
+  const api = createApi({ base: BASE, storage, fetch });
+  const caps = await api.server();
+  assert.equal(caps.edition, "community");
+  assert.equal(caps.auth.mode, "device");
+
+  await api.claimSetup("ABCD-EFGH", "My iPhone");
+  assert.equal(fetch.calls[1].url, `${BASE}/api/auth/setup/claim`);
+  assert.deepEqual(fetch.calls[1].body, { code: "ABCD-EFGH", device_name: "My iPhone", client: "web" });
+  assert.equal(api.signedIn, true);
+
+  // Switching server clears session tokens and updates target URL
+  api.setBaseUrl("https://self.example.com/");
+  assert.equal(api.baseUrl, "https://self.example.com");
+  assert.equal(api.signedIn, false);
+  assert.equal(storage.getItem("cablegram.server"), "https://self.example.com");
+
+  const jr = await api.createJoinRequest("iPad");
+  assert.equal(fetch.calls[2].url, "https://self.example.com/api/auth/join-requests");
+  assert.equal(jr.short_code, "123-456");
+
+  await api.pollJoinRequest("jr-1", "sec-1");
+  assert.equal(fetch.calls[3].url, "https://self.example.com/api/auth/join-requests/jr-1?secret=sec-1");
+  assert.equal(api.signedIn, true);
+
+  const pending = await api.pendingJoinRequests();
+  assert.equal(pending.length, 1);
+  await api.answerJoinRequest("jr-2", true);
+  assert.equal(fetch.calls[5].url, "https://self.example.com/api/auth/join-requests/jr-2/approve");
 });

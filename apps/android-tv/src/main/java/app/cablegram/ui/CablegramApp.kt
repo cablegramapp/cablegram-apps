@@ -237,6 +237,8 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     onTelegramConnect = viewModel.telegram::connectStandalone,
                     onTelegramSignInWithoutPassword = viewModel.telegram::signInWithoutPassword,
                     onTelegramCancel = viewModel.telegram::cancelConnect,
+                    serverUrl = viewModel.serverUrl,
+                    onReturnToCablegram = viewModel::returnToCablegram.takeIf { !viewModel.usesDefaultServer },
                 )
                 ConnectedWelcomeDialog(viewModel.connectedWelcome, viewModel::dismissConnectedWelcome) }
                 is ScreenState.Resolving -> PrepareStatusScreen(

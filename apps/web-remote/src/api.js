@@ -33,6 +33,35 @@ export const REMOTE = {
 };
 
 const SESSION_KEY = "cablegram.session";
+const SERVER_KEY = "cablegram.server";
+
+function isPrivateOrLocalHost(hostname) {
+  const host = hostname.toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1" || host === "[::1]" || host.endsWith(".local")) return true;
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (!ipv4) return false;
+  const [a, b] = [Number(ipv4[1]), Number(ipv4[2])];
+  return a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254);
+}
+
+/** Validates a custom server URL (HTTPS or private LAN HTTP). */
+export function validateServerUrl(raw) {
+  let parsed;
+  try {
+    parsed = new URL(String(raw || "").trim());
+  } catch {
+    return { ok: false, error: "Enter a complete server URL (for example https://tv.example.com)." };
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return { ok: false, error: "Server URL must start with https:// or http://." };
+  }
+  const insecureLan = parsed.protocol === "http:";
+  if (insecureLan && !isPrivateOrLocalHost(parsed.hostname)) {
+    return { ok: false, error: "HTTP is only allowed for local network (LAN) addresses. Use HTTPS for remote servers." };
+  }
+  const path = parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
+  return { ok: true, url: `${parsed.origin}${path}`, insecureLan };
+}
 
 /**
  * @param {{ base: string, storage?: Storage, fetch?: typeof fetch }} options
@@ -40,7 +69,16 @@ const SESSION_KEY = "cablegram.session";
  * refresh token rotates on every use, so a refresh is retried at most once per request.
  */
 export function createApi({ base, storage = globalThis.localStorage, fetch: fetchImpl = globalThis.fetch.bind(globalThis) }) {
-  const root = base.replace(/\/+$/, "");
+  const defaultRoot = base.replace(/\/+$/, "");
+  const readServer = () => {
+    try {
+      const saved = storage.getItem(SERVER_KEY);
+      if (!saved) return defaultRoot;
+      const check = validateServerUrl(saved);
+      return check.ok ? check.url : defaultRoot;
+    } catch { return defaultRoot; }
+  };
+  let root = readServer();
   let refreshing = null;
 
   const read = () => {
@@ -108,6 +146,37 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
   return {
     get signedIn() { return !!memory?.refresh_token; },
     get householdName() { return memory?.household_name || ""; },
+    get baseUrl() { return root; },
+    get defaultBaseUrl() { return defaultRoot; },
+    setBaseUrl(nextBase) {
+      const next = nextBase ? validateServerUrl(nextBase) : { ok: true, url: defaultRoot };
+      if (!next.ok) throw new Error(next.error);
+      const changed = next.url !== root;
+      root = next.url;
+      try {
+        if (root === defaultRoot) storage.removeItem(SERVER_KEY);
+        else storage.setItem(SERVER_KEY, root);
+      } catch { /* private mode */ }
+      if (changed) write(null);
+      return root;
+    },
+    /** Server capabilities (`GET /api/server`); falls back for servers older than `api_version: 1`. */
+    async server() {
+      try {
+        return await send("/api/server", { auth: false });
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) {
+          return {
+            api_version: 1,
+            edition: "hosted",
+            auth: { mode: "account", email_code: true },
+            features: { telegram: true, lan_playback: true, profile_lock: true },
+            legal: null,
+          };
+        }
+        throw e;
+      }
+    },
     /** `{ google: { client_id } | null, email_code: true }`: the server offers Google only when it has a client. */
     methods: () => send("/api/auth/methods", { auth: false }),
     /** The current Terms and privacy policy: `{ terms: { version, url }, privacy: { version, url } }`. */
@@ -116,6 +185,14 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
     requestCode: (email) => send("/api/auth/email-code/request", { method: "POST", auth: false, body: { email } }),
     verifyCode: async (email, code) => keep(await post("/api/auth/email-code/verify", { email, code })),
     google: async (idToken, nonce) => keep(await post("/api/auth/google", { id_token: idToken, nonce })),
+    /** Device sign-in (`auth.mode === "device"`): claim the server's one-time setup code or request approval from an existing phone. */
+    claimSetup: async (code, deviceName = "Web Remote") => keep(await post("/api/auth/setup/claim", { code, device_name: deviceName })),
+    createJoinRequest: (deviceName = "Web Remote") => post("/api/auth/join-requests", { device_name: deviceName }),
+    pollJoinRequest: async (id, secret) =>
+      keep(await send(`/api/auth/join-requests/${encodeURIComponent(id)}?secret=${encodeURIComponent(secret)}`, { auth: false })),
+    pendingJoinRequests: async () => (await send("/api/auth/join-requests/pending")).requests || [],
+    answerJoinRequest: (id, allow) =>
+      send(`/api/auth/join-requests/${encodeURIComponent(id)}/${allow ? "approve" : "deny"}`, { method: "POST", body: {} }),
     /** Creates the account after the person accepted the Terms and confirmed they are 18 or older. */
     signUp: async (ticket, name, legal) => keep(await post("/api/auth/signup", {
       signup_ticket: ticket,

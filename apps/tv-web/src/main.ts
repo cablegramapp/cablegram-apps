@@ -34,7 +34,10 @@ import type { DeviceSession, Playback, Profile, SwitchRequest, Title } from "./t
 const root = document.getElementById("app")!;
 interface ProfileEntry { profile: Profile; account: Account }
 let current: ProfileEntry | null = null;
-const api = createApi({ token: () => current?.account.token ?? store.activeAccount()?.token });
+const api = createApi({
+  base: () => store.serverUrl() ?? API_BASE,
+  token: () => current?.account.token ?? store.activeAccount()?.token,
+});
 
 type Focusable = HTMLElement & { onSelect?: () => void; onLong?: () => void };
 let backHandler: (() => void) | null = null;
@@ -213,12 +216,17 @@ let pairingRun = 0;
 async function pair(canCancel = profileEntries.length > 0) {
   const run = ++pairingRun;
   if (!root.querySelector(".pairing")) loading("Getting a pairing code…");
+  void api.server().catch(() => undefined);
   let session: DeviceSession;
   try {
     session = await api.createDeviceSession(deviceName());
   } catch {
     if (run !== pairingRun) return;
-    errorScreen("Can't reach Cablegram", `Check the TV's internet connection (${API_BASE}).`, [button("Try again", () => pair(canCancel))],
+    const actions = [button("Try again", () => pair(canCancel))];
+    if (store.serverUrl()) {
+      actions.push(button("Return to Cablegram", () => { store.setServerUrl(null); void pair(false); }, "panel"));
+    }
+    errorScreen("Can't reach Cablegram", `Check the TV's internet connection (${api.baseUrl()}).`, actions,
       canCancel ? () => picker() : null);
     return;
   }
@@ -227,6 +235,7 @@ async function pair(canCancel = profileEntries.length > 0) {
   const qr = qrCanvas(link, 544);
   const buttons = [button("New PIN", () => pair(canCancel), "raised", true)];
   if (canCancel) buttons.push(button("Cancel", () => { pairingRun++; picker(); }, "raised"));
+  if (store.serverUrl()) buttons.push(button("Return to Cablegram", () => { pairingRun++; store.setServerUrl(null); void pair(false); }, "raised"));
   buttons.push(button("Check this TV", () => { pairingRun++; diagnosticsScreen(() => void pair(canCancel)); }, "raised"));
   show([h("div", "pairing", undefined, [
     h("div", "pairing-text", undefined, [
@@ -275,6 +284,7 @@ async function loadProfiles() {
   const list = store.accounts();
   if (!list.length) { profileEntries = []; current = null; void pair(false); return; }
   if (!root.querySelector(".picker")) loading();
+  void api.server().catch(() => undefined);
   const entries: ProfileEntry[] = [];
   let failed = false;
   for (const account of list) {
@@ -885,6 +895,34 @@ function lineIcon(name: string): HTMLElement {
 
 function settingsPanel(): HTMLElement {
   const value = (label: string, v: string) => h("div", "setting-value", undefined, [h("div", "setting-label", label), h("div", "setting-v", v)]);
+  const customServer = store.serverUrl();
+  const connNodes: Node[] = [
+    h("div", "settings-heading", "Connection"),
+    value("This TV", deviceName()),
+    value("Server", api.baseUrl()),
+    value("Media source", "Your paired phone"),
+    value("Playback path", "Relay through Cablegram"),
+    h("div", "settings-text small", "This TV reaches your phone through the Cablegram relay, so it plays whether or not both are on the same Wi‑Fi."),
+  ];
+  if (customServer) {
+    connNodes.push(button("Return to Cablegram", () => {
+      confirmUnpair(() => {
+        store.setServerUrl(null);
+        current = null;
+        videos = [];
+        profileEntries = [];
+        void pair(false);
+      }, "Return to Cablegram?", "This TV will disconnect from the custom server and return to the default Cablegram server.", "Return");
+    }, "panel"));
+  }
+  connNodes.push(
+    h("div", "settings-heading", "Telegram"),
+    h("div", "settings-text small", import.meta.env.VITE_TG_DIRECT === "1"
+      ? "Telegram playback on this TV is in testing."
+      : "Telegram playback isn't available on this TV yet. Titles stored in Telegram play on the Android TV app."),
+    h("div", "settings-heading", "Help"),
+    button("Diagnostics", () => diagnosticsScreen(), "panel"),
+  );
   return h("div", "settings", undefined, [
     h("div", "settings-col wide", undefined, [
       h("div", "settings-title", "About Cablegram"),
@@ -892,19 +930,7 @@ function settingsPanel(): HTMLElement {
       h("div", "settings-text", "Cablegram plays videos you own or are allowed to watch. It provides no media of its own. Videos from your phone or your Telegram channel are never stored on its servers; only a web video you choose to save to Cablegram storage is, until you delete your account."),
       h("div", "settings-text small", "Privacy policy: https://cablegram.app/privacy.html"),
     ]),
-    h("div", "settings-col", undefined, [
-      h("div", "settings-heading", "Connection"),
-      value("This TV", deviceName()),
-      value("Media source", "Your paired phone"),
-      value("Playback path", "Relay through Cablegram"),
-      h("div", "settings-text small", "This TV reaches your phone through the Cablegram relay, so it plays whether or not both are on the same Wi‑Fi."),
-      h("div", "settings-heading", "Telegram"),
-      h("div", "settings-text small", import.meta.env.VITE_TG_DIRECT === "1"
-        ? "Telegram playback on this TV is in testing."
-        : "Telegram playback isn't available on this TV yet. Titles stored in Telegram play on the Android TV app."),
-      h("div", "settings-heading", "Help"),
-      button("Diagnostics", () => diagnosticsScreen(), "panel"),
-    ]),
+    h("div", "settings-col", undefined, connNodes),
   ]);
 }
 
@@ -944,7 +970,7 @@ function diagnosticsScreen(back: () => void = () => libraryScreen()) {
       diag.checkDecoders(report);
       await diag.checkSpeed(report);
       if (!live()) return;
-      await diag.checkNetwork(report, API_BASE);
+      await diag.checkNetwork(report, api.baseUrl());
       if (!live()) return;
       const bytes = await getClip().catch((e: Error) => { report.add("clip", "Test clip", "fail", `could not load it (${e.message})`); return null; });
       if (bytes && live()) await diag.checkPlayback(report, bytes, preview);
@@ -1739,6 +1765,14 @@ document.addEventListener("keyup", (e) => {
 registerPlatformKeys();
 
 async function start() {
+  const params = new URLSearchParams(location.search);
+  const serverParam = params.get("server");
+  if (serverParam) {
+    store.setServerUrl(serverParam);
+    params.delete("server");
+    const rest = params.toString();
+    history.replaceState(null, "", `${location.pathname}${rest ? `?${rest}` : ""}${location.hash}`);
+  }
   if (location.hash === "#diag") { diagnosticsScreen(); return; }
   if (!store.accounts().length) { void pair(false); return; }
   await loadProfiles();

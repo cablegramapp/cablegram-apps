@@ -115,6 +115,8 @@ internal fun LibraryScreen(
     onTelegramConnect: () -> Unit = {},
     onTelegramSignInWithoutPassword: () -> Unit = {},
     onTelegramCancel: () -> Unit = {},
+    serverUrl: String? = null,
+    onReturnToCablegram: (() -> Unit)? = null,
 ) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val exitHint = ui.getString(R.string.ui_press_back_again_to_exit_e12dfa)
@@ -286,6 +288,8 @@ internal fun LibraryScreen(
                         onTelegramConnect = onTelegramConnect,
                         onTelegramSignInWithoutPassword = onTelegramSignInWithoutPassword,
                         onTelegramCancel = onTelegramCancel,
+                        serverUrl = serverUrl,
+                        onReturnToCablegram = onReturnToCablegram,
                     )
                     return@Column
                 }

@@ -409,9 +409,78 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
             status = uiText(R.string.ui_enter_a_valid_http_or_https_server_address_cbfe30)
             return
         }
-        pairing.apiBaseUrl = value.trim()
+        val next = value.trim()
+        // Switching servers drops credentials, pairing, the cached catalog and pending work of the old one.
+        if (next.trimEnd('/') != pairing.apiBaseUrl.trimEnd('/')) forgetServerState()
+        pairing.apiBaseUrl = next
         apiBaseUrl = pairing.apiBaseUrl
+        serverCapabilities = null
+        loadServerCapabilities()
+        if (needsAccount) loadSignInOptions()
         PairLog.i("Phone API URL set to $apiBaseUrl")
+    }
+
+    /** What the selected server offers; null until loaded. Hosted features default on for older servers. */
+    private var capabilitiesState by mutableStateOf<ServerCapabilities?>(null)
+    var serverCapabilities: ServerCapabilities?
+        get() = capabilitiesState
+        private set(value) {
+            capabilitiesState = value
+            artworkEditor.lookupAvailable = (value?.features ?: ServerFeatures.HostedDefault).let { it.artwork || it.aiTitleResolution }
+        }
+    val features: ServerFeatures get() = serverCapabilities?.features ?: ServerFeatures.HostedDefault
+    /** Community servers have no accounts to delete: removing a device replaces it. */
+    val accountDeletionAvailable: Boolean get() = serverCapabilities?.auth?.mode != "device"
+    private val capabilityCache = mutableMapOf<String, ServerCapabilities>()
+
+    fun loadServerCapabilities() {
+        val server = pairing.apiBaseUrl
+        capabilityCache[server]?.let { serverCapabilities = it }
+        viewModelScope.launch {
+            val fresh = catalog().serverCapabilities() ?: return@launch
+            capabilityCache[server] = fresh
+            if (pairing.apiBaseUrl == server) serverCapabilities = fresh
+        }
+    }
+
+    /** Back to Cablegram's own server. */
+    fun returnToCablegram() = updateApiBaseUrl(BuildConfig.API_BASE_URL)
+
+    /** Clears everything tied to the previous server without calling it; the next sign-in starts clean. */
+    private fun forgetServerState() {
+        runCatching { store.forgetHousehold() }
+        runCatching { CommandQueue(getApplication()).drain() }
+        PrivateApprovals.pending.value = emptyList()
+        relayUsage = null
+        storage = null
+        clearSignedInState()
+        refresh()
+    }
+
+    private var joinPollJob: Job? = null
+
+    fun claimSetupCode(code: String) {
+        status = null
+        viewModelScope.launch { signIn.claimSetupCode(code) }
+    }
+
+    fun requestJoin() {
+        status = null
+        viewModelScope.launch {
+            signIn.requestJoin()
+            joinPollJob?.cancel()
+            joinPollJob = launch {
+                while (isActive && signIn.step is SignInStep.JoinWait) {
+                    if (!signIn.pollJoin()) break
+                    delay(2_000)
+                }
+            }
+        }
+    }
+
+    fun cancelJoin() {
+        joinPollJob?.cancel()
+        signIn.back()
     }
 
     fun updateTunnelUrl(value: String) {
@@ -457,6 +526,7 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         PairLog.i("Phone start api=${pairing.apiBaseUrl} ips=${localIpv4Addresses()} paired=$paired")
         refresh()
         restoreHouseholdName()
+        loadServerCapabilities()
         if (needsAccount) loadSignInOptions() else checkTerms()
         refreshPendingApprovals()
         // One poller serves the notification and this list: ApprovalWatcher, in LanLibraryService.
@@ -592,6 +662,7 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
                 status = when {
                     profile && approve -> uiText(R.string.ui_can_open_3f1941, approval.tvName ?: uiText(R.string.ui_the_tv_adfd45), what)
                     profile -> uiText(R.string.ui_won_t_open_b1de63, approval.tvName ?: uiText(R.string.ui_the_tv_adfd45), what)
+                    approval.kind == ApprovalKind.PhoneJoin -> if (approve) "$what can now use this server." else "$what was not allowed in."
                     approve -> uiText(R.string.ui_playback_allowed_for_this_attempt_2fcc98)
                     else -> uiText(R.string.ui_playback_denied_270488)
                 }
@@ -824,6 +895,7 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
     /** The server returned an account (Google, an email code, or Create your account). */
     private suspend fun completeSignIn(result: PhonePairResponse) {
         pairing.accountToken = result.token
+        result.phoneDeviceId?.let { pairing.phoneDeviceId = it }
         syncDeviceLanguage()
         pairing.refreshToken = result.refreshToken
         householdName = result.displayName.orEmpty()

@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
  */
 class ApprovalWatcher(private val context: Context, private val scope: CoroutineScope) {
     private val store = PairingStore(context)
-    private val client = CatalogClient(store.apiBaseUrl, store)
+    // Read per call so switching servers takes effect without restarting the service.
+    private val client get() = CatalogClient(store.apiBaseUrl, store)
     private var job: Job? = null
 
     fun start() {
@@ -71,13 +72,14 @@ class ApprovalWatcher(private val context: Context, private val scope: Coroutine
 
 /** Everything TVs wait for: private titles and, with the profile lock on, profiles to open. */
 internal suspend fun CatalogClient.fetchAllPendingApprovals(token: String): List<PendingApproval> =
-    fetchPendingProfileRequests(token) + fetchPendingPrivateApprovals(token)
+    fetchPendingProfileRequests(token) + fetchPendingPrivateApprovals(token) + fetchPendingJoinRequests(token)
 
 /** Sends the phone's answer; false when the TV no longer waits or the server could not be reached. */
 internal suspend fun CatalogClient.answerApproval(token: String, approval: PendingApproval, allow: Boolean): Boolean =
     when (approval.kind) {
         ApprovalKind.Profile -> answerProfileRequest(token, approval.attemptId, allow)
         ApprovalKind.Playback -> if (allow) approvePrivatePlayback(token, approval.attemptId) != null else denyPrivatePlayback(token, approval.attemptId)
+        ApprovalKind.PhoneJoin -> answerJoinRequest(token, approval.attemptId, allow)
     }
 
 /** The one poll for pending approvals: quick while the app is on screen, slow in the background. */
@@ -113,8 +115,9 @@ object PrivateApprovals {
             ApprovalKind.Profile -> ui.getString(R.string.ui_wants_to_open_5ee092, tv, approval.title ?: ui.getString(R.string.ui_a_profile_4913b3)) to
                 if (approval.sharedTv) ui.getString(R.string.ui_other_accounts_use_this_tv_too_allow_it_only_if_you_ar_7a66a8) else ui.getString(R.string.ui_allow_it_only_if_you_are_at_that_tv_2f7976)
             ApprovalKind.Playback -> ui.getString(R.string.ui_wants_to_play_a_private_title_b90ffa, tv) to (approval.title ?: ui.getString(R.string.ui_a_private_title_is_waiting_for_your_approval_43ca2a))
+            ApprovalKind.PhoneJoin -> "${approval.title ?: "A phone"} wants to join this server" to "Allow it only if you are setting up that phone."
         }
-        val allowLabel = if (approval.kind == ApprovalKind.Profile) ui.getString(R.string.ui_allow_e213c1) else ui.getString(R.string.ui_allow_once_168511)
+        val allowLabel = if (approval.kind != ApprovalKind.Playback) ui.getString(R.string.ui_allow_e213c1) else ui.getString(R.string.ui_allow_once_168511)
         val notification = Notification.Builder(context, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)

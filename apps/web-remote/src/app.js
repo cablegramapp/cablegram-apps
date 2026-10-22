@@ -1,5 +1,5 @@
 import { API_BASE } from "../config.js";
-import { createApi, REMOTE, ApiError } from "./api.js";
+import { createApi, REMOTE, ApiError, validateServerUrl } from "./api.js";
 import { trackCommand, OUTCOME } from "./outcome.js";
 import { capturePairLink, clearPendingPair, pendingPair } from "./pairlink.js";
 
@@ -59,10 +59,41 @@ function icon(name) {
 }
 
 const state = {
-  tvs: [], tv: remembered(), library: [], loaded: false, libraryError: "", link: null, pending: [], profileRequests: [], lock: null, idle: null,
+  tvs: [], tv: remembered(), library: [], loaded: false, libraryError: "", link: null, pending: [], profileRequests: [], joinRequests: [], lock: null, idle: null,
   tab: TABS[location.hash.slice(1)] ? location.hash.slice(1) : "library", query: "", muted: false, volume: 50,
+  serverCaps: null,
 };
 let pollTimer = null;
+let joinPollTimer = null;
+const serverCapsCache = new Map();
+
+async function getServerCaps(force = false) {
+  const url = api.baseUrl;
+  if (!force && serverCapsCache.has(url)) {
+    state.serverCaps = serverCapsCache.get(url);
+    return state.serverCaps;
+  }
+  try {
+    const caps = await api.server();
+    serverCapsCache.set(url, caps);
+    state.serverCaps = caps;
+    return caps;
+  } catch {
+    const fallback = {
+      api_version: 1,
+      edition: "hosted",
+      auth: { mode: "account", email_code: true },
+      features: { telegram: true, lan_playback: true, profile_lock: true },
+      legal: null,
+    };
+    state.serverCaps = fallback;
+    return fallback;
+  }
+}
+
+function isDeviceAuth() {
+  return state.serverCaps?.auth?.mode === "device";
+}
 
 function remembered() {
   try { return localStorage.getItem(TV_KEY); } catch { return null; }
@@ -85,6 +116,9 @@ function message(error) {
     case "unknown_target_device": return "That TV isn't paired any more.";
     case "pin_expired": return "That code expired. Scan the new code on the TV, or type the new PIN.";
     case "invalid_pin": return "That code didn't match. Check the code on the TV and try again.";
+    case "invalid_setup_code": return "That setup code isn't valid or has already been used.";
+    case "setup_code_expired": return "That setup code expired. Run cablegram-server setup-code on your server for a new one.";
+    case "household_not_initialized": return "This server isn't set up yet. Enter the setup code from the server log first.";
     default: return error.status === 401 ? "Please sign in again." : `Something went wrong (${error.code || error.status}).`;
   }
 }
@@ -127,8 +161,14 @@ function link(href, text) {
   return h("a", { href, target: "_blank", rel: "noopener" }, text);
 }
 
+function stopJoinPolling() {
+  clearInterval(joinPollTimer);
+  joinPollTimer = null;
+}
+
 function signinPage(...children) {
   stopPolling();
+  stopJoinPolling();
   stopTracking();
   closeSheet();
   const scanned = pendingPair(tabStore);
@@ -139,8 +179,156 @@ function signinPage(...children) {
     ...children));
 }
 
-/** First screen: Google (when the server offers it) or an email code. The privacy notice is shown before anything is sent. */
+async function selectServer(url) {
+  await api.logout().catch(() => {});
+  api.setBaseUrl(url);
+  legalDocs = null;
+  state.tvs = [];
+  state.tv = null;
+  state.library = [];
+  state.loaded = false;
+  state.libraryError = "";
+  state.link = null;
+  state.pending = [];
+  state.profileRequests = [];
+  state.joinRequests = [];
+  try { localStorage.removeItem(TV_KEY); } catch { /* fine */ }
+  await getServerCaps(true);
+  renderSignIn();
+}
+
+function serverFooter() {
+  const custom = api.baseUrl !== api.defaultBaseUrl;
+  return h("p", { class: "center hint" },
+    custom ? `Server: ${api.baseUrl} · ` : null,
+    h("a", { href: "#", onclick: (e) => { e.preventDefault(); renderServerPicker(); } }, custom ? "Change server" : "Join a server"),
+    custom ? [" · ", h("a", { href: "#", onclick: (e) => { e.preventDefault(); selectServer(null); } }, "Use default server")] : null,
+  );
+}
+
+function renderServerPicker(error = "") {
+  const input = h("input", {
+    type: "url", placeholder: "https://cablegram.example.com", required: true,
+    "aria-label": "Server URL", value: api.baseUrl === api.defaultBaseUrl ? "" : api.baseUrl,
+  });
+  const warnBox = h("label", { class: "agree", style: "display:none" });
+  const warnCheck = h("input", { type: "checkbox" });
+  warnBox.append(warnCheck, h("span", {}, "Allow unencrypted HTTP on my local network (LAN)."));
+  const submit = h("button", { class: "primary wide", type: "submit" }, "Connect to server");
+  const errorLine = h("p", { class: "error", role: "alert" }, error);
+  input.addEventListener("input", () => {
+    const check = validateServerUrl(input.value);
+    warnBox.style.display = check.ok && check.insecureLan ? "" : "none";
+  });
+  const form = h("form", {
+    onsubmit: async (event) => {
+      event.preventDefault();
+      const check = validateServerUrl(input.value);
+      if (!check.ok) { errorLine.textContent = check.error; return; }
+      if (check.insecureLan && !warnCheck.checked) {
+        warnBox.style.display = "";
+        errorLine.textContent = "Confirm that you trust this local network HTTP address.";
+        return;
+      }
+      submit.disabled = true;
+      await selectServer(check.url);
+    },
+  }, input, warnBox, submit);
+  signinPage(
+    h("h1", {}, "Join a server"),
+    h("p", {}, "Enter the address of your Cablegram server."),
+    form,
+    errorLine,
+    h("p", { class: "center" },
+      api.baseUrl !== api.defaultBaseUrl && [h("a", { href: "#", onclick: (e) => { e.preventDefault(); selectServer(null); } }, "Return to Cablegram"), " · "],
+      h("a", { href: "#", onclick: (e) => { e.preventDefault(); renderSignIn(); } }, "Back")),
+  );
+}
+
+function renderDeviceSignIn(error = "") {
+  const code = h("input", {
+    autocapitalize: "characters", autocomplete: "one-time-code", maxlength: "12", required: true,
+    placeholder: "Setup code (e.g. ABCD-EFGH)", "aria-label": "Setup code from server log",
+  });
+  const name = h("input", {
+    autocomplete: "nickname", maxlength: "60", placeholder: "Device name (optional)", "aria-label": "Device name", value: "Web Remote",
+  });
+  const submit = h("button", { class: "primary wide", type: "submit" }, "Claim with setup code");
+  const errorLine = h("p", { class: "error", role: "alert" }, error);
+  const form = h("form", {
+    onsubmit: async (event) => {
+      event.preventDefault();
+      submit.disabled = true;
+      try {
+        await api.claimSetup(code.value.trim(), name.value.trim() || "Web Remote");
+        start();
+      } catch (e) {
+        errorLine.textContent = message(e);
+        submit.disabled = false;
+      }
+    },
+  }, code, name, submit);
+  const joinBtn = h("button", {
+    class: "wide", type: "button",
+    onclick: () => renderJoinWait(name.value.trim() || "Web Remote"),
+  }, "Ask an existing phone to approve this device");
+  signinPage(
+    h("h1", {}, "Connect to server"),
+    h("p", {}, `Sign in to ${api.baseUrl} with the setup code from the server log, or approve from an existing phone.`),
+    form,
+    h("p", { class: "or" }, "or"),
+    joinBtn,
+    errorLine,
+    serverFooter(),
+    installHint(),
+  );
+}
+
+async function renderJoinWait(deviceName) {
+  signinPage(h("h1", {}, "Requesting approval…"), h("p", {}, "Contacting server…"));
+  let req;
+  try {
+    req = await api.createJoinRequest(deviceName);
+  } catch (e) {
+    renderDeviceSignIn(message(e));
+    return;
+  }
+  const statusLine = h("p", { class: "hint" }, "Open Cablegram on an already signed-in phone or remote and tap Allow.");
+  signinPage(
+    h("h1", {}, "Approve on your phone"),
+    h("p", {}, `Check that the code matches on your other phone:`),
+    h("p", { class: "pin", style: "font-size:1.75rem;font-weight:700;letter-spacing:0.12em;text-align:center" }, req.short_code),
+    statusLine,
+    h("p", { class: "center" },
+      h("a", { href: "#", onclick: (e) => { e.preventDefault(); renderDeviceSignIn(); } }, "Cancel")),
+  );
+  joinPollTimer = setInterval(async () => {
+    try {
+      const res = await api.pollJoinRequest(req.id, req.poll_secret);
+      if (res?.status === "approved" && api.signedIn) {
+        stopJoinPolling();
+        start();
+      } else if (res?.status === "denied") {
+        stopJoinPolling();
+        renderDeviceSignIn("The join request was denied.");
+      } else if (res?.status === "expired") {
+        stopJoinPolling();
+        renderDeviceSignIn("The join request expired. Try again.");
+      }
+    } catch (e) {
+      stopJoinPolling();
+      renderDeviceSignIn(message(e));
+    }
+  }, 2_000);
+}
+
+/** First screen: Google (when the server offers it) or an email code, or device sign-in on Community servers. */
 async function renderSignIn(error = "", email = "") {
+  const caps = await getServerCaps();
+  if (caps.auth?.mode === "device") {
+    renderDeviceSignIn(error);
+    return;
+  }
   const googleSlot = h("div", { class: "google" });
   const input = h("input", { type: "email", autocomplete: "email", placeholder: "Email", required: true, "aria-label": "Email", value: email });
   const submit = h("button", { class: "primary wide", type: "submit" }, "Email me a code");
@@ -167,6 +355,7 @@ async function renderSignIn(error = "", email = "") {
     form,
     errorLine,
     h("p", { class: "hint" }, "How Cablegram uses your data: ", link(docs.privacy.url, "Privacy Policy"), "."),
+    serverFooter(),
     installHint(),
   );
   showGoogleButton(googleSlot, (text) => { errorLine.textContent = text; });
@@ -293,7 +482,7 @@ async function renderTerms(error = "") {
     errorLine,
     h("p", { class: "hint" }, "How Cablegram uses your data: ", link(docs.privacy.url, "Privacy Policy"), "."),
     h("p", { class: "center" },
-      link(`${API_BASE}/delete-account`, "Delete my account"), " · ",
+      !isDeviceAuth() && [link(`${api.baseUrl}/delete-account`, "Delete my account"), " · "],
       h("a", { href: "#", onclick: async (e) => { e.preventDefault(); await api.logout(); renderSignIn(); } }, "Sign out")),
   );
 }
@@ -354,6 +543,7 @@ function installHint() {
 // ---- Data ----
 
 async function start() {
+  await getServerCaps();
   try {
     const account = await api.account();
     if (account.termsRequired) { renderTerms(); return; }
@@ -390,11 +580,14 @@ async function refreshLibrary() {
 
 /** Updates only the TV requests and Telegram parts of the page, and only when they changed: a full redraw would wipe a code being typed. */
 async function refreshTelegram() {
-  const before = JSON.stringify([state.link, state.pending, state.profileRequests]);
+  const before = JSON.stringify([state.link, state.pending, state.profileRequests, state.joinRequests]);
   try { state.link = await api.telegramLink(); } catch { /* the banners stay as they were */ }
   try { state.pending = await api.pendingTvLogins(); } catch { /* same */ }
   try { state.profileRequests = await api.pendingProfileRequests(); } catch { /* same */ }
-  if (JSON.stringify([state.link, state.pending, state.profileRequests]) === before) return;
+  if (isDeviceAuth()) {
+    try { state.joinRequests = await api.pendingJoinRequests(); } catch { /* same */ }
+  }
+  if (JSON.stringify([state.link, state.pending, state.profileRequests, state.joinRequests]) === before) return;
   document.getElementById("banners")?.replaceChildren(...banners());
   document.getElementById("telegram")?.replaceChildren(...telegramHelp());
 }
@@ -721,9 +914,13 @@ function tvsView() {
     pairForm(),
     h("div", { id: "telegram" }, telegramHelp()),
     h("h2", {}, "Account"),
-    h("div", { class: "list" }, h("div", { class: "list-row" },
-      h("span", { class: "grow" }, api.householdName || "Cablegram"),
-      h("button", { class: "small", onclick: async () => { await api.logout(); renderSignIn(); } }, "Sign out")),
+    h("div", { class: "list" },
+      h("div", { class: "list-row" },
+        h("span", { class: "grow" }, api.householdName || "Cablegram"),
+        h("button", { class: "small", onclick: async () => { await api.logout(); renderSignIn(); } }, "Sign out")),
+      api.baseUrl !== api.defaultBaseUrl && h("div", { class: "list-row" },
+        h("span", { class: "grow" }, `Server: ${api.baseUrl}`),
+        h("button", { class: "small", onclick: () => selectServer(null) }, "Return to Cablegram")),
       state.lock != null && h("label", { class: "list-row" },
         h("span", { class: "grow" }, "Lock account on TVs"),
         h("input", { type: "checkbox", checked: state.lock, onchange: (e) => setLock(e.target.checked) }))),
@@ -794,7 +991,29 @@ function offerPendingPair() {
 // ---- TV requests ----
 
 function banners() {
-  return [...profileBanners(), ...telegramBanners()];
+  return [...joinRequestBanners(), ...profileBanners(), ...telegramBanners()];
+}
+
+function joinRequestBanners() {
+  return state.joinRequests.map((request) => {
+    const answer = async (allow) => {
+      state.joinRequests = state.joinRequests.filter((r) => r.id !== request.id);
+      document.getElementById("banners")?.replaceChildren(...banners());
+      try {
+        await api.answerJoinRequest(request.id, allow);
+      } catch (e) {
+        if (!signedOut(e)) toast(e instanceof ApiError && e.status === 409 ? "That request already ended." : message(e));
+      }
+    };
+    return h("div", { class: "banner", role: "alert" },
+      h("p", {}, `${request.device_name || "A new device"} wants to join this server`),
+      h("p", { class: "hint" }, `Confirm that the code on the other device is ${request.short_code}.`),
+      h("div", { class: "row" },
+        h("button", { class: "primary", onclick: () => answer(true) }, "Allow"),
+        h("button", { onclick: () => answer(false) }, "Don't allow"),
+      ),
+    );
+  });
 }
 
 async function setIdle(minutes) {
