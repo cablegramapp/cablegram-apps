@@ -29,6 +29,9 @@ final class PhoneViewModel {
     var relayUsage: RelayUsage?
     var apiBaseUrl: String
     var tunnelUrl: String
+    var serverCapabilities: ServerCapabilities?
+    var features: ServerFeatures { serverCapabilities?.features ?? .hostedDefault }
+    var accountDeletionAvailable: Bool { features.deleteAccount && serverCapabilities?.edition == "hosted" }
 
     // Library
     private(set) var items: [LibraryItem] = []
@@ -148,6 +151,7 @@ final class PhoneViewModel {
         cloud.refreshStorage()
         syncDeviceLanguage()
         cloud.resumeSaves()
+        refreshServerCapabilities()
         if needsAccount { loadSignInOptions() } else { checkTerms(); Task { await tv.syncHouseholdTvs() } }
         startApprovalWatchIfSignedIn()
         serving.start()
@@ -654,10 +658,14 @@ final class PhoneViewModel {
     private func completeSignIn(_ result: PhonePairResponse) async {
         pairing.accountToken = result.token
         pairing.refreshToken = result.refreshToken
+        if let deviceId = result.deviceId, !deviceId.isEmpty {
+            pairing.phoneDeviceId = deviceId
+        }
         householdName = result.displayName ?? ""
         pairing.displayName = householdName
         needsAccount = false
         needsName = result.needsName
+        refreshServerCapabilities()
         // Another account's library is set aside (and restored if it signs in again), never synced into this one.
         let setAside = result.householdId.map { store.bindHousehold($0) } ?? false
         refresh()
@@ -769,7 +777,16 @@ final class PhoneViewModel {
         }
     }
 
-    private func clearSignedInState() {
+    func refreshServerCapabilities() {
+        Task {
+            if let caps = await catalog().serverCapabilities() {
+                serverCapabilities = caps
+                artworkEditor.lookupAvailable = caps.features.artwork
+            }
+        }
+    }
+
+    func clearSignedInState() {
         // First: the subtitle accounts are keyed by the signed-in account, which `clearAccount` forgets.
         subtitles.signedOut()
         serving.stop()

@@ -90,18 +90,21 @@ extension CatalogClient {
         await send("POST", "/api/profiles/switch-requests/\(requestId)/\(allow ? "approve" : "deny")", token: token, json: [:]).isSuccess
     }
 
-    /// Everything TVs wait for: private titles and, with the profile lock on, profiles to open.
+    /// Everything TVs and joining phones wait for: private titles, profiles to open, and join requests.
     public func fetchAllPendingApprovals(token: String) async -> [PendingApproval] {
         async let profiles = fetchPendingProfileRequests(token: token)
         async let playback = fetchPendingPrivateApprovals(token: token)
-        return await profiles + playback
+        async let joins = fetchPendingJoinRequests(token: token)
+        let (prof, play, jn) = await (profiles, playback, joins)
+        return prof + play + jn.map { $0.asApproval() }
     }
 
-    /// Sends the phone's answer; false when the TV no longer waits or the server could not be reached.
+    /// Sends the phone's answer; false when the TV or joining phone no longer waits or the server could not be reached.
     public func answerApproval(token: String, approval: PendingApproval, allow: Bool) async -> Bool {
         switch approval.kind {
         case .profile: await answerProfileRequest(token: token, requestId: approval.attemptId, allow: allow)
         case .playback: allow ? await approvePrivatePlayback(token: token, attemptId: approval.attemptId) : await denyPrivatePlayback(token: token, attemptId: approval.attemptId)
+        case .phoneJoin: await answerJoinRequest(id: approval.attemptId, token: token, approved: allow)
         }
     }
 

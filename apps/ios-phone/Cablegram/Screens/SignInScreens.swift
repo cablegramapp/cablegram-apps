@@ -8,9 +8,15 @@ struct SignInScreen: View {
 
     var body: some View {
         switch viewModel.signIn.step {
-        case .start: StartForm(viewModel: viewModel)
+        case .start:
+            if viewModel.signIn.deviceMode {
+                DeviceStartForm(viewModel: viewModel)
+            } else {
+                StartForm(viewModel: viewModel)
+            }
         case .code(let email): CodeForm(viewModel: viewModel, email: email)
         case .createAccount(let ticket, let email, let name): CreateAccountForm(viewModel: viewModel, ticket: ticket, email: email, initialName: name)
+        case .joinWait(_, let shortCode, _): JoinWaitForm(viewModel: viewModel, shortCode: shortCode)
         }
     }
 }
@@ -63,7 +69,120 @@ private struct StartForm: View {
                 .disabled(!canSend)
                 .accessibilityIdentifier("sign_in_send_code")
             if let note = signIn.message.map({ L($0.key) }) ?? viewModel.status { StatusNote(message: note) }
+            JoinServerRow(viewModel: viewModel)
             PrivacyLine(documents: signIn.documents)
+        }
+    }
+}
+
+private struct JoinServerRow: View {
+    let viewModel: PhoneViewModel
+    @State private var open = false
+    @State private var url = ""
+
+    var body: some View {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        VStack(spacing: 8) {
+            Button { open = true } label: {
+                Text("Join a server")
+            }
+            .buttonStyle(AccentTextButtonStyle())
+            .accessibilityIdentifier("join_server")
+
+            if viewModel.apiBaseUrl != AppConfiguration.defaultApiBase.absoluteString {
+                Text("Server: \(viewModel.apiBaseUrl)")
+                    .font(.caption)
+                    .foregroundStyle(Color.phoneMuted)
+                Button { viewModel.returnToCablegram() } label: {
+                    Text("Return to Cablegram")
+                }
+                .buttonStyle(AccentTextButtonStyle())
+            }
+        }
+        .alert("Join a server", isPresented: $open) {
+            TextField("https://cablegram.example.com", text: $url)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Cancel", role: .cancel) {}
+            Button("Continue") {
+                if isValidServerUrl(trimmed) {
+                    viewModel.updateApiBaseUrl(trimmed)
+                    open = false
+                }
+            }
+            .disabled(!isValidServerUrl(trimmed))
+        } message: {
+            Text(isCleartextLanServerUrl(trimmed)
+                ? "This address is not encrypted. Use it only on your home network.\n\nSigning in to another server signs this phone out of the current one."
+                : "Signing in to another server signs this phone out of the current one.")
+        }
+    }
+}
+
+private struct DeviceStartForm: View {
+    let viewModel: PhoneViewModel
+    @State private var code = ""
+
+    var body: some View {
+        let signIn: SignInController = viewModel.signIn
+        let cleanCode = code.filter { $0.isNumber }
+        let canConnect = cleanCode.count == 6 && !signIn.busy
+
+        SignInPage {
+            BrandMark()
+            Spacer().frame(height: 12)
+            ScreenHeading(
+                title: "Connect to your server",
+                subtitle: "Enter the setup code the server printed when it started, or ask a phone that is already connected."
+            )
+            PhoneTextField(
+                label: "Setup code",
+                text: Binding(get: { code }, set: { code = String($0.filter { $0.isNumber }.prefix(6)) }),
+                keyboard: .numberPad,
+                onSubmit: { if canConnect { viewModel.claimSetupCode(cleanCode) } },
+                id: "setup_code"
+            )
+            Button { viewModel.claimSetupCode(cleanCode) } label: {
+                BusyLabel(busy: signIn.busy, label: "Connect")
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(!canConnect)
+            .accessibilityIdentifier("setup_code_submit")
+
+            Button { viewModel.requestJoin() } label: {
+                Text("Ask another phone to allow this one")
+            }
+            .buttonStyle(OutlinedButtonStyle(minHeight: 54))
+            .disabled(signIn.busy)
+            .accessibilityIdentifier("join_request")
+
+            if let note = signIn.message.map({ L($0.key) }) ?? viewModel.status { StatusNote(message: note) }
+            JoinServerRow(viewModel: viewModel)
+        }
+    }
+}
+
+private struct JoinWaitForm: View {
+    let viewModel: PhoneViewModel
+    let shortCode: String
+
+    var body: some View {
+        SignInPage {
+            BrandMark()
+            Spacer().frame(height: 12)
+            ScreenHeading(
+                title: "Waiting for approval",
+                subtitle: "Open Cablegram on a phone that is already connected and tap Allow. Code: \(shortCode)"
+            )
+            ProgressView()
+                .tint(.white)
+                .padding(.vertical, 8)
+            if let note = viewModel.signIn.message.map({ L($0.key) }) ?? viewModel.status { StatusNote(message: note) }
+            Button { viewModel.cancelJoin() } label: {
+                Text("Cancel")
+            }
+            .buttonStyle(AccentTextButtonStyle())
+            .frame(maxWidth: .infinity)
         }
     }
 }

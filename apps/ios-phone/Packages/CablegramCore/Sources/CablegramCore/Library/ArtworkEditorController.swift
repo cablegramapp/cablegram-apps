@@ -15,6 +15,7 @@ public protocol ArtworkMedia: Sendable {
 @MainActor @Observable
 public final class ArtworkEditorController {
     public private(set) var draft: ArtworkDraft?
+    public var lookupAvailable: Bool = true
 
     private let store: LibraryStore
     private let media: any ArtworkMedia
@@ -86,6 +87,7 @@ public final class ArtworkEditorController {
     }
 
     public func search() {
+        guard lookupAvailable else { return }
         guard let current = draft, !current.query.trimmingCharacters(in: .whitespaces).isEmpty, !current.saving else { return }
         searchTask?.cancel()
         lookupRevision += 1
