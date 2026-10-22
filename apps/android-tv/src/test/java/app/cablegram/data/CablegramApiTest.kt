@@ -142,6 +142,20 @@ class CablegramApiTest {
     }
 
     @Test
+    fun `fractional seconds from the web TV load as whole seconds`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"items":[{"id":"item-1","title":"Film","sources":[{"kind":"phone_local","origin_identity":"video-1"}],"progress":{"position_seconds":3119.6,"duration_seconds":3662.465,"state":"stopped"}}]}""",
+            ),
+        )
+
+        val video = api.getVideos("jwt").videos.single()
+
+        assertEquals(3662, video.durationSeconds)
+        assertEquals(3120, video.resumePositionSeconds)
+    }
+
+    @Test
     fun `shared manual metadata and cleared fields appear on the next catalog refresh`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"items":[{"id":"item-1","title":"My film","year":2013,"overview":"My summary","media_type":"movie","metadata_revision":1,"user_metadata_fields":["title","year","overview"],"sources":[]}]}"""))
         val first = api.getVideos("jwt").videos.single()
