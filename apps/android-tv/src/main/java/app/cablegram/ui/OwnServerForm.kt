@@ -3,6 +3,7 @@ package app.cablegram.ui
 import app.cablegram.R
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -13,10 +14,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,15 +51,26 @@ internal fun OwnServerForm(
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = remember { FocusRequester() }
+    val connectFocus = remember { FocusRequester() }
     val scope = rememberCoroutineScope()
-    var address by remember { mutableStateOf("http://") }
+    var field by remember { mutableStateOf(TextFieldValue("http://", TextRange(7))) }
+    val address = field.text
     var checking by remember { mutableStateOf(false) }
+    var fieldFocused by remember { mutableStateOf(false) }
+    /** Up from Connect or Cancel goes back to the field; nothing focusable sits above them. */
+    val upToField = Modifier.onPreviewKeyEvent { event ->
+        val up = event.type == KeyEventType.KeyDown && event.key == Key.DirectionUp
+        if (up) runCatching { focus.requestFocus() }
+        up
+    }
     var error by remember { mutableStateOf<String?>(null) }
     BackHandler(onBack = onCancel)
 
     fun connect() {
         if (checking || address.isBlank()) return
         keyboard?.hide()
+        // An error then leaves the remote on Connect, with Cancel next to it.
+        runCatching { connectFocus.requestFocus() }
         checking = true
         error = null
         scope.launch {
@@ -83,24 +103,33 @@ internal fun OwnServerForm(
         // Field and buttons on one line, so Connect and Cancel stay above the TV keyboard.
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicTextField(
-                value = address,
-                onValueChange = { address = it; error = null },
+                value = field,
+                onValueChange = { if (it.text != field.text) error = null; field = it },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go, autoCorrectEnabled = false),
                 keyboardActions = KeyboardActions(onGo = { connect() }),
                 textStyle = TextStyle(color = Paper, fontSize = 20.sp),
                 cursorBrush = SolidColor(Cyan),
-                modifier = Modifier.weight(1f).focusRequester(focus)
-                    .background(PanelRaised, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 12.dp),
+                modifier = Modifier.weight(1f).focusRequester(focus).onFocusChanged { fieldFocused = it.isFocused }
+                    // A text field keeps the D-pad for its caret: down, or right at the end, goes on to Connect.
+                    .onPreviewKeyEvent { event ->
+                        val leave = event.type == KeyEventType.KeyDown && (event.key == Key.DirectionDown ||
+                            (event.key == Key.DirectionRight && field.selection.collapsed && field.selection.end == field.text.length))
+                        if (leave) runCatching { connectFocus.requestFocus() }
+                        leave
+                    }
+                    .background(PanelRaised, RoundedCornerShape(10.dp))
+                    .border(2.dp, if (fieldFocused) Cyan else Outline, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 decorationBox = { inner ->
                     if (address.isEmpty()) Text(ui.getString(R.string.ui_server_address_8be897), color = Slate, fontSize = 16.sp)
                     inner()
                 },
             )
-            Button(onClick = ::connect, enabled = !checking && address.isNotBlank(), colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
+            Button(onClick = ::connect, enabled = !checking && address.isNotBlank(), modifier = Modifier.focusRequester(connectFocus).then(upToField), colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
                 Text(if (checking) ui.getString(R.string.ui_checking_ec963f) else ui.getString(R.string.ui_connect_1a2303))
             }
-            Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_cancel_19766e)) }
+            Button(onClick = onCancel, modifier = upToField, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_cancel_19766e)) }
         }
     }
 }
