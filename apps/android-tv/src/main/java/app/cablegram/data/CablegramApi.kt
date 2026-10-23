@@ -29,7 +29,9 @@ internal fun isControlPlane(url: okhttp3.HttpUrl, baseUrl: String): Boolean {
 }
 
 class CablegramApi(
-    private val baseUrl: String = BuildConfig.API_BASE_URL,
+    baseUrl: String = BuildConfig.API_BASE_URL,
+    /** The server chosen at runtime (see [AuthStore.serverUrl]); read on every call so a switch needs no restart. */
+    private val serverUrl: (() -> String)? = null,
     // T-net/ANR: short, explicit timeouts so a stalled network fails fast
     // instead of leaving dozens of pending calls to pile up and thrash the
     // (often low-memory) TV process.
@@ -44,7 +46,7 @@ class CablegramApi(
         // and a phone's clock must not become the TV's idea of server time.
         .addInterceptor { chain ->
             chain.proceed(chain.request()).also { response ->
-                if (isControlPlane(response.request.url, baseUrl)) ServerClock.shared.observe(response.headers.getDate("Date"))
+                if (isControlPlane(response.request.url, serverUrl?.invoke() ?: baseUrl)) ServerClock.shared.observe(response.headers.getDate("Date"))
             }
         }
         .build(),
@@ -54,8 +56,29 @@ class CablegramApi(
      */
     private val lanStream: (String) -> String? = { it },
 ) {
+    private val initialBaseUrl = baseUrl
+    private val baseUrl: String get() = serverUrl?.invoke() ?: initialBaseUrl
     private val json = Json { ignoreUnknownKeys = true }
     private val jsonMediaType = "application/json".toMediaType()
+
+    @Volatile var cachedCapabilities: ServerCapabilities? = null
+        private set
+
+    /** `GET /api/server`; an older server without it is treated as hosted. Null when unreachable. */
+    suspend fun getServerCapabilities(): ServerCapabilities? = try {
+        val request = Request.Builder().url(url("api/server")).get().build()
+        val caps = client.newCall(request).execute().use { response ->
+            when {
+                response.code == 404 -> ServerCapabilities()
+                !response.isSuccessful -> null
+                else -> json.decodeFromString<ServerCapabilities>(response.body?.string().orEmpty())
+            }
+        }
+        if (caps != null) cachedCapabilities = caps
+        caps
+    } catch (_: Exception) {
+        null
+    }
 
     suspend fun telegramClientCredentials(token: String) =
         app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, BuildConfig.DEBUG)
@@ -461,6 +484,7 @@ class CablegramApi(
         cloudStream: (url: String, headers: Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
         val playback = resolvePlayback(videoId, token, lanPin, onStatus, onAwaitingApproval, telegramUrl, telegramPhoneId, cloudStream)
+        if (cachedCapabilities?.features?.subtitles == false) return playback
         if (playback.status != "ready" || playback.subtitles.isNotEmpty()) return playback
         val subtitles = runCatching {
             execute<SubtitlePlaybackResponse>(authenticatedRequest("api/subtitles/playback/item/$videoId", token).get().build()).subtitles
@@ -1005,7 +1029,7 @@ private data class CatalogItemDto(
     @kotlinx.serialization.SerialName("created_at") val createdAt: String? = null,
     @kotlinx.serialization.SerialName("in_my_list") val inMyList: Boolean = false,
     val title: String? = null,
-    @kotlinx.serialization.SerialName("duration_seconds") val durationSeconds: Int? = null,
+    @kotlinx.serialization.SerialName("duration_seconds") @kotlinx.serialization.Serializable(with = WholeSecondsSerializer::class) val durationSeconds: Int? = null,
     @kotlinx.serialization.SerialName("poster_url") val posterUrl: String? = null,
     @kotlinx.serialization.SerialName("backdrop_url") val backdropUrl: String? = null,
     val genres: List<String> = emptyList(),
@@ -1035,10 +1059,20 @@ private data class CatalogSourceDto(
     @kotlinx.serialization.SerialName("archive_state") val archiveState: String? = null,
 )
 
+/** Reads a seconds value that may arrive fractional (the web TV reports the player's time, e.g. 3662.465) as whole seconds. */
+private object WholeSecondsSerializer : kotlinx.serialization.KSerializer<Int> {
+    override val descriptor = kotlinx.serialization.descriptors.PrimitiveSerialDescriptor(
+        "WholeSeconds", kotlinx.serialization.descriptors.PrimitiveKind.INT,
+    )
+    override fun deserialize(decoder: kotlinx.serialization.encoding.Decoder): Int =
+        kotlin.math.round(decoder.decodeDouble()).toInt()
+    override fun serialize(encoder: kotlinx.serialization.encoding.Encoder, value: Int) = encoder.encodeInt(value)
+}
+
 @Serializable
 private data class CatalogProgressDto(
-    @kotlinx.serialization.SerialName("position_seconds") val positionSeconds: Int? = null,
-    @kotlinx.serialization.SerialName("duration_seconds") val durationSeconds: Int? = null,
+    @kotlinx.serialization.SerialName("position_seconds") @kotlinx.serialization.Serializable(with = WholeSecondsSerializer::class) val positionSeconds: Int? = null,
+    @kotlinx.serialization.SerialName("duration_seconds") @kotlinx.serialization.Serializable(with = WholeSecondsSerializer::class) val durationSeconds: Int? = null,
     val state: String? = null,
 )
 

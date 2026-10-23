@@ -28,6 +28,8 @@ jobs:
         run: npm test
       - name: Build
         working-directory: apps/tv-web
+        env:
+          VITE_TG_DIRECT: "1"
         run: npm run build
       - name: Publish with Wrangler
         uses: cloudflare/wrangler-action@v3

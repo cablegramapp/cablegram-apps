@@ -30,7 +30,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 class TelegramTvApprovalWatcher(private val context: Context, private val scope: CoroutineScope) {
     private val store = PairingStore(context)
-    private val client = CatalogClient(store.apiBaseUrl, store)
+    // Read per call so switching servers takes effect without restarting the service.
+    private val client get() = CatalogClient(store.apiBaseUrl, store)
     private var job: Job? = null
 
     fun start() {

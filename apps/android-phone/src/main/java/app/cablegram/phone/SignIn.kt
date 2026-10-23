@@ -21,22 +21,30 @@ sealed interface SignInStep {
     data class Code(val email: String) : SignInStep
     /** The email is proven but has no account: name, plus one unticked box for 18+ and the Terms. */
     data class CreateAccount(val ticket: String, val email: String, val name: String) : SignInStep
+    /** Device sign-in: waiting for an already signed-in phone to approve this one. */
+    data class JoinWait(val id: String, val pollSecret: String, val shortCode: String) : SignInStep
 }
 
 /**
  * Sign-in with Google or an email code, and Create your account. Nothing about a new person is stored on the server
- * before [createAccount]; [signedIn] runs once the server returned an account.
+ * before [createAccount]; [signedIn] runs once the server returned an account. On a Community server
+ * (`auth.mode == "device"`) a setup code or an approved join request replaces both.
  */
 class SignInController(
     private val client: () -> CatalogClient,
     private val signedIn: suspend (PhonePairResponse) -> Unit,
     private val resources: () -> android.content.res.Resources,
+    private val deviceName: () -> String = { android.os.Build.MODEL?.takeIf { it.isNotBlank() } ?: "Phone" },
 ) {
     var step by mutableStateOf<SignInStep>(SignInStep.Start)
         private set
     /** Null until loaded, and while the server can't be reached: then only the email code is offered. */
     var methods by mutableStateOf<SignInMethods?>(null)
         private set
+    /** What the selected server offers; null until loaded. */
+    var capabilities by mutableStateOf<ServerCapabilities?>(null)
+        private set
+    val deviceMode: Boolean get() = capabilities?.auth?.mode == "device" || methods?.mode == "device"
     var legal by mutableStateOf<LegalDocuments?>(null)
         private set
     var busy by mutableStateOf(false)
@@ -49,8 +57,50 @@ class SignInController(
 
     suspend fun load() {
         val c = client()
+        capabilities = c.serverCapabilities() ?: capabilities
         methods = c.signInMethods() ?: methods
         legal = c.legalDocuments() ?: legal
+    }
+
+    /** Device sign-in: the first phone enters the setup code the server printed. */
+    suspend fun claimSetupCode(code: String) = run {
+        when (val result = client().claimSetupCode(code.trim(), deviceName())) {
+            is SignInResult.Failed -> message = when (result.error) {
+                "invalid_setup_code" -> "That setup code isn't right."
+                "setup_code_expired" -> "That setup code expired. Ask the server owner for a new one."
+                else -> result.text(resources())
+            }
+            else -> handle(result)
+        }
+    }
+
+    /** Device sign-in: ask an already signed-in phone to let this one in; [pollJoin] then waits for the answer. */
+    suspend fun requestJoin() = run {
+        val created = client().createJoinRequest(deviceName())
+        if (created == null) message = "Couldn't reach the server, or it has no household yet. Use the setup code instead."
+        else step = SignInStep.JoinWait(created.id, created.pollSecret, created.shortCode)
+    }
+
+    /** One look at the join request; true while it should be asked again. */
+    suspend fun pollJoin(): Boolean {
+        val waiting = step as? SignInStep.JoinWait ?: return false
+        val reply = client().pollJoinRequest(waiting.id, waiting.pollSecret) ?: return true
+        when (reply.status) {
+            "approved" -> {
+                val access = reply.accessToken
+                if (access == null) return true
+                signedIn(PhonePairResponse(
+                    token = access, refreshToken = reply.refreshToken, userId = reply.userId,
+                    displayName = reply.displayName, needsName = false, householdId = reply.householdId,
+                    phoneDeviceId = reply.deviceId,
+                ))
+                step = SignInStep.Start
+                return false
+            }
+            "denied" -> { step = SignInStep.Start; message = "The other phone didn't allow this one."; return false }
+            "expired" -> { step = SignInStep.Start; message = "That request expired. Try again."; return false }
+        }
+        return true
     }
 
     suspend fun requestCode(email: String) = run {

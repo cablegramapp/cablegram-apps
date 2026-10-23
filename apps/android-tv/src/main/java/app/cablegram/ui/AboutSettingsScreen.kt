@@ -61,6 +61,8 @@ internal fun AboutSettingsPanel(
     onTelegramConnect: () -> Unit = {},
     onTelegramCancel: () -> Unit = {},
     onTelegramSignInWithoutPassword: () -> Unit = {},
+    serverUrl: String? = null,
+    onReturnToCablegram: (() -> Unit)? = null,
 ) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     // The password step opens over Settings, but never locks the viewer out of the rest of it (sign-out, pairing).
@@ -118,6 +120,12 @@ internal fun AboutSettingsPanel(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
+            }
+            if (serverUrl != null) {
+                Text("Server: $serverUrl", color = Slate, fontSize = 14.sp)
+                if (onReturnToCablegram != null) {
+                    Button(onClick = onReturnToCablegram, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Return to Cablegram") }
+                }
             }
             Button(
                 onClick = {

@@ -131,11 +131,55 @@ class CablegramViewModel @JvmOverloads constructor(
     }
 
     private fun uiText(id: Int, vararg args: Any?): String = uiResources().getString(id, *args)
-    private val api = CablegramApi(lanStream = ::lanStreamUrl)
     private val authStore = AuthStore(application)
+    private val api = CablegramApi(lanStream = ::lanStreamUrl, serverUrl = { authStore.serverUrl })
     /** Spec 004: this TV's Telegram session, approved by the household phone. */
     val telegram = TvTelegram(application, api, onLibraryChanged = { refreshLibrary() },
         resources = { runCatching { uiResources() }.getOrElse { application.resources } })
+
+    val serverUrl: String get() = authStore.serverUrl
+    val usesDefaultServer: Boolean get() = authStore.usesDefaultServer
+    var serverCapabilities by mutableStateOf<app.cablegram.data.ServerCapabilities?>(null)
+        private set
+
+    fun setServerUrl(url: String) {
+        val normalized = app.cablegram.data.normalizeServerUrl(url) ?: return
+        if (authStore.serverUrl == normalized) return
+        authStore.serverUrl = normalized
+        resetForServerChange()
+    }
+
+    fun returnToCablegram() {
+        if (authStore.usesDefaultServer) return
+        authStore.serverUrl = app.cablegram.BuildConfig.API_BASE_URL
+        resetForServerChange()
+    }
+
+    private fun resetForServerChange() {
+        pairingJob?.cancel()
+        refreshJob?.cancel()
+        librarySyncJob?.cancel()
+        telegram.wipeLocalData()
+        screen = ScreenState.Loading
+        token = null
+        sessionId = null
+        accountCredentials = emptyList()
+        cachedVideos = emptyList()
+        profiles = emptyList()
+        activeProfileId = null
+        fetchServerCapabilities()
+        viewModelScope.launch {
+            createPairingSession()
+        }
+    }
+
+    private fun fetchServerCapabilities() {
+        viewModelScope.launch {
+            val caps = api.getServerCapabilities()
+            serverCapabilities = caps
+            app.cablegram.data.SignatureClips.enabled = if (caps != null) caps.edition == "hosted" else authStore.usesDefaultServer
+        }
+    }
 
     /** A phone just paired this TV: the library opens with a one-time "This TV is connected" card. */
     var connectedWelcome by mutableStateOf(false)
@@ -474,6 +518,7 @@ class CablegramViewModel @JvmOverloads constructor(
             }
         }
         viewModelScope.launch {
+            fetchServerCapabilities()
             libraryAds = api.getLibraryAds()
             val accounts = authStore.getAccounts()
             accountCredentials = accounts

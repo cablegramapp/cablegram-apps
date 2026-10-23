@@ -766,6 +766,67 @@ class CatalogClient(
     /** How this server lets people in; null when it can't be reached. */
     suspend fun signInMethods(): SignInMethods? = withContext(Dispatchers.IO) { getPublic("/api/auth/methods") }
 
+    /** `GET /api/server`; null when unreachable. A 404 means an older hosted server, which has every hosted feature. */
+    suspend fun serverCapabilities(): ServerCapabilities? = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/server").get().build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                when {
+                    response.code == 404 -> ServerCapabilities.HostedDefault
+                    !response.isSuccessful -> null
+                    else -> json.decodeFromString<ServerCapabilities>(response.body?.string().orEmpty())
+                }
+            }
+        }.getOrNull()
+    }
+
+    /** Device sign-in: the first phone enters the setup code printed by the server. */
+    suspend fun claimSetupCode(code: String, deviceName: String): SignInResult = withContext(Dispatchers.IO) {
+        signInStep("/api/auth/setup/claim", buildJsonObject {
+            put("code", code)
+            put("device_name", deviceName)
+        })
+    }
+
+    /** Device sign-in: a new phone asks an existing phone to let it in; null when the server can't be reached. */
+    suspend fun createJoinRequest(deviceName: String): JoinRequestCreated? = withContext(Dispatchers.IO) {
+        val (status, body) = postJson("/api/auth/join-requests", null, buildJsonObject { put("device_name", deviceName) })
+        if (status != 201 || body == null) null
+        else runCatching { json.decodeFromJsonElement(JoinRequestCreated.serializer(), body) }.getOrNull()
+    }
+
+    /** Polls a join request with its secret; null when offline or the request is unknown. */
+    suspend fun pollJoinRequest(id: String, pollSecret: String): JoinRequestPollResponse? = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/auth/join-requests/$id")
+            .header("Authorization", "Join $pollSecret").get().build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                json.decodeFromString<JoinRequestPollResponse>(response.body?.string().orEmpty())
+            }
+        }.getOrNull()
+    }
+
+    /** Join requests from new phones waiting for this one's answer. */
+    suspend fun fetchPendingJoinRequests(token: String): List<PendingApproval> = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url("${baseUrl.trimEnd('/')}/api/auth/join-requests/pending")
+            .header("Authorization", "Bearer $token").get().build()
+        runCatching {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@use emptyList<PendingApproval>()
+                json.decodeFromString<PendingJoinRequests>(response.body?.string().orEmpty()).requests.map { it.asApproval() }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    suspend fun answerJoinRequest(token: String, id: String, approve: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${baseUrl.trimEnd('/')}/api/auth/join-requests/$id/${if (approve) "approve" else "deny"}")
+            .header("Authorization", "Bearer $token")
+            .post("{}".toRequestBody("application/json".toMediaType())).build()
+        runCatching { client.newCall(request).execute().use { it.isSuccessful } }.getOrDefault(false)
+    }
+
     /** The current Terms and Privacy Policy; null when the server can't be reached. */
     suspend fun legalDocuments(): LegalDocuments? = withContext(Dispatchers.IO) { getPublic("/api/legal") }
 
@@ -855,6 +916,7 @@ class CatalogClient(
                 displayName = parsed.display_name,
                 needsName = parsed.display_name.isNullOrBlank(),
                 householdId = parsed.household_id,
+                phoneDeviceId = parsed.device_id,
             ),
         )
     }

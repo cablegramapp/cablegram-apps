@@ -63,7 +63,7 @@ internal fun SignatureVideo(
     // One retry from the old r2.dev address if the clip domain can't be reached (a resolver that cached "not found").
     var useFallback by remember(url) { mutableStateOf(false) }
     val source = remember(url, useFallback) {
-        url?.takeIf { it.isNotBlank() }?.let { if (useFallback) SignatureClips.fallbackFor(it) else SignatureClips.playable(it) }
+        url?.takeIf { it.isNotBlank() && SignatureClips.enabled }?.let { if (useFallback) SignatureClips.fallbackFor(it) else SignatureClips.playable(it) }
     }
     var viewRef by remember(source) { mutableStateOf<VideoView?>(null) }
     var failed by remember(source) { mutableStateOf(false) }

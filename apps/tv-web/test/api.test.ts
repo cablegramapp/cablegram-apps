@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createApi, parseTitle, relayUrl, servingPhone } from "../src/api";
+import { createApi, parseServerCapabilities, parseTitle, relayUrl, servingPhone } from "../src/api";
 import { pickNext } from "../src/nav";
+import { normalizeServerUrl, setServerUrl, serverUrl } from "../src/session";
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
 
@@ -77,5 +78,60 @@ describe("preflight", () => {
     expect(refused).toEqual({ status: 429, error: "relay_streams_exceeded" });
     expect(relayMessage(429, "relay_streams_exceeded")).toMatch(/Too many relay streams/);
     expect(await preflight("u", async () => { throw new Error("offline"); })).toEqual({ status: null });
+  });
+});
+
+describe("server capabilities and runtime server URL", () => {
+  it("parses Community capabilities and skips subtitle and relay requests when disabled", async () => {
+    const calls: string[] = [];
+    const api = createApi({
+      base: "https://community.example",
+      fetch: async (url) => {
+        calls.push(url);
+        if (url.endsWith("api/server")) {
+          return json(200, {
+            api_version: 1,
+            edition: "community",
+            auth: { mode: "device" },
+            features: { subtitles: false, relay: false, artwork: false },
+          });
+        }
+        return json(500, {});
+      },
+    });
+    const caps = await api.server();
+    expect(caps.edition).toBe("community");
+    expect(caps.authMode).toBe("device");
+    expect(caps.features.subtitles).toBe(false);
+    expect(caps.features.relay).toBe(false);
+    expect(caps.features.telegram).toBe(true);
+
+    // Subtitles should not make an HTTP request when subtitles=false
+    const subs = await api.subtitles("item-1");
+    expect(subs).toEqual([]);
+    expect(calls).toEqual(["https://community.example/api/server"]);
+
+    // Phone-only title should report relay unsupported without calling /api/me or /api/relay/ticket
+    const phoneTitle = parseTitle({ id: "1", title: "A", sources: [{ kind: "phone_local", origin_identity: "x", serving_device_id: "p1" }] });
+    const pb = await api.resolvePlayback(phoneTitle, "cap");
+    expect(pb.status).toBe("unsupported");
+    expect(pb.message).toMatch(/Relay playback is not enabled/);
+  });
+
+  it("normalizes HTTPS and LAN HTTP server URLs and rejects public HTTP", () => {
+    expect(normalizeServerUrl("https://tv.example.com/")).toBe("https://tv.example.com");
+    expect(normalizeServerUrl("http://192.168.1.20:3000/")).toBe("http://192.168.1.20:3000");
+    expect(normalizeServerUrl("http://tv.example.com")).toBeUndefined();
+    expect(setServerUrl("https://self.example.com/")).toBe("https://self.example.com");
+    expect(serverUrl()).toBe("https://self.example.com");
+    setServerUrl(null);
+    expect(serverUrl()).toBeUndefined();
+  });
+
+  it("parses default capabilities when fields are omitted", () => {
+    const caps = parseServerCapabilities({});
+    expect(caps.features.telegram).toBe(true);
+    expect(caps.features.lanPlayback).toBe(true);
+    expect(caps.features.artwork).toBe(false);
   });
 });

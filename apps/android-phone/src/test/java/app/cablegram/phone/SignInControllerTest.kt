@@ -35,6 +35,7 @@ class SignInControllerTest {
         client = { CatalogClient(server.url("/").toString(), null) },
         signedIn = { signedIn += it },
         resources = { res },
+        deviceName = { "Phone" },
     )
 
     private fun json(status: Int, body: String) = MockResponse().setResponseCode(status).setBody(body)
@@ -113,7 +114,33 @@ class SignInControllerTest {
     }
 
     @Test
+    fun `a setup code signs the first phone in`() = runTest {
+        server.enqueue(json(201, """{"access_token":"a1","refresh_token":"r1","household_id":"h1","device_id":"d1","display_name":"Home"}"""))
+        val c = controller()
+        c.claimSetupCode(" 123456 ")
+        val claim = server.takeRequest()
+        assertEquals("/api/auth/setup/claim", claim.path)
+        assertEquals("""{"code":"123456","device_name":"Phone"}""", claim.body.readUtf8())
+        assertEquals("d1", signedIn.single().phoneDeviceId)
+    }
+
+    @Test
+    fun `a join request waits, then signs in once approved`() = runTest {
+        server.enqueue(json(201, """{"id":"j1","short_code":"654321","poll_secret":"s","expires_at":"x"}"""))
+        server.enqueue(json(200, """{"id":"j1","status":"pending"}"""))
+        server.enqueue(json(200, """{"id":"j1","status":"approved","access_token":"a2","refresh_token":"r2","household_id":"h1","device_id":"d2"}"""))
+        val c = controller()
+        c.requestJoin()
+        assertEquals(SignInStep.JoinWait("j1", "s", "654321"), c.step)
+        assertTrue(c.pollJoin())
+        assertTrue(!c.pollJoin())
+        assertEquals("a2", signedIn.single().token)
+        assertEquals(SignInStep.Start, c.step)
+    }
+
+    @Test
     fun `methods without Google offer only the email code`() = runTest {
+        server.enqueue(json(404, """{"error":"not_found"}"""))
         server.enqueue(json(200, """{"google":null,"email_code":true}"""))
         server.enqueue(json(200, legal))
         val c = controller()

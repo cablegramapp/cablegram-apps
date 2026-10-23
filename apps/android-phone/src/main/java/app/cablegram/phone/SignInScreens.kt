@@ -25,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -56,9 +57,90 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun SignInScreen(viewModel: PhoneViewModel) {
     when (val step = viewModel.signIn.step) {
-        SignInStep.Start -> StartForm(viewModel)
+        SignInStep.Start -> if (viewModel.signIn.deviceMode) DeviceStartForm(viewModel) else StartForm(viewModel)
         is SignInStep.Code -> CodeForm(viewModel, step)
         is SignInStep.CreateAccount -> CreateAccountForm(viewModel, step)
+        is SignInStep.JoinWait -> JoinWaitForm(viewModel, step)
+    }
+}
+
+/** "Join a server": enter a self-hosted server's address; HTTPS, or HTTP on a private network after a warning. */
+@Composable
+private fun JoinServerRow(viewModel: PhoneViewModel) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    var url by rememberSaveable { mutableStateOf("") }
+    val trimmed = url.trim()
+    TextButton(onClick = { open = true }, modifier = Modifier.fillMaxWidth().maestro("join_server")) { Text("Join a server") }
+    if (viewModel.apiBaseUrl != BuildConfig.API_BASE_URL) {
+        Text("Server: ${viewModel.apiBaseUrl}", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = viewModel::returnToCablegram, modifier = Modifier.fillMaxWidth()) { Text("Return to Cablegram") }
+    }
+    if (open) AlertDialog(
+        onDismissRequest = { open = false },
+        title = { Text("Join a server") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = url, onValueChange = { url = it }, singleLine = true,
+                    label = { Text("Server address") }, placeholder = { Text("https://cablegram.example.com") },
+                    isError = trimmed.isNotEmpty() && !isValidServerUrl(trimmed),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    modifier = Modifier.fillMaxWidth().maestro("join_server_url"),
+                )
+                if (isCleartextLanServerUrl(trimmed)) {
+                    Text("This address is not encrypted. Use it only on your home network.", color = VlcOrange, style = MaterialTheme.typography.bodySmall)
+                }
+                Text("Signing in to another server signs this phone out of the current one.", color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = isValidServerUrl(trimmed), onClick = { viewModel.updateApiBaseUrl(trimmed); open = false }) { Text("Continue") }
+        },
+        dismissButton = { TextButton(onClick = { open = false }) { Text("Cancel") } },
+    )
+}
+
+/** Community servers have no accounts: enter the setup code, or ask a phone that is already signed in. */
+@Composable
+private fun DeviceStartForm(viewModel: PhoneViewModel) {
+    val signIn = viewModel.signIn
+    var code by rememberSaveable { mutableStateOf("") }
+    SignInPage {
+        BrandMark()
+        ScreenHeading("Connect to your server", "Enter the setup code the server printed when it started, or ask a phone that is already connected.")
+        OutlinedTextField(
+            value = code,
+            onValueChange = { code = it.filter(Char::isDigit).take(6) },
+            modifier = Modifier.fillMaxWidth().maestro("setup_code"),
+            singleLine = true,
+            label = { Text("Setup code") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (code.length == 6 && !signIn.busy) viewModel.claimSetupCode(code) }),
+        )
+        Button(
+            onClick = { viewModel.claimSetupCode(code) },
+            enabled = code.length == 6 && !signIn.busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro("setup_code_submit"),
+        ) { BusyLabel(signIn.busy, "Connect") }
+        OutlinedButton(
+            onClick = viewModel::requestJoin,
+            enabled = !signIn.busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).maestro("join_request"),
+        ) { Text("Ask another phone to allow this one") }
+        (signIn.message ?: viewModel.status)?.let { StatusNote(it) }
+        JoinServerRow(viewModel)
+    }
+}
+
+@Composable
+private fun JoinWaitForm(viewModel: PhoneViewModel, step: SignInStep.JoinWait) {
+    BackHandler { viewModel.cancelJoin() }
+    SignInPage {
+        BrandMark()
+        ScreenHeading("Waiting for approval", "Open Cablegram on a phone that is already connected and tap Allow. Code: ${step.shortCode}")
+        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+        viewModel.signIn.message?.let { StatusNote(it) }
+        TextButton(onClick = viewModel::cancelJoin, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
     }
 }
 
@@ -112,6 +194,7 @@ private fun StartForm(viewModel: PhoneViewModel) {
         ) { BusyLabel(signIn.busy, ui.getString(R.string.ui_email_me_a_code_88d420)) }
         (signIn.message ?: viewModel.status)?.let { StatusNote(it) }
         PrivacyLine(signIn.documents)
+        JoinServerRow(viewModel)
     }
 }
 
@@ -199,7 +282,9 @@ internal fun TermsScreen(viewModel: PhoneViewModel) {
         ) { BusyLabel(viewModel.busy, "Accept") }
         viewModel.status?.let { StatusNote(it) }
         PrivacyLine(viewModel.signIn.documents)
-        TextButton(onClick = { uri.openUri(DELETE_ACCOUNT_WEB_URL) }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_delete_my_account_21d529)) }
+        if (viewModel.accountDeletionAvailable) {
+            TextButton(onClick = { uri.openUri("${viewModel.apiBaseUrl.trimEnd('/')}/delete-account") }, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_delete_my_account_21d529)) }
+        }
         TextButton(onClick = viewModel::signOut, enabled = !viewModel.busy, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_sign_out_48f0d3)) }
     }
 }

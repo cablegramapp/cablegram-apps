@@ -1,6 +1,6 @@
 import { API_BASE, TG_DIRECT } from "./config";
 import { parseTelegramIdentity } from "./telegram-identity";
-import type { Device, DeviceSession, PairingStatus, Playback, Profile, Source, SwitchRequest, Title } from "./types";
+import type { Device, DeviceSession, PairingStatus, Playback, Profile, ServerCapabilities, Source, SwitchRequest, Title } from "./types";
 
 export class ApiError extends Error {
   constructor(readonly status: number, readonly code: string) { super(code); }
@@ -97,11 +97,35 @@ export function servingPhone(devices: Device[], servingDeviceId?: string): Devic
   return phones.find((d) => d.id === servingDeviceId) ?? phones[0];
 }
 
-export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => string | undefined } = {}) {
-  const base = (opts.base ?? API_BASE).replace(/\/+$/, "");
+export function parseServerCapabilities(raw: Json | null | undefined): ServerCapabilities {
+  const f = (raw?.features as Json | undefined) ?? {};
+  const auth = (raw?.auth as Json | undefined) ?? {};
+  return {
+    apiVersion: num(raw?.api_version) ?? 1,
+    edition: str(raw?.edition) ?? "hosted",
+    serverVersion: str(raw?.server_version) ?? "0.1.0",
+    authMode: auth.mode === "device" ? "device" : "account",
+    features: {
+      artwork: f.artwork === true,
+      aiTitleResolution: f.ai_title_resolution === true,
+      subtitles: f.subtitles === true,
+      relay: f.relay === true,
+      webImport: f.web_import === true,
+      cloudStorage: f.cloud_storage === true,
+      telegram: f.telegram !== false,
+      lanPlayback: f.lan_playback !== false,
+      profileLock: f.profile_lock !== false,
+    },
+  };
+}
+
+export function createApi(opts: { base?: string | (() => string); fetch?: Fetch; token?: () => string | undefined } = {}) {
+  const resolveBase = () => (typeof opts.base === "function" ? opts.base() : (opts.base ?? API_BASE)).replace(/\/+$/, "");
   const doFetch: Fetch = opts.fetch ?? ((i, init) => fetch(i, init));
+  const capsCache = new Map<string, ServerCapabilities>();
 
   async function call(path: string, init: RequestInit = {}, auth?: string): Promise<Json | null> {
+    const base = resolveBase();
     const headers: Record<string, string> = { "content-type": "application/json", ...(init.headers as Json | undefined) };
     const token = opts.token?.();
     const bearer = auth ?? (token ? `Bearer ${token}` : undefined);
@@ -116,9 +140,32 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
   }
 
   const bearer = (token?: string) => (token ? `Bearer ${token}` : undefined);
-  const avatarUrl = (url?: string) => (!url ? undefined : /^(https?:|data:)/.test(url) ? url : `${base}/${url.replace(/^\/+/, "")}`);
+  const avatarUrl = (url?: string) => (!url ? undefined : /^(https?:|data:)/.test(url) ? url : `${resolveBase()}/${url.replace(/^\/+/, "")}`);
 
   const api = {
+    baseUrl: () => resolveBase(),
+    async server(force = false): Promise<ServerCapabilities> {
+      const base = resolveBase();
+      if (!force && capsCache.has(base)) return capsCache.get(base)!;
+      try {
+        const b = await call("api/server");
+        const caps = parseServerCapabilities(b);
+        capsCache.set(base, caps);
+        return caps;
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) {
+          const legacy = parseServerCapabilities({
+            api_version: 1,
+            edition: "hosted",
+            auth: { mode: "account" },
+            features: { artwork: true, subtitles: true, relay: true, telegram: true, lan_playback: true, profile_lock: true },
+          });
+          capsCache.set(base, legacy);
+          return legacy;
+        }
+        throw e;
+      }
+    },
     async createDeviceSession(deviceName: string, hardwareId?: string): Promise<DeviceSession> {
       const b = (await call("api/auth/device", { method: "POST", body: JSON.stringify({ deviceName, hardwareId }) }))!;
       return { sessionId: b.session_id, pin: String(b.pin), pairingToken: b.pairing_token, expiresAt: b.expires_at };
@@ -151,13 +198,19 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
     async cancelProfileSwitch(requestId: string, token?: string) {
       await call(`api/profiles/switch-requests/${requestId}/cancel`, { method: "POST", body: "{}" }, bearer(token));
     },
-    /** The Cablegram subtitle saved for this title, already synchronized; empty when there is none. */
+    /** The Cablegram subtitle saved for this title, already synchronized; empty when there is none or the server has no subtitle service. */
     async subtitles(itemId: string): Promise<{ id: string; label: string; content: string }[]> {
-      const b = await call(`api/subtitles/playback/item/${encodeURIComponent(itemId)}`);
-      return ((b?.subtitles as Json[] | undefined) ?? []).filter((t) => str(t.content)).map((t) => ({
-        id: String(t.trackId), content: t.content as string,
-        label: `${str(t.label) ?? str(t.language) ?? "Subtitles"} · Cablegram`,
-      }));
+      if (capsCache.get(resolveBase())?.features.subtitles === false) return [];
+      try {
+        const b = await call(`api/subtitles/playback/item/${encodeURIComponent(itemId)}`);
+        return ((b?.subtitles as Json[] | undefined) ?? []).filter((t) => str(t.content)).map((t) => ({
+          id: String(t.trackId), content: t.content as string,
+          label: `${str(t.label) ?? str(t.language) ?? "Subtitles"} · Cablegram`,
+        }));
+      } catch (e) {
+        if (e instanceof ApiError && (e.status === 404 || e.status === 410)) return [];
+        throw e;
+      }
     },
     async setMyList(profileId: string, itemIds: string[], present: boolean) {
       await call(`api/profiles/${profileId}/my-list`, { method: "PUT", body: JSON.stringify({ item_ids: itemIds, present }) });
@@ -222,7 +275,7 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
       state: "playing" | "paused" | "stopped" | "completed") {
       await call(`api/profiles/${profileId}/progress/${itemId}`, {
         method: "PUT",
-        body: JSON.stringify({ position_seconds: Math.floor(positionSeconds), duration_seconds: durationSeconds, state,
+        body: JSON.stringify({ position_seconds: Math.floor(positionSeconds), duration_seconds: durationSeconds === undefined ? undefined : Math.round(durationSeconds), state,
           client_updated_at: new Date().toISOString() }),
       });
     },
@@ -240,12 +293,22 @@ export function createApi(opts: { base?: string; fetch?: Fetch; token?: () => st
       const cloud = live.some((s) => s.kind === "own_cloud" || s.kind === "web");
       const phone = live.find(isPhoneSource);
       if (phone) {
-        const phoneDevice = servingPhone(await api.devices(), phone.servingDeviceId);
-        if (phoneDevice) {
-          try {
-            const ticket = await api.relayTicket(phoneDevice.id);
-            return { ...none, status: "ready", engine: true, url: relayUrl(base, phoneDevice.id, `media/${phone.originIdentity}`, capability, ticket) };
-          } catch (e) { if (!cloud) throw e; }
+        const cachedCaps = capsCache.get(resolveBase());
+        if (!cachedCaps || cachedCaps.features.relay) {
+          const phoneDevice = servingPhone(await api.devices(), phone.servingDeviceId);
+          if (phoneDevice) {
+            try {
+              const ticket = await api.relayTicket(phoneDevice.id);
+              return { ...none, status: "ready", engine: true, url: relayUrl(resolveBase(), phoneDevice.id, `media/${phone.originIdentity}`, capability, ticket) };
+            } catch (e) {
+              if (e instanceof ApiError && (e.status === 404 || e.status === 410) && !cloud && !live.some((s) => s.kind === "telegram")) {
+                return { ...none, status: "unsupported", message: "Relay playback is not enabled on this server. Play phone-stored videos on the Android TV app over your local network." };
+              }
+              if (!cloud) throw e;
+            }
+          }
+        } else if (!cloud && !live.some((s) => s.kind === "telegram")) {
+          return { ...none, status: "unsupported", message: "Relay playback is not enabled on this server. Play phone-stored videos on the Android TV app over your local network." };
         }
       }
       if (cloud) {

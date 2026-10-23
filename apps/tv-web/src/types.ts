@@ -23,3 +23,21 @@ export interface Playback {
   telegram?: { chatId: string; messageId: number };
 }
 export interface SwitchRequest { requestId: string; status: string }
+export interface ServerFeatures {
+  artwork: boolean;
+  aiTitleResolution: boolean;
+  subtitles: boolean;
+  relay: boolean;
+  webImport: boolean;
+  cloudStorage: boolean;
+  telegram: boolean;
+  lanPlayback: boolean;
+  profileLock: boolean;
+}
+export interface ServerCapabilities {
+  apiVersion: number;
+  edition: string;
+  serverVersion: string;
+  authMode: "account" | "device";
+  features: ServerFeatures;
+}

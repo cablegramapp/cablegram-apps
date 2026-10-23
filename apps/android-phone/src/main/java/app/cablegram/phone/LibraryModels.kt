@@ -265,6 +265,7 @@ data class PhonePairResponse(
     val tvName: String = "TV",
     @SerialName("lan_capability") val lanCapability: String? = null,
     @SerialName("tv_device_id") val tvDeviceId: String? = null,
+    @SerialName("phone_device_id") val phoneDeviceId: String? = null,
 )
 
 @Serializable
@@ -273,6 +274,7 @@ data class AuthTokenResponse(
     val refresh_token: String? = null,
     val user_id: String? = null,
     val household_id: String? = null,
+    val device_id: String? = null,
     val display_name: String? = null,
 )
 
@@ -356,14 +358,21 @@ data class RemoteCommand(
     val videoId: String? = null,
 )
 
-fun parsePairCode(input: String): Pair<String, String>? {
+fun parsePairCode(input: String, webOrigins: Set<String> = PAIR_WEB_ORIGINS): Pair<String, String>? {
     val trimmed = input.trim()
     if (trimmed.matches(Regex("\\d{6}"))) return trimmed to "TV"
-    return parsePairUri(trimmed)
+    return parsePairUri(trimmed, webOrigins)
 }
 
 /** Where TVs' pairing QR codes point (CAB-62): the public web remote, and the one this build was made for. */
 val PAIR_WEB_ORIGINS: Set<String> = setOf("https://app.cablegram.app", BuildConfig.WEB_APP_BASE.trimEnd('/'))
+
+fun serverOrigin(url: String): String? = runCatching {
+    val parsed = java.net.URI(url.trim())
+    if (parsed.scheme in setOf("http", "https") && !parsed.rawAuthority.isNullOrBlank()) {
+        "${parsed.scheme}://${parsed.rawAuthority}"
+    } else null
+}.getOrNull()
 
 /**
  * A TV's pairing link: `https://app.cablegram.app/?pair=<PIN>&tv=<name>` (CAB-62) from the QR code since spec 007, or
@@ -398,9 +407,29 @@ private fun parsePairWebLink(uri: String, webOrigins: Set<String>): Pair<String,
     pin to (params["tv"]?.trim()?.take(80)?.takeIf { it.isNotEmpty() } ?: "TV")
 }.getOrNull()
 
+fun isPrivateLanHost(host: String): Boolean {
+    val h = host.trim().lowercase().removeSurrounding("[", "]")
+    if (h == "localhost" || h == "127.0.0.1" || h == "::1" || h == "10.0.2.2" || h.endsWith(".local") || h.endsWith(".lan")) return true
+    val parts = h.split(".")
+    if (parts.size == 4 && parts.all { it.toIntOrNull() in 0..255 }) {
+        val a = parts[0].toInt()
+        val b = parts[1].toInt()
+        if (a == 10 || a == 127) return true
+        if (a == 192 && b == 168) return true
+        if (a == 172 && b in 16..31) return true
+    }
+    return false
+}
+
+fun isCleartextLanServerUrl(value: String): Boolean = runCatching {
+    val uri = java.net.URI(value.trim())
+    uri.scheme == "http" && !uri.host.isNullOrBlank() && isPrivateLanHost(uri.host)
+}.getOrDefault(false)
+
 fun isValidServerUrl(value: String): Boolean = runCatching {
     val uri = java.net.URI(value.trim())
     uri.scheme in setOf("http", "https") && !uri.host.isNullOrBlank() &&
+        (uri.scheme == "https" || isPrivateLanHost(uri.host)) &&
         uri.userInfo == null && uri.query == null && uri.fragment == null &&
         (uri.port == -1 || uri.port in 1..65535)
 }.getOrDefault(false)
