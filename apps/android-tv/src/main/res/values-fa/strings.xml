@@ -287,4 +287,14 @@
     <string name="ui_your_title_starts_automatically_after_approval_1cc12a" formatted="false">"پس از تأیید، پخش این عنوان خودکار شروع می‌شود."</string>
     <string name="ui_your_video_is_ready_4f9fb5" formatted="false">"ویدیوی شما آماده است."</string>
     <string name="ui_zoom_509c51" formatted="false">"بزرگ‌نمایی"</string>
+    <string name="ui_use_your_own_server_622a50" formatted="false">"استفاده از سرور خودتان"</string>
+    <string name="ui_enter_your_cablegram_server_address_for_example_http_1_8ff787" formatted="false">"نشانی سرور Cablegram خود را وارد کنید، مثلاً http://192.168.1.20:3000 یا https://cablegram.example.com"</string>
+    <string name="ui_server_address_8be897" formatted="false">"نشانی سرور"</string>
+    <string name="ui_connect_1a2303" formatted="false">"اتصال"</string>
+    <string name="ui_this_address_is_not_encrypted_use_it_only_on_your_home_3eaa84" formatted="false">"این نشانی رمزگذاری نشده است. فقط در شبکهٔ خانگی از آن استفاده کنید."</string>
+    <string name="ui_use_https_or_http_for_an_address_on_your_home_network_d0a725" formatted="false">"از https:// استفاده کنید، یا برای نشانی‌ای در شبکهٔ خانگی از http://."</string>
+    <string name="ui_could_not_reach_that_server_check_the_address_and_that_b7da05" formatted="false">"دسترسی به این سرور ممکن نشد. نشانی را بررسی کنید و مطمئن شوید سرور در حال اجراست."</string>
+    <string name="ui_that_address_is_not_a_cablegram_server_0f26c7" formatted="false">"این نشانی متعلق به سرور Cablegram نیست."</string>
+    <string name="ui_server_1_s_dfe9cc" formatted="false">"سرور: %1$s"</string>
+    <string name="ui_return_to_cablegram_e2e1d7" formatted="false">"بازگشت به Cablegram"</string>
 </resources>

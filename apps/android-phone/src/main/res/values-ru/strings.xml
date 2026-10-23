@@ -1049,4 +1049,5 @@
     <string name="tv_rename" formatted="false">"Переименовать"</string>
     <string name="tv_rename_title" formatted="false">"Переименовать телевизор"</string>
     <string name="tv_name_label" formatted="false">"Название телевизора"</string>
+    <string name="ui_this_phone_uses_your_own_server_on_the_tv_choose_use_y_2bf9a0" formatted="false">"Этот телефон использует ваш сервер. Сначала на телевизоре выберите «Использовать свой сервер» и введите %1$s."</string>
 </resources>

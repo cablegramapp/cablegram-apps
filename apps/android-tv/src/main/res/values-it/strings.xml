@@ -287,4 +287,14 @@
     <string name="ui_your_title_starts_automatically_after_approval_1cc12a" formatted="false">"La riproduzione del titolo inizia automaticamente dopo l’autorizzazione."</string>
     <string name="ui_your_video_is_ready_4f9fb5" formatted="false">"Il video è pronto."</string>
     <string name="ui_zoom_509c51" formatted="false">"Ingrandisci"</string>
+    <string name="ui_use_your_own_server_622a50" formatted="false">"Usa il tuo server"</string>
+    <string name="ui_enter_your_cablegram_server_address_for_example_http_1_8ff787" formatted="false">"Inserisci l\'indirizzo del tuo server Cablegram, per esempio http://192.168.1.20:3000 o https://cablegram.example.com"</string>
+    <string name="ui_server_address_8be897" formatted="false">"Indirizzo del server"</string>
+    <string name="ui_connect_1a2303" formatted="false">"Connetti"</string>
+    <string name="ui_this_address_is_not_encrypted_use_it_only_on_your_home_3eaa84" formatted="false">"Questo indirizzo non è cifrato. Usalo solo sulla tua rete domestica."</string>
+    <string name="ui_use_https_or_http_for_an_address_on_your_home_network_d0a725" formatted="false">"Usa https://, oppure http:// per un indirizzo della tua rete domestica."</string>
+    <string name="ui_could_not_reach_that_server_check_the_address_and_that_b7da05" formatted="false">"Impossibile raggiungere il server. Controlla l\'indirizzo e che il server sia in esecuzione."</string>
+    <string name="ui_that_address_is_not_a_cablegram_server_0f26c7" formatted="false">"Questo indirizzo non è un server Cablegram."</string>
+    <string name="ui_server_1_s_dfe9cc" formatted="false">"Server: %1$s"</string>
+    <string name="ui_return_to_cablegram_e2e1d7" formatted="false">"Torna a Cablegram"</string>
 </resources>

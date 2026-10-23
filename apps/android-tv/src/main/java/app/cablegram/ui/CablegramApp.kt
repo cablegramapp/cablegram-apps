@@ -159,6 +159,10 @@ fun CablegramApp(viewModel: CablegramViewModel) {
                     viewModel::cancelProfilePairing,
                     canCancel = viewModel.hasProfiles,
                     tvLanIp = viewModel.tvLanIp,
+                    ownServerUrl = viewModel.serverUrl.takeIf { !viewModel.usesDefaultServer },
+                    checkOwnServer = viewModel::checkOwnServer,
+                    onUseOwnServer = viewModel::setServerUrl,
+                    onReturnToCablegram = viewModel::returnToCablegram,
                 )
                 is ScreenState.ProfilePicker -> {
                     var digits by remember(screen.pinPromptFor?.id, screen.pinError) { mutableStateOf("") }
@@ -724,8 +728,18 @@ private fun PairingScreen(
     onBack: () -> Unit,
     canCancel: Boolean = false,
     tvLanIp: String? = null,
+    /** The self-hosted server this TV pairs with; null for Cablegram's own. */
+    ownServerUrl: String? = null,
+    checkOwnServer: suspend (String) -> app.cablegram.data.ServerProbe = { app.cablegram.data.ServerProbe.Unreachable },
+    onUseOwnServer: (String) -> Unit = {},
+    onReturnToCablegram: () -> Unit = {},
 ) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
+    var enteringServer by remember { mutableStateOf(false) }
+    if (enteringServer) {
+        OwnServerForm(check = checkOwnServer, onUse = { enteringServer = false; onUseOwnServer(it) }, onCancel = { enteringServer = false })
+        return
+    }
     // With profiles to return to, Back goes back to them. Without, Back leaves the app as usual: catching it here kept
     // the app open and stopped the TV from noticing that a phone had paired it.
     BackHandler(enabled = canCancel, onBack = onBack)
@@ -798,6 +812,15 @@ private fun PairingScreen(
                 ) {
                     Text(ui.getString(R.string.ui_new_pin_6d8849))
                 }
+                if (ownServerUrl == null) {
+                    Button(onClick = { enteringServer = true }, colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
+                        Text(ui.getString(R.string.ui_use_your_own_server_622a50))
+                    }
+                } else {
+                    Button(onClick = onReturnToCablegram, colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
+                        Text(ui.getString(R.string.ui_return_to_cablegram_e2e1d7))
+                    }
+                }
                 if (canCancel) {
                     Button(onClick = onBack, colors = ButtonDefaults.colors(containerColor = PanelRaised)) {
                         Text(ui.getString(R.string.ui_cancel_19766e))
@@ -818,6 +841,10 @@ private fun PairingScreen(
                 fontSize = 14.sp,
                 fontFamily = FontFamily.Monospace,
             )
+            if (ownServerUrl != null) {
+                Spacer(Modifier.height(6.dp))
+                Text(ui.getString(R.string.ui_server_1_s_dfe9cc, ownServerUrl), color = Muted, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
+            }
         }
         Column(
             modifier = Modifier

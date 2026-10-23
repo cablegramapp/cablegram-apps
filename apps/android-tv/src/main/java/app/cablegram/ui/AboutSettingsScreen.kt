@@ -122,9 +122,9 @@ internal fun AboutSettingsPanel(
                 )
             }
             if (serverUrl != null) {
-                Text("Server: $serverUrl", color = Slate, fontSize = 14.sp)
+                Text(ui.getString(R.string.ui_server_1_s_dfe9cc, serverUrl), color = Slate, fontSize = 14.sp)
                 if (onReturnToCablegram != null) {
-                    Button(onClick = onReturnToCablegram, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text("Return to Cablegram") }
+                    Button(onClick = onReturnToCablegram, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_return_to_cablegram_e2e1d7)) }
                 }
             }
             Button(

@@ -23,7 +23,7 @@ SAME_AS_ENGLISH = {
     "ui_code_340f46": {"de"}, "ui_demo_8a2cc0": {"es"}, "ui_details_45989d": {"de"}, "ui_episode_b19c45": {"de"},
     "ui_file_50009c": {"it"}, "ui_genre_8dc737": {"de"}, "ui_home_3a7869": {"it"}, "ui_live_b64ac0": {"it"},
     "ui_normal_a7248e": {"de", "es"}, "ui_opensubtitles_optional_4070ca": {"de"}, "ui_password_e7cf3e": {"it"},
-    "ui_pause_858e4b": {"de"}, "ui_telegram_4bdd3a": {"ar", "ru", "es", "it"}, "ui_video_d534be": {"de", "it"},
+    "ui_pause_858e4b": {"de"}, "ui_server_1_s_dfe9cc": {"de", "it"}, "ui_telegram_4bdd3a": {"ar", "ru", "es", "it"}, "ui_video_d534be": {"de", "it"},
     "ui_volume_b10fb9": {"it"},
 }
 
