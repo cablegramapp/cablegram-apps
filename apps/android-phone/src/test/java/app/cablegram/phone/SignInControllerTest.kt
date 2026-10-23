@@ -3,7 +3,10 @@ package app.cablegram.phone
 import androidx.test.core.app.ApplicationProvider
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
+import java.util.concurrent.TimeUnit
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -147,5 +150,29 @@ class SignInControllerTest {
         c.load()
         assertNull(c.methods?.google)
         assertEquals("p", c.documents.privacy.url)
+    }
+
+    @Test
+    fun `a slow answer from the previous server does not undo joining a Community server`() = runTest {
+        val hosted = MockWebServer().apply { start() }
+        try {
+            hosted.enqueue(json(200, """{"api_version":1,"edition":"hosted","auth":{"mode":"account"}}""").setHeadersDelay(500, TimeUnit.MILLISECONDS))
+            hosted.enqueue(json(200, """{"mode":"account","email_code":true}"""))
+            hosted.enqueue(json(200, legal))
+            server.enqueue(json(200, """{"api_version":1,"edition":"community","auth":{"mode":"device"}}"""))
+            server.enqueue(json(200, """{"mode":"device","email_code":false}"""))
+            server.enqueue(json(200, legal))
+            var base = hosted.url("/").toString()
+            val c = SignInController(client = { CatalogClient(base, null) }, signedIn = { signedIn += it }, resources = { res }, deviceName = { "Phone" })
+            val slow = async(start = CoroutineStart.UNDISPATCHED) { c.load() }
+            base = server.url("/").toString()
+            c.serverChanged()
+            c.load()
+            slow.await()
+            assertTrue("the Community server's device sign-in stays", c.deviceMode)
+            assertEquals("device", c.methods?.mode)
+        } finally {
+            hosted.shutdown()
+        }
     }
 }
