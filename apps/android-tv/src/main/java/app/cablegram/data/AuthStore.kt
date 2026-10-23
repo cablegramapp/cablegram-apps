@@ -17,6 +17,20 @@ class AuthStore(private val context: Context) {
     private val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** The server this TV talks to; Cablegram's own unless a phone chose another. Switching drops the old server's sessions. */
+    var serverUrl: String
+        get() = preferences.getString(SERVER_URL_KEY, null)?.takeIf { it.isNotBlank() } ?: app.cablegram.BuildConfig.API_BASE_URL
+        set(value) {
+            val next = normalizeServerUrl(value) ?: return
+            val changed = next.trimEnd('/') != serverUrl.trimEnd('/')
+            val edit = preferences.edit()
+            if (next.trimEnd('/') == app.cablegram.BuildConfig.API_BASE_URL.trimEnd('/')) edit.remove(SERVER_URL_KEY) else edit.putString(SERVER_URL_KEY, next)
+            if (changed) edit.remove(TOKEN_KEY).remove(SESSION_KEY).remove(ACCOUNTS_KEY).remove(ACTIVE_SESSION_KEY)
+            edit.apply()
+        }
+
+    val usesDefaultServer: Boolean get() = preferences.getString(SERVER_URL_KEY, null).isNullOrBlank()
+
     suspend fun getAccounts(): List<AccountCredential> {
         val encoded = preferences.getString(ACCOUNTS_KEY, null)
         if (encoded != null) {
@@ -180,6 +194,7 @@ class AuthStore(private val context: Context) {
         const val SESSION_KEY = "tv_session_id"
         const val ACCOUNTS_KEY = "encrypted_tv_accounts"
         const val ACTIVE_SESSION_KEY = "active_tv_session_id"
+        const val SERVER_URL_KEY = "server_url"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
     }
 }

@@ -3,9 +3,9 @@ import { ApiError, createApi, preflight, relayMessage } from "./api";
 import { API_BASE, WEB_APP_BASE } from "./config";
 import {
   ASPECTS, AUTO_HIDE_MS, formatSpeed, formatTime, hideControls, initialHud, menuOpen, menuOptions, reduceHud, SCRUB_COMMIT_MS,
-  SEEK_FLASH_MS, SEEK_STEP_MS, timelineActive,
+  SEEK_FLASH_MS, SEEK_STEP_MS, SPEEDS, timelineActive,
 } from "./hud";
-import type { Aspect, DpadKey, HudContext, HudEffect, HudState, HudTrack } from "./hud";
+import type { Aspect, DpadKey, HudContext, HudEffect, HudState, HudTrack, SettingsRow } from "./hud";
 import {
   allGenres, buildShelves, displayTitle, entryBackdrop, entryHint, entryIds, entryInMyList, entryMetadata, entryOverview,
   entryProgress, entryRemaining, entrySourceBadge, episodeBadge, episodeCaption, metadataParts, monogram, nextEpisode,
@@ -34,7 +34,10 @@ import type { DeviceSession, Playback, Profile, SwitchRequest, Title } from "./t
 const root = document.getElementById("app")!;
 interface ProfileEntry { profile: Profile; account: Account }
 let current: ProfileEntry | null = null;
-const api = createApi({ token: () => current?.account.token ?? store.activeAccount()?.token });
+const api = createApi({
+  base: () => store.serverUrl() ?? API_BASE,
+  token: () => current?.account.token ?? store.activeAccount()?.token,
+});
 
 type Focusable = HTMLElement & { onSelect?: () => void; onLong?: () => void };
 let backHandler: (() => void) | null = null;
@@ -57,10 +60,24 @@ function h(tag: string, cls?: string, text?: string, children: Node[] = []): HTM
   return el;
 }
 
+let lastKeySelectAt = 0;
+
 function focusable(tag: string, cls: string, onSelect: () => void, children: Node[] = [], text?: string): Focusable {
   const el = h(tag, `focusable ${cls}`, text, children) as Focusable;
   el.tabIndex = -1;
   el.onSelect = onSelect;
+  el.addEventListener("mouseenter", () => {
+    if (modal && !modal.el.contains(el)) return;
+    // Poster cards inside .shelves translate the shelf container vertically on focus, so only focus non-shelf controls on hover.
+    if (!el.closest(".shelves")) focusEl(el);
+  });
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (modal && !modal.el.contains(el)) return;
+    if (Date.now() - lastKeySelectAt < 250) return;
+    focusEl(el);
+    el.onSelect?.();
+  });
   return el;
 }
 
@@ -108,6 +125,7 @@ let modal: { el: HTMLElement; back: () => void; restore: Element | null } | null
 function openModal(content: HTMLElement, onBack: () => void) {
   closeModal();
   const el = h("div", "modal", undefined, [content]);
+  el.addEventListener("click", (e) => { if (e.target === el) modal?.back(); });
   modal = { el, back: onBack, restore: document.activeElement };
   root.appendChild(el);
   focusFirst(el);
@@ -198,12 +216,17 @@ let pairingRun = 0;
 async function pair(canCancel = profileEntries.length > 0) {
   const run = ++pairingRun;
   if (!root.querySelector(".pairing")) loading("Getting a pairing code…");
+  void api.server().catch(() => undefined);
   let session: DeviceSession;
   try {
     session = await api.createDeviceSession(deviceName());
   } catch {
     if (run !== pairingRun) return;
-    errorScreen("Can't reach Cablegram", `Check the TV's internet connection (${API_BASE}).`, [button("Try again", () => pair(canCancel))],
+    const actions = [button("Try again", () => pair(canCancel))];
+    if (store.serverUrl()) {
+      actions.push(button("Return to Cablegram", () => { store.setServerUrl(null); void pair(false); }, "panel"));
+    }
+    errorScreen("Can't reach Cablegram", `Check the TV's internet connection (${api.baseUrl()}).`, actions,
       canCancel ? () => picker() : null);
     return;
   }
@@ -212,6 +235,7 @@ async function pair(canCancel = profileEntries.length > 0) {
   const qr = qrCanvas(link, 544);
   const buttons = [button("New PIN", () => pair(canCancel), "raised", true)];
   if (canCancel) buttons.push(button("Cancel", () => { pairingRun++; picker(); }, "raised"));
+  if (store.serverUrl()) buttons.push(button("Return to Cablegram", () => { pairingRun++; store.setServerUrl(null); void pair(false); }, "raised"));
   buttons.push(button("Check this TV", () => { pairingRun++; diagnosticsScreen(() => void pair(canCancel)); }, "raised"));
   show([h("div", "pairing", undefined, [
     h("div", "pairing-text", undefined, [
@@ -260,6 +284,7 @@ async function loadProfiles() {
   const list = store.accounts();
   if (!list.length) { profileEntries = []; current = null; void pair(false); return; }
   if (!root.querySelector(".picker")) loading();
+  void api.server().catch(() => undefined);
   const entries: ProfileEntry[] = [];
   let failed = false;
   for (const account of list) {
@@ -870,6 +895,34 @@ function lineIcon(name: string): HTMLElement {
 
 function settingsPanel(): HTMLElement {
   const value = (label: string, v: string) => h("div", "setting-value", undefined, [h("div", "setting-label", label), h("div", "setting-v", v)]);
+  const customServer = store.serverUrl();
+  const connNodes: Node[] = [
+    h("div", "settings-heading", "Connection"),
+    value("This TV", deviceName()),
+    value("Server", api.baseUrl()),
+    value("Media source", "Your paired phone"),
+    value("Playback path", "Relay through Cablegram"),
+    h("div", "settings-text small", "This TV reaches your phone through the Cablegram relay, so it plays whether or not both are on the same Wi‑Fi."),
+  ];
+  if (customServer) {
+    connNodes.push(button("Return to Cablegram", () => {
+      confirmUnpair(() => {
+        store.setServerUrl(null);
+        current = null;
+        videos = [];
+        profileEntries = [];
+        void pair(false);
+      }, "Return to Cablegram?", "This TV will disconnect from the custom server and return to the default Cablegram server.", "Return");
+    }, "panel"));
+  }
+  connNodes.push(
+    h("div", "settings-heading", "Telegram"),
+    h("div", "settings-text small", import.meta.env.VITE_TG_DIRECT === "1"
+      ? "Telegram playback on this TV is in testing."
+      : "Telegram playback isn't available on this TV yet. Titles stored in Telegram play on the Android TV app."),
+    h("div", "settings-heading", "Help"),
+    button("Diagnostics", () => diagnosticsScreen(), "panel"),
+  );
   return h("div", "settings", undefined, [
     h("div", "settings-col wide", undefined, [
       h("div", "settings-title", "About Cablegram"),
@@ -877,19 +930,7 @@ function settingsPanel(): HTMLElement {
       h("div", "settings-text", "Cablegram plays videos you own or are allowed to watch. It provides no media of its own. Videos from your phone or your Telegram channel are never stored on its servers; only a web video you choose to save to Cablegram storage is, until you delete your account."),
       h("div", "settings-text small", "Privacy policy: https://cablegram.app/privacy.html"),
     ]),
-    h("div", "settings-col", undefined, [
-      h("div", "settings-heading", "Connection"),
-      value("This TV", deviceName()),
-      value("Media source", "Your paired phone"),
-      value("Playback path", "Relay through Cablegram"),
-      h("div", "settings-text small", "This TV reaches your phone through the Cablegram relay, so it plays whether or not both are on the same Wi‑Fi."),
-      h("div", "settings-heading", "Telegram"),
-      h("div", "settings-text small", import.meta.env.VITE_TG_DIRECT === "1"
-        ? "Telegram playback on this TV is in testing."
-        : "Telegram playback isn't available on this TV yet. Titles stored in Telegram play on the Android TV app."),
-      h("div", "settings-heading", "Help"),
-      button("Diagnostics", () => diagnosticsScreen(), "panel"),
-    ]),
+    h("div", "settings-col", undefined, connNodes),
   ]);
 }
 
@@ -929,7 +970,7 @@ function diagnosticsScreen(back: () => void = () => libraryScreen()) {
       diag.checkDecoders(report);
       await diag.checkSpeed(report);
       if (!live()) return;
-      await diag.checkNetwork(report, API_BASE);
+      await diag.checkNetwork(report, api.baseUrl());
       if (!live()) return;
       const bytes = await getClip().catch((e: Error) => { report.add("clip", "Test clip", "fail", `could not load it (${e.message})`); return null; });
       if (bytes && live()) await diag.checkPlayback(report, bytes, preview);
@@ -1281,6 +1322,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
       flash.textContent = hud.seekFlashDeltaMs < 0 ? `↶  ${s} sec` : `${s} sec  ↷`;
     }
     controls.style.opacity = hud.controlsVisible ? "1" : "0";
+    controls.style.pointerEvents = hud.controlsVisible ? "" : "none";
     subtitleBox.className = hud.controlsVisible ? "subtitles above-hud" : "subtitles";
     tPaused.style.display = c.isPlaying ? "none" : "";
     btnPlay.textContent = c.isPlaying ? "❚❚" : "▶";
@@ -1303,6 +1345,8 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
     renderMenu(c);
   };
 
+  let pointerHoveringTimeline = false;
+
   const renderMenu = (c: HudContext) => {
     menu.textContent = "";
     menu.style.display = menuOpen(hud) ? "" : "none";
@@ -1310,24 +1354,61 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
       const block = (title: string, section: "audio" | "subtitles", selected: string | null) => {
         const items = menuOptions(section, c).map((o, i) => {
           const focused = hud.menuSection === section && hud.menuIndex === i;
-          return h("div", `menu-option${focused ? " focused" : ""}${o.id === selected ? " selected" : ""}`, `${o.id === selected ? "●  " : "    "}${o.id == null ? "Off" : o.label}`);
+          const opt = h("div", `menu-option${focused ? " focused" : ""}${o.id === selected ? " selected" : ""}`, `${o.id === selected ? "●  " : "    "}${o.id == null ? "Off" : o.label}`);
+          opt.addEventListener("mouseenter", () => {
+            if (hud.menuSection !== section || hud.menuIndex !== i) {
+              hud = { ...hud, menuSection: section, menuIndex: i };
+              render();
+            }
+          });
+          opt.addEventListener("click", (e) => {
+            e.stopPropagation();
+            apply(section === "audio" ? (o.id != null ? [{ type: "audio", id: o.id }] : []) : [{ type: "subtitle", id: o.id }]);
+            hud = { ...hud, overlay: "closed", focus: "audioSubtitles" };
+            render(); arm();
+          });
+          return opt;
         });
         return h("div", "menu-block", undefined, [h("div", "menu-heading", title)].concat(items));
       };
-      menu.appendChild(h("div", "menu-panel", undefined, [
+      const panel = h("div", "menu-panel", undefined, [
         h("div", "menu-title", "Audio & Subtitles"),
         block("Audio", "audio", c.selectedAudioId),
         block("Subtitles", "subtitles", c.selectedSubtitleId),
-      ]));
+      ]);
+      panel.addEventListener("click", (e) => e.stopPropagation());
+      menu.appendChild(panel);
     } else if (hud.overlay === "playerSettings") {
-      const row = (title: string, value: string, focused: boolean) =>
-        h("div", `setting-row${focused ? " focused" : ""}`, undefined, [h("span", undefined, title), h("b", undefined, focused ? `◀  ${value}  ▶` : value)]);
-      menu.appendChild(h("div", "menu-panel", undefined, [
+      const row = (rowKey: SettingsRow, title: string, value: string, focused: boolean, onCycle: () => void) => {
+        const el = h("div", `setting-row${focused ? " focused" : ""}`, undefined, [h("span", undefined, title), h("b", undefined, focused ? `◀  ${value}  ▶` : value)]);
+        el.addEventListener("mouseenter", () => {
+          if (hud.settingsRow !== rowKey) {
+            hud = { ...hud, settingsRow: rowKey };
+            render();
+          }
+        });
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          hud = { ...hud, settingsRow: rowKey };
+          onCycle();
+          render(); arm();
+        });
+        return el;
+      };
+      const panel = h("div", "menu-panel", undefined, [
         h("div", "menu-title", "Player Settings"),
-        h("div", "menu-sub", "Left / Right to adjust"),
-        row("Playback Speed", formatSpeed(speed), hud.settingsRow === "speed"),
-        row("Aspect Ratio", aspect, hud.settingsRow === "aspect"),
-      ]));
+        h("div", "menu-sub", "Left / Right or Click to adjust"),
+        row("speed", "Playback Speed", formatSpeed(speed), hud.settingsRow === "speed", () => {
+          const idx = SPEEDS.indexOf(speed);
+          apply([{ type: "speed", rate: SPEEDS[(idx + 1) % SPEEDS.length] }]);
+        }),
+        row("aspect", "Aspect Ratio", aspect, hud.settingsRow === "aspect", () => {
+          const idx = ASPECTS.indexOf(aspect);
+          apply([{ type: "aspect", mode: ASPECTS[(idx + 1) % ASPECTS.length] }]);
+        }),
+      ]);
+      panel.addEventListener("click", (e) => e.stopPropagation());
+      menu.appendChild(panel);
     }
   };
 
@@ -1341,7 +1422,7 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
     if (hud.controlsVisible && !video.paused && !menuOpen(hud) && hud.focus !== "timeline") {
       hideTimer = window.setTimeout(() => { hud = { ...hud, controlsVisible: false, previewPositionMs: null, holdMultiplier: 1 }; render(); }, AUTO_HIDE_MS);
     }
-    if (timelineActive(hud)) {
+    if (timelineActive(hud) && !pointerHoveringTimeline) {
       const preview0 = hud.previewPositionMs;
       const skimming = preview0 != null && Math.abs(preview0 - positionMs()) > 500;
       scrubTimer = window.setTimeout(() => {
@@ -1469,9 +1550,147 @@ function playerScreen(t: Title, p: Profile, url: string, startAt?: number, attem
     }).catch(() => undefined);
   } else video.src = url;
 
+  // LG Magic Remote / mouse pointer handlers for HUD, transport buttons, timeline, and overlay menus.
+  const pointerTimeMs = (e: MouseEvent): number => {
+    const rect = bar.getBoundingClientRect();
+    const dur = durationMs();
+    if (rect.width <= 0 || dur <= 0) return positionMs();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    return Math.round(ratio * dur);
+  };
+  let lastMoveWakeAt = 0;
+  wrap.addEventListener("mousemove", () => {
+    if (exited) return;
+    const now = Date.now();
+    if (!hud.controlsVisible) {
+      lastMoveWakeAt = now;
+      hud = { ...hud, controlsVisible: true, seekFlashDeltaMs: null };
+      render(); arm();
+    } else if (now - lastMoveWakeAt > 350 && !pointerHoveringTimeline) {
+      lastMoveWakeAt = now;
+      arm();
+    }
+  });
+  wrap.addEventListener("click", () => {
+    if (exited || Date.now() - lastKeySelectAt < 250) return;
+    if (menuOpen(hud)) {
+      hud = { ...hud, overlay: "closed" };
+      render(); arm();
+      return;
+    }
+    if (!hud.controlsVisible) {
+      hud = { ...hud, controlsVisible: true, focus: "playPause", seekFlashDeltaMs: null };
+    } else {
+      apply([{ type: ctx().isPlaying ? "pause" : "play" }]);
+    }
+    render(); arm();
+  });
+  controls.addEventListener("click", (e) => e.stopPropagation());
+  menu.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (menuOpen(hud)) {
+      hud = { ...hud, overlay: "closed" };
+      render(); arm();
+    }
+  });
+  btnRew.addEventListener("mouseenter", () => {
+    if (menuOpen(hud)) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, controlsVisible: true, focus: "rewind", previewPositionMs: null, holdMultiplier: 1 };
+    render(); arm();
+  });
+  btnRew.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (Date.now() - lastKeySelectAt < 250) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, controlsVisible: true, focus: "rewind", previewPositionMs: null, seekFlashDeltaMs: null };
+    apply([{ type: "seekBy", deltaMs: -SEEK_STEP_MS }]);
+    render(); arm();
+  });
+  btnPlay.addEventListener("mouseenter", () => {
+    if (menuOpen(hud)) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, controlsVisible: true, focus: "playPause", previewPositionMs: null, holdMultiplier: 1 };
+    render(); arm();
+  });
+  btnPlay.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (Date.now() - lastKeySelectAt < 250) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, controlsVisible: true, focus: "playPause", previewPositionMs: null, seekFlashDeltaMs: null };
+    apply([{ type: ctx().isPlaying ? "pause" : "play" }]);
+    render(); arm();
+  });
+  btnFwd.addEventListener("mouseenter", () => {
+    if (menuOpen(hud)) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, controlsVisible: true, focus: "fastForward", previewPositionMs: null, holdMultiplier: 1 };
+    render(); arm();
+  });
+  btnFwd.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (Date.now() - lastKeySelectAt < 250) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, controlsVisible: true, focus: "fastForward", previewPositionMs: null, seekFlashDeltaMs: null };
+    apply([{ type: "seekBy", deltaMs: SEEK_STEP_MS }]);
+    render(); arm();
+  });
+  btnTracks.addEventListener("mouseenter", () => {
+    if (menuOpen(hud)) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, controlsVisible: true, focus: "audioSubtitles", previewPositionMs: null, holdMultiplier: 1 };
+    render(); arm();
+  });
+  btnTracks.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (Date.now() - lastKeySelectAt < 250) return;
+    pointerHoveringTimeline = false;
+    const [next, effects] = reduceHud({ ...hud, controlsVisible: true, overlay: "closed", focus: "audioSubtitles" }, "ok", 0, ctx());
+    hud = next;
+    apply(effects);
+    render(); arm();
+  });
+  btnSettings.addEventListener("mouseenter", () => {
+    if (menuOpen(hud)) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, controlsVisible: true, focus: "playerSettings", previewPositionMs: null, holdMultiplier: 1 };
+    render(); arm();
+  });
+  btnSettings.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (Date.now() - lastKeySelectAt < 250) return;
+    pointerHoveringTimeline = false;
+    const [next, effects] = reduceHud({ ...hud, controlsVisible: true, overlay: "closed", focus: "playerSettings" }, "ok", 0, ctx());
+    hud = next;
+    apply(effects);
+    render(); arm();
+  });
+  bar.addEventListener("mousemove", (e) => {
+    if (menuOpen(hud)) return;
+    pointerHoveringTimeline = true;
+    hud = { ...hud, controlsVisible: true, focus: "timeline", previewPositionMs: pointerTimeMs(e), holdMultiplier: 1, seekFlashDeltaMs: null };
+    render(); arm();
+  });
+  bar.addEventListener("mouseleave", () => {
+    if (!pointerHoveringTimeline) return;
+    pointerHoveringTimeline = false;
+    hud = { ...hud, focus: "playPause", previewPositionMs: null, holdMultiplier: 1 };
+    render(); arm();
+  });
+  bar.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (Date.now() - lastKeySelectAt < 250) return;
+    pointerHoveringTimeline = false;
+    const targetMs = pointerTimeMs(e);
+    hud = { ...hud, controlsVisible: true, focus: "timeline", previewPositionMs: null, holdMultiplier: 1, seekFlashDeltaMs: null };
+    apply([{ type: "seekTo", positionMs: targetMs }, { type: "play" }]);
+    render(); arm();
+  });
+
   const dpad: Partial<Record<Key, DpadKey>> = { up: "up", down: "down", left: "left", right: "right", enter: "ok", back: "back" };
   screenKeys = (key, _e, repeat) => {
     interaction++;
+    pointerHoveringTimeline = false;
     const d = dpad[key];
     if (d) {
       const [next, effects] = reduceHud(hud, d, repeat, ctx());
@@ -1538,6 +1757,7 @@ document.addEventListener("keyup", (e) => {
   enterDown = null;
   clearTimeout(press.timer);
   if (press.long) return;
+  lastKeySelectAt = Date.now();
   const el = document.activeElement as Focusable | null;
   if (el && el.onSelect && (!modal || modal.el.contains(el))) el.onSelect();
 });
@@ -1545,6 +1765,14 @@ document.addEventListener("keyup", (e) => {
 registerPlatformKeys();
 
 async function start() {
+  const params = new URLSearchParams(location.search);
+  const serverParam = params.get("server");
+  if (serverParam) {
+    store.setServerUrl(serverParam);
+    params.delete("server");
+    const rest = params.toString();
+    history.replaceState(null, "", `${location.pathname}${rest ? `?${rest}` : ""}${location.hash}`);
+  }
   if (location.hash === "#diag") { diagnosticsScreen(); return; }
   if (!store.accounts().length) { void pair(false); return; }
   await loadProfiles();

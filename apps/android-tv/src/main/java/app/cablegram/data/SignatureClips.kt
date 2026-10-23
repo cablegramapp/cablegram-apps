@@ -19,6 +19,8 @@ import okhttp3.Request
  * are capped at [MAX_TOTAL_BYTES]; the least recently shown go first.
  */
 object SignatureClips {
+    /** Off on servers that are not Cablegram's own: brand clips come from media.cablegram.app. */
+    @Volatile var enabled = true
     private const val MAX_TOTAL_BYTES = 80L * 1024 * 1024
     private const val MAX_CLIP_BYTES = 20L * 1024 * 1024
     @Volatile private var directory: File? = null
@@ -37,6 +39,7 @@ object SignatureClips {
         dir.mkdirs()
         directory = dir
         if (prefetch) scope.launch {
+            if (!enabled) return@launch
             // Enough for the usual journeys: two waiting clips to vary between and the password clip. Error
             // animations are bundled in the app.
             val missingLoading = DEFAULT_LOADING_VIDEOS.filterNot(::isCached).shuffled()
@@ -74,6 +77,7 @@ object SignatureClips {
     }
 
     private fun fetch(url: String) {
+        if (!enabled) return
         if (!download(url, url)) fallbackFor(url)?.let { download(url, it) }
     }
 

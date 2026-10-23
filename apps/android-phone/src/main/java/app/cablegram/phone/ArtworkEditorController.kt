@@ -20,6 +20,8 @@ class ArtworkEditorController(
 ) {
     var draft by mutableStateOf<ArtworkDraft?>(null)
         private set
+    /** False on servers without title lookup (Community): the editor then offers manual edits and video frames only. */
+    var lookupAvailable by mutableStateOf(true)
     private var generation = 0L
     private var lookupRevision = 0L
     private var searchJob: Job? = null

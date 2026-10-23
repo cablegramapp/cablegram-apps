@@ -208,12 +208,14 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; color: 
 .card.landscape { width: 480px; }
 .card-frame { position: relative; width: 100%; height: 384px; border-radius: 24px; transition: transform .14s; }
 .card.landscape .card-frame { height: 270px; }
-.card:focus { z-index: 1; }
+.card:focus, .card:hover { z-index: 1; }
 .card:focus .card-frame { transform: scale(1.08); }
+.card:hover .card-frame { transform: scale(1.04); }
 .card:focus .card-frame:before { content: ""; position: absolute; top: -8px; right: -8px; bottom: -8px; left: -8px; border-radius: 32px;
   border: 4px solid rgba(244,189,117,.55); }
 .card-art { position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: 24px; overflow: hidden; background-color: var(--raised);
   border: 2px solid rgba(255,255,255,.06); }
+.card:hover .card-art { border: 4px solid rgba(248,250,252,.75); }
 .card:focus .card-art { border: 6px solid var(--paper); }
 .card-art img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 .monogram { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center;
@@ -282,15 +284,15 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; color: 
 .hud-transport { display: flex; margin-bottom: 40px; }
 .hud-transport:last-child { margin-bottom: 0; }
 .tbtn { margin: 0 16px; padding: 24px 44px; border-radius: 20px; background: rgba(255,255,255,.2); border: 4px solid transparent;
-  font-size: 32px; font-weight: 600; color: var(--paper); white-space: nowrap; }
+  font-size: 32px; font-weight: 600; color: var(--paper); white-space: nowrap; cursor: pointer; }
 .tbtn.focused { background: var(--acid); border-color: var(--paper); color: var(--ink); }
 .hud-timeline { align-self: stretch; display: flex; flex-direction: column; align-items: center; }
 .preview { width: 440px; height: 248px; margin-bottom: 24px; border-radius: 16px; background: #2a2e28; border: 2px solid rgba(255,255,255,.33);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .preview-label { font-size: 24px; font-weight: 500; color: var(--slate); }
 .preview-time { font-size: 44px; font-weight: 700; color: var(--paper); }
 .preview-speed { font-size: 28px; font-weight: 700; color: var(--acid); }
-.timeline { position: relative; align-self: stretch; height: 36px; }
+.timeline { position: relative; align-self: stretch; height: 36px; cursor: pointer; }
 .timeline-track { position: absolute; left: 0; right: 0; top: 12px; height: 12px; border-radius: 8px; background: rgba(255,255,255,.33); overflow: hidden; }
 .timeline-track i { display: block; height: 100%; width: 0; background: var(--paper); }
 .timeline b { position: absolute; top: 4px; width: 28px; height: 28px; margin-left: -12px; border-radius: 50%; background: var(--acid); }
@@ -306,11 +308,11 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; color: 
 .menu-sub { margin: -28px 0 40px; font-size: 26px; color: var(--slate); }
 .menu-block { margin-bottom: 36px; }
 .menu-heading { margin-bottom: 16px; font-size: 26px; font-weight: 600; color: var(--slate); }
-.menu-option { padding: 16px 24px; border-radius: 16px; font-size: 32px; color: var(--paper); white-space: pre; }
+.menu-option { padding: 16px 24px; border-radius: 16px; font-size: 32px; color: var(--paper); white-space: pre; cursor: pointer; }
 .menu-option.selected { font-weight: 700; }
 .menu-option.focused { background: var(--acid); color: var(--ink); font-weight: 700; }
 .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 24px; border-radius: 16px;
-  font-size: 32px; font-weight: 600; color: var(--paper); }
+  font-size: 32px; font-weight: 600; color: var(--paper); cursor: pointer; }
 .setting-row b { margin-left: 48px; }
 .setting-row.focused { background: var(--acid); color: var(--ink); }
 

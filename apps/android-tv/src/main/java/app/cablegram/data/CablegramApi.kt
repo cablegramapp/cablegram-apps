@@ -29,7 +29,9 @@ internal fun isControlPlane(url: okhttp3.HttpUrl, baseUrl: String): Boolean {
 }
 
 class CablegramApi(
-    private val baseUrl: String = BuildConfig.API_BASE_URL,
+    baseUrl: String = BuildConfig.API_BASE_URL,
+    /** The server chosen at runtime (see [AuthStore.serverUrl]); read on every call so a switch needs no restart. */
+    private val serverUrl: (() -> String)? = null,
     // T-net/ANR: short, explicit timeouts so a stalled network fails fast
     // instead of leaving dozens of pending calls to pile up and thrash the
     // (often low-memory) TV process.
@@ -44,7 +46,7 @@ class CablegramApi(
         // and a phone's clock must not become the TV's idea of server time.
         .addInterceptor { chain ->
             chain.proceed(chain.request()).also { response ->
-                if (isControlPlane(response.request.url, baseUrl)) ServerClock.shared.observe(response.headers.getDate("Date"))
+                if (isControlPlane(response.request.url, serverUrl?.invoke() ?: baseUrl)) ServerClock.shared.observe(response.headers.getDate("Date"))
             }
         }
         .build(),
@@ -54,8 +56,29 @@ class CablegramApi(
      */
     private val lanStream: (String) -> String? = { it },
 ) {
+    private val initialBaseUrl = baseUrl
+    private val baseUrl: String get() = serverUrl?.invoke() ?: initialBaseUrl
     private val json = Json { ignoreUnknownKeys = true }
     private val jsonMediaType = "application/json".toMediaType()
+
+    @Volatile var cachedCapabilities: ServerCapabilities? = null
+        private set
+
+    /** `GET /api/server`; an older server without it is treated as hosted. Null when unreachable. */
+    suspend fun getServerCapabilities(): ServerCapabilities? = try {
+        val request = Request.Builder().url(url("api/server")).get().build()
+        val caps = client.newCall(request).execute().use { response ->
+            when {
+                response.code == 404 -> ServerCapabilities()
+                !response.isSuccessful -> null
+                else -> json.decodeFromString<ServerCapabilities>(response.body?.string().orEmpty())
+            }
+        }
+        if (caps != null) cachedCapabilities = caps
+        caps
+    } catch (_: Exception) {
+        null
+    }
 
     suspend fun telegramClientCredentials(token: String) =
         app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, BuildConfig.DEBUG)
@@ -461,6 +484,7 @@ class CablegramApi(
         cloudStream: (url: String, headers: Map<String, String>) -> String? = { _, _ -> null },
     ): PlaybackResponse {
         val playback = resolvePlayback(videoId, token, lanPin, onStatus, onAwaitingApproval, telegramUrl, telegramPhoneId, cloudStream)
+        if (cachedCapabilities?.features?.subtitles == false) return playback
         if (playback.status != "ready" || playback.subtitles.isNotEmpty()) return playback
         val subtitles = runCatching {
             execute<SubtitlePlaybackResponse>(authenticatedRequest("api/subtitles/playback/item/$videoId", token).get().build()).subtitles

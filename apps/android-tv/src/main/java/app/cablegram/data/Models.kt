@@ -10,6 +10,37 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
+data class ServerFeatures(
+    val artwork: Boolean = true,
+    @SerialName("ai_title_resolution") val aiTitleResolution: Boolean = true,
+    val subtitles: Boolean = true,
+    val relay: Boolean = true,
+    @SerialName("web_import") val webImport: Boolean = true,
+    @SerialName("cloud_storage") val cloudStorage: Boolean = true,
+    val telegram: Boolean = true,
+    @SerialName("lan_playback") val lanPlayback: Boolean = true,
+    @SerialName("profile_lock") val profileLock: Boolean = true,
+)
+
+/** `GET /api/server`. Defaults describe an older hosted server that predates the endpoint. */
+@Serializable
+data class ServerCapabilities(
+    val edition: String = "hosted",
+    val features: ServerFeatures = ServerFeatures(),
+)
+
+/** Cleartext is accepted only for private-network hosts; everything else must be HTTPS. */
+fun normalizeServerUrl(value: String): String? = runCatching {
+    val uri = java.net.URI(value.trim())
+    val host = uri.host ?: return null
+    val private = host == "localhost" || host.endsWith(".local") || host.endsWith(".lan") ||
+        Regex("^(10\\.|127\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)").containsMatchIn(host)
+    val ok = (uri.scheme == "https" || (uri.scheme == "http" && private)) &&
+        uri.userInfo == null && uri.query == null && uri.fragment == null
+    if (ok) "${uri.scheme}://${uri.rawAuthority}" else null
+}.getOrNull()
+
+@Serializable
 data class AccountCredential(
     val sessionId: String,
     val token: String,
@@ -264,7 +295,7 @@ val DEFAULT_LOADING_VIDEOS = listOf(
     "$SIGNATURE_CLIP_BASE/russia.mp4",
 )
 
-fun getRandomLoadingVideoUrl(): String = SignatureClips.pick(DEFAULT_LOADING_VIDEOS)
+fun getRandomLoadingVideoUrl(): String = if (SignatureClips.enabled) SignatureClips.pick(DEFAULT_LOADING_VIDEOS) else ""
 
 const val TELEGRAM_PASSWORD_VIDEO_URL = "$SIGNATURE_CLIP_BASE/custom/pass.mp4"
 

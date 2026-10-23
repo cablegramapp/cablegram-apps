@@ -65,8 +65,28 @@ data class PendingApproval(
     val kind: ApprovalKind = ApprovalKind.Playback,
 )
 
-/** What a TV is waiting for: a private title to play, or (profile lock) a profile to open. */
-enum class ApprovalKind { Playback, Profile }
+/** What a TV or another phone is waiting for: a private title to play, a profile to open, or a phone join request. */
+enum class ApprovalKind { Playback, Profile, PhoneJoin }
+
+/** GET /api/auth/join-requests/pending: a new phone waits for a paired phone to allow it in. */
+@Serializable
+data class PendingJoinRequest(
+    val id: String,
+    @SerialName("device_name") val deviceName: String = "Phone",
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+) {
+    fun asApproval() = PendingApproval(
+        attemptId = id,
+        title = deviceName,
+        expiresAt = expiresAt,
+        tvName = deviceName,
+        kind = ApprovalKind.PhoneJoin,
+    )
+}
+
+@Serializable
+data class PendingJoinRequests(val requests: List<PendingJoinRequest> = emptyList())
 
 /** GET /api/profiles/switch-requests/pending: a TV waits for a phone to allow a profile. */
 @Serializable

@@ -6,7 +6,17 @@
   <title>Cablegram</title>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app"><div style="padding:80px 112px;color:#9da1ab;font:36px sans-serif">Opening Cablegram…</div></div>
+  <script>
+    window.addEventListener("error", function (e) {
+      var app = document.getElementById("app");
+      if (app && (!app.firstChild || /Opening Cablegram/.test(app.textContent || ""))) {
+        app.innerHTML = '<div style="padding:80px 112px;color:#ff806f;font:32px sans-serif">Startup error: ' +
+          String((e && (e.message || (e.error && e.error.message))) || "unknown") +
+          '<div style="margin-top:16px;color:#9da1ab;font-size:24px">' + navigator.userAgent + '</div></div>';
+      }
+    });
+  </script>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

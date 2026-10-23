@@ -102,7 +102,7 @@ fun ArtworkEditorScreen(controller: ArtworkEditorController) {
                         }
                     }
                 }
-                draft.base.channelTmdb?.let { suggestion ->
+                if (controller.lookupAvailable) draft.base.channelTmdb?.let { suggestion ->
                     SectionCard(ui.getString(R.string.ui_suggested_by_your_telegram_channel_379fe3)) {
                         val what = if (suggestion.type == "tv") {
                             ui.getString(R.string.ui_series_a8295e) + if (suggestion.season != null && suggestion.episode != null) " · S%02dE%02d".format(suggestion.season, suggestion.episode) else ""
@@ -113,7 +113,7 @@ fun ArtworkEditorScreen(controller: ArtworkEditorController) {
                         }
                     }
                 }
-                SectionCard(ui.getString(R.string.ui_find_movie_or_series_23295b)) {
+                if (controller.lookupAvailable) SectionCard(ui.getString(R.string.ui_find_movie_or_series_23295b)) {
                     Text(ui.getString(R.string.ui_preview_a_cover_and_details_from_the_catalog_your_curr_c33f98), color = VlcMuted)
                     OutlinedTextField(draft.query, controller::updateQuery, Modifier.fillMaxWidth().maestro("artwork_query"), label = { Text(ui.getString(R.string.ui_search_title_464919)) }, singleLine = true, enabled = !draft.saving)
                     Button(onClick = controller::search, enabled = draft.query.isNotBlank() && !draft.searching && !draft.saving, modifier = Modifier.fillMaxWidth().maestro("artwork_search")) { Text(if (draft.searching) ui.getString(R.string.ui_searching_c31723) else ui.getString(R.string.ui_search_49c266)) }
