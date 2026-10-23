@@ -57,7 +57,7 @@ class RelayTunnel(
     private val onStreamFinished: () -> Unit = {},
     /** The media server's plain listener on 127.0.0.1; the LAN one is TLS (CAB-48). */
     private val localPort: Int,
-    private val client: OkHttpClient = OkHttpClient.Builder()
+    private val client: OkHttpClient = app.cablegram.phone.cablegramHttpClient()
         .pingInterval(20, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .build(),

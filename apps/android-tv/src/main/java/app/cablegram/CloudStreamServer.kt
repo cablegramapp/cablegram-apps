@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
  * says whether it is a title or a Telegram file.
  */
 class CloudStreamServer(
-    private val http: OkHttpClient = OkHttpClient.Builder()
+    private val http: OkHttpClient = app.cablegram.data.cablegramHttpClient()
         .followRedirects(false)
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)

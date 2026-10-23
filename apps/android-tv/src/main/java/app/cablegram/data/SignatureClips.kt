@@ -27,7 +27,7 @@ object SignatureClips {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val downloading: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val client by lazy {
-        OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).callTimeout(3, TimeUnit.MINUTES).build()
+        app.cablegram.data.cablegramHttpClient().connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).callTimeout(3, TimeUnit.MINUTES).build()
     }
 
     fun init(context: Context) {

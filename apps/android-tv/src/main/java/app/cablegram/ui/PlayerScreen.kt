@@ -169,7 +169,7 @@ fun PlayerScreen(
     val playbackPrefs = remember { PlaybackPreferencesStore(context) }
     var playerSettings by remember { mutableStateOf(playbackPrefs.playerSettings()) }
     var activePlayback by remember(playback.url) { mutableStateOf(playback) }
-    val playbackHttp = remember { OkHttpClient() }
+    val playbackHttp = remember { app.cablegram.data.cablegramHttpClient().build() }
     // A position in the last 5% (credits / an unrecorded finish) starts over instead of ending instantly.
     val resume = (playback.resumePositionSeconds ?: 0)
         .takeUnless { pos -> durationSeconds != null && durationSeconds > 0 && pos >= durationSeconds * 95 / 100 }

@@ -35,7 +35,7 @@ class CablegramApi(
     // T-net/ANR: short, explicit timeouts so a stalled network fails fast
     // instead of leaving dozens of pending calls to pile up and thrash the
     // (often low-memory) TV process.
-    private val client: OkHttpClient = OkHttpClient.Builder()
+    private val client: OkHttpClient = app.cablegram.data.cablegramHttpClient()
         .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
         .writeTimeout(10, java.util.concurrent.TimeUnit.SECONDS)

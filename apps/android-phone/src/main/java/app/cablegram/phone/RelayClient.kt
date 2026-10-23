@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 class RelayClient(
     private val baseUrl: String,
-    private val client: OkHttpClient = OkHttpClient.Builder()
+    private val client: OkHttpClient = app.cablegram.phone.cablegramHttpClient()
         .readTimeout(20, TimeUnit.SECONDS)
         .callTimeout(25, TimeUnit.SECONDS)
         .build(),

@@ -84,7 +84,7 @@ interface R2UploadApi {
  */
 class R2Uploader(
     private val api: R2UploadApi,
-    private val http: OkHttpClient = OkHttpClient.Builder()
+    private val http: OkHttpClient = app.cablegram.phone.cablegramHttpClient()
         .connectTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(2, TimeUnit.MINUTES)
         .readTimeout(2, TimeUnit.MINUTES)

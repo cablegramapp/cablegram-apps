@@ -1502,7 +1502,7 @@ class CablegramViewModel @JvmOverloads constructor(
         val server = synchronized(this) {
             lanStreamServer ?: CloudStreamServer(
                 http = app.cablegram.data.LanTls.pinned(
-                    okhttp3.OkHttpClient.Builder()
+                    app.cablegram.data.cablegramHttpClient()
                         .followRedirects(false)
                         .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
                         .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)

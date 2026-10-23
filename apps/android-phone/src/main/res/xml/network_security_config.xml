@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-        HTTPS everywhere (CAB-48). This covers the app's own requests, not the LAN server it runs (which is TLS). Plain
-        HTTP is left only for 127.0.0.1, where the relay tunnel reaches the media server's loopback listener.
-        Debug builds override this file (src/debug) for a plain-HTTP development server.
+        HTTPS everywhere (CAB-48), with one exception: a self-hosted server on a home network may use plain HTTP.
+        This file can't express private address ranges, so cleartext is permitted here and enforced in code instead:
+        every OkHttp client comes from cablegramHttpClient() (HttpClients.kt), whose PrivateCleartextOnly interceptor
+        rejects plain HTTP to anything but loopback and private-network hosts. The LAN server this app runs is TLS.
+        Debug builds override this file (src/debug).
     -->
-    <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <domain includeSubdomains="false">localhost</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="true" />
 </network-security-config>
