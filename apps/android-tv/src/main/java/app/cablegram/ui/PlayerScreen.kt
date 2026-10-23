@@ -139,6 +139,7 @@ fun PlayerScreen(
     var hasStarted by remember(playback.url) { mutableStateOf(false) }
     // After a seek the player holds playback until pictures are clean; the screen shows a spinner meanwhile.
     var settling by remember(playback.url) { mutableStateOf(false) }
+    var struggling by remember(playback.url) { mutableStateOf(false) }
     // Spec 003: a short notice when the stream moves between LAN and relay (or waits on the phone).
     var transportNotice by remember(playback.url) { mutableStateOf<String?>(null) }
     var switchingSource by remember(playback.url) { mutableStateOf(false) }
@@ -470,6 +471,7 @@ fun PlayerScreen(
         hud = hud.copy(focus = ControlsFocus.PLAY_PAUSE, previewPositionMs = null, holdMultiplier = 1)
     }
     LaunchedEffect(player) { player.isSettling.collect { settling = it } }
+    LaunchedEffect(player) { player.isStruggling.collect { struggling = it } }
     LaunchedEffect(player, start, retryCount) {
         val position = (if (retryCount > 0) reachedMs else start) ?: return@LaunchedEffect
         if (retryCount == 0) reachedMs = position // a failure before anything played still resumes from here
@@ -998,6 +1000,22 @@ fun PlayerScreen(
                         modifier = Modifier.padding(top = 18.dp),
                     )
                 }
+            }
+        }
+        // The sound plays on a black screen: say why instead of leaving it unexplained. Playback continues.
+        if (struggling && !settling && error == null && hasStarted) {
+            Column(
+                Modifier.align(Alignment.TopCenter).padding(top = 40.dp, start = 64.dp, end = 64.dp)
+                    .background(Color(0xE610120F), RoundedCornerShape(16.dp)).padding(horizontal = 28.dp, vertical = 20.dp),
+            ) {
+                Text(ui.getString(R.string.ui_this_tv_cannot_keep_up_with_this_video_96ad4c), color = Warning, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    ui.getString(R.string.ui_the_sound_plays_but_the_pictures_arrive_too_late_to_sh_a95878),
+                    color = Paper.copy(alpha = 0.85f),
+                    fontSize = 15.sp,
+                    lineHeight = 21.sp,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
             }
         }
         error?.let { message ->

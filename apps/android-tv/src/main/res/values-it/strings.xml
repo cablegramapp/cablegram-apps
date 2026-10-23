@@ -297,4 +297,6 @@
     <string name="ui_that_address_is_not_a_cablegram_server_0f26c7" formatted="false">"Questo indirizzo non è un server Cablegram."</string>
     <string name="ui_server_1_s_dfe9cc" formatted="false">"Server: %1$s"</string>
     <string name="ui_return_to_cablegram_e2e1d7" formatted="false">"Torna a Cablegram"</string>
+    <string name="ui_this_tv_cannot_keep_up_with_this_video_96ad4c" formatted="false">"Questa TV non riesce a stare al passo con questo video"</string>
+    <string name="ui_the_sound_plays_but_the_pictures_arrive_too_late_to_sh_a95878" formatted="false">"L\'audio va, ma le immagini arrivano troppo tardi per essere mostrate. Chiudi le altre app sulla TV o riproduci un\'altra versione di questo video."</string>
 </resources>
