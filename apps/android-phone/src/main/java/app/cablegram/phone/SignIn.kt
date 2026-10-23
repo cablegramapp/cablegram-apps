@@ -55,11 +55,24 @@ class SignInController(
     /** The documents to link to: the server's, or the public pages when it can't be reached. */
     val documents: LegalDocuments get() = legal ?: LegalDocuments.Fallback
 
+    /** Bumped by [serverChanged], so an answer from the previous server can't overwrite the new one's. */
+    private var generation = 0
+
+    /** The server changed: forget what the previous one offered, including a sign-in in progress. */
+    fun serverChanged() {
+        generation++
+        capabilities = null
+        methods = null
+        legal = null
+        reset()
+    }
+
     suspend fun load() {
+        val loading = generation
         val c = client()
-        capabilities = c.serverCapabilities() ?: capabilities
-        methods = c.signInMethods() ?: methods
-        legal = c.legalDocuments() ?: legal
+        c.serverCapabilities().let { if (loading == generation) capabilities = it ?: capabilities }
+        c.signInMethods().let { if (loading == generation) methods = it ?: methods }
+        c.legalDocuments().let { if (loading == generation) legal = it ?: legal }
     }
 
     /** Device sign-in: the first phone enters the setup code the server printed. */

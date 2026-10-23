@@ -411,7 +411,10 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         }
         val next = value.trim()
         // Switching servers drops credentials, pairing, the cached catalog and pending work of the old one.
-        if (next.trimEnd('/') != pairing.apiBaseUrl.trimEnd('/')) forgetServerState()
+        if (next.trimEnd('/') != pairing.apiBaseUrl.trimEnd('/')) {
+            forgetServerState()
+            signIn.serverChanged()
+        }
         pairing.apiBaseUrl = next
         apiBaseUrl = pairing.apiBaseUrl
         serverCapabilities = null
