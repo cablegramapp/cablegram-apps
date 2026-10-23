@@ -41,6 +41,10 @@ object VlcEngine {
                 "--rate=1",
                 "--network-caching=1500",
             ))
+            debugProp("debug.cablegram.dav1dframes").toIntOrNull()?.let {
+                add("--dav1d-thread-frames=$it")
+                android.util.Log.i("CGEXP", "dav1d-thread-frames=$it")
+            }
             // LibVLC writes the stream URL to logcat (even at its default level, when opening fails). A URL from the
             // phone no longer carries the TV's capability (CAB-44), but its short-lived link still plays that title.
             if (BuildConfig.VLC_VERBOSE) add("--verbose=2") else addAll(listOf("--quiet", "--verbose=-1"))
@@ -56,6 +60,7 @@ private const val SETTLE_MAX_HOLD_MS = 15_000L
 /** The spinner never stays longer than this, even when the decoder never becomes clean. */
 private const val SETTLE_MAX_TOTAL_MS = 22_000L
 private const val SETTLE_SAMPLE_MS = 1_000L
+private const val HEALTH_SAMPLE_MS = 1_000L
 /** Pictures that must be displayed in a clean sample (about a third of a second of film). */
 private const val SETTLE_MIN_PICTURES = 8
 
@@ -74,6 +79,12 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     private val eventFlow = MutableSharedFlow<PlayerEvent>(extraBufferCapacity = 64)
     private val settlingState = MutableStateFlow(false)
     override val isSettling: StateFlow<Boolean> = settlingState.asStateFlow()
+    private val strugglingState = MutableStateFlow(false)
+    override val isStruggling: StateFlow<Boolean> = strugglingState.asStateFlow()
+    private val decodeHealth = DecodeHealth()
+    private val healthTick = object : Runnable {
+        override fun run() { healthStep() }
+    }
     /** The last buffering level reported (see [bufferingLevel]); VLC sends dozens of Buffering events per seek. */
     private var reportedBufferingLevel = -1
     private var availableAudioTracks: List<PlayerTrack> = emptyList()
@@ -138,6 +149,8 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
                     refreshTracks()
                     flushPendingSeek()
                     eventFlow.tryEmit(PlayerEvent.IsPlayingChanged(true))
+                    handler.removeCallbacks(healthTick)
+                    handler.postDelayed(healthTick, HEALTH_SAMPLE_MS)
                     // Resuming mid-film after a source switch starts on a non-keyframe just like a seek does.
                     if (settleOnFirstPlaying) {
                         settleOnFirstPlaying = false
@@ -199,6 +212,9 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         resumeAfterSeek = true
         playedClock.reset()
         handler.removeCallbacks(settleTick)
+        handler.removeCallbacks(healthTick)
+        decodeHealth.reset()
+        strugglingState.value = false
         settling = false
         settlingState.value = false
         reportedBufferingLevel = -1
@@ -270,6 +286,7 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     override fun release() {
         released = true
         handler.removeCallbacks(settleTick)
+        handler.removeCallbacks(healthTick)
         // Posted 1.2 s after Playing: it must not reach LibVLC once the player is released.
         handler.removeCallbacks(addSmartSubtitles)
         settling = false
@@ -283,6 +300,19 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         runCatching { appContext.cacheDir.listFiles { f -> f.name.startsWith("cablegram-subtitle-") }?.forEach { it.delete() } }
     }
 
+    /** Once a second while the film really plays; paused, held or seeking starts a new window. */
+    private fun healthStep() {
+        if (released) return
+        if (!mediaPlayer.isPlaying) { decodeHealth.pause(); return }
+        val stats = runCatching { mediaPlayer.media?.stats }.getOrNull()
+        if (settling || stats == null) {
+            decodeHealth.pause()
+        } else if (decodeHealth.sample(SystemClock.elapsedRealtime(), stats.displayedPictures, stats.lostPictures)) {
+            strugglingState.value = decodeHealth.struggling
+        }
+        handler.postDelayed(healthTick, HEALTH_SAMPLE_MS)
+    }
+
     private fun ensureViewsAttached() {
         if (viewsAttached || !videoLayout.isAttachedToWindow) return
         if (videoLayout.width <= 0 || videoLayout.height <= 0) {
@@ -291,7 +321,9 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
         }
         // TextureView (last arg true) is required inside Compose: SurfaceView is a separate
         // window and often leaves the first decoded frame stuck while audio keeps running.
-        mediaPlayer.attachViews(videoLayout, null, true, true)
+        val texture = debugProp("debug.cablegram.sv") != "1"
+        android.util.Log.i("CGEXP", "attachViews textureView=$texture dav1d=${debugProp("debug.cablegram.dav1d")}")
+        mediaPlayer.attachViews(videoLayout, null, true, texture)
         viewsAttached = true
         applyAspectRatio()
         if (playWhenAttached) {
@@ -303,6 +335,10 @@ class VlcCableGramPlayer(context: Context) : CableGramPlayer {
     private fun attachMedia(url: String, startPositionMs: Long, headers: Map<String, String>) {
         val media = Media(libVlc, Uri.parse(url)).apply {
             setHWDecoderEnabled(true, false)
+            // AV1 through MediaCodec into our TextureView stays black on some TVs (Chromecast with Google TV) while
+            // audio plays. Prefer the dav1d software decoder for AV1; it declines every other codec, which then gets
+            // the hardware decoder as before. A later :codec= replaces the one setHWDecoderEnabled set.
+            if (debugProp("debug.cablegram.dav1d") == "1") addOption(":codec=dav1d,mediacodec_ndk,mediacodec_jni,all")
             addOption(":network-caching=1500")
             addOption(":http-user-agent=Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 Cablegram/1.0")
             headers.entries
@@ -521,3 +557,6 @@ private const val SMART_SUBTITLE_DELAY_MS = 1_200L
  */
 internal fun resumeAfterUserSeek(settling: Boolean, settleResume: Boolean, playing: Boolean): Boolean =
     if (settling) settleResume else playing
+
+private fun debugProp(key: String): String =
+    runCatching { Class.forName("android.os.SystemProperties").getMethod("get", String::class.java).invoke(null, key) as String }.getOrDefault("")
