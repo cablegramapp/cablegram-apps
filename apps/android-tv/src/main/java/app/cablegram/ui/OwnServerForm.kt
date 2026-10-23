@@ -75,6 +75,11 @@ internal fun OwnServerForm(
         BrandMark()
         Text(ui.getString(R.string.ui_use_your_own_server_622a50), color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
         Text(ui.getString(R.string.ui_enter_your_cablegram_server_address_for_example_http_1_8ff787), color = Muted, fontSize = 17.sp, lineHeight = 24.sp)
+        // Above the field: the TV keyboard covers everything below it.
+        if (ownServerUrl(address)?.startsWith("http://") == true) {
+            Text(ui.getString(R.string.ui_this_address_is_not_encrypted_use_it_only_on_your_home_3eaa84), color = Warning, fontSize = 14.sp)
+        }
+        error?.let { Text(it, color = Coral, fontSize = 14.sp) }
         // Field and buttons on one line, so Connect and Cancel stay above the TV keyboard.
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicTextField(
@@ -97,9 +102,5 @@ internal fun OwnServerForm(
             }
             Button(onClick = onCancel, colors = ButtonDefaults.colors(containerColor = PanelRaised)) { Text(ui.getString(R.string.ui_cancel_19766e)) }
         }
-        if (ownServerUrl(address)?.startsWith("http://") == true) {
-            Text(ui.getString(R.string.ui_this_address_is_not_encrypted_use_it_only_on_your_home_3eaa84), color = Warning, fontSize = 14.sp)
-        }
-        error?.let { Text(it, color = Coral, fontSize = 14.sp) }
     }
 }
