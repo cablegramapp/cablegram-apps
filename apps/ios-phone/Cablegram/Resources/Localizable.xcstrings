@@ -43340,6 +43340,53 @@
         }
       }
     },
+    "ui_this_phone_uses_your_own_server_on_the_tv_choose_use_y_2bf9a0": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يستخدم هذا الهاتف خادمك الخاص. على التلفاز، اختر أولاً «استخدم خادمك الخاص» وأدخل %1$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Telefon nutzt deinen eigenen Server. Wähle auf dem Fernseher zuerst „Eigenen Server verwenden“ und gib %1$@ ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This phone uses your own server. On the TV, choose Use your own server and enter %1$@ first."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este teléfono usa tu propio servidor. En la TV, elige primero «Usar tu propio servidor» e introduce %1$@."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "این تلفن از سرور خودتان استفاده می‌کند. روی تلویزیون ابتدا «استفاده از سرور خودتان» را انتخاب کنید و %1$@ را وارد کنید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo telefono usa il tuo server. Sulla TV scegli prima «Usa il tuo server» e inserisci %1$@."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот телефон использует ваш сервер. Сначала на телевизоре выберите «Использовать свой сервер» и введите %1$@."
+          }
+        }
+      }
+    },
     "ui_this_recommendation_is_shared_for_informational_purpos_02f61b": {
       "extractionState": "manual",
       "localizations": {
