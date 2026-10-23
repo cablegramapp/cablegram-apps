@@ -34,7 +34,7 @@ class CatalogClient(
     private val baseUrl: String = BuildConfig.API_BASE_URL,
     /** Renews the two-hour access token on 401; omit only for anonymous calls. */
     private val tokens: AccountTokens? = null,
-    private val client: OkHttpClient = OkHttpClient.Builder()
+    private val client: OkHttpClient = app.cablegram.phone.cablegramHttpClient()
         .callTimeout(20, TimeUnit.SECONDS)
         .apply { if (tokens != null) authenticator(AccountAuthenticator(baseUrl, tokens)) }
         .build(),

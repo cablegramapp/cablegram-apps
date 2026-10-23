@@ -47,7 +47,7 @@ private class ChunkRefused(val status: Int) : IOException("Drive refused the chu
  * waits are per socket operation, not per chunk, so 30 and 60 seconds only trip on a dead connection (after airplane
  * mode, say), which then retries instead of sitting for minutes.
  */
-fun uploadHttpClient(): OkHttpClient = OkHttpClient.Builder()
+fun uploadHttpClient(): OkHttpClient = app.cablegram.phone.cablegramHttpClient()
     .followRedirects(false)
     .connectTimeout(20, TimeUnit.SECONDS)
     .writeTimeout(30, TimeUnit.SECONDS)

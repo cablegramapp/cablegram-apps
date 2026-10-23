@@ -35,7 +35,7 @@ interface AccountTokens {
 class AccountAuthenticator(
     private val baseUrl: String,
     private val tokens: AccountTokens,
-    private val http: OkHttpClient = OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build(),
+    private val http: OkHttpClient = app.cablegram.phone.cablegramHttpClient().callTimeout(10, TimeUnit.SECONDS).build(),
 ) : Authenticator {
     override fun authenticate(route: Route?, response: Response): Request? {
         val header = response.request.header("Authorization") ?: return null

@@ -21,7 +21,7 @@ private fun JsonObject.flag(key: String) = str(key) in setOf("true", "1")
 private fun JsonObject.obj(key: String) = get(key) as? JsonObject ?: JsonObject(emptyMap())
 private fun JsonObject.list(key: String) = (get(key) as? JsonArray)?.mapNotNull { it as? JsonObject }.orEmpty()
 
-private fun providerHttpClient() = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false).connectTimeout(12, TimeUnit.SECONDS).readTimeout(12, TimeUnit.SECONDS).callTimeout(15, TimeUnit.SECONDS).build()
+private fun providerHttpClient() = app.cablegram.phone.cablegramHttpClient().followRedirects(false).followSslRedirects(false).connectTimeout(12, TimeUnit.SECONDS).readTimeout(12, TimeUnit.SECONDS).callTimeout(15, TimeUnit.SECONDS).build()
 
 /** No interceptors, disk cache, HTTP logging or persisted search results. Cancellation closes every call. */
 class LocalSubtitleDiscovery internal constructor(private var credentials: Map<String, PersonalSubtitleCredentials>, private val onClose: () -> Unit = {}, private val client: OkHttpClient = providerHttpClient()) : AutoCloseable {

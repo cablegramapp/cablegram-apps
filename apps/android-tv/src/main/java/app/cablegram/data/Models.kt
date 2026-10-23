@@ -29,13 +29,22 @@ data class ServerCapabilities(
     val features: ServerFeatures = ServerFeatures(),
 )
 
+/** Loopback, `.local`/`.lan` names and private IPv4 ranges. Parsed, so a public name like `10.example.com` is not private. */
+fun isPrivateLanHost(host: String): Boolean {
+    val h = host.trim().lowercase().removeSurrounding("[", "]")
+    if (h == "localhost" || h == "::1" || h.endsWith(".local") || h.endsWith(".lan")) return true
+    val parts = h.split(".")
+    if (parts.size != 4 || !parts.all { it.toIntOrNull() in 0..255 }) return false
+    val a = parts[0].toInt()
+    val b = parts[1].toInt()
+    return a == 10 || a == 127 || (a == 192 && b == 168) || (a == 172 && b in 16..31)
+}
+
 /** Cleartext is accepted only for private-network hosts; everything else must be HTTPS. */
 fun normalizeServerUrl(value: String): String? = runCatching {
     val uri = java.net.URI(value.trim())
     val host = uri.host ?: return null
-    val private = host == "localhost" || host.endsWith(".local") || host.endsWith(".lan") ||
-        Regex("^(10\\.|127\\.|192\\.168\\.|172\\.(1[6-9]|2\\d|3[01])\\.)").containsMatchIn(host)
-    val ok = (uri.scheme == "https" || (uri.scheme == "http" && private)) &&
+    val ok = (uri.scheme == "https" || (uri.scheme == "http" && isPrivateLanHost(host))) &&
         uri.userInfo == null && uri.query == null && uri.fragment == null
     if (ok) "${uri.scheme}://${uri.rawAuthority}" else null
 }.getOrNull()

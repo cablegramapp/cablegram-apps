@@ -493,7 +493,7 @@ class LibraryStore private constructor(private val context: Context) {
         val total = item.fileSizeBytes ?: 0L
         if (remote != null) {
             val request = okhttp3.Request.Builder().url(remote.url).apply { remote.headers.forEach { (name, value) -> header(name, value) } }.build()
-            okhttp3.OkHttpClient.Builder().readTimeout(2, java.util.concurrent.TimeUnit.MINUTES).build().newCall(request).execute().use { response ->
+            app.cablegram.phone.cablegramHttpClient().readTimeout(2, java.util.concurrent.TimeUnit.MINUTES).build().newCall(request).execute().use { response ->
                 check(response.isSuccessful) { cloudDownloadMessage(response.code) }
                 val body = response.body ?: error("Your cloud storage sent an empty answer.")
                 body.byteStream().use { copyWithProgress(it, dest, total.takeIf { t -> t > 0 } ?: body.contentLength(), onProgress) }
