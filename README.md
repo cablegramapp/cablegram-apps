@@ -3,9 +3,11 @@
 The Android phone app and Android TV app for [Cablegram](https://cablegram.app): play the videos you
 already have on your TV, from your phone. Licensed under [GPL-3.0](LICENSE).
 
-**The apps are open source. The Cablegram servers are not.** This repository holds the two apps and the
-contracts they follow. The account, pairing, catalog and relay services run separately and are closed source,
-the same model Telegram uses for its own apps.
+**Run your own server.** The apps work with the hosted Cablegram service or with
+[Cablegram Community Server](https://github.com/seep-labs/cablegram-server), the open-source, self-hosted
+server (GPL-3.0, Docker Compose). In the phone app, choose **Join a server** and enter your server's URL and
+setup code. This repository holds the apps and the [contracts](contracts/) both servers follow. The hosted
+service's account, catalog and relay services remain closed source.
 
 ## Telegram channels
 
