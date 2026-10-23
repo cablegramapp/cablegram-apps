@@ -53,13 +53,11 @@ enum PhoneTelegram {
             await PhoneTelegram.waitForClose()
             guard let token = pairing.accountToken, !token.isEmpty else { throw TelegramClientUnavailable() }
             #if DEBUG
-            let insecure = true
             let testDc = UserDefaults.standard.bool(forKey: "telegramTestDC")
             #else
-            let insecure = false
             let testDc = false
             #endif
-            let credentials = try await catalog().telegramClientCredentials(token: token, allowInsecureLocal: insecure)
+            let credentials = try await catalog().telegramClientCredentials(token: token, allowInsecureLocal: true)
             let version = (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0"
             // A Keychain that cannot be read right now must not cost the person their Telegram session: nothing is wiped, startup is retried.
             let key = try await MainActor.run { try Storage.databaseKey() }

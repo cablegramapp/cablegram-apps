@@ -9,11 +9,11 @@ extension CatalogClient {
     }
 
     /// The application's Telegram identity from the control plane (`/api/telegram/client-config`), held in memory only. Fixed error:
-    /// nothing the server said is attached. `allowInsecureLocal` lets a debug build use plain http to localhost.
+    /// nothing the server said is attached. `allowInsecureLocal` lets a debug build or home-network server use plain http.
     public func telegramClientCredentials(token: String, allowInsecureLocal: Bool = false) async throws -> TelegramClientCredentials {
         let base = baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !token.isEmpty, let url = URL(string: base + "/api/telegram/client-config") else { throw TelegramClientUnavailable() }
-        let local = ["localhost", "127.0.0.1", "10.0.2.2"].contains(url.host ?? "")
+        let local = isPrivateLanHost(url.host ?? "")
         guard url.scheme == "https" || (allowInsecureLocal && local) else { throw TelegramClientUnavailable() }
         var request = URLRequest(url: url, timeoutInterval: 20)
         request.httpMethod = "GET"
