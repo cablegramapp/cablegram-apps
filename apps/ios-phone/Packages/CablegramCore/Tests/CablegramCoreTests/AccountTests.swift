@@ -318,6 +318,32 @@ extension Network {
 
     // MARK: Server Capabilities & Device Sign-In
 
+    @Test func aSlowAnswerFromThePreviousServerDoesNotUndoJoiningACommunityServer() async {
+        let community = #"{"api_version":1,"edition":"community","server_version":"0.1.0","auth":{"mode":"device","setup_code":true,"email_code":false},"features":{}}"#
+        let switched = Flag()
+        MockHTTP.handler = { request in
+            guard request.path == "/api/server" else { return (.response(200, legalJSON), 0) }
+            return switched.isSet ? (.response(200, community), 0) : (.response(404, "{}"), 0.5)
+        }
+        let c = controller(Box())
+        let slow = Task { await c.load() }
+        while !MockHTTP.requests.contains(where: { $0.path == "/api/server" }) { await Task.yield() }
+        c.serverChanged()
+        await slow.value
+        #expect(c.capabilities == nil, "the previous server's answer is dropped")
+        switched.set()
+        await c.load()
+        #expect(c.deviceMode)
+        #expect(c.capabilities?.edition == "community")
+    }
+
+    final class Flag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+        var isSet: Bool { lock.withLock { value } }
+        func set() { lock.withLock { value = true } }
+    }
+
     @Test func serverCapabilities404DefaultsToHosted() async {
         MockHTTP.enqueue(404)
         let caps = await client().serverCapabilities()
