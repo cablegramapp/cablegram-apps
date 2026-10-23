@@ -1,7 +1,9 @@
 # Contributing
 
-Thanks for helping. This repository holds the phone and TV apps and their contracts. The servers are closed
-source, so changes that need a server change are discussed in an issue first.
+Thanks for helping. This repository holds the phone and TV apps and their contracts. The self-hosted server is
+open source in [cablegram-server](https://github.com/seep-labs/cablegram-server); the hosted service's own services
+are not. Changes that need a server change are discussed in an issue first, and the server side goes to
+cablegram-server.
 
 ## Before you open a pull request
 
