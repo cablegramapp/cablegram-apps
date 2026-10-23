@@ -35,6 +35,18 @@ class TelegramClientCredentialsTest {
         }
     }
 
+    @Test fun `plain HTTP to a public host is refused even when allowInsecureLocal is true`() = runBlocking {
+        val failure = runCatching { fetchTelegramClientCredentials(OkHttpClient(), "http://example.com/", "access", true) }.exceptionOrNull()
+        assertTrue(failure is TelegramClientUnavailable)
+    }
+
+    @Test fun `private hosts are recognized`() {
+        listOf("10.0.2.2", "192.168.0.5", "172.16.0.1", "172.31.255.255", "127.0.0.1", "localhost", "nas.local", "media.lan")
+            .forEach { assertTrue(it, isPrivateLanHost(it)) }
+        listOf("10.example.com", "192.168.1.1.example.com", "172.32.0.1", "8.8.8.8", "example.com")
+            .forEach { assertFalse(it, isPrivateLanHost(it)) }
+    }
+
     @Test fun `redirects errors and malformed identities have fixed redacted failures`() = runBlocking {
         MockWebServer().use { server ->
             server.start()
