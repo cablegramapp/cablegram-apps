@@ -66,6 +66,7 @@ extension PhoneViewModel {
         let newOrigin = serverOrigin(normalized)
         if currentOrigin != newOrigin {
             clearSignedInState()
+            signIn.serverChanged()
         }
         pairing.apiBaseUrl = normalized
         apiBaseUrl = normalized

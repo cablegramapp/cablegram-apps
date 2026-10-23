@@ -52,14 +52,31 @@ public final class SignInController {
     /// The documents to link to: the server's, or the public pages when it can't be reached.
     public var documents: LegalDocuments { legal ?? .fallback }
 
+    /// Bumped by `serverChanged`, so an answer from the previous server can't overwrite the new one's.
+    private var generation = 0
+
+    /// The server changed: forget what the previous one offered, including a sign-in in progress.
+    public func serverChanged() {
+        generation += 1
+        capabilities = nil
+        methods = nil
+        legal = nil
+        message = nil
+        step = .start
+        reset()
+    }
+
     public func load() async {
+        let loading = generation
         let c = client()
         async let caps = c.serverCapabilities()
         async let m = c.signInMethods()
         async let l = c.legalDocuments()
-        capabilities = await caps ?? capabilities
-        methods = await m ?? methods
-        legal = await l ?? legal
+        let (nextCaps, nextMethods, nextLegal) = await (caps, m, l)
+        guard loading == generation else { return }
+        capabilities = nextCaps ?? capabilities
+        methods = nextMethods ?? methods
+        legal = nextLegal ?? legal
     }
 
     public func claimSetupCode(_ code: String) async {
