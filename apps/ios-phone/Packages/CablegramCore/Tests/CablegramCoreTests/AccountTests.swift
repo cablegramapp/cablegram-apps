@@ -414,8 +414,7 @@ extension Network {
         let ok = await client().answerJoinRequest(id: "req-99", token: "admin-token", approved: true)
         #expect(ok)
         let req = MockHTTP.requests[1]
-        #expect(req.path == "/api/auth/join-requests/req-99/answer")
-        #expect(req.body["approved"] as? Bool == true)
+        #expect(req.path == "/api/auth/join-requests/req-99/approve")
     }
 
     @Test func serverUrlHelpersNormalizeAndCheckLan() {

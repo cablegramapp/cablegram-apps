@@ -39,9 +39,10 @@ public struct CatalogClient: Sendable {
         URL(string: baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path)!
     }
 
-    private func build(_ method: String, _ path: String, token: String?, json: [String: Any]?) -> URLRequest {
+    private func build(_ method: String, _ path: String, token: String?, json: [String: Any]?, headers: [String: String] = [:]) -> URLRequest {
         var request = URLRequest(url: url(path), timeoutInterval: 20)
         request.httpMethod = method
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let json {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -60,11 +61,11 @@ public struct CatalogClient: Sendable {
     }
 
     /// Sends the request; when a Bearer token is rejected with 401 and `renew` is on, renews it once and retries.
-    func send(_ method: String, _ path: String, token: String? = nil, json: [String: Any]? = nil, renew: Bool = true) async -> APIReply {
-        let first = await perform(build(method, path, token: token, json: json))
+    func send(_ method: String, _ path: String, token: String? = nil, json: [String: Any]? = nil, renew: Bool = true, headers: [String: String] = [:]) async -> APIReply {
+        let first = await perform(build(method, path, token: token, json: json, headers: headers))
         guard renew, first.status == 401, let sent = token, tokens != nil else { return first }
         guard let fresh = await freshToken(after: sent) else { return first }
-        return await perform(build(method, path, token: fresh, json: json))
+        return await perform(build(method, path, token: fresh, json: json, headers: headers))
     }
 
     /// Another request may already have renewed the token while this one was in flight.
@@ -215,7 +216,7 @@ public struct CatalogClient: Sendable {
 
     /// Polls a join request status until approved or rejected.
     public func pollJoinRequest(id: String, pollSecret: String) async -> JoinRequestPollResponse? {
-        let reply = await send("GET", "/api/auth/join-requests/\(id)?poll_secret=\(pollSecret)")
+        let reply = await send("GET", "/api/auth/join-requests/\(id)", headers: ["Authorization": "Join \(pollSecret)"])
         return reply.isSuccess ? reply.decode() : nil
     }
 
@@ -229,7 +230,7 @@ public struct CatalogClient: Sendable {
     /// Answers a pending join request.
     @discardableResult
     public func answerJoinRequest(id: String, token: String, approved: Bool) async -> Bool {
-        await send("POST", "/api/auth/join-requests/\(id)/answer", token: token, json: ["approved": approved]).isSuccess
+        await send("POST", "/api/auth/join-requests/\(id)/\(approved ? "approve" : "deny")", token: token, json: [:]).isSuccess
     }
 
     // MARK: Account
