@@ -1049,4 +1049,5 @@
     <string name="tv_rename" formatted="false">"Rinomina"</string>
     <string name="tv_rename_title" formatted="false">"Rinomina la TV"</string>
     <string name="tv_name_label" formatted="false">"Nome della TV"</string>
+    <string name="ui_this_phone_uses_your_own_server_on_the_tv_choose_use_y_2bf9a0" formatted="false">"Questo telefono usa il tuo server. Sulla TV scegli prima «Usa il tuo server» e inserisci %1$s."</string>
 </resources>

@@ -125,6 +125,12 @@ private fun PairingForm(viewModel: PhoneViewModel) {
         TextButton(onClick = viewModel::cancelAddTv, modifier = Modifier.maestro(MaestroIds.PAIRING_NOT_NOW)) { Text(ui.getString(R.string.ui_not_now_a0e63d)) }
         ScreenHeading(if (viewModel.paired) ui.getString(R.string.ui_one_more_big_screen_3514a4) else ui.getString(R.string.ui_meet_your_tv_4d8c97),
             ui.getString(R.string.pairing_setup_steps))
+        if (viewModel.apiBaseUrl != BuildConfig.API_BASE_URL) {
+            Surface(color = VlcPanel, shape = RoundedCornerShape(16.dp)) {
+                Text(ui.getString(R.string.ui_this_phone_uses_your_own_server_on_the_tv_choose_use_y_2bf9a0, viewModel.apiBaseUrl), Modifier.padding(16.dp), color = VlcOrange,
+                    style = MaterialTheme.typography.bodyMedium)
+            }
+        }
         TextButton(onClick = { uriHandler.openUri("https://cablegram.app/#downloads") }) {
             Text(ui.getString(R.string.pairing_get_tv_app))
         }

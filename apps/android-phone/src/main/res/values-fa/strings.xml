@@ -1049,4 +1049,5 @@
     <string name="tv_rename" formatted="false">"تغییر نام"</string>
     <string name="tv_rename_title" formatted="false">"تغییر نام تلویزیون"</string>
     <string name="tv_name_label" formatted="false">"نام تلویزیون"</string>
+    <string name="ui_this_phone_uses_your_own_server_on_the_tv_choose_use_y_2bf9a0" formatted="false">"این تلفن از سرور خودتان استفاده می‌کند. روی تلویزیون ابتدا «استفاده از سرور خودتان» را انتخاب کنید و %1$s را وارد کنید."</string>
 </resources>

@@ -1049,4 +1049,5 @@
     <string name="tv_rename" formatted="false">"Renombrar"</string>
     <string name="tv_rename_title" formatted="false">"Renombrar la tele"</string>
     <string name="tv_name_label" formatted="false">"Nombre de la tele"</string>
+    <string name="ui_this_phone_uses_your_own_server_on_the_tv_choose_use_y_2bf9a0" formatted="false">"Este teléfono usa tu propio servidor. En la TV, elige primero «Usar tu propio servidor» e introduce %1$s."</string>
 </resources>

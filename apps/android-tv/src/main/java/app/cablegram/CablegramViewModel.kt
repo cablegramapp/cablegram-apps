@@ -149,6 +149,9 @@ class CablegramViewModel @JvmOverloads constructor(
         resetForServerChange()
     }
 
+    /** "Use your own server": whether [address] answers like a Cablegram server, without switching yet. */
+    suspend fun checkOwnServer(address: String) = app.cablegram.data.probeServer(address)
+
     fun returnToCablegram() {
         if (authStore.usesDefaultServer) return
         authStore.serverUrl = app.cablegram.BuildConfig.API_BASE_URL

@@ -1012,4 +1012,5 @@
     <string name="ui_badge_save_failed">"Save failed"</string>
     <string name="ui_badge_unavailable">"Unavailable"</string>
     <string name="ui_badge_not_on_phone">"Not on this phone"</string>
+    <string name="ui_this_phone_uses_your_own_server_on_the_tv_choose_use_y_2bf9a0" formatted="false">"This phone uses your own server. On the TV, choose Use your own server and enter %1$s first."</string>
 </resources>

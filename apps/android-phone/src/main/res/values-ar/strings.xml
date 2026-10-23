@@ -1049,4 +1049,5 @@
     <string name="tv_rename" formatted="false">"إعادة التسمية"</string>
     <string name="tv_rename_title" formatted="false">"إعادة تسمية التلفزيون"</string>
     <string name="tv_name_label" formatted="false">"اسم التلفزيون"</string>
+    <string name="ui_this_phone_uses_your_own_server_on_the_tv_choose_use_y_2bf9a0" formatted="false">"يستخدم هذا الهاتف خادمك الخاص. على التلفاز، اختر أولاً «استخدم خادمك الخاص» وأدخل %1$s."</string>
 </resources>
