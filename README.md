@@ -1,55 +1,53 @@
-# Cablegram apps
+# Cablegram
 
-The Android phone app and Android TV app for [Cablegram](https://cablegram.app): play the videos you
-already have on your TV, from your phone. Licensed under [GPL-3.0](LICENSE).
+<p align="center">
+  <img src="docs/screenshots/hero.png" alt="Cablegram: the TV library and the phone remote">
+</p>
 
-**Run your own server.** The apps work with the hosted Cablegram service or with
-[Cablegram Community Server](https://github.com/seep-labs/cablegram-server), the open-source, self-hosted
-server (GPL-3.0, Docker Compose). In the phone app, choose **Join a server** and enter your server's URL and
-setup code. This repository holds the apps and the [contracts](contracts/) both servers follow. The hosted
-service's account, catalog and relay services remain closed source.
+**Play the videos you already have on your TV. Your phone is the library and the remote.**
 
-## Telegram channels
+[![CI](https://github.com/seep-labs/cablegram-apps/actions/workflows/ci.yml/badge.svg)](https://github.com/seep-labs/cablegram-apps/actions/workflows/ci.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+[![Self-hostable](https://img.shields.io/badge/server-self--hostable-orange)](https://github.com/seep-labs/cablegram-server)
 
-Follow Cablegram on Telegram:
+Cablegram is a personal media player for videos you own. Pick files on your Android phone or keep them in your own
+Telegram channel, then play them on your TV with the phone as the remote. Cablegram provides no content and does not
+store your videos. This repository holds the open-source phone and TV apps.
 
-- [Cablegram News](https://t.me/CablegramNews)
-- [Cablegram Community](https://t.me/CablegramCommunity)
-- [Cablegram Bot Hubs](https://t.me/CablegramBotHubs) — Discover useful Telegram bots that make managing, organizing, and enjoying your video library easier.
+## Get the apps
 
-After connecting Telegram in the phone app, you can choose which channels to join. All three are
-selected by default. Uncheck any you do not want, then tap **Save** to join only the selected channels.
-Uncheck all and save to continue without joining any.
+- **Android phone and Android TV / Google TV:** APKs on [GitHub Releases](https://github.com/seep-labs/cablegram-apps/releases)
+  (check them with [VERIFY.md](VERIFY.md)).
+- **LG and Samsung TVs (preview):** open [tv.cablegram.app](https://tv.cablegram.app) in the TV browser, or follow the
+  [LG install guide](https://cablegram.app/lg/). Source in [`apps/tv-web`](apps/tv-web/).
+- **iPhone:** the [web remote](https://app.cablegram.app/) controls the TV from Safari (**Share → Add to Home Screen**).
 
-Next, Cablegram extracts bot recommendations from posts in Cablegram Bot Hubs and
-asks about each bot individually. These are independent third-party bots and are not developed,
-owned, or operated by Cablegram. Each addition requires reviewing the channel administrator access
-and explicitly accepting the disclaimer below; its checkbox starts unchecked for every bot. You can
-skip any or all bots. New bots receive posting permission and Telegram’s implied administrator access;
-other optional permissions are off. Existing administrator permissions are preserved.
+## Run your own server
 
-You can reopen the picker any time from **Import → Connected storage → Telegram → Check Bot Hub** while signed in
-on this phone. Each check refreshes the recommendations and lets you reconsider previously skipped
-bots. Each bot still needs a fresh disclaimer confirmation; existing bot administrator rights are kept.
+The apps work with the hosted Cablegram service or with
+[Cablegram Community Server](https://github.com/seep-labs/cablegram-server), the open-source, self-hosted server
+(GPL-3.0, Docker Compose):
 
-Cablegram organizes the library channel, joined Cablegram channels, [@CablegramSupportBot](https://t.me/CablegramSupportBot),
-and bots you added to the library in a **Cablegram** folder in Telegram. An existing folder is merged,
-preserving its chats, pins, appearance, and filters. **Import → Connected storage → Telegram → Organize Telegram folder**
-updates it again or retries after a folder-limit or connection error. If a bot has never been started,
-Telegram requires you to open it and tap Start before it can appear in the folder; Cablegram reports
-those bots and still organizes the other chats. Organizing does not join channels,
-start bots, send messages, or add bots to the library.
+```sh
+git clone https://github.com/seep-labs/cablegram-server && cd cablegram-server
+cp .env.example .env && docker compose up -d
+docker compose logs cablegram   # shows the first-start setup code
+```
 
-> This recommendation is shared for informational purposes only. Using the bot is entirely optional and at the user's own discretion and responsibility.
->
-> Cablegram is not responsible for the bot's operation, content, privacy practices, or any consequences arising from its use. Please review its permissions before adding it to your channel.
+In the phone app, choose **Join a server** and enter your server's URL and the setup code. Both servers follow the
+[contracts](contracts/) in this repository. The hosted service's account, catalog and relay services remain closed
+source.
 
-## Languages
+## Features
 
-The phone and TV apps support English, German, Arabic, Farsi, Russian, Spanish and Italian.
-The phone follows its Android language preferences; TV profiles follow the phone or a language
-chosen in Settings. Mixed-language TV profiles keep the profile picker in English.
-See [app languages](docs/localization.md) for behavior and translation maintenance.
+- **Your library on the phone:** pick files and folders with the system picker; they stay where they are.
+- **Play on TV:** stream straight from the phone over your home Wi-Fi, or from your own Telegram channel.
+- **Phone as remote:** play, pause, seek and volume, plus the web remote for phones without the app.
+- **Profiles:** "Who's watching?" on the TV, optional profile PINs, Continue Watching and My List per profile.
+- **Subtitles:** attach a subtitle file and fix its timing from the phone while it plays on the TV.
+- **Pairing:** pair a TV with a PIN or QR code; temporary TVs expire on their own.
+- **Seven languages:** English, German, Arabic, Farsi, Russian, Spanish and Italian ([details](docs/localization.md)).
+- **Telegram, optional:** your login stays on the device (TDLib); see [Telegram channels and Bot Hub](docs/telegram.md).
 
 ## Screenshots
 
@@ -95,6 +93,8 @@ The videos shown are Blender Foundation open movies under CC BY licences; see
 |---|---|
 | `apps/android-phone` | Phone app (Kotlin, Jetpack Compose). Package `app.cablegram.phone`. |
 | `apps/android-tv` | TV app (Kotlin, Compose for TV, LibVLC). Package `app.cablegram`. |
+| `apps/ios-phone` | iPhone app (Swift, SwiftUI), in development. |
+| `apps/tv-web` | LG webOS and Samsung Tizen TV app (TypeScript, Vite). |
 | `apps/web-remote` | Web remote for iPhone and other phones without the app: a Home Screen web app, no App Store. |
 | `docs/` | [User guide](docs/README.md): pairing, selected files and folders, subtitles, privacy, and troubleshooting. |
 | `contracts/` | The API and protocols the apps speak: [control API](contracts/control-api.yaml), [pairing](contracts/pairing.md), [LAN media](contracts/lan-media.md), [remote commands](contracts/remote-and-lan.md), [relay](contracts/relay-protocol.md), [Telegram link](contracts/telegram-link.md), [your own R2 storage](contracts/r2-storage.md). |
@@ -121,8 +121,9 @@ be deployed before distributing these builds. Remote delivery raises the effort 
 application identity; someone inspecting a running client can still recover it.
 
 By default the apps talk to `https://api.cablegram.app/`. Override it with `-PCABLEGRAM_API_BASE=https://...`.
-The backend is not part of this repository, so a build pointed at your own host needs a server that implements
-the [contracts](contracts/); we don't provide or support one.
+The backend is not part of this repository. To point a build at your own host, run
+[Cablegram Community Server](https://github.com/seep-labs/cablegram-server), or simply choose **Join a server** in
+the phone app at runtime.
 
 To keep the APK small, add `-PCABLEGRAM_ABIS=arm64-v8a` (phone) or the ABI of your device.
 
