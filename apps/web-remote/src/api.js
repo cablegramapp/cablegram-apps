@@ -102,8 +102,8 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
     return body;
   }
 
-  async function send(path, { method = "GET", body, auth = true } = {}, retried = false) {
-    const headers = {};
+  async function send(path, { method = "GET", body, auth = true, headers: extra } = {}, retried = false) {
+    const headers = { ...extra };
     if (body !== undefined) headers["content-type"] = "application/json";
     if (auth && memory?.access_token) headers.authorization = `Bearer ${memory.access_token}`;
     const response = await fetchImpl(`${root}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -189,7 +189,7 @@ export function createApi({ base, storage = globalThis.localStorage, fetch: fetc
     claimSetup: async (code, deviceName = "Web Remote") => keep(await post("/api/auth/setup/claim", { code, device_name: deviceName })),
     createJoinRequest: (deviceName = "Web Remote") => post("/api/auth/join-requests", { device_name: deviceName }),
     pollJoinRequest: async (id, secret) =>
-      keep(await send(`/api/auth/join-requests/${encodeURIComponent(id)}?secret=${encodeURIComponent(secret)}`, { auth: false })),
+      keep(await send(`/api/auth/join-requests/${encodeURIComponent(id)}`, { auth: false, headers: { authorization: `Join ${secret}` } })),
     pendingJoinRequests: async () => (await send("/api/auth/join-requests/pending")).requests || [],
     answerJoinRequest: (id, allow) =>
       send(`/api/auth/join-requests/${encodeURIComponent(id)}/${allow ? "approve" : "deny"}`, { method: "POST", body: {} }),

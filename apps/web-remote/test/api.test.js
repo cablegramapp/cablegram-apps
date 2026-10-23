@@ -225,7 +225,8 @@ test("device sign-in: server capabilities, setup code claim, join requests and s
   assert.equal(jr.short_code, "123-456");
 
   await api.pollJoinRequest("jr-1", "sec-1");
-  assert.equal(fetch.calls[3].url, "https://self.example.com/api/auth/join-requests/jr-1?secret=sec-1");
+  assert.equal(fetch.calls[3].url, "https://self.example.com/api/auth/join-requests/jr-1");
+  assert.equal(fetch.calls[3].headers.authorization, "Join sec-1");
   assert.equal(api.signedIn, true);
 
   const pending = await api.pendingJoinRequests();
