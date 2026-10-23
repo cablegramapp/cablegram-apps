@@ -8,6 +8,8 @@ public enum SignInStep: Equatable, Sendable {
     case code(email: String)
     /// The email is proven but has no account: name, plus one unticked box for 18+ and the Terms.
     case createAccount(ticket: String, email: String, name: String)
+    /// Device join: waiting for another phone to approve.
+    case joinWait(requestId: String, shortCode: String, pollSecret: String)
 }
 
 /// A line to show; the key is a String Catalog key.
@@ -24,12 +26,23 @@ public final class SignInController {
     /// Nil until loaded, and while the server can't be reached: then only the email code is offered.
     public private(set) var methods: SignInMethods?
     public private(set) var legal: LegalDocuments?
+    public private(set) var capabilities: ServerCapabilities?
     public private(set) var busy = false
     /// What went wrong in the last step, ready to show; nil when nothing did.
     public var message: StatusMessage?
 
+    public var features: ServerFeatures { capabilities?.features ?? .hostedDefault }
+    public var deviceMode: Bool {
+        guard let caps = capabilities else { return false }
+        if caps.edition == "community" { return true }
+        if caps.auth.setupCode || caps.auth.deviceCode { return true }
+        if !caps.auth.emailCode && caps.auth.google == nil && caps.auth.apple == nil { return true }
+        return false
+    }
+
     private let client: @Sendable () -> CatalogClient
     private let signedIn: @MainActor (PhonePairResponse) async -> Void
+    private var joinPollTask: Task<Void, Never>?
 
     public init(client: @escaping @Sendable () -> CatalogClient, signedIn: @escaping @MainActor (PhonePairResponse) async -> Void) {
         self.client = client
@@ -41,10 +54,72 @@ public final class SignInController {
 
     public func load() async {
         let c = client()
+        async let caps = c.serverCapabilities()
         async let m = c.signInMethods()
         async let l = c.legalDocuments()
+        capabilities = await caps ?? capabilities
         methods = await m ?? methods
         legal = await l ?? legal
+    }
+
+    public func claimSetupCode(_ code: String) async {
+        let clean = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard clean.count == 6 else {
+            message = StatusMessage("ui_that_code_isn_t_right_check_the_email_and_try_again_38ed4a")
+            return
+        }
+        await run {
+            await handle(client().claimSetupCode(code: clean))
+        }
+    }
+
+    public func requestJoin(deviceName: String = "iPhone") async {
+        await run {
+            guard let created = await client().createJoinRequest(deviceName: deviceName) else {
+                message = StatusMessage("ui_can_t_reach_cablegram_check_your_connection_0f7f38")
+                return
+            }
+            step = .joinWait(requestId: created.id, shortCode: created.shortCode, pollSecret: created.pollSecret)
+            startJoinPolling(id: created.id, pollSecret: created.pollSecret)
+        }
+    }
+
+    public func cancelJoin() {
+        joinPollTask?.cancel()
+        joinPollTask = nil
+        step = .start
+        message = nil
+    }
+
+    private func startJoinPolling(id: String, pollSecret: String) {
+        joinPollTask?.cancel()
+        joinPollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, case .joinWait = self.step else { break }
+                guard let poll = await self.client().pollJoinRequest(id: id, pollSecret: pollSecret) else { continue }
+                if poll.status == "approved", let token = poll.accessToken {
+                    await self.handle(.signedIn(PhonePairResponse(
+                        token: token,
+                        refreshToken: poll.refreshToken,
+                        userId: poll.userId,
+                        displayName: poll.displayName,
+                        needsName: poll.displayName?.isEmpty ?? true,
+                        householdId: poll.householdId,
+                        deviceId: poll.deviceId
+                    )))
+                    break
+                } else if poll.status == "rejected" {
+                    self.message = StatusMessage("ui_the_request_was_not_accepted_refresh_and_try_again_35aa7e")
+                    self.step = .start
+                    break
+                } else if poll.status == "expired" {
+                    self.message = StatusMessage("ui_that_took_too_long_start_again_8a44f3")
+                    self.step = .start
+                    break
+                }
+            }
+        }
     }
 
     public func requestCode(email: String) async {
@@ -112,14 +187,12 @@ public final class SignInController {
     }
 
     public func back() {
-        step = .start
-        message = nil
+        cancelJoin()
     }
 
     /// Signed out, or the account was deleted: start over.
     public func reset() {
-        step = .start
-        message = nil
+        cancelJoin()
         busy = false
     }
 

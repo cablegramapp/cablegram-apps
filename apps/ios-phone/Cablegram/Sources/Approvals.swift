@@ -40,6 +40,11 @@ enum Approvals {
             content.title = L("ui_wants_to_play_a_private_title_b90ffa", tv)
             content.body = approval.title ?? L("ui_a_private_title_is_waiting_for_your_approval_43ca2a")
             content.categoryIdentifier = playbackCategory
+        case .phoneJoin:
+            let dev = approval.title ?? "Phone"
+            content.title = "Allow \(dev) to join?"
+            content.body = "\(dev) wants to join your Cablegram household."
+            content.categoryIdentifier = profileCategory
         }
         content.userInfo = ["attempt_id": approval.attemptId, "kind": approval.kind.rawValue]
         content.interruptionLevel = .timeSensitive

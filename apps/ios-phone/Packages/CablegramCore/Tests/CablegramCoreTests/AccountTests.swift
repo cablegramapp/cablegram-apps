@@ -315,5 +315,123 @@ extension Network {
         c.reset()
         #expect(c.error == nil)
     }
+
+    // MARK: Server Capabilities & Device Sign-In
+
+    @Test func serverCapabilities404DefaultsToHosted() async {
+        MockHTTP.enqueue(404)
+        let caps = await client().serverCapabilities()
+        #expect(caps != nil)
+        #expect(caps?.edition == "hosted")
+        #expect(caps?.features.artwork == true)
+        #expect(caps?.features.deleteAccount == true)
+    }
+
+    @Test func serverCapabilitiesParsesCommunity() async {
+        MockHTTP.enqueue(200, """
+        {
+            "api_version": 1,
+            "edition": "community",
+            "server_version": "0.1.0",
+            "auth": { "mode": "device", "setup_code": true, "device_code": true, "email_code": false },
+            "features": { "artwork": false, "subtitles": false, "relay": false, "delete_account": false }
+        }
+        """)
+        let caps = await client().serverCapabilities()
+        #expect(caps != nil)
+        #expect(caps?.edition == "community")
+        #expect(caps?.auth.setupCode == true)
+        #expect(caps?.features.artwork == false)
+        #expect(caps?.features.deleteAccount == false)
+    }
+
+    @Test func claimSetupCodeSendsAppClientAndClaimsTokens() async {
+        MockHTTP.enqueue(201, """
+        {
+            "access_token": "acc-123",
+            "refresh_token": "ref-123",
+            "user_id": "usr-1",
+            "household_id": "hh-1",
+            "device_id": "dev-1",
+            "display_name": "Household"
+        }
+        """)
+        let res = await client().claimSetupCode(code: "123456", deviceName: "TestiPhone")
+        if case .signedIn(let pair) = res {
+            #expect(pair.token == "acc-123")
+            #expect(pair.refreshToken == "ref-123")
+            #expect(pair.deviceId == "dev-1")
+            #expect(pair.householdId == "hh-1")
+        } else {
+            #expect(Bool(false), "Expected signedIn")
+        }
+        let req = MockHTTP.requests[0]
+        #expect(req.path == "/api/auth/setup/claim")
+        #expect(req.body["code"] as? String == "123456")
+        #expect(req.body["device_name"] as? String == "TestiPhone")
+        #expect(req.body["client"] as? String == "app")
+    }
+
+    @Test func createAndPollJoinRequest() async {
+        MockHTTP.enqueue(201, """
+        {
+            "id": "req-1",
+            "short_code": "12345678",
+            "poll_secret": "secret-1",
+            "expires_at": "2026-10-22T12:00:00Z"
+        }
+        """)
+        let created = await client().createJoinRequest(deviceName: "MyPhone")
+        #expect(created?.id == "req-1")
+        #expect(created?.shortCode == "12345678")
+
+        MockHTTP.enqueue(200, """
+        {
+            "id": "req-1",
+            "status": "approved",
+            "access_token": "token-xyz",
+            "refresh_token": "ref-xyz"
+        }
+        """)
+        let polled = await client().pollJoinRequest(id: "req-1", pollSecret: "secret-1")
+        #expect(polled?.status == "approved")
+        #expect(polled?.accessToken == "token-xyz")
+    }
+
+    @Test func pendingJoinRequestsAndAnswer() async {
+        MockHTTP.enqueue(200, """
+        {
+            "requests": [
+                { "id": "req-99", "device_name": "LivingRoomPhone", "expires_at": "2026-10-22T12:00:00Z" }
+            ]
+        }
+        """)
+        let list = await client().fetchPendingJoinRequests(token: "admin-token")
+        #expect(list.count == 1)
+        #expect(list[0].deviceName == "LivingRoomPhone")
+
+        MockHTTP.enqueue(200, "{}")
+        let ok = await client().answerJoinRequest(id: "req-99", token: "admin-token", approved: true)
+        #expect(ok)
+        let req = MockHTTP.requests[1]
+        #expect(req.path == "/api/auth/join-requests/req-99/approve")
+    }
+
+    @Test func serverUrlHelpersNormalizeAndCheckLan() {
+        #expect(isPrivateLanHost("192.168.1.100"))
+        #expect(isPrivateLanHost("10.0.0.5"))
+        #expect(isPrivateLanHost("172.20.0.1"))
+        #expect(isPrivateLanHost("localhost"))
+        #expect(isPrivateLanHost("127.0.0.1"))
+        #expect(!isPrivateLanHost("example.com"))
+
+        #expect(isCleartextLanServerUrl("http://192.168.1.50:8080"))
+        #expect(!isCleartextLanServerUrl("https://192.168.1.50:8080"))
+        #expect(!isCleartextLanServerUrl("http://cablegram.app"))
+
+        #expect(normalizeServerUrl("192.168.1.50:8080") == "http://192.168.1.50:8080")
+        #expect(normalizeServerUrl("cablegram.example.com") == "https://cablegram.example.com")
+        #expect(normalizeServerUrl("https://cablegram.example.com/") == "https://cablegram.example.com")
+    }
 }
 }

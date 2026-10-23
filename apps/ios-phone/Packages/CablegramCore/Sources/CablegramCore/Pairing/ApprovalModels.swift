@@ -1,7 +1,7 @@
 import Foundation
 
-/// What a TV is waiting for: a private title to play, or (profile lock) a profile to open.
-public enum ApprovalKind: String, Sendable { case playback = "Playback", profile = "Profile" }
+/// What a TV or another phone is waiting for: a private title to play, a profile to open, or a phone join request.
+public enum ApprovalKind: String, Sendable { case playback = "Playback", profile = "Profile", phoneJoin = "PhoneJoin" }
 
 public struct PendingApproval: Sendable, Equatable, Identifiable {
     public var attemptId: String

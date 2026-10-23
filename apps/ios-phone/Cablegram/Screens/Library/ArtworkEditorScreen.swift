@@ -17,7 +17,9 @@ struct ArtworkEditorScreen: View {
                             .disabled(draft.saving)
                         coverSection(draft)
                         channelSuggestion(draft)
-                        searchSection(draft)
+                        if controller.lookupAvailable {
+                            searchSection(draft)
+                        }
                         if let message = draft.message { Text(message).foregroundStyle(Color.phoneAccent).accessibilityIdentifier("artwork_message") }
                         detailsSection(draft)
                     }

@@ -44,7 +44,7 @@ struct SettingsScreen: View {
                 }
                 if let status = viewModel.status { StatusNote(message: status) }
                 if page == nil { footer }
-                if page == .account {
+                if page == .account && viewModel.accountDeletionAvailable {
                     Button { if let url = URL(string: DeleteAccountScreen.webURL) { openURL(url) } } label: { Text(key: "delete_account_web_link") }
                         .buttonStyle(AccentTextButtonStyle())
                 }
@@ -141,7 +141,7 @@ struct SettingsScreen: View {
         switch page {
         case .account: account
         case .transfers:
-            if let usage = viewModel.relayUsage { SectionCard(title: L("ui_relay_c226b0")) { RelayUsageCard(usage: usage) } }
+            if viewModel.features.relay, let usage = viewModel.relayUsage { SectionCard(title: L("ui_relay_c226b0")) { RelayUsageCard(usage: usage) } }
             SectionCard(title: L("ui_transfers_privacy_af4a2f")) {
                 // Always listed, as on Android; without a receiver id the sender never starts and titles go through the relay.
                 PrefSwitch(key: "ui_open_tv_with_cast_0dd4f2", isOn: Binding(get: { viewModel.castConnect }, set: { viewModel.updateCastConnect($0) }), id: MaestroIds.settingsCastConnect)
@@ -150,8 +150,10 @@ struct SettingsScreen: View {
                 PrefSwitch(key: "ui_transfer_only_while_charging_645032", isOn: Binding(get: { viewModel.transferWhileCharging }, set: { viewModel.transferWhileCharging = $0 }))
                 Divider().overlay(Color.phoneOutline)
                 PrefSwitch(key: "ui_sync_library_titles_b3b6cc", isOn: Binding(get: { viewModel.syncLibraryToApi }, set: { viewModel.syncLibraryToApi = $0 }))
-                Divider().overlay(Color.phoneOutline)
-                relayPolicy
+                if viewModel.features.relay {
+                    Divider().overlay(Color.phoneOutline)
+                    relayPolicy
+                }
             }
         case .tvs: tvsPage
         case .profiles: profilesPage
@@ -176,6 +178,25 @@ struct SettingsScreen: View {
 
     private var account: some View {
         VStack(alignment: .leading, spacing: 20) {
+            SectionCard(title: "Server") {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(viewModel.apiBaseUrl)
+                            .font(.body)
+                            .foregroundStyle(.white)
+                        Text(viewModel.serverCapabilities?.edition == "community"
+                             ? "Community edition \(viewModel.serverCapabilities?.serverVersion ?? "")"
+                             : "Hosted edition")
+                            .font(.caption)
+                            .foregroundStyle(Color.phoneMuted)
+                    }
+                    Spacer()
+                }
+                if viewModel.apiBaseUrl != AppConfiguration.defaultApiBase.absoluteString {
+                    Button { viewModel.returnToCablegram() } label: { Text("Return to Cablegram") }
+                        .buttonStyle(OutlinedButtonStyle(minHeight: 40))
+                }
+            }
             SectionCard(title: L("ui_account_7e1b0d")) {
                 PhoneTextField(label: L("ui_account_name_a704d8"), text: $accountNameDraft, supporting: L("ui_shown_on_your_phones_and_tvs_b7ea60"))
                     .onChange(of: accountNameDraft) { _, new in if new.count > 80 { accountNameDraft = String(new.prefix(80)) } }
@@ -189,12 +210,14 @@ struct SettingsScreen: View {
                 .buttonStyle(OutlinedButtonStyle(color: .phoneError))
                 .disabled(viewModel.busy)
                 .accessibilityIdentifier(MaestroIds.settingsSignOut)
-            VStack(alignment: .leading, spacing: 6) {
-                Button { viewModel.openDeleteAccount() } label: { Text(key: "delete_account_entry") }
-                    .buttonStyle(OutlinedButtonStyle(color: .phoneError, borderColor: .phoneError))
-                    .disabled(viewModel.busy)
-                    .accessibilityIdentifier("settings_delete_account")
-                Text(key: "delete_account_entry_hint").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+            if viewModel.accountDeletionAvailable {
+                VStack(alignment: .leading, spacing: 6) {
+                    Button { viewModel.openDeleteAccount() } label: { Text(key: "delete_account_entry") }
+                        .buttonStyle(OutlinedButtonStyle(color: .phoneError, borderColor: .phoneError))
+                        .disabled(viewModel.busy)
+                        .accessibilityIdentifier("settings_delete_account")
+                    Text(key: "delete_account_entry_hint").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+                }
             }
         }
     }

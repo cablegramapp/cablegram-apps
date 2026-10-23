@@ -59,9 +59,34 @@ extension PhoneViewModel {
     }
 
     func updateApiBaseUrl(_ value: String) {
-        guard isValidServerUrl(value) else { status = L("ui_enter_a_valid_http_or_https_server_address_cbfe30"); return }
-        pairing.apiBaseUrl = value.trimmingCharacters(in: .whitespaces)
-        apiBaseUrl = pairing.apiBaseUrl
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isValidServerUrl(trimmed) else { status = L("ui_enter_a_valid_http_or_https_server_address_cbfe30"); return }
+        guard let normalized = normalizeServerUrl(trimmed) else { return }
+        let currentOrigin = serverOrigin(apiBaseUrl)
+        let newOrigin = serverOrigin(normalized)
+        if currentOrigin != newOrigin {
+            clearSignedInState()
+        }
+        pairing.apiBaseUrl = normalized
+        apiBaseUrl = normalized
+        refreshServerCapabilities()
+        Task { await signIn.load() }
+    }
+
+    func returnToCablegram() {
+        updateApiBaseUrl(AppConfiguration.defaultApiBase.absoluteString)
+    }
+
+    func claimSetupCode(_ code: String) {
+        Task { await signIn.claimSetupCode(code) }
+    }
+
+    func requestJoin() {
+        Task { await signIn.requestJoin(deviceName: UIDevice.current.name) }
+    }
+
+    func cancelJoin() {
+        signIn.cancelJoin()
     }
 
     func updateTunnelUrl(_ value: String) {

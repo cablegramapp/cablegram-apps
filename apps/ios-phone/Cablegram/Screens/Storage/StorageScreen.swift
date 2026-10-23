@@ -27,32 +27,34 @@ struct StorageScreen: View {
                         Button { cloud.openFreeUp() } label: { Text(L("ui_free_up_8fe74c", formatBytes(reclaim))) }.buttonStyle(OutlinedButtonStyle())
                     }
                 }
-                SectionCard(title: L("ui_cloud_storage_9644ab")) {
-                    Metric(label: L("ui_media_saved_9537f2"), value: formatBytes(cloudMediaBytes(viewModel.items)))
-                    Metric(label: L("ui_available_e67444"), value: cloud.cloudConnected
-                           ? cloud.text(destinationSpaceLine(cloud.storage, cablegramAvailable: cloud.cloudAvailable)) : L("ui_connect_your_own_storage_10a917"))
-                    if cloud.cloudConnected {
-                        Text(L("ui_connected_96d2ef", cloud.storage?.connection?.displayLabel ?? L("ui_your_own_storage_cc541c"))).foregroundStyle(Color(hex: 0x79D6B0))
-                    }
-                    Button { cloud.cloudSheet = .manage } label: { Text(key: "ui_manage_cloud_storage_4ba3e8") }
-                        .buttonStyle(OutlinedButtonStyle()).accessibilityIdentifier(MaestroIds.storageManage)
-                }
-                SectionCard(title: L("ui_saved_in_the_cloud_dc46d5")) {
-                    let cloudItems = cloudFiles(viewModel.items)
-                    if cloudItems.isEmpty { Text(key: "ui_no_cloud_copies_yet_open_a_title_to_save_a_copy_ffe83b").foregroundStyle(Color.phoneMuted) }
-                    ForEach(cloudItems) { item in
-                        Button { viewModel.openItem(item) } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(verbatim: item.title).foregroundStyle(.white).lineLimit(1)
-                                    Text(item.fileSizeBytes.map(formatBytes) ?? "").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right").foregroundStyle(Color.phoneMuted).accessibilityLabel(L("ui_view_title_c9916d"))
-                            }
-                            .frame(minHeight: 56).contentShape(Rectangle())
+                if viewModel.features.cloudStorage {
+                    SectionCard(title: L("ui_cloud_storage_9644ab")) {
+                        Metric(label: L("ui_media_saved_9537f2"), value: formatBytes(cloudMediaBytes(viewModel.items)))
+                        Metric(label: L("ui_available_e67444"), value: cloud.cloudConnected
+                               ? cloud.text(destinationSpaceLine(cloud.storage, cablegramAvailable: cloud.cloudAvailable)) : L("ui_connect_your_own_storage_10a917"))
+                        if cloud.cloudConnected {
+                            Text(L("ui_connected_96d2ef", cloud.storage?.connection?.displayLabel ?? L("ui_your_own_storage_cc541c"))).foregroundStyle(Color(hex: 0x79D6B0))
                         }
-                        .buttonStyle(.plain)
+                        Button { cloud.cloudSheet = .manage } label: { Text(key: "ui_manage_cloud_storage_4ba3e8") }
+                            .buttonStyle(OutlinedButtonStyle()).accessibilityIdentifier(MaestroIds.storageManage)
+                    }
+                    SectionCard(title: L("ui_saved_in_the_cloud_dc46d5")) {
+                        let cloudItems = cloudFiles(viewModel.items)
+                        if cloudItems.isEmpty { Text(key: "ui_no_cloud_copies_yet_open_a_title_to_save_a_copy_ffe83b").foregroundStyle(Color.phoneMuted) }
+                        ForEach(cloudItems) { item in
+                            Button { viewModel.openItem(item) } label: {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(verbatim: item.title).foregroundStyle(.white).lineLimit(1)
+                                        Text(item.fileSizeBytes.map(formatBytes) ?? "").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").foregroundStyle(Color.phoneMuted).accessibilityLabel(L("ui_view_title_c9916d"))
+                                }
+                                .frame(minHeight: 56).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
                 if let status = viewModel.status { StatusNote(message: status) }

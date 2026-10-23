@@ -39,9 +39,10 @@ public struct CatalogClient: Sendable {
         URL(string: baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path)!
     }
 
-    private func build(_ method: String, _ path: String, token: String?, json: [String: Any]?) -> URLRequest {
+    private func build(_ method: String, _ path: String, token: String?, json: [String: Any]?, headers: [String: String] = [:]) -> URLRequest {
         var request = URLRequest(url: url(path), timeoutInterval: 20)
         request.httpMethod = method
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let json {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -60,11 +61,11 @@ public struct CatalogClient: Sendable {
     }
 
     /// Sends the request; when a Bearer token is rejected with 401 and `renew` is on, renews it once and retries.
-    func send(_ method: String, _ path: String, token: String? = nil, json: [String: Any]? = nil, renew: Bool = true) async -> APIReply {
-        let first = await perform(build(method, path, token: token, json: json))
+    func send(_ method: String, _ path: String, token: String? = nil, json: [String: Any]? = nil, renew: Bool = true, headers: [String: String] = [:]) async -> APIReply {
+        let first = await perform(build(method, path, token: token, json: json, headers: headers))
         guard renew, first.status == 401, let sent = token, tokens != nil else { return first }
         guard let fresh = await freshToken(after: sent) else { return first }
-        return await perform(build(method, path, token: fresh, json: json))
+        return await perform(build(method, path, token: fresh, json: json, headers: headers))
     }
 
     /// Another request may already have renewed the token while this one was in flight.
@@ -183,8 +184,53 @@ public struct CatalogClient: Sendable {
             userId: parsed.userId,
             displayName: parsed.displayName,
             needsName: parsed.displayName?.isEmpty ?? true,
-            householdId: parsed.householdId
+            householdId: parsed.householdId,
+            deviceId: parsed.deviceId,
+            deviceSecret: parsed.deviceSecret
         ))
+    }
+
+    // MARK: Server Capabilities & Device Sign-In
+
+    /// `GET /api/server`; older server without it defaults to hosted.
+    public func serverCapabilities() async -> ServerCapabilities? {
+        let reply = await send("GET", "/api/server")
+        if reply.status == 404 { return ServerCapabilities.hostedDefault }
+        return reply.isSuccess ? reply.decode() : nil
+    }
+
+    /// Claims the setup code for a Community server.
+    public func claimSetupCode(code: String, deviceName: String = "iPhone") async -> SignInResult {
+        await signInStep("/api/auth/setup/claim", [
+            "code": code.trimmingCharacters(in: .whitespacesAndNewlines),
+            "device_name": deviceName,
+            "client": "app"
+        ])
+    }
+
+    /// Requests to join a Community household; returns the short code and polling secret.
+    public func createJoinRequest(deviceName: String = "iPhone") async -> JoinRequestCreated? {
+        let reply = await send("POST", "/api/auth/join-requests", json: ["device_name": deviceName, "client": "app"])
+        return reply.isSuccess ? reply.decode() : nil
+    }
+
+    /// Polls a join request status until approved or rejected.
+    public func pollJoinRequest(id: String, pollSecret: String) async -> JoinRequestPollResponse? {
+        let reply = await send("GET", "/api/auth/join-requests/\(id)", headers: ["Authorization": "Join \(pollSecret)"])
+        return reply.isSuccess ? reply.decode() : nil
+    }
+
+    /// Fetches pending phone join requests (admin phone only).
+    public func fetchPendingJoinRequests(token: String) async -> [PendingJoinRequest] {
+        let reply = await send("GET", "/api/auth/join-requests/pending", token: token)
+        guard reply.isSuccess, let list: PendingJoinRequests = reply.decode() else { return [] }
+        return list.requests
+    }
+
+    /// Answers a pending join request.
+    @discardableResult
+    public func answerJoinRequest(id: String, token: String, approved: Bool) async -> Bool {
+        await send("POST", "/api/auth/join-requests/\(id)/\(approved ? "approve" : "deny")", token: token, json: [:]).isSuccess
     }
 
     // MARK: Account
