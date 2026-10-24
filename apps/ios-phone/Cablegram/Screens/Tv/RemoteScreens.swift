@@ -89,7 +89,7 @@ struct RemoteBar: View {
 
     var body: some View {
         let tv = viewModel.tv!
-        if viewModel.legacyRemote, let lines = miniPlayerLines(playing: tv.nowPlaying?.title, starting: tv.startingTitle, tvName: tv.tvName, status: tv.remoteStatus) {
+        if viewModel.legacyRemote, viewModel.tab != .remote, let lines = miniPlayerLines(playing: tv.nowPlaying?.title, starting: tv.startingTitle, tvName: tv.tvName, status: tv.remoteStatus) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: lines.title).font(PhoneFont.titleMedium).foregroundStyle(.white).lineLimit(1)
