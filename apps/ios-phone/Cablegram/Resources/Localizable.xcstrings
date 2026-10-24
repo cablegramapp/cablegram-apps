@@ -1591,7 +1591,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not send report. Diagnostics are disabled or network is unavailable."
+            "value": "Could not record diagnostic report."
           }
         }
       }

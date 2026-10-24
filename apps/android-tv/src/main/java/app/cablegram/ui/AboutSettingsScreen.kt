@@ -158,12 +158,26 @@ internal fun AboutSettingsPanel(
                     Button(
                         onClick = {
                             sendingReport = true
+                            val tgStatusName = when (telegramStatus) {
+                                is app.cablegram.TvTelegramStatus.Off -> "Off"
+                                is app.cablegram.TvTelegramStatus.CanConnect -> "CanConnect"
+                                is app.cablegram.TvTelegramStatus.Connecting -> "Connecting"
+                                is app.cablegram.TvTelegramStatus.WaitingForPhone -> "WaitingForPhone"
+                                is app.cablegram.TvTelegramStatus.NotSignedIn -> "NotSignedIn"
+                                is app.cablegram.TvTelegramStatus.NeedsPassword -> "NeedsPassword"
+                                is app.cablegram.TvTelegramStatus.Connected -> "Connected"
+                                is app.cablegram.TvTelegramStatus.Problem -> "Problem"
+                                is app.cablegram.TvTelegramStatus.ThroughPhone -> "ThroughPhone"
+                            }
+                            val isCustom = serverUrl != null && serverUrl != app.cablegram.BuildConfig.API_BASE_URL
+                            val hasLanIp = !tvLanIp.isNullOrBlank()
+
                             TvDiagnostics.sendProblemReport(
                                 context = context,
                                 description = "User initiated report from TV",
-                                tvLanIp = tvLanIp,
-                                telegramStatus = telegramStatus.javaClass.simpleName,
-                                serverUrl = serverUrl,
+                                hasTvLanIp = hasLanIp,
+                                telegramStatus = tgStatusName,
+                                isCustomServer = isCustom,
                             ) { success ->
                                 sendingReport = false
                                 reportStatus = if (success) {

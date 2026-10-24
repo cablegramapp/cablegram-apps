@@ -23,7 +23,7 @@ object SentryScrubber {
 
     // Free text secrets: password: abc, token = xyz, api_key: 123, Authorization: Bearer abc
     private val AUTH_HEADER_REGEX = Regex("(?i)\\b(authorization)\\s*:\\s*(?:bearer\\s+)?([^\r\n\\s,;\"'<>]+)")
-    private val FREE_TEXT_SECRET_REGEX = Regex("(?i)\\b(password|passwd|secret|token|api[_-]?key)\\s*[:=]\\s*([^\r\n\\s,;\"'<>]+)")
+    private val FREE_TEXT_SECRET_REGEX = Regex("(?i)(?<![?&])[\"']?\\b(password|passwd|secret|token|api[_-]?key)[\"']?\\s*[:=]\\s*[\"']?([^\\r\\n\\s,;\"'<>]+)[\"']?")
     private val BEARER_TOKEN_REGEX = Regex("(?i)\\b(bearer)\\s+([a-zA-Z0-9_.-]{10,})")
 
     // Telegram deep links anywhere in text
@@ -32,8 +32,16 @@ object SentryScrubber {
     // Storage and local file paths (handles paths with spaces, e.g. /sdcard/Movies/My Film.mkv)
     private val STORAGE_PATH_REGEX = Regex("(?i)(?:/storage/|/sdcard/|/data/data/|/data/user/\\d+/|/mnt/|content://|file:///)[^\r\n:,;\"'<>\\[\\]{}]+(?<=\\S)")
 
-    // Media filenames (including those with spaces like 'My Holiday 2024.mp4')
-    private val MEDIA_FILE_REGEX = Regex("(?i)[\\w.\\-+&'()\\[\\]]+(?:\\s+[\\w.\\-+&'()\\[\\]]+)*\\.(?:mp4|mkv|avi|mov|webm|flv|wmv|m4v|3gp|mp3|flac|m4a|aac|ogg|wav|opus|srt|vtt|ass|sub)\\b")
+    private const val MEDIA_EXTENSIONS = "mp4|mkv|avi|mov|webm|flv|wmv|m4v|3gp|mp3|flac|m4a|aac|ogg|wav|opus|srt|vtt|ass|sub"
+
+    // Quoted media filenames with spaces or special characters (e.g. "My Holiday 2024.mp4")
+    private val QUOTED_MEDIA_FILE_REGEX = Regex("(?i)[\"']([^\"'\r\n/]{1,150}\\.(?:$MEDIA_EXTENSIONS))[\"']")
+
+    // Media file preceded by a delimiter or standalone single token without spaces
+    private val UNQUOTED_MEDIA_FILE_REGEX = Regex("(?i)(?<=^|[\\s:;,\"'\\[\\]{}()<>])([a-zA-Z0-9_\\-+&'()\\[\\].]{1,150}\\.(?:$MEDIA_EXTENSIONS))\\b")
+
+    // General Unix/Linux paths ending in media extensions (e.g. /path/to/My Film.mkv)
+    private val PATH_MEDIA_FILE_REGEX = Regex("(?i)(?:/[^/\r\n\"':;<>]+)+/[^/\r\n\"':;<>]+\\.(?:$MEDIA_EXTENSIONS)\\b")
 
     // HTTP/HTTPS URL regex to find URLs inside arbitrary text
     private val HTTP_URL_REGEX = Regex("(?i)https?://[^\r\n\\s\"'<>\\[\\]{}]+(?<=\\S)")
@@ -112,9 +120,11 @@ object SentryScrubber {
 
         // 4. Scrub storage paths (e.g. /sdcard/Movies/My Film.mkv)
         cleaned = STORAGE_PATH_REGEX.replace(cleaned, "[PATH_REDACTED]")
+        cleaned = PATH_MEDIA_FILE_REGEX.replace(cleaned, "[PATH_REDACTED]")
 
-        // 5. Scrub standalone media filenames (e.g. My Holiday 2024.mp4)
-        cleaned = MEDIA_FILE_REGEX.replace(cleaned, "[MEDIA_FILE_REDACTED]")
+        // 5. Scrub media filenames (quoted with spaces, or unquoted single token)
+        cleaned = QUOTED_MEDIA_FILE_REGEX.replace(cleaned, "[MEDIA_FILE_REDACTED]")
+        cleaned = UNQUOTED_MEDIA_FILE_REGEX.replace(cleaned, "[MEDIA_FILE_REDACTED]")
 
         return cleaned
     }

@@ -9,6 +9,6 @@
     <string name="diagnostics_crash_reports_off">Crash reports: Off</string>
     <string name="diagnostics_report_problem_button">Report a problem</string>
     <string name="diagnostics_sending">Sending…</string>
-    <string name="diagnostics_report_sent">Diagnostic report recorded. Thank you!</string>
-    <string name="diagnostics_report_failed">Could not send diagnostic report.</string>
+    <string name="diagnostics_report_sent">Thank you! Diagnostic report recorded.</string>
+    <string name="diagnostics_report_failed">Could not record diagnostic report.</string>
 </resources>

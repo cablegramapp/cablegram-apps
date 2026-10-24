@@ -53,22 +53,26 @@ class SentryScrubberTest {
     }
 
     @Test
-    fun `scrubMessage removes media filenames with spaces and various formats`() {
-        val msgWithSpaces = "Failed to play My Holiday 2024.mp4 due to decoder error"
-        val scrubbedSpaces = SentryScrubber.scrubMessage(msgWithSpaces)
-        assertFalse(scrubbedSpaces.contains("My Holiday 2024"))
-        assertFalse(scrubbedSpaces.contains("My Holiday [MEDIA_FILE_REDACTED]"))
-        assertTrue(scrubbedSpaces.contains("[MEDIA_FILE_REDACTED]"))
+    fun `scrubMessage removes media filenames with spaces and various formats while preserving surrounding prose`() {
+        val msgWithQuotes = "Failed to play \"My Holiday 2024.mp4\" due to decoder error"
+        val scrubbedQuotes = SentryScrubber.scrubMessage(msgWithQuotes)
+        assertEquals("Failed to play [MEDIA_FILE_REDACTED] due to decoder error", scrubbedQuotes)
+
+        val msgSingle = "Failed to play holiday.mp4 due to decoder error"
+        val scrubbedSingle = SentryScrubber.scrubMessage(msgSingle)
+        assertEquals("Failed to play [MEDIA_FILE_REDACTED] due to decoder error", scrubbedSingle)
 
         val audioMsg = "Playing audio track soundtrack.flac and commentary.m4a"
         val scrubbedAudio = SentryScrubber.scrubMessage(audioMsg)
         assertFalse(scrubbedAudio.contains("soundtrack.flac"))
         assertFalse(scrubbedAudio.contains("commentary.m4a"))
+        assertEquals("Playing audio track [MEDIA_FILE_REDACTED] and [MEDIA_FILE_REDACTED]", scrubbedAudio)
 
         val subMsg = "Subtitles loaded from custom_subs.ass and movie.sub"
         val scrubbedSubs = SentryScrubber.scrubMessage(subMsg)
         assertFalse(scrubbedSubs.contains("custom_subs.ass"))
         assertFalse(scrubbedSubs.contains("movie.sub"))
+        assertEquals("Subtitles loaded from [MEDIA_FILE_REDACTED] and [MEDIA_FILE_REDACTED]", scrubbedSubs)
     }
 
     @Test
@@ -166,5 +170,40 @@ class SentryScrubberTest {
 
         DiagnosticsPreferences.setCrashReportingEnabled(context, true)
         assertTrue(DiagnosticsPreferences.isCrashReportingEnabled(context))
+    }
+
+    @Test
+    fun `sendProblemReport respects opt-out and does not leave Sentry enabled when crash reporting is disabled`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        DiagnosticsPreferences.setCrashReportingEnabled(context, false)
+        assertFalse(DiagnosticsPreferences.isCrashReportingEnabled(context))
+
+        PhoneDiagnostics.sendProblemReport(context, "Test bug report description") { _ -> }
+
+        assertFalse(io.sentry.Sentry.isEnabled())
+    }
+
+    @Test
+    fun `scrubEvent scrubs tags and extras alongside message and exceptions`() {
+        val event = SentryEvent().apply {
+            setTag("server_url", "https://api.cablegram.app/endpoint?token=secret123")
+            setTag("custom_tag", "Error playing \"My Video.mp4\"")
+            setExtra("report_json", "{\"file\":\"/sdcard/Movies/secret.mp4\",\"token\":\"secret456\"}")
+        }
+
+        val scrubbed = PhoneDiagnostics.scrubEvent(event)
+
+        val serverTag = scrubbed.getTag("server_url").orEmpty()
+        assertTrue(serverTag.contains("token=REDACTED"))
+        assertFalse(serverTag.contains("secret123"))
+
+        val customTag = scrubbed.getTag("custom_tag").orEmpty()
+        assertEquals("Error playing [MEDIA_FILE_REDACTED]", customTag)
+
+        val reportJson = (scrubbed.getExtra("report_json") as? String).orEmpty()
+        assertFalse(reportJson.contains("secret.mp4"))
+        assertFalse(reportJson.contains("secret456"))
+        assertTrue(reportJson.contains("[PATH_REDACTED]"))
+        assertTrue(reportJson.contains("[REDACTED]"))
     }
 }

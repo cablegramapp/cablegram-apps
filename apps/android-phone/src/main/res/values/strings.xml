@@ -50,5 +50,5 @@
     <string name="diagnostics_send_report_button">Send report</string>
     <string name="diagnostics_sending">Sending…</string>
     <string name="diagnostics_report_sent">Thank you! Diagnostic report recorded.</string>
-    <string name="diagnostics_report_failed">Could not send report. Diagnostics are disabled or network is unavailable.</string>
+    <string name="diagnostics_report_failed">Could not record diagnostic report.</string>
 </resources>

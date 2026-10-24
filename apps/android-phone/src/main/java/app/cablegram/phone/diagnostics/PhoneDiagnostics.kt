@@ -90,6 +90,20 @@ object PhoneDiagnostics {
             req.url?.let { req.url = SentryScrubber.scrubUrl(it) }
         }
 
+        event.tags?.keys?.toList()?.forEach { key ->
+            val v = event.getTag(key)
+            if (v != null) {
+                event.setTag(key, SentryScrubber.scrubMessage(v))
+            }
+        }
+
+        event.extras?.keys?.toList()?.forEach { key ->
+            val v = event.getExtra(key)
+            if (v is String) {
+                event.setExtra(key, SentryScrubber.scrubMessage(v))
+            }
+        }
+
         return event
     }
 
@@ -136,8 +150,9 @@ object PhoneDiagnostics {
         }
 
         val report = buildProblemReport(context, description, playbackState)
+        val crashReportingEnabled = DiagnosticsPreferences.isCrashReportingEnabled(context)
 
-        runCatching {
+        try {
             if (!Sentry.isEnabled()) {
                 SentryAndroid.init(context.applicationContext) { options ->
                     options.dsn = dsn
@@ -161,9 +176,13 @@ object PhoneDiagnostics {
             val sentryId = Sentry.captureEvent(event)
             val success = sentryId != SentryId.EMPTY_ID
             onComplete(success)
-        }.onFailure {
-            android.util.Log.e("PhoneDiagnostics", "Failed sending Sentry problem report", it)
+        } catch (e: Throwable) {
+            android.util.Log.e("PhoneDiagnostics", "Failed sending Sentry problem report", e)
             onComplete(false)
+        } finally {
+            if (!crashReportingEnabled) {
+                close()
+            }
         }
     }
 }

@@ -90,6 +90,20 @@ object TvDiagnostics {
             req.url?.let { req.url = SentryScrubber.scrubUrl(it) }
         }
 
+        event.tags?.keys?.toList()?.forEach { key ->
+            val v = event.getTag(key)
+            if (v != null) {
+                event.setTag(key, SentryScrubber.scrubMessage(v))
+            }
+        }
+
+        event.extras?.keys?.toList()?.forEach { key ->
+            val v = event.getExtra(key)
+            if (v is String) {
+                event.setExtra(key, SentryScrubber.scrubMessage(v))
+            }
+        }
+
         return event
     }
 
@@ -121,14 +135,16 @@ object TvDiagnostics {
     /**
      * Explicit user-initiated problem report sends regardless of automatic crash reporting opt-out,
      * as the user is intentionally submitting this diagnostic feedback.
+     *
+     * Note: The TV problem report carries fixed diagnostic metadata and no freeform user input.
      */
     fun sendProblemReport(
         context: Context,
         description: String = "User initiated report from TV",
         playbackState: String? = null,
-        tvLanIp: String? = null,
+        hasTvLanIp: Boolean = false,
         telegramStatus: String? = null,
-        serverUrl: String? = null,
+        isCustomServer: Boolean = false,
         onComplete: (Boolean) -> Unit = {}
     ) {
         val dsn = BuildConfig.SENTRY_DSN
@@ -139,8 +155,9 @@ object TvDiagnostics {
         }
 
         val report = buildProblemReport(context, description, playbackState)
+        val crashReportingEnabled = DiagnosticsPreferences.isCrashReportingEnabled(context)
 
-        runCatching {
+        try {
             if (!Sentry.isEnabled()) {
                 SentryAndroid.init(context.applicationContext) { options ->
                     options.dsn = dsn
@@ -158,18 +175,22 @@ object TvDiagnostics {
                 setTag("device_model", report.model)
                 setTag("device_manufacturer", report.manufacturer)
                 report.playbackState?.let { setTag("playback_state", it) }
-                tvLanIp?.let { setTag("tv_lan_configured", (it.isNotBlank()).toString()) }
+                setTag("tv_lan_configured", hasTvLanIp.toString())
                 telegramStatus?.let { setTag("telegram_status", SentryScrubber.scrubMessage(it)) }
-                serverUrl?.let { setTag("server_url", SentryScrubber.scrubUrl(it)) }
+                setTag("server_type", if (isCustomServer) "custom" else "default")
                 setExtra("report_json", report.toJson())
             }
 
             val sentryId = Sentry.captureEvent(event)
             val success = sentryId != SentryId.EMPTY_ID
             onComplete(success)
-        }.onFailure {
-            android.util.Log.e("TvDiagnostics", "Failed sending Sentry problem report", it)
+        } catch (e: Throwable) {
+            android.util.Log.e("TvDiagnostics", "Failed sending Sentry problem report", e)
             onComplete(false)
+        } finally {
+            if (!crashReportingEnabled) {
+                close()
+            }
         }
     }
 }
