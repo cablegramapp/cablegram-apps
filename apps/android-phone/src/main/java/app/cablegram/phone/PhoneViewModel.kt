@@ -237,6 +237,8 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         private set
     var apiBaseUrl by mutableStateOf(pairing.apiBaseUrl)
         private set
+    val isCustomServer: Boolean
+        get() = apiBaseUrl.trimEnd('/') != BuildConfig.API_BASE_URL.trimEnd('/')
     var tunnelUrl by mutableStateOf(pairing.tunnelUrl)
         private set
     var tab by mutableStateOf(PhoneTab.Library)
