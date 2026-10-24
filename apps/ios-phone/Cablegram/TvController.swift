@@ -10,7 +10,9 @@ final class TvController {
     private(set) var paired: Bool
     private(set) var tvName: String
     private(set) var tvVolumes: [String: Double] = [:]
-    var tvVolume: Double { tvVolumes[tvName] ?? 0.5 }
+    /// Keyed by device id (names can repeat); a legacy pairing without one falls back to the name.
+    private func volumeKey(_ deviceId: String?) -> String { deviceId ?? tvName }
+    var tvVolume: Double { tvVolumes[volumeKey(pairing.tvs.last?.deviceId)] ?? 0.5 }
     var addingTv = false
     /// The code the owner just entered or scanned, waiting for "Is this your TV?" (spec 004 US8).
     var pendingPair: (pin: String, name: String)?
@@ -386,7 +388,7 @@ final class TvController {
     func remoteSelect() { Task { _ = await sendCommand("select") } }
     func remoteVolume(_ level: Int) {
         let clamped = min(max(level, 0), 100)
-        tvVolumes[tvName] = Double(clamped) / 100.0
+        tvVolumes[volumeKey(pairing.tvs.last?.deviceId)] = Double(clamped) / 100.0
         Task { _ = await sendCommand("volume", arguments: ["level": clamped]) }
     }
 
@@ -470,11 +472,6 @@ final class TvController {
             catch { reportFinal((error as? LocalizedError)?.errorDescription ?? L("ui_could_not_open_the_tv_try_again_344ff8")); return nil }
         }
         let outcome = await TvCommandSender.confirm(client: client, commandId: commandId, token: token, deviceId: deviceId, wait: wait)
-        if generation == commandGeneration && (outcome == .confirmed || outcome == .unconfirmable) {
-            if command == "volume", let level = arguments["level"] as? Int {
-                tvVolumes[sentName] = Double(min(max(level, 0), 100)) / 100.0
-            }
-        }
         switch outcome {
         case .confirmed: reportFinal(text("ui_done_on_623a01", sentName))
         case .rejected(let reason): reportFinal(rejectionMessage(reason, tvName: sentName))
@@ -496,8 +493,9 @@ final class TvController {
                 guard let deviceId = self.playingTvDeviceId ?? self.pairing.tvs.last?.deviceId, let token = self.token else { break }
                 guard let report = await self.catalog().tvPlayback(token: token, deviceId: deviceId) else { continue }
                 guard self.nowPlaying != nil else { break }
-                if let vol = report.volume, (0...100).contains(vol) {
-                    self.tvVolumes[self.tvName] = Double(vol) / 100.0
+                // Right after our own command the report can still carry the old level; same shield as followTv.
+                if let vol = report.volume, (0...100).contains(vol), Int64(Date().timeIntervalSince(self.ownCommandAt) * 1000) >= ownCommandShieldMs {
+                    self.tvVolumes[deviceId] = Double(vol) / 100.0
                 }
                 switch followTv(report, nowPlayingId: current.id, sinceOwnCommandMs: Int64(Date().timeIntervalSince(self.ownCommandAt) * 1000)) {
                 case .keep: break

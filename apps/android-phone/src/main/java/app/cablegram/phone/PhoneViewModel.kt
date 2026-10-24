@@ -32,9 +32,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -191,9 +189,11 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         private set
     var tvName by mutableStateOf(pairing.tvName)
         private set
+    // Keyed by device id (names can repeat); a legacy pairing without one falls back to the name.
     private val tvVolumes = mutableStateMapOf<String, Float>()
+    private fun volumeKey(deviceId: String?, name: String) = deviceId ?: name
     val tvVolume: Float
-        get() = tvVolumes[tvName] ?: 0.5f
+        get() = tvVolumes[volumeKey(tvs.lastOrNull()?.deviceId, tvName)] ?: 0.5f
     var householdName by mutableStateOf(pairing.displayName)
         private set
     // Decided by the server (see [restoreHouseholdName]): a blank local cache
@@ -2815,7 +2815,7 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
     /** T078 / R-8: remote-tab actions (public wrappers around enqueue). */
     fun remoteVolume(level: Int) {
         val clamped = level.coerceIn(0, 100)
-        tvVolumes[tvName] = clamped / 100f
+        tvVolumes[volumeKey(tvs.lastOrNull()?.deviceId, tvName)] = clamped / 100f
         enqueue("volume", arguments = buildJsonObject { put("level", clamped) })
     }
 
@@ -3134,8 +3134,9 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
                 val report = catalog().tvPlayback(token, deviceId) ?: continue
                 val current = nowPlayingState ?: break
                 if (castPlaybackOwned) break
+                // Right after our own command the report can still carry the old level; same shield as followTv.
                 report.volume?.let { vol ->
-                    if (vol in 0..100) tvVolumes[tvName] = vol / 100f
+                    if (vol in 0..100 && SystemClock.elapsedRealtime() - ownCommandAt >= OWN_COMMAND_SHIELD_MS) tvVolumes[volumeKey(deviceId, tvName)] = vol / 100f
                 }
                 when (val follow = followTv(report, current.id, SystemClock.elapsedRealtime() - ownCommandAt)) {
                     TvFollow.Keep -> Unit
@@ -3237,12 +3238,6 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
             }
         }
         val outcome = CastSession.confirm(client, sent, wait)
-        if (generation == commandGeneration && outcome.applies()) {
-            if (command == "volume") {
-                val level = (arguments["level"] as? JsonPrimitive)?.intOrNull
-                if (level != null) tvVolumes[sent.tvName] = level.coerceIn(0, 100) / 100f
-            }
-        }
         reportFinal(when (outcome) {
             Outcome.Confirmed -> uiText(R.string.ui_done_on_623a01, sent.tvName)
             is Outcome.Rejected -> rejectionMessage(outcome.reason, sent.tvName)
