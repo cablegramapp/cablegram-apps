@@ -11,6 +11,7 @@ class PhoneApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         PhoneLanguageOverride.init(this)
+        app.cablegram.phone.diagnostics.PhoneDiagnostics.init(this)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             private var started = 0
 

@@ -138,6 +138,37 @@ internal fun AboutSettingsPanel(
                 Text(ui.getString(R.string.ui_open_privacy_policy_c90fcb))
             }
             Text(PRIVACY_POLICY_URL, color = Slate, fontSize = 12.sp)
+            var crashReporting by remember { mutableStateOf(app.cablegram.diagnostics.DiagnosticsPreferences.isCrashReportingEnabled(context)) }
+            var reportStatus by remember { mutableStateOf<String?>(null) }
+            var sendingReport by remember { mutableStateOf(false) }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                    onClick = {
+                        val next = !crashReporting
+                        crashReporting = next
+                        app.cablegram.diagnostics.DiagnosticsPreferences.setCrashReportingEnabled(context, next)
+                    },
+                    colors = ButtonDefaults.colors(containerColor = PanelRaised),
+                ) {
+                    Text(if (crashReporting) "Crash reports: On" else "Crash reports: Off")
+                }
+                Button(
+                    onClick = {
+                        sendingReport = true
+                        app.cablegram.diagnostics.TvDiagnostics.sendProblemReport(context) {
+                            sendingReport = false
+                            reportStatus = "Diagnostic report recorded. Thank you!"
+                        }
+                    },
+                    enabled = !sendingReport,
+                    colors = ButtonDefaults.colors(containerColor = PanelRaised),
+                ) {
+                    Text(if (sendingReport) "Sending…" else "Report a problem")
+                }
+            }
+            reportStatus?.let {
+                Text(it, color = Cyan, fontSize = 12.sp)
+            }
             var showLegal by remember { mutableStateOf(false) }
             Button(
                 onClick = { showLegal = !showLegal },

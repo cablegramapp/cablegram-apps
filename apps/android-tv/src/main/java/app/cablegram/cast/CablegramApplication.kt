@@ -28,6 +28,7 @@ class CablegramApplication : Application(), DefaultLifecycleObserver, SingletonI
 
     override fun onCreate() {
         super<Application>.onCreate()
+        app.cablegram.diagnostics.TvDiagnostics.init(this)
         if (BuildConfig.CABLEGRAM_CAST_APP_ID.isBlank()) return
         // Non-Cast TVs keep the existing relay path even when a receiver ID is configured.
         runCatching {
