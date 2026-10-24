@@ -14,6 +14,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.os.BatteryManager
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -188,6 +189,11 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         private set
     var tvName by mutableStateOf(pairing.tvName)
         private set
+    // Keyed by device id (names can repeat); a legacy pairing without one falls back to the name.
+    private val tvVolumes = mutableStateMapOf<String, Float>()
+    private fun volumeKey(deviceId: String?, name: String) = deviceId ?: name
+    val tvVolume: Float
+        get() = tvVolumes[volumeKey(tvs.lastOrNull()?.deviceId, tvName)] ?: 0.5f
     var householdName by mutableStateOf(pairing.displayName)
         private set
     // Decided by the server (see [restoreHouseholdName]): a blank local cache
@@ -2806,9 +2812,24 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         return items[nextIndex]
     }
 
+    /**
+     * Reads the TV's reported volume once, when the Remote tab opens: the follow loop only runs while this phone is
+     * playing a title, so a restarted phone would otherwise show its default until then.
+     */
+    fun refreshTvVolume() {
+        val deviceId = tvs.lastOrNull()?.deviceId ?: return
+        val token = pairing.accountToken?.takeIf { it.isNotBlank() } ?: return
+        viewModelScope.launch {
+            val vol = catalog().tvPlayback(token, deviceId)?.volume ?: return@launch
+            if (vol in 0..100 && SystemClock.elapsedRealtime() - ownCommandAt >= OWN_COMMAND_SHIELD_MS) tvVolumes[volumeKey(deviceId, tvName)] = vol / 100f
+        }
+    }
+
     /** T078 / R-8: remote-tab actions (public wrappers around enqueue). */
     fun remoteVolume(level: Int) {
-        enqueue("volume", arguments = buildJsonObject { put("level", level.coerceIn(0, 100)) })
+        val clamped = level.coerceIn(0, 100)
+        tvVolumes[volumeKey(tvs.lastOrNull()?.deviceId, tvName)] = clamped / 100f
+        enqueue("volume", arguments = buildJsonObject { put("level", clamped) })
     }
 
     fun remoteStop() {
@@ -3126,6 +3147,10 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
                 val report = catalog().tvPlayback(token, deviceId) ?: continue
                 val current = nowPlayingState ?: break
                 if (castPlaybackOwned) break
+                // Right after our own command the report can still carry the old level; same shield as followTv.
+                report.volume?.let { vol ->
+                    if (vol in 0..100 && SystemClock.elapsedRealtime() - ownCommandAt >= OWN_COMMAND_SHIELD_MS) tvVolumes[volumeKey(deviceId, tvName)] = vol / 100f
+                }
                 when (val follow = followTv(report, current.id, SystemClock.elapsedRealtime() - ownCommandAt)) {
                     TvFollow.Keep -> Unit
                     TvFollow.Stopped -> { nowPlaying = null; paused = false }

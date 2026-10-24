@@ -9,9 +9,10 @@ public struct TvPlayback: Sendable, Equatable {
     /// How long ago the server received the report; nil when the TV has not reported since the server started.
     public var ageMs: Int64?
     public var online: Bool
+    public var volume: Int?
 
-    public init(state: String, videoId: String? = nil, originId: String? = nil, positionMs: Int64? = nil, ageMs: Int64? = nil, online: Bool) {
-        self.state = state; self.videoId = videoId; self.originId = originId; self.positionMs = positionMs; self.ageMs = ageMs; self.online = online
+    public init(state: String, videoId: String? = nil, originId: String? = nil, positionMs: Int64? = nil, ageMs: Int64? = nil, online: Bool, volume: Int? = nil) {
+        self.state = state; self.videoId = videoId; self.originId = originId; self.positionMs = positionMs; self.ageMs = ageMs; self.online = online; self.volume = volume
     }
 }
 

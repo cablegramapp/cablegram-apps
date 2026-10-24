@@ -6,6 +6,7 @@ struct RemoteScreen: View {
     let viewModel: PhoneViewModel
     @State private var choosingTv = false
     @State private var volume = 0.5
+    @State private var dragging = false
 
     var body: some View {
         let tv = viewModel.tv!
@@ -51,16 +52,27 @@ struct RemoteScreen: View {
                         Button { tv.remoteStop() } label: { HStack { Image(systemName: "stop.fill"); Text(key: "ui_stop_playback_19b81a") } }.buttonStyle(OutlinedButtonStyle())
                     }
                     SectionCard(title: L("ui_set_tv_volume_43ad09")) {
-                        Slider(value: $volume, in: 0...1) { editing in if !editing { tv.remoteVolume(Int(volume * 100)) } }.tint(.phoneAccent)
+                        Slider(value: $volume, in: 0...1) { editing in dragging = editing; if !editing { tv.remoteVolume(Int(volume * 100)) } }.tint(.phoneAccent)
                         Text(L("ui_drag_to_set_the_volume_to_448bd2", "\(Int(volume * 100))")).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                     }
                     if let status = tv.remoteStatus { StatusNote(message: status).accessibilityIdentifier("remote_status") }
-                    Text(key: "ui_commands_use_your_household_connection_keep_the_tv_con_b044c4").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+                    Text(key: "ui_commands_use_your_household_connection_keep_the_tv_con_b044c4").font(.system(.caption)).foregroundStyle(Color.phoneMuted).padding(.bottom, 16)
                 }
             }
             .padding(20)
         }
         .phoneScreenBackground()
+        .onAppear {
+            volume = tv.tvVolume
+        }
+        .task { await tv.refreshTvVolume() }
+        .onChange(of: tv.tvName) { _, _ in
+            volume = tv.tvVolume
+        }
+        .onChange(of: tv.tvVolume) { _, newVol in
+            // A level the TV reports must not move the slider under the user's finger.
+            if !dragging { volume = newVol }
+        }
     }
 
     private func pad(_ tv: TvController) -> some View {

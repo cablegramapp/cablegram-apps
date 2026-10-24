@@ -9,6 +9,10 @@ final class TvController {
     private(set) var tvs: [PairedTv]
     private(set) var paired: Bool
     private(set) var tvName: String
+    private(set) var tvVolumes: [String: Double] = [:]
+    /// Keyed by device id (names can repeat); a legacy pairing without one falls back to the name.
+    private func volumeKey(_ deviceId: String?) -> String { deviceId ?? tvName }
+    var tvVolume: Double { tvVolumes[volumeKey(pairing.tvs.last?.deviceId)] ?? 0.5 }
     var addingTv = false
     /// The code the owner just entered or scanned, waiting for "Is this your TV?" (spec 004 US8).
     var pendingPair: (pin: String, name: String)?
@@ -381,8 +385,20 @@ final class TvController {
         Task { _ = await sendCommand("move", arguments: ["direction": direction]) }
     }
 
+    /// Reads the TV's reported volume once, when the Remote tab opens: the follow loop only runs while a title plays here.
+    func refreshTvVolume() async {
+        guard let deviceId = pairing.tvs.last?.deviceId, let token else { return }
+        guard let vol = await catalog().tvPlayback(token: token, deviceId: deviceId)?.volume, (0...100).contains(vol) else { return }
+        guard Int64(Date().timeIntervalSince(ownCommandAt) * 1000) >= ownCommandShieldMs else { return }
+        tvVolumes[deviceId] = Double(vol) / 100.0
+    }
+
     func remoteSelect() { Task { _ = await sendCommand("select") } }
-    func remoteVolume(_ level: Int) { Task { _ = await sendCommand("volume", arguments: ["level": min(max(level, 0), 100)]) } }
+    func remoteVolume(_ level: Int) {
+        let clamped = min(max(level, 0), 100)
+        tvVolumes[volumeKey(pairing.tvs.last?.deviceId)] = Double(clamped) / 100.0
+        Task { _ = await sendCommand("volume", arguments: ["level": clamped]) }
+    }
 
     /// Shifts the subtitle on the TV that is playing this title, relative to the timing it loaded (positive shows it later).
     func nudgeSubtitleOnTv(delayMs: Int64) {
@@ -485,6 +501,10 @@ final class TvController {
                 guard let deviceId = self.playingTvDeviceId ?? self.pairing.tvs.last?.deviceId, let token = self.token else { break }
                 guard let report = await self.catalog().tvPlayback(token: token, deviceId: deviceId) else { continue }
                 guard self.nowPlaying != nil else { break }
+                // Right after our own command the report can still carry the old level; same shield as followTv.
+                if let vol = report.volume, (0...100).contains(vol), Int64(Date().timeIntervalSince(self.ownCommandAt) * 1000) >= ownCommandShieldMs {
+                    self.tvVolumes[deviceId] = Double(vol) / 100.0
+                }
                 switch followTv(report, nowPlayingId: current.id, sinceOwnCommandMs: Int64(Date().timeIntervalSince(self.ownCommandAt) * 1000)) {
                 case .keep: break
                 case .stopped: self.nowPlaying = nil; self.paused = false
