@@ -65,6 +65,7 @@ struct RemoteScreen: View {
         .onAppear {
             volume = tv.tvVolume
         }
+        .task { await tv.refreshTvVolume() }
         .onChange(of: tv.tvName) { _, _ in
             volume = tv.tvVolume
         }

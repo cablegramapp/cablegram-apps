@@ -2812,6 +2812,19 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         return items[nextIndex]
     }
 
+    /**
+     * Reads the TV's reported volume once, when the Remote tab opens: the follow loop only runs while this phone is
+     * playing a title, so a restarted phone would otherwise show its default until then.
+     */
+    fun refreshTvVolume() {
+        val deviceId = tvs.lastOrNull()?.deviceId ?: return
+        val token = pairing.accountToken?.takeIf { it.isNotBlank() } ?: return
+        viewModelScope.launch {
+            val vol = catalog().tvPlayback(token, deviceId)?.volume ?: return@launch
+            if (vol in 0..100 && SystemClock.elapsedRealtime() - ownCommandAt >= OWN_COMMAND_SHIELD_MS) tvVolumes[volumeKey(deviceId, tvName)] = vol / 100f
+        }
+    }
+
     /** T078 / R-8: remote-tab actions (public wrappers around enqueue). */
     fun remoteVolume(level: Int) {
         val clamped = level.coerceIn(0, 100)

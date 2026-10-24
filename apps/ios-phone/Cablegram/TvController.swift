@@ -385,6 +385,14 @@ final class TvController {
         Task { _ = await sendCommand("move", arguments: ["direction": direction]) }
     }
 
+    /// Reads the TV's reported volume once, when the Remote tab opens: the follow loop only runs while a title plays here.
+    func refreshTvVolume() async {
+        guard let deviceId = pairing.tvs.last?.deviceId, let token else { return }
+        guard let vol = await catalog().tvPlayback(token: token, deviceId: deviceId)?.volume, (0...100).contains(vol) else { return }
+        guard Int64(Date().timeIntervalSince(ownCommandAt) * 1000) >= ownCommandShieldMs else { return }
+        tvVolumes[deviceId] = Double(vol) / 100.0
+    }
+
     func remoteSelect() { Task { _ = await sendCommand("select") } }
     func remoteVolume(_ level: Int) {
         let clamped = min(max(level, 0), 100)

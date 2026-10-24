@@ -23,6 +23,7 @@ fun RemoteScreen(viewModel: PhoneViewModel) {
     var choosingTv by remember { mutableStateOf(false) }
     var volume by remember(viewModel.tvName) { mutableFloatStateOf(viewModel.tvVolume) }
     var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel.tvName) { viewModel.refreshTvVolume() }
     // A level the TV reports must not move the slider under the user's finger.
     LaunchedEffect(viewModel.tvVolume, dragging) { if (!dragging) volume = viewModel.tvVolume }
     Column(
