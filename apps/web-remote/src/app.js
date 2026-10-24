@@ -913,7 +913,7 @@ function tvsView() {
       icon("tv"), h("span", { class: "grow" }, t.display_name || "TV"),
       h("button", { class: "small", "aria-label": `Rename ${t.display_name || "TV"}`, onclick: () => renameTv(t) }, "Rename")))) : null,
     h("h2", {}, state.tvs.length ? "Add a TV" : "Pair your TV"),
-    h("p", {}, "Open Cablegram on your TV. It shows a 6-digit code: enter it here."),
+    h("p", {}, "Open Cablegram TV on your TV. It shows a 6-digit code: enter it here."),
     pairForm(),
     h("div", { id: "telegram" }, telegramHelp()),
     h("h2", {}, "Account"),

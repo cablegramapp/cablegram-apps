@@ -67,7 +67,7 @@ object CastSession {
         // A TV without Cablegram open can't take a title: when it opens it shows "Who's watching?", and a title is never
         // kept for a profile chosen later. Say so now instead of waiting on it. Only from a fresh list, never the cache.
         if (titleStart && target.offline) {
-            return Result.Failed("${target.name} isn't on. Open Cablegram on it, choose who's watching, then try again.")
+            return Result.Failed("${target.name} isn't on. Open Cablegram TV on it, choose who's watching, then try again.")
         }
         return when (val sent = client.postCommand(token, command, videoId, target.deviceId, arguments)) {
             is CommandSend.Accepted -> {

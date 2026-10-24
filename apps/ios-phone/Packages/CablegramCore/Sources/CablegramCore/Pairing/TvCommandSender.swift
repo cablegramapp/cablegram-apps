@@ -35,7 +35,7 @@ public enum TvCommandSender {
         // A TV without Cablegram open can't take a title: when it opens it shows "Who's watching?", and a title is never kept for a
         // profile chosen later. Say so now instead of waiting on it. Only from a fresh list, never the cache.
         if titleStart && target.offline {
-            return .failed("\(target.name) isn't on. Open Cablegram on it, choose who's watching, then try again.")
+            return .failed("\(target.name) isn't on. Open Cablegram TV on it, choose who's watching, then try again.")
         }
         switch await client.postCommand(token: token, command: command, videoId: videoId, targetDeviceId: target.deviceId, arguments: arguments) {
         case .accepted(let id):
