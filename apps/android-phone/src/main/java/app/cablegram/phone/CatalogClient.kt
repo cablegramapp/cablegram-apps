@@ -1243,6 +1243,7 @@ class CatalogClient(
                     positionMs = (body["position_ms"] as? JsonPrimitive)?.longOrNull,
                     ageMs = (body["age_ms"] as? JsonPrimitive)?.longOrNull,
                     online = (body["online"] as? JsonPrimitive)?.booleanOrNull ?: true,
+                    volume = (body["volume"] as? JsonPrimitive)?.intOrNull,
                 )
             }
         }.getOrNull()
