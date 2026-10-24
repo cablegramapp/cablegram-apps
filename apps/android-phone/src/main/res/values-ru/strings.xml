@@ -186,7 +186,8 @@
     <string name="ui_code_340f46" formatted="false">"Код"</string>
     <string name="ui_collection_name_922214" formatted="false">"Название коллекции"</string>
     <string name="ui_collections_9f9fea" formatted="false">"Коллекции"</string>
-    <string name="ui_commands_use_your_household_connection_keep_the_tv_con_b044c4" formatted="false">"Команды используют ваше домашнее соединение. Держите телевизор подключенным к Интернету."</string>
+    <string name="ui_commands_go_through_your_server_keep_the_tv_connec_9e2c9b" formatted="false">"Команды проходят через ваш сервер. Держите телевизор подключенным к той же сети."</string>
+    <string name="ui_commands_use_your_household_connection_keep_the_tv_con_b044c4" formatted="false">"Команды используют ваше соединение. Держите телевизор подключенным к Интернету."</string>
     <string name="ui_confirm_your_email_above_to_use_free_relay_73d5f0" formatted="false">"Подтвердите адрес почты выше, чтобы пользоваться бесплатной ретрансляцией."</string>
     <string name="ui_connect_1a2303" formatted="false">"Подключить"</string>
     <string name="ui_connect_5fd5e3">"Подключить %1$s"</string>

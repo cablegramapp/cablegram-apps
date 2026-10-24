@@ -186,7 +186,8 @@
     <string name="ui_code_340f46" formatted="false">"Codice"</string>
     <string name="ui_collection_name_922214" formatted="false">"Nome della raccolta"</string>
     <string name="ui_collections_9f9fea" formatted="false">"Raccolte"</string>
-    <string name="ui_commands_use_your_household_connection_keep_the_tv_con_b044c4" formatted="false">"I comandi usano la tua connessione domestica. Tenere la TV collegata a internet."</string>
+    <string name="ui_commands_go_through_your_server_keep_the_tv_connec_9e2c9b" formatted="false">"I comandi passano attraverso il tuo server. Tieni la TV collegata alla stessa rete."</string>
+    <string name="ui_commands_use_your_household_connection_keep_the_tv_con_b044c4" formatted="false">"I comandi usano la tua connessione. Tenere la TV collegata a internet."</string>
     <string name="ui_confirm_your_email_above_to_use_free_relay_73d5f0" formatted="false">"Conferma l’email qui sopra per usare l’inoltro gratuito tramite server."</string>
     <string name="ui_connect_1a2303" formatted="false">"Connetti"</string>
     <string name="ui_connect_5fd5e3">"Collega %1$s"</string>
