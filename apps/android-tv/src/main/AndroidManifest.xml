@@ -21,6 +21,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.Cablegram"
         android:usesCleartextTraffic="true">
+        <!-- The app starts Sentry itself (Diagnostics) once there is a DSN and consent. The SDK's own start-up
+             provider throws without a DSN, which crashed every build that has none. -->
+        <meta-data android:name="io.sentry.auto-init" android:value="false" />
         <meta-data android:name="com.google.android.gms.cast.tv.RECEIVER_OPTIONS_PROVIDER_CLASS_NAME"
             android:value="app.cablegram.cast.CastReceiverOptions" />
         <activity
