@@ -21,7 +21,11 @@ import app.cablegram.phone.*
 fun RemoteScreen(viewModel: PhoneViewModel) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var choosingTv by remember { mutableStateOf(false) }
-    var volume by remember(viewModel.tvName) { mutableStateOf(0.5f) }
+    var volume by remember(viewModel.tvName) { mutableFloatStateOf(viewModel.tvVolume) }
+    var dragging by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel.tvName) { viewModel.refreshTvVolume() }
+    // A level the TV reports must not move the slider under the user's finger.
+    LaunchedEffect(viewModel.tvVolume, dragging) { if (!dragging) volume = viewModel.tvVolume }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
@@ -80,11 +84,12 @@ fun RemoteScreen(viewModel: PhoneViewModel) {
             OutlinedButton(onClick = viewModel::remoteStop, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Stop, null); Spacer(Modifier.width(8.dp)); Text(ui.getString(R.string.ui_stop_playback_19b81a)) }
         }
         SectionCard(ui.getString(R.string.ui_set_tv_volume_43ad09)) {
-            Slider(value = volume, onValueChange = { volume = it }, onValueChangeFinished = { viewModel.remoteVolume((volume * 100).toInt()) })
+            Slider(value = volume, onValueChange = { dragging = true; volume = it }, onValueChangeFinished = { dragging = false; viewModel.remoteVolume((volume * 100).toInt()) })
             Text(ui.getString(R.string.ui_drag_to_set_the_volume_to_448bd2, ((volume * 100).toInt()).toString()), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
         viewModel.remoteStatus?.let { StatusNote(it) }
         Text(ui.getString(R.string.ui_commands_use_your_household_connection_keep_the_tv_con_b044c4), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(16.dp))
     }
 }
 

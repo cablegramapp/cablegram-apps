@@ -151,7 +151,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
                 // A single measured stack reserves space instead of covering content.
                 if (viewModel.prepareStep != null) PrepareCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 TransferCard(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-                if (viewModel.legacyRemote && (viewModel.nowPlaying != null || viewModel.startingTitle != null) && viewModel.cloudSheet == CloudSheet.None) {
+                if (viewModel.legacyRemote && (viewModel.nowPlaying != null || viewModel.startingTitle != null) && viewModel.cloudSheet == CloudSheet.None && viewModel.tab != PhoneTab.Remote) {
                     RemoteBar(viewModel, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 }
                 LibraryNav(viewModel)

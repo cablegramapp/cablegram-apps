@@ -9,6 +9,7 @@ data class TvPlayback(
     /** How long ago the server received the report; null when the TV has not reported since the server started. */
     val ageMs: Long?,
     val online: Boolean,
+    val volume: Int? = null,
 )
 
 /** What the phone's remote should do after reading [TvPlayback]. */
