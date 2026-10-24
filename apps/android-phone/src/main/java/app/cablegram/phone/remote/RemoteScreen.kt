@@ -85,6 +85,7 @@ fun RemoteScreen(viewModel: PhoneViewModel) {
         }
         viewModel.remoteStatus?.let { StatusNote(it) }
         Text(ui.getString(R.string.ui_commands_use_your_household_connection_keep_the_tv_con_b044c4), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(16.dp))
     }
 }
 
