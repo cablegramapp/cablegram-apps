@@ -349,7 +349,7 @@ class CatalogClient(
     }
 
     suspend fun telegramClientCredentials(token: String) =
-        app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, BuildConfig.DEBUG)
+        app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, allowInsecureLocal = true)
 
     // ---- Telegram as cloud storage (spec 004, contracts/telegram-link.md) ----
 

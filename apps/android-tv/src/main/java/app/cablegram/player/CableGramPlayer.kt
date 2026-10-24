@@ -53,6 +53,8 @@ interface CableGramPlayer {
      * event: a burst of events must never lose the end of the hold and leave the spinner over a playing film.
      */
     val isSettling: StateFlow<Boolean>
+    /** Playing, but nearly every picture is dropped as too late, so the screen stays black while the sound plays. */
+    val isStruggling: StateFlow<Boolean>
     fun release()
     @Composable fun VideoSurface(modifier: Modifier, showController: Boolean)
 }

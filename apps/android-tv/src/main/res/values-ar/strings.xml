@@ -297,4 +297,6 @@
     <string name="ui_that_address_is_not_a_cablegram_server_0f26c7" formatted="false">"هذا العنوان ليس خادم Cablegram."</string>
     <string name="ui_server_1_s_dfe9cc" formatted="false">"الخادم: %1$s"</string>
     <string name="ui_return_to_cablegram_e2e1d7" formatted="false">"العودة إلى Cablegram"</string>
+    <string name="ui_this_tv_cannot_keep_up_with_this_video_96ad4c" formatted="false">"لا يستطيع هذا التلفاز مجاراة هذا الفيديو"</string>
+    <string name="ui_the_sound_plays_but_the_pictures_arrive_too_late_to_sh_a95878" formatted="false">"الصوت يعمل، لكن الصور تصل متأخرة جدًا فلا تُعرض. أغلق التطبيقات الأخرى على التلفاز، أو شغّل نسخة أخرى من هذا الفيديو."</string>
 </resources>

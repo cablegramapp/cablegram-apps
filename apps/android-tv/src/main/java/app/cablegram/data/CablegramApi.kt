@@ -81,7 +81,7 @@ class CablegramApi(
     }
 
     suspend fun telegramClientCredentials(token: String) =
-        app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, BuildConfig.DEBUG)
+        app.cablegram.telegram.fetchTelegramClientCredentials(client, baseUrl, token, allowInsecureLocal = true)
 
     suspend fun getLibraryAds(): LibraryAds = try {
         execute(Request.Builder().url(url("api/ads")).get().build())
