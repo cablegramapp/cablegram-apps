@@ -3,6 +3,7 @@ package app.cablegram.phone
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import app.cablegram.phone.diagnostics.PhoneDiagnostics
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class PhoneApplication : Application() {
@@ -11,7 +12,7 @@ class PhoneApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         PhoneLanguageOverride.init(this)
-        app.cablegram.phone.diagnostics.PhoneDiagnostics.init(this)
+        PhoneDiagnostics.init(this)
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             private var started = 0
 

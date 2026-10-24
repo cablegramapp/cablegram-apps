@@ -45,6 +45,8 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import app.cablegram.R
+import app.cablegram.diagnostics.DiagnosticsPreferences
+import app.cablegram.diagnostics.TvDiagnostics
 import app.cablegram.isSigningIn
 import app.cablegram.data.PRIVACY_POLICY_URL
 
@@ -138,36 +140,48 @@ internal fun AboutSettingsPanel(
                 Text(ui.getString(R.string.ui_open_privacy_policy_c90fcb))
             }
             Text(PRIVACY_POLICY_URL, color = Slate, fontSize = 12.sp)
-            var crashReporting by remember { mutableStateOf(app.cablegram.diagnostics.DiagnosticsPreferences.isCrashReportingEnabled(context)) }
-            var reportStatus by remember { mutableStateOf<String?>(null) }
-            var sendingReport by remember { mutableStateOf(false) }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(
-                    onClick = {
-                        val next = !crashReporting
-                        crashReporting = next
-                        app.cablegram.diagnostics.DiagnosticsPreferences.setCrashReportingEnabled(context, next)
-                    },
-                    colors = ButtonDefaults.colors(containerColor = PanelRaised),
-                ) {
-                    Text(if (crashReporting) "Crash reports: On" else "Crash reports: Off")
+            if (TvDiagnostics.isAvailable()) {
+                var crashReporting by remember { mutableStateOf(DiagnosticsPreferences.isCrashReportingEnabled(context)) }
+                var reportStatus by remember { mutableStateOf<String?>(null) }
+                var sendingReport by remember { mutableStateOf(false) }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = {
+                            val next = !crashReporting
+                            crashReporting = next
+                            DiagnosticsPreferences.setCrashReportingEnabled(context, next)
+                        },
+                        colors = ButtonDefaults.colors(containerColor = PanelRaised),
+                    ) {
+                        Text(if (crashReporting) stringResource(R.string.diagnostics_crash_reports_on) else stringResource(R.string.diagnostics_crash_reports_off))
+                    }
+                    Button(
+                        onClick = {
+                            sendingReport = true
+                            TvDiagnostics.sendProblemReport(
+                                context = context,
+                                description = "User initiated report from TV",
+                                tvLanIp = tvLanIp,
+                                telegramStatus = telegramStatus.javaClass.simpleName,
+                                serverUrl = serverUrl,
+                            ) { success ->
+                                sendingReport = false
+                                reportStatus = if (success) {
+                                    ui.getString(R.string.diagnostics_report_sent)
+                                } else {
+                                    ui.getString(R.string.diagnostics_report_failed)
+                                }
+                            }
+                        },
+                        enabled = !sendingReport,
+                        colors = ButtonDefaults.colors(containerColor = PanelRaised),
+                    ) {
+                        Text(if (sendingReport) stringResource(R.string.diagnostics_sending) else stringResource(R.string.diagnostics_report_problem_button))
+                    }
                 }
-                Button(
-                    onClick = {
-                        sendingReport = true
-                        app.cablegram.diagnostics.TvDiagnostics.sendProblemReport(context) {
-                            sendingReport = false
-                            reportStatus = "Diagnostic report recorded. Thank you!"
-                        }
-                    },
-                    enabled = !sendingReport,
-                    colors = ButtonDefaults.colors(containerColor = PanelRaised),
-                ) {
-                    Text(if (sendingReport) "Sending…" else "Report a problem")
+                reportStatus?.let {
+                    Text(it, color = Cyan, fontSize = 12.sp)
                 }
-            }
-            reportStatus?.let {
-                Text(it, color = Cyan, fontSize = 12.sp)
             }
             var showLegal by remember { mutableStateOf(false) }
             Button(

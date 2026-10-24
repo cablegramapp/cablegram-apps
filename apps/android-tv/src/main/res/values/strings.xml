@@ -3,4 +3,12 @@
     <string name="app_tagline">Your own videos, streamed from your phone to your TV</string>
     <string name="legal_disclaimer">Cablegram plays videos you own or are allowed to watch. It provides no media of its own. Videos from your phone or your Telegram channel are never stored on its servers; only a web video you choose to save to Cablegram storage is, until you delete your account.</string>
     <string name="privacy_policy_url" translatable="false">https://cablegram.app/privacy.html</string>
+
+    <!-- Diagnostics & Crash Reporting -->
+    <string name="diagnostics_crash_reports_on">Crash reports: On</string>
+    <string name="diagnostics_crash_reports_off">Crash reports: Off</string>
+    <string name="diagnostics_report_problem_button">Report a problem</string>
+    <string name="diagnostics_sending">Sending…</string>
+    <string name="diagnostics_report_sent">Diagnostic report recorded. Thank you!</string>
+    <string name="diagnostics_report_failed">Could not send diagnostic report.</string>
 </resources>

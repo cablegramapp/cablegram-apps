@@ -1,5 +1,9 @@
 package app.cablegram.diagnostics
 
+import io.sentry.Breadcrumb
+import io.sentry.SentryEvent
+import io.sentry.protocol.Message
+import io.sentry.protocol.SentryException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -8,31 +12,133 @@ import org.junit.Test
 class SentryScrubberTest {
 
     @Test
-    fun `scrubUrl redacts sensitive query parameters like token, password, and code`() {
-        val url = "https://api.cablegram.app/auth/callback?token=supersecret&code=123456&session=safeSession"
+    fun `scrubUrl redacts sensitive parameters but preserves harmless ones like monkey and zipcode`() {
+        val url = "https://api.cablegram.app/auth/callback?token=supersecret&code=123456&monkey=banana&zipcode=90210&api_key=mykey"
         val scrubbed = SentryScrubber.scrubUrl(url)
 
         assertTrue(scrubbed.contains("token=REDACTED"))
         assertTrue(scrubbed.contains("code=REDACTED"))
-        assertTrue(scrubbed.contains("session=safeSession"))
+        assertTrue(scrubbed.contains("api_key=REDACTED"))
+        assertTrue(scrubbed.contains("monkey=banana"))
+        assertTrue(scrubbed.contains("zipcode=90210"))
         assertFalse(scrubbed.contains("supersecret"))
-        assertFalse(scrubbed.contains("123456"))
+        assertFalse(scrubbed.contains("mykey"))
     }
 
     @Test
-    fun `scrubUrl redacts tg login links`() {
+    fun `scrubUrl redacts embedded userinfo`() {
+        val url = "https://admin:superSecretPassword@relay.cablegram.app/stream"
+        val scrubbed = SentryScrubber.scrubUrl(url)
+
+        assertFalse(scrubbed.contains("admin:superSecretPassword"))
+        assertTrue(scrubbed.contains("[REDACTED]@relay.cablegram.app/stream"))
+    }
+
+    @Test
+    fun `scrubUrl redacts tg deep links anywhere in message`() {
         val tgLink = "tg://login?token=AQAA_some_very_secret_token_value"
-        val scrubbed = SentryScrubber.scrubUrl(tgLink)
-        assertEquals("tg://login?token=REDACTED", scrubbed)
+        assertEquals("tg://[REDACTED]", SentryScrubber.scrubUrl(tgLink))
+
+        val midMessage = "User paired via tg://login?token=abc123secret on TV"
+        val scrubbed = SentryScrubber.scrubMessage(midMessage)
+        assertFalse(scrubbed.contains("abc123secret"))
+        assertTrue(scrubbed.contains("tg://[REDACTED]"))
     }
 
     @Test
-    fun `scrubMessage removes media filenames and personal paths`() {
-        val msg = "VLC Error loading /storage/emulated/0/Movies/Shogun.S01E01.1080p.mkv"
-        val scrubbed = SentryScrubber.scrubMessage(msg)
+    fun `scrubMessage removes media filenames with spaces and various formats`() {
+        val msgWithSpaces = "Failed to play My Holiday 2024.mp4 due to decoder error"
+        val scrubbedSpaces = SentryScrubber.scrubMessage(msgWithSpaces)
+        assertFalse(scrubbedSpaces.contains("My Holiday 2024"))
+        assertFalse(scrubbedSpaces.contains("My Holiday [MEDIA_FILE_REDACTED]"))
+        assertTrue(scrubbedSpaces.contains("[MEDIA_FILE_REDACTED]"))
 
-        assertFalse(scrubbed.contains("Shogun.S01E01.1080p.mkv"))
+        val audioMsg = "Playing audio track soundtrack.flac and commentary.m4a"
+        val scrubbedAudio = SentryScrubber.scrubMessage(audioMsg)
+        assertFalse(scrubbedAudio.contains("soundtrack.flac"))
+        assertFalse(scrubbedAudio.contains("commentary.m4a"))
+
+        val subMsg = "Subtitles loaded from custom_subs.ass and movie.sub"
+        val scrubbedSubs = SentryScrubber.scrubMessage(subMsg)
+        assertFalse(scrubbedSubs.contains("custom_subs.ass"))
+        assertFalse(scrubbedSubs.contains("movie.sub"))
+    }
+
+    @Test
+    fun `scrubMessage preserves typescript code references without treating index dot ts as media`() {
+        val codeMsg = "Crash occurred at index.ts:42 in render()"
+        val scrubbed = SentryScrubber.scrubMessage(codeMsg)
+        assertTrue(scrubbed.contains("index.ts:42"))
+    }
+
+    @Test
+    fun `scrubMessage removes storage paths with spaces`() {
+        val pathMsg = "File error: /storage/emulated/0/Movies/Shogun S01E01 1080p.mkv could not be opened"
+        val scrubbed = SentryScrubber.scrubMessage(pathMsg)
         assertFalse(scrubbed.contains("/storage/emulated/0/Movies/"))
+        assertFalse(scrubbed.contains("Shogun S01E01 1080p.mkv"))
         assertTrue(scrubbed.contains("[PATH_REDACTED]"))
+    }
+
+    @Test
+    fun `scrubMessage redacts free text secrets and bearer tokens`() {
+        val secretMsg = "Connection failed; password: superSecretPassword123, token=xyz789"
+        val scrubbedSecret = SentryScrubber.scrubMessage(secretMsg)
+        assertFalse(scrubbedSecret.contains("superSecretPassword123"))
+        assertFalse(scrubbedSecret.contains("xyz789"))
+        assertTrue(scrubbedSecret.contains("password: [REDACTED]"))
+        assertTrue(scrubbedSecret.contains("token: [REDACTED]"))
+
+        val authHeaderMsg = "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        val scrubbedAuth = SentryScrubber.scrubMessage(authHeaderMsg)
+        assertFalse(scrubbedAuth.contains("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"))
+        assertTrue(scrubbedAuth.contains("Authorization: [REDACTED]"))
+
+        val bearerMsg = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        val scrubbedBearer = SentryScrubber.scrubMessage(bearerMsg)
+        assertFalse(scrubbedBearer.contains("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"))
+        assertTrue(scrubbedBearer.contains("Bearer [REDACTED]"))
+    }
+
+    @Test
+    fun `scrubMessage does not mangle arbitrary prose`() {
+        val prose = "User reported: The TV was on standby and nothing appeared. Please help?"
+        val scrubbed = SentryScrubber.scrubMessage(prose)
+        assertEquals(prose, scrubbed)
+    }
+
+    @Test
+    fun `scrubEvent on TvDiagnostics sanitizes event message, exceptions, and breadcrumbs`() {
+        val event = SentryEvent().apply {
+            message = Message().apply {
+                formatted = "Crash while playing My Video.mp4 at /storage/emulated/0/Movies/My Video.mp4"
+            }
+            exceptions = listOf(
+                SentryException().apply {
+                    value = "Decoder error for /sdcard/Movies/Holiday.mkv with token=secret123"
+                }
+            )
+            breadcrumbs = listOf(
+                Breadcrumb().apply {
+                    message = "User opened /storage/emulated/0/DCIM/Family.mp4"
+                    setData("file_path", "/sdcard/Downloads/Personal.mp4")
+                    setData("status_code", 200)
+                }
+            )
+        }
+
+        val scrubbed = TvDiagnostics.scrubEvent(event)
+        val msg = scrubbed.message?.formatted.orEmpty()
+        assertFalse(msg.contains("My Video.mp4"))
+        assertFalse(msg.contains("/storage/emulated/0/"))
+
+        val exValue = scrubbed.exceptions?.firstOrNull()?.value.orEmpty()
+        assertFalse(exValue.contains("Holiday.mkv"))
+        assertFalse(exValue.contains("secret123"))
+
+        val crumb = scrubbed.breadcrumbs?.firstOrNull()
+        assertFalse(crumb?.message.orEmpty().contains("Family.mp4"))
+        assertFalse((crumb?.getData("file_path") as? String).orEmpty().contains("Personal.mp4"))
+        assertEquals(200, crumb?.getData("status_code"))
     }
 }

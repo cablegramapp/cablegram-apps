@@ -123,6 +123,7 @@ dependencies {
     implementation("dev.g000sha256:tdl-coroutines-android:15.0.0")
     // Localhost Range server that feeds Telegram files to LibVLC (spec 004 FR-007).
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+    implementation("io.sentry:sentry-android:8.16.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
