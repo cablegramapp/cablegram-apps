@@ -292,7 +292,7 @@
     <string name="ui_details_45989d" formatted="false">"Details"</string>
     <string name="ui_details_changed_on_another_device_your_edits_are_kept__e208b8" formatted="false">"Details auf einem anderen Gerät geändert. Ihre Bearbeitungen werden auf diesem Telefon gespeichert. Überprüfen Sie sie und speichern Sie erneut Ihre Version zu verwenden."</string>
     <string name="ui_details_saved_on_this_phone_waiting_to_sync_fd7196" formatted="false">"Details gespeichert auf diesem Telefon · Warten auf Synchronisieren"</string>
-    <string name="ui_didn_t_answer_open_cablegram_on_the_tv_and_check_setti_5aa87a">"%1$s hat nicht geantwortet. Öffne Cablegram auf dem Fernseher und prüfe unter Einstellungen → Telegram, ob er angemeldet ist, "</string>
+    <string name="ui_didn_t_answer_open_cablegram_on_the_tv_and_check_setti_5aa87a">"%1$s hat nicht geantwortet. Öffne Cablegram TV auf dem Fernseher und prüfe unter Einstellungen → Telegram, ob er angemeldet ist, "</string>
     <string name="ui_didn_t_confirm_check_the_tv_e508b0">"%1$s haben nicht bestätigt. Sehen Sie sich den Fernseher an."</string>
     <string name="ui_discard_changes_85bcf4" formatted="false">"Änderungen verwerfen?"</string>
     <string name="ui_discard_eb1a70" formatted="false">"Verwerfen"</string>
@@ -400,14 +400,14 @@
     <string name="ui_in_your_household_library_file_not_on_this_phone_698618" formatted="false">"In Ihrer privaten Bibliothek · Datei nicht auf diesem Handy"</string>
     <string name="ui_in_your_own_storage_e2575f" formatted="false">"In Ihrem eigenen Lager"</string>
     <string name="ui_include_forced_subtitles_5c1992" formatted="false">"Erzwungene Untertitel einschließen"</string>
-    <string name="ui_install_cablegram_on_your_android_tv_or_google_tv_and__d27b55" formatted="false">"Installieren Sie Cablegram auf Ihrem Android TV oder Google TV und öffnen Sie es. Geben Sie dann den sechsstelligen Code ein, den er zeigt."</string>
+    <string name="ui_install_cablegram_on_your_android_tv_or_google_tv_and__d27b55" formatted="false">"Installieren Sie Cablegram TV auf Ihrem Android TV oder Google TV und öffnen Sie es. Geben Sie dann den sechsstelligen Code ein, den er zeigt."</string>
     <string name="ui_is_already_in_your_library_5f2bdf">"%1$s ist bereits in Ihrer Bibliothek"</string>
     <string name="ui_is_already_on_this_phone_417a80">"%1$s ist bereits auf diesem Telefon."</string>
     <string name="ui_is_signing_in_to_your_telegram_type_your_two_step_veri_999fde">"%1$s meldet sich bei deinem Telegram an. Gib dein Passwort für die zweistufige Bestätigung ein. Es wird nur für diesen Fernseher verschlüsselt; Cablegram kann es nicht lesen."</string>
     <string name="ui_is_still_paired_0d5a10">"%1$s ist noch gepaart"</string>
     <string name="ui_is_this_your_tv_525588" formatted="false">"Ist das dein Fernseher?"</string>
     <string name="ui_isn_t_on_so_on_5fb016">"%1$s ist ausgeschaltet. Daher %2$s auf %3$s…"</string>
-    <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"%1$s reagiert nicht. Öffnen Sie Cablegram auf ihm, wählen Sie, wer zuschaut, dann versuchen Sie es wieder."</string>
+    <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"%1$s reagiert nicht. Öffnen Sie Cablegram TV auf ihm, wählen Sie, wer zuschaut, dann versuchen Sie es wieder."</string>
     <string name="ui_it_only_reaches_the_files_cablegram_creates_never_the__2a9187" formatted="false">"Der Zugriff ist auf Dateien beschränkt, die Cablegram erstellt. Andere Dateien in Drive bleiben unzugänglich."</string>
     <string name="ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008" formatted="false">"Es ersetzt Ihren gespeicherten Untertitel für diese Kopie. Sie können es von Videodetails entfernen. "</string>
     <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"Dieser Fernseher bleibt gekoppelt und kann Ihre Telegram-Bibliothek nutzen, wenn Sie eine verbinden."</string>
@@ -531,7 +531,7 @@
     <string name="ui_only_the_subtitle_you_choose_its_language_provider_ref_abd48f" formatted="false">"Nur der gewählte Untertitel samt Sprache, Anbieterreferenz und Timing wird für die gekoppelten Fernseher deines Haushalts gespeichert. Entferne ihn über die Untertitelsteuerung des Videos; beim Löschen seiner Quelle oder deines Kontos wird er ebenfalls gelöscht. Das Entfernen eines Dienstkontos hier stoppt die Suche, behält aber bereits gewählte Untertitel."</string>
     <string name="ui_only_the_subtitle_you_pick_is_saved_for_your_tvs_ab5d20" formatted="false">"Nur der ausgewählte Untertitel wird für deine Fernseher gespeichert."</string>
     <string name="ui_open_a_title_and_tap_find_subtitles_cablegram_finds_su_892bc5" formatted="false">"Öffnen Sie einen Titel und tippen Sie auf Untertitel finden. Cablegram findet Untertitel, die mit Ihrer Datei übereinstimmen und diejenige senden, die Sie für Ihren TV wählen."</string>
-    <string name="pairing_setup_steps" formatted="false">"1. Installieren Sie die Cablegram-TV-App auf Ihrem Android TV oder Google TV.\n\n2. Öffnen Sie Cablegram auf dem TV, um den QR-Code und die sechsstellige PIN zu sehen.\n\n3. Scannen Sie den QR-Code mit diesem Smartphone oder geben Sie die PIN unten ein."</string>
+    <string name="pairing_setup_steps" formatted="false">"1. Installieren Sie Cablegram TV auf Ihrem Android TV oder Google TV.\n\n2. Öffnen Sie Cablegram TV auf dem TV, um den QR-Code und die sechsstellige PIN zu sehen.\n\n3. Scannen Sie den QR-Code mit diesem Smartphone oder geben Sie die PIN unten ein."</string>
     <string name="pairing_get_tv_app" formatted="false">"TV-App herunterladen"</string>
     <string name="ui_open_cloudflare_sign_up_53c22b" formatted="false">"Cloudflare Anmeldung öffnen"</string>
     <string name="ui_open_google_f8b2a8" formatted="false">"Google öffnen"</string>
@@ -947,7 +947,7 @@
     <string name="ui_videos_added_3d5b7a" formatted="false">"Videos hinzugefügt"</string>
     <string name="ui_videos_added_cbf82e">"%1$s Videos hinzugefügt"</string>
     <string name="ui_view_title_c9916d" formatted="false">"Titel ansehen"</string>
-    <string name="ui_waiting_for_your_tv_to_approve_keep_cablegram_open_on__785c22" formatted="false">"Warte auf die Bestätigung deines Fernsehers… Lass Cablegram auf dem Fernseher geöffnet."</string>
+    <string name="ui_waiting_for_your_tv_to_approve_keep_cablegram_open_on__785c22" formatted="false">"Warte auf die Bestätigung deines Fernsehers… Lass Cablegram TV auf dem Fernseher geöffnet."</string>
     <string name="ui_want_to_hear_it_8c3862" formatted="false">"Willst du es hören? "</string>
     <string name="ui_wants_to_open_5ee092">"%1$s will %2$s öffnen"</string>
     <string name="ui_wants_to_open_a_profile_56a29f">"%1$s will ein Profil öffnen"</string>

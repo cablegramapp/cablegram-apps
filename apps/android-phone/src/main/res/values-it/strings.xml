@@ -292,7 +292,7 @@
     <string name="ui_details_45989d" formatted="false">"Dettagli"</string>
     <string name="ui_details_changed_on_another_device_your_edits_are_kept__e208b8" formatted="false">"Dettagli cambiati su un altro dispositivo. Le tue modifiche sono conservate su questo telefono. Rivedere e salvare di nuovo per utilizzare la tua versione."</string>
     <string name="ui_details_saved_on_this_phone_waiting_to_sync_fd7196" formatted="false">"Dettagli salvati su questo telefono · In attesa di sincronizzare"</string>
-    <string name="ui_didn_t_answer_open_cablegram_on_the_tv_and_check_setti_5aa87a">"%1$s non ha risposto. Apri Cablegram sulla TV e verifica in Impostazioni → Telegram che l’accesso sia attivo, "</string>
+    <string name="ui_didn_t_answer_open_cablegram_on_the_tv_and_check_setti_5aa87a">"%1$s non ha risposto. Apri Cablegram TV sulla TV e verifica in Impostazioni → Telegram che l’accesso sia attivo, "</string>
     <string name="ui_didn_t_confirm_check_the_tv_e508b0">"%1$s non ha confermato. Controlla la TV."</string>
     <string name="ui_discard_changes_85bcf4" formatted="false">"Scartare le modifiche?"</string>
     <string name="ui_discard_eb1a70" formatted="false">"Scarta"</string>
@@ -400,14 +400,14 @@
     <string name="ui_in_your_household_library_file_not_on_this_phone_698618" formatted="false">"Nella tua biblioteca domestica · File non su questo telefono"</string>
     <string name="ui_in_your_own_storage_e2575f" formatted="false">"Nel tuo storage"</string>
     <string name="ui_include_forced_subtitles_5c1992" formatted="false">"Includi sottotitoli forzati"</string>
-    <string name="ui_install_cablegram_on_your_android_tv_or_google_tv_and__d27b55" formatted="false">"Installa Cablegram sul tuo Android TV o Google TV e aprilo. Quindi inserire il codice a sei cifre che mostra."</string>
+    <string name="ui_install_cablegram_on_your_android_tv_or_google_tv_and__d27b55" formatted="false">"Installa Cablegram TV sul tuo Android TV o Google TV e aprilo. Quindi inserire il codice a sei cifre che mostra."</string>
     <string name="ui_is_already_in_your_library_5f2bdf">"%1$s è già nella tua libreria"</string>
     <string name="ui_is_already_on_this_phone_417a80">"%1$s è già su questo telefono."</string>
     <string name="ui_is_signing_in_to_your_telegram_type_your_two_step_veri_999fde">"%1$s sta accedendo al tuo Telegram. Inserisci la password della verifica in due passaggi. È crittografata solo per quella TV; Cablegram non può leggerla."</string>
     <string name="ui_is_still_paired_0d5a10">"%1$s è ancora accoppiato"</string>
     <string name="ui_is_this_your_tv_525588" formatted="false">"E\' la tua TV?"</string>
     <string name="ui_isn_t_on_so_on_5fb016">"%1$s è spento, quindi %2$s su %3$s…"</string>
-    <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"%1$s non risponde. Aprire Cablegram su di esso, scegliere chi sta guardando, poi riprovare."</string>
+    <string name="ui_isn_t_responding_open_cablegram_on_it_choose_who_s_wat_f5df22">"%1$s non risponde. Aprire Cablegram TV su di esso, scegliere chi sta guardando, poi riprovare."</string>
     <string name="ui_it_only_reaches_the_files_cablegram_creates_never_the__2a9187" formatted="false">"Accede solo ai file creati da Cablegram, non agli altri file di Drive."</string>
     <string name="ui_it_replaces_your_saved_subtitle_for_this_copy_you_can__428008" formatted="false">"Sostituisce il sottotitolo salvato per questa copia. È possibile rimuoverlo dai dettagli video. "</string>
     <string name="ui_it_signs_in_to_your_telegram_library_and_stays_paired_7153cf" formatted="false">"Rimane associata e può usare la tua libreria Telegram, se ne colleghi una."</string>
@@ -531,7 +531,7 @@
     <string name="ui_only_the_subtitle_you_choose_its_language_provider_ref_abd48f" formatted="false">"Per le TV associate vengono salvati nel gruppo familiare solo il sottotitolo scelto, la lingua, il riferimento del servizio e la sincronizzazione. Puoi rimuoverlo dai controlli dei sottotitoli del video; viene eliminato anche cancellando la sorgente o il tuo account. Rimuovere un account del servizio interrompe le ricerche ma conserva i sottotitoli già scelti."</string>
     <string name="ui_only_the_subtitle_you_pick_is_saved_for_your_tvs_ab5d20" formatted="false">"Per le TV viene salvato solo il sottotitolo scelto."</string>
     <string name="ui_open_a_title_and_tap_find_subtitles_cablegram_finds_su_892bc5" formatted="false">"Aprire un titolo e toccare Trova sottotitoli. Cablegram trova sottotitoli che corrispondono al tuo file e invia quello che scegli alla tua TV."</string>
-    <string name="pairing_setup_steps" formatted="false">"1. Installa l’app Cablegram per TV sul tuo Android TV o Google TV.\n\n2. Apri Cablegram sulla TV per vedere il codice QR e il PIN a sei cifre.\n\n3. Scansiona il codice QR con questo telefono o inserisci il PIN qui sotto."</string>
+    <string name="pairing_setup_steps" formatted="false">"1. Installa Cablegram TV sul tuo Android TV o Google TV.\n\n2. Apri Cablegram TV sulla TV per vedere il codice QR e il PIN a sei cifre.\n\n3. Scansiona il codice QR con questo telefono o inserisci il PIN qui sotto."</string>
     <string name="pairing_get_tv_app" formatted="false">"Scarica l’app per TV"</string>
     <string name="ui_open_cloudflare_sign_up_53c22b" formatted="false">"Aprire Cloudflare signup"</string>
     <string name="ui_open_google_f8b2a8" formatted="false">"Apri Google"</string>
@@ -947,7 +947,7 @@
     <string name="ui_videos_added_3d5b7a" formatted="false">"Video aggiunti"</string>
     <string name="ui_videos_added_cbf82e">"%1$s video aggiunti"</string>
     <string name="ui_view_title_c9916d" formatted="false">"Mostra titolo"</string>
-    <string name="ui_waiting_for_your_tv_to_approve_keep_cablegram_open_on__785c22" formatted="false">"In attesa dell’autorizzazione della TV… Tieni Cablegram aperto sulla TV."</string>
+    <string name="ui_waiting_for_your_tv_to_approve_keep_cablegram_open_on__785c22" formatted="false">"In attesa dell’autorizzazione della TV… Tieni Cablegram TV aperto sulla TV."</string>
     <string name="ui_want_to_hear_it_8c3862" formatted="false">"Vuoi sentirlo? "</string>
     <string name="ui_wants_to_open_5ee092">"%1$s vuole aprire %2$s"</string>
     <string name="ui_wants_to_open_a_profile_56a29f">"%1$s vuole aprire un profilo"</string>

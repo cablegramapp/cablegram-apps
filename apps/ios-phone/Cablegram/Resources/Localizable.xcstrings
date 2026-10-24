@@ -1715,43 +1715,43 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "١. ثبّت تطبيق Cablegram للتلفزيون على جهاز Android TV أو Google TV.\n\n٢. افتح Cablegram على التلفزيون لعرض رمز QR ورمز PIN المكوّن من ستة أرقام.\n\n٣. امسح رمز QR بهذا الهاتف أو أدخل رمز PIN أدناه."
+            "value": "١. ثبّت Cablegram TV على جهاز Android TV أو Google TV.\n\n٢. افتح Cablegram TV على التلفزيون لعرض رمز QR ورمز PIN المكوّن من ستة أرقام.\n\n٣. امسح رمز QR بهذا الهاتف أو أدخل رمز PIN أدناه."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "1. Installieren Sie die Cablegram-TV-App auf Ihrem Android TV oder Google TV.\n\n2. Öffnen Sie Cablegram auf dem TV, um den QR-Code und die sechsstellige PIN zu sehen.\n\n3. Scannen Sie den QR-Code mit diesem Smartphone oder geben Sie die PIN unten ein."
+            "value": "1. Installieren Sie Cablegram TV auf Ihrem Android TV oder Google TV.\n\n2. Öffnen Sie Cablegram TV auf dem TV, um den QR-Code und die sechsstellige PIN zu sehen.\n\n3. Scannen Sie den QR-Code mit diesem Smartphone oder geben Sie die PIN unten ein."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "1. Install the Cablegram TV app on your Android TV or Google TV.\n\n2. Open Cablegram on your TV to see its QR code and six-digit PIN.\n\n3. Scan the QR code with this phone, or enter the PIN below."
+            "value": "1. Install Cablegram TV on your Android TV or Google TV.\n\n2. Open Cablegram TV to see its QR code and six-digit PIN.\n\n3. Scan the QR code with this phone, or enter the PIN below."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "1. Instala la aplicación de Cablegram para TV en tu Android TV o Google TV.\n\n2. Abre Cablegram en el televisor para ver el código QR y el PIN de seis dígitos.\n\n3. Escanea el código QR con este teléfono o introduce el PIN abajo."
+            "value": "1. Instala Cablegram TV en tu Android TV o Google TV.\n\n2. Abre Cablegram TV en el televisor para ver el código QR y el PIN de seis dígitos.\n\n3. Escanea el código QR con este teléfono o introduce el PIN abajo."
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "۱. برنامهٔ تلویزیون Cablegram را روی Android TV یا Google TV خود نصب کنید.\n\n۲. Cablegram را روی تلویزیون باز کنید تا کد QR و پین شش‌رقمی را ببینید.\n\n۳. کد QR را با این گوشی اسکن کنید یا پین را در پایین وارد کنید."
+            "value": "۱. Cablegram TV را روی Android TV یا Google TV خود نصب کنید.\n\n۲. Cablegram TV را روی تلویزیون باز کنید تا کد QR و پین شش‌رقمی را ببینید.\n\n۳. کد QR را با این گوشی اسکن کنید یا پین را در پایین وارد کنید."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "1. Installa l’app Cablegram per TV sul tuo Android TV o Google TV.\n\n2. Apri Cablegram sulla TV per vedere il codice QR e il PIN a sei cifre.\n\n3. Scansiona il codice QR con questo telefono o inserisci il PIN qui sotto."
+            "value": "1. Installa Cablegram TV sul tuo Android TV o Google TV.\n\n2. Apri Cablegram TV sulla TV per vedere il codice QR e il PIN a sei cifre.\n\n3. Scansiona il codice QR con questo telefono o inserisci il PIN qui sotto."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "1. Установите приложение Cablegram для ТВ на Android TV или Google TV.\n\n2. Откройте Cablegram на телевизоре, чтобы увидеть QR-код и шестизначный PIN-код.\n\n3. Отсканируйте QR-код этим телефоном или введите PIN-код ниже."
+            "value": "1. Установите Cablegram TV на Android TV или Google TV.\n\n2. Откройте Cablegram TV на телевизоре, чтобы увидеть QR-код и шестизначный PIN-код.\n\n3. Отсканируйте QR-код этим телефоном или введите PIN-код ниже."
           }
         }
       }
@@ -15580,43 +15580,43 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لم يستجب %1$@. افتح Cablegram على التلفزيون وتحقّق من تسجيل الدخول في «الإعدادات ← Telegram»، "
+            "value": "لم يستجب %1$@. افتح Cablegram TV على التلفزيون وتحقّق من تسجيل الدخول في «الإعدادات ← Telegram»، "
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ hat nicht geantwortet. Öffne Cablegram auf dem Fernseher und prüfe unter Einstellungen → Telegram, ob er angemeldet ist, "
+            "value": "%1$@ hat nicht geantwortet. Öffne Cablegram TV auf dem Fernseher und prüfe unter Einstellungen → Telegram, ob er angemeldet ist, "
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ didn't answer. Open Cablegram on the TV and check Settings → Telegram shows it signed in, "
+            "value": "%1$@ didn't answer. Open Cablegram TV and check Settings → Telegram shows it signed in, "
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ no respondió. Abre Cablegram en el televisor y comprueba en Ajustes → Telegram que la sesión está iniciada, "
+            "value": "%1$@ no respondió. Abre Cablegram TV en el televisor y comprueba en Ajustes → Telegram que la sesión está iniciada, "
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ پاسخ نداد. Cablegram را روی تلویزیون باز کنید و در «تنظیمات ← تلگرام» مطمئن شوید که وارد حساب شده است؛ "
+            "value": "%1$@ پاسخ نداد. Cablegram TV را روی تلویزیون باز کنید و در «تنظیمات ← تلگرام» مطمئن شوید که وارد حساب شده است؛ "
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ non ha risposto. Apri Cablegram sulla TV e verifica in Impostazioni → Telegram che l’accesso sia attivo, "
+            "value": "%1$@ non ha risposto. Apri Cablegram TV sulla TV e verifica in Impostazioni → Telegram che l’accesso sia attivo, "
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ не ответил. Откройте Cablegram на телевизоре и убедитесь в разделе Настройки → Telegram, что вход выполнен, "
+            "value": "%1$@ не ответил. Откройте Cablegram TV на телевизоре и убедитесь в разделе Настройки → Telegram, что вход выполнен, "
           }
         }
       }
@@ -20823,43 +20823,43 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ثبّت Cablegram على جهاز Android TV أو Google TV وافتحه، ثم أدخل الرمز المكوّن من ستة أرقام الظاهر عليه."
+            "value": "ثبّت Cablegram TV على جهاز Android TV أو Google TV وافتحه، ثم أدخل الرمز المكوّن من ستة أرقام الظاهر عليه."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installieren Sie Cablegram auf Ihrem Android TV oder Google TV und öffnen Sie es. Geben Sie dann den sechsstelligen Code ein, den er zeigt."
+            "value": "Installieren Sie Cablegram TV auf Ihrem Android TV oder Google TV und öffnen Sie es. Geben Sie dann den sechsstelligen Code ein, den er zeigt."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Install Cablegram on your Android TV or Google TV and open it. Then enter the six-digit code it shows."
+            "value": "Install Cablegram TV on your Android TV or Google TV and open it. Then enter the six-digit code it shows."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Instala Cablegram en tu TV Android o Google TV y ábrela. A continuación, introduzca el código de seis dígitos que muestra."
+            "value": "Instala Cablegram TV en tu TV Android o Google TV y ábrela. A continuación, introduzca el código de seis dígitos que muestra."
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cablegram را روی Android TV یا Google TV نصب و باز کنید. سپس کد شش‌رقمی نمایش‌داده‌شده را وارد کنید."
+            "value": "Cablegram TV را روی Android TV یا Google TV نصب و باز کنید. سپس کد شش‌رقمی نمایش‌داده‌شده را وارد کنید."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installa Cablegram sul tuo Android TV o Google TV e aprilo. Quindi inserire il codice a sei cifre che mostra."
+            "value": "Installa Cablegram TV sul tuo Android TV o Google TV e aprilo. Quindi inserire il codice a sei cifre che mostra."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Установите Cablegram на телевизор Android или Google TV и откройте его. Затем введите шестизначный код, который он показывает."
+            "value": "Установите Cablegram TV на телевизор Android или Google TV и откройте его. Затем введите шестизначный код, который он показывает."
           }
         }
       }
@@ -21152,43 +21152,43 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "لا يستجيب %1$@. افتح Cablegram عليه، واختر من يشاهد، ثم حاول مجددًا."
+            "value": "لا يستجيب %1$@. افتح Cablegram TV عليه، واختر من يشاهد، ثم حاول مجددًا."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ reagiert nicht. Öffnen Sie Cablegram auf ihm, wählen Sie, wer zuschaut, dann versuchen Sie es wieder."
+            "value": "%1$@ reagiert nicht. Öffnen Sie Cablegram TV auf ihm, wählen Sie, wer zuschaut, dann versuchen Sie es wieder."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ isn't responding. Open Cablegram on it, choose who's watching, then try again."
+            "value": "%1$@ isn't responding. Open Cablegram TV on it, choose who's watching, then try again."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ no responde. Abre Cablegram en él, elige quién está mirando, y luego vuelve a intentarlo."
+            "value": "%1$@ no responde. Abre Cablegram TV en él, elige quién está mirando, y luego vuelve a intentarlo."
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ پاسخ نمی‌دهد. Cablegram را روی آن باز کنید، پروفایل بیننده را انتخاب کنید و دوباره تلاش کنید."
+            "value": "%1$@ پاسخ نمی‌دهد. Cablegram TV را روی آن باز کنید، پروفایل بیننده را انتخاب کنید و دوباره تلاش کنید."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ non risponde. Aprire Cablegram su di esso, scegliere chi sta guardando, poi riprovare."
+            "value": "%1$@ non risponde. Aprire Cablegram TV su di esso, scegliere chi sta guardando, poi riprovare."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ не отвечает. Откройте Cablegram на нем, выберите, кто смотрит, а затем попробуйте снова."
+            "value": "%1$@ не отвечает. Откройте Cablegram TV на нем, выберите, кто смотрит, а затем попробуйте снова."
           }
         }
       }
@@ -46793,43 +46793,43 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "بانتظار موافقة التلفاز… أبقِ Cablegram مفتوحًا على التلفاز."
+            "value": "بانتظار موافقة التلفاز… أبقِ Cablegram TV مفتوحًا على التلفاز."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Warte auf die Bestätigung deines Fernsehers… Lass Cablegram auf dem Fernseher geöffnet."
+            "value": "Warte auf die Bestätigung deines Fernsehers… Lass Cablegram TV auf dem Fernseher geöffnet."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Waiting for your TV to approve… Keep Cablegram open on the TV."
+            "value": "Waiting for your TV to approve… Keep Cablegram TV open on the TV."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esperando la autorización de tu TV… Mantén Cablegram abierto en la TV."
+            "value": "Esperando la autorización de tu TV… Mantén Cablegram TV abierto en la TV."
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "در انتظار تأیید تلویزیون… Cablegram را روی تلویزیون باز نگه دارید."
+            "value": "در انتظار تأیید تلویزیون… Cablegram TV را روی تلویزیون باز نگه دارید."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "In attesa dell’autorizzazione della TV… Tieni Cablegram aperto sulla TV."
+            "value": "In attesa dell’autorizzazione della TV… Tieni Cablegram TV aperto sulla TV."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "В ожидании одобрения вашего телевизора... Держите Cablegram открытым на телевизоре."
+            "value": "В ожидании одобрения вашего телевизора… Держите Cablegram TV открытым на телевизоре."
           }
         }
       }
