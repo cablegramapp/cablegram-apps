@@ -55,7 +55,7 @@ struct RemoteScreen: View {
                         Text(L("ui_drag_to_set_the_volume_to_448bd2", "\(Int(volume * 100))")).font(.system(.caption)).foregroundStyle(Color.phoneMuted)
                     }
                     if let status = tv.remoteStatus { StatusNote(message: status).accessibilityIdentifier("remote_status") }
-                    Text(key: "ui_commands_use_your_household_connection_keep_the_tv_con_b044c4").font(.system(.caption)).foregroundStyle(Color.phoneMuted)
+                    Text(key: "ui_commands_use_your_household_connection_keep_the_tv_con_b044c4").font(.system(.caption)).foregroundStyle(Color.phoneMuted).padding(.bottom, 16)
                 }
             }
             .padding(20)
@@ -89,7 +89,7 @@ struct RemoteBar: View {
 
     var body: some View {
         let tv = viewModel.tv!
-        if viewModel.legacyRemote, viewModel.tab != .remote, let lines = miniPlayerLines(playing: tv.nowPlaying?.title, starting: tv.startingTitle, tvName: tv.tvName, status: tv.remoteStatus) {
+        if viewModel.legacyRemote, let lines = miniPlayerLines(playing: tv.nowPlaying?.title, starting: tv.startingTitle, tvName: tv.tvName, status: tv.remoteStatus) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: lines.title).font(PhoneFont.titleMedium).foregroundStyle(.white).lineLimit(1)

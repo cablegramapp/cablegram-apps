@@ -1531,7 +1531,6 @@ private fun StackedDialogButtons(content: @Composable androidx.compose.foundatio
 
 @Composable
 private fun RemoteBar(viewModel: PhoneViewModel, modifier: Modifier = Modifier) {
-    if (viewModel.tab == PhoneTab.Remote) return
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val lines = miniPlayerLines(viewModel.nowPlaying?.title, viewModel.startingTitle, viewModel.tvName, viewModel.remoteStatus) ?: return
     Row(
