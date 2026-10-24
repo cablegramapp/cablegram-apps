@@ -169,7 +169,7 @@ internal fun AboutSettingsPanel(
                                 is app.cablegram.TvTelegramStatus.Problem -> "Problem"
                                 is app.cablegram.TvTelegramStatus.ThroughPhone -> "ThroughPhone"
                             }
-                            val isCustom = serverUrl != null && serverUrl != app.cablegram.BuildConfig.API_BASE_URL
+                            val isCustom = serverUrl != null && !serverUrl.trimEnd('/').equals(app.cablegram.BuildConfig.API_BASE_URL.trimEnd('/'), ignoreCase = true)
                             val hasLanIp = !tvLanIp.isNullOrBlank()
 
                             TvDiagnostics.sendProblemReport(

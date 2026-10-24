@@ -1,5 +1,6 @@
 package app.cablegram.phone
 
+import app.cablegram.phone.diagnostics.SentryScrubber
 import android.os.SystemClock
 import app.cablegram.phone.cast.*
 import kotlinx.coroutines.CancellationException
@@ -249,6 +250,8 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         private set(value) {
             nowPlayingState = value
             publishCast()
+            // Diagnostics redact the playing title and file name wherever an error message repeats them.
+            value?.let { SentryScrubber.rememberName(it.title); SentryScrubber.rememberName(it.fileName) }
             if (value != null) followTvPlayback()
             // CAB-57: the "Playing … on TV" line belongs to the title; it goes when nothing plays any more.
             else if (status != null && status == nowPlayingStatus) status = null

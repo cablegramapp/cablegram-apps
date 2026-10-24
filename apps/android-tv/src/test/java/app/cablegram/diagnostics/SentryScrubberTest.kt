@@ -168,13 +168,53 @@ class SentryScrubberTest {
     }
 
     @Test
-    fun `sendProblemReport respects opt-out and does not leave Sentry enabled when crash reporting is disabled`() {
+    fun `scrubMessage redacts known playing titles even unquoted with spaces`() {
+        SentryScrubber.forgetNames()
+        SentryScrubber.rememberName("My Holiday 2024")
+        SentryScrubber.rememberName("My Holiday 2024.mp4")
+        try {
+            val scrubbed = SentryScrubber.scrubMessage("Error opening My Holiday 2024.mp4 (title: my holiday 2024)")
+            assertFalse(scrubbed.contains("Holiday", ignoreCase = true))
+            assertTrue(scrubbed.startsWith("Error opening "))
+        } finally {
+            SentryScrubber.forgetNames()
+        }
+    }
+
+    @Test
+    fun `scrubMessage redacts sensitive query pairs without a url scheme`() {
+        val scrubbed = SentryScrubber.scrubMessage("GET /stream?x=1&token=abc123 failed, retry /a?code=777&zipcode=90210")
+        assertFalse(scrubbed.contains("abc123"))
+        assertFalse(scrubbed.contains("777"))
+        assertTrue(scrubbed.contains("x=1"))
+        assertTrue(scrubbed.contains("zipcode=90210"))
+    }
+
+    @Test
+    fun `scrubEvent keeps json extras valid while redacting values`() {
+        val event = SentryEvent().apply {
+            setExtra("report_json", "{\"file\":\"/sdcard/Movies/a.mp4\",\"token\":\"secret456\",\"n\":3}")
+        }
+        val json = org.json.JSONObject(TvDiagnostics.scrubEvent(event).getExtra("report_json") as String)
+        assertEquals("[PATH_REDACTED]", json.getString("file"))
+        assertEquals("[REDACTED]", json.getString("token"))
+        assertEquals(3, json.getInt("n"))
+    }
+
+    @Test
+    fun `sendProblemReport does not leave Sentry enabled when crash reporting is off`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         DiagnosticsPreferences.setCrashReportingEnabled(context, false)
-        assertFalse(DiagnosticsPreferences.isCrashReportingEnabled(context))
+        val done = java.util.concurrent.CountDownLatch(1)
 
-        TvDiagnostics.sendProblemReport(context, "Test bug report description") { _ -> }
+        TvDiagnostics.sendProblemReport(context, "Test report", dsn = "https://public@localhost/1") { done.countDown() }
 
+        val deadline = System.currentTimeMillis() + 20_000
+        while (done.count > 0 && System.currentTimeMillis() < deadline) {
+            org.robolectric.shadows.ShadowLooper.idleMainLooper()
+            Thread.sleep(25)
+        }
+        assertEquals(0L, done.count)
         assertFalse(io.sentry.Sentry.isEnabled())
     }
 }

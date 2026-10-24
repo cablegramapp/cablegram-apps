@@ -43,6 +43,34 @@ object SentryScrubber {
     // General Unix/Linux paths ending in media extensions (e.g. /path/to/My Film.mkv)
     private val PATH_MEDIA_FILE_REGEX = Regex("(?i)(?:/[^/\r\n\"':;<>]+)+/[^/\r\n\"':;<>]+\\.(?:$MEDIA_EXTENSIONS)\\b")
 
+    // Query-string pairs outside a full URL, e.g. "GET /stream?x=1&token=abc failed"
+    private val QUERY_PAIR_REGEX = Regex("([?&])([\\w.\\-]{1,40})=([^&\\s\"'<>]+)")
+
+    // Exact titles and file names the app knows are in use; they are redacted wherever they appear,
+    // which covers unquoted names with spaces that no pattern can recognise safely.
+    private const val MIN_KNOWN_NAME_LENGTH = 4
+    private const val MAX_KNOWN_NAMES = 64
+    private val knownNames = LinkedHashSet<String>()
+
+    fun rememberName(name: String?) {
+        val trimmed = name?.trim().orEmpty()
+        if (trimmed.length < MIN_KNOWN_NAME_LENGTH) return
+        synchronized(knownNames) {
+            knownNames.remove(trimmed)
+            knownNames.add(trimmed)
+            while (knownNames.size > MAX_KNOWN_NAMES) knownNames.remove(knownNames.first())
+        }
+    }
+
+    fun forgetNames() = synchronized(knownNames) { knownNames.clear() }
+
+    private fun scrubKnownNames(text: String): String {
+        val names = synchronized(knownNames) { knownNames.sortedByDescending { it.length } }
+        var cleaned = text
+        for (name in names) cleaned = cleaned.replace(name, "[MEDIA_FILE_REDACTED]", ignoreCase = true)
+        return cleaned
+    }
+
     // HTTP/HTTPS URL regex to find URLs inside arbitrary text
     private val HTTP_URL_REGEX = Regex("(?i)https?://[^\r\n\\s\"'<>\\[\\]{}]+(?<=\\S)")
 
@@ -101,7 +129,7 @@ object SentryScrubber {
      */
     fun scrubMessage(message: String): String {
         if (message.isBlank()) return message
-        var cleaned = message
+        var cleaned = scrubKnownNames(message)
 
         // 1. Scrub tg:// links anywhere in message
         cleaned = TG_LINK_REGEX.replace(cleaned, "tg://[REDACTED]")
@@ -109,6 +137,11 @@ object SentryScrubber {
         // 2. Scrub HTTP/HTTPS URLs query parameters
         cleaned = HTTP_URL_REGEX.replace(cleaned) { matchResult ->
             scrubUrl(matchResult.value)
+        }
+
+        // 2b. Query pairs in text that is not a full URL (no scheme), e.g. a request path in a log line
+        cleaned = QUERY_PAIR_REGEX.replace(cleaned) { m ->
+            if (isSensitiveParam(m.groupValues[2])) "${m.groupValues[1]}${m.groupValues[2]}=REDACTED" else m.value
         }
 
         // 3. Scrub free text secrets (Authorization: Bearer xyz, password: 123, token=xyz, etc.)

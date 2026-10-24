@@ -2,6 +2,8 @@ package app.cablegram.phone.diagnostics
 
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import app.cablegram.phone.BuildConfig
 import io.sentry.Breadcrumb
 import io.sentry.Sentry
@@ -10,7 +12,9 @@ import io.sentry.SentryOptions
 import io.sentry.android.core.SentryAndroid
 import io.sentry.protocol.Message
 import io.sentry.protocol.SentryId
+import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
 
 data class ProblemReportData(
     val appVersion: String,
@@ -100,11 +104,30 @@ object PhoneDiagnostics {
         event.extras?.keys?.toList()?.forEach { key ->
             val v = event.getExtra(key)
             if (v is String) {
-                event.setExtra(key, SentryScrubber.scrubMessage(v))
+                event.setExtra(key, scrubJsonOrText(v))
             }
         }
 
         return event
+    }
+
+    /** Scrubs a JSON string value by value (keeping it valid JSON); anything else is scrubbed as text. */
+    private fun scrubJsonOrText(text: String): String {
+        val trimmed = text.trim()
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return SentryScrubber.scrubMessage(text)
+        return runCatching { scrubJsonValue(null, JSONTokener(trimmed).nextValue()).toString() }
+            .getOrElse { SentryScrubber.scrubMessage(text) }
+    }
+
+    private fun scrubJsonValue(key: String?, value: Any?): Any? = when (value) {
+        is JSONObject -> JSONObject().also { out ->
+            value.keys().forEach { k -> out.put(k, scrubJsonValue(k, value.opt(k))) }
+        }
+        is JSONArray -> JSONArray().also { out ->
+            for (i in 0 until value.length()) out.put(scrubJsonValue(key, value.opt(i)))
+        }
+        is String -> if (key != null && SentryScrubber.isSensitiveParam(key)) "[REDACTED]" else SentryScrubber.scrubMessage(value)
+        else -> value
     }
 
     fun scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
@@ -140,9 +163,9 @@ object PhoneDiagnostics {
         context: Context,
         description: String,
         playbackState: String? = null,
+        dsn: String = BuildConfig.SENTRY_DSN,
         onComplete: (Boolean) -> Unit = {}
     ) {
-        val dsn = BuildConfig.SENTRY_DSN
         if (dsn.isBlank()) {
             android.util.Log.w("PhoneDiagnostics", "Cannot send problem report: SENTRY_DSN is not configured")
             onComplete(false)
@@ -152,7 +175,15 @@ object PhoneDiagnostics {
         val report = buildProblemReport(context, description, playbackState)
         val crashReportingEnabled = DiagnosticsPreferences.isCrashReportingEnabled(context)
 
-        try {
+        // Off the main thread: flush and close wait for the queue to drain, which can take seconds on a bad network.
+        Thread({
+            val delivered = send(context, dsn, report, crashReportingEnabled)
+            Handler(Looper.getMainLooper()).post { onComplete(delivered) }
+        }, "problem-report").start()
+    }
+
+    private fun send(context: Context, dsn: String, report: ProblemReportData, crashReportingEnabled: Boolean): Boolean {
+        return try {
             if (!Sentry.isEnabled()) {
                 SentryAndroid.init(context.applicationContext) { options ->
                     options.dsn = dsn
@@ -173,16 +204,18 @@ object PhoneDiagnostics {
                 setExtra("report_json", report.toJson())
             }
 
-            val sentryId = Sentry.captureEvent(event)
-            val success = sentryId != SentryId.EMPTY_ID
-            onComplete(success)
+            val queued = Sentry.captureEvent(event) != SentryId.EMPTY_ID
+            if (queued) Sentry.flush(FLUSH_TIMEOUT_MS)
+            queued
         } catch (e: Throwable) {
             android.util.Log.e("PhoneDiagnostics", "Failed sending Sentry problem report", e)
-            onComplete(false)
+            false
         } finally {
             if (!crashReportingEnabled) {
                 close()
             }
         }
     }
+
+    private const val FLUSH_TIMEOUT_MS = 3000L
 }
