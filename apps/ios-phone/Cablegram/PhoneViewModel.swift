@@ -546,6 +546,8 @@ final class PhoneViewModel {
 
     func scheduleDismissAddedVideos(delaySeconds: Double = 6.0) {
         cancelDismissAddedVideos()
+        // The banner stays while the privacy prompt is pending; choosePrivacy schedules it again.
+        if pendingPrivacyItem != nil { return }
         dismissAddedVideosTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
             guard let self, !Task.isCancelled else { return }

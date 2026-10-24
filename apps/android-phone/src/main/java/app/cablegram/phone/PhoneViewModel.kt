@@ -189,6 +189,8 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
 
     fun scheduleDismissAddedVideos(delayMs: Long = 6_000L) {
         cancelDismissAddedVideos()
+        // The banner stays while the privacy prompt is pending; choosePrivacy schedules it again.
+        if (pendingPrivacyItem != null) return
         dismissAddedVideosJob = viewModelScope.launch {
             kotlinx.coroutines.delay(delayMs)
             dismissAddedVideos()

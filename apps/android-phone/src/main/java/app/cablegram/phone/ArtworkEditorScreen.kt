@@ -36,6 +36,9 @@ fun AddedVideosCard(viewModel: PhoneViewModel) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val added = viewModel.items.filter { it.id in viewModel.recentlyAddedIds }
     val visible = added.isNotEmpty() && viewModel.tab == PhoneTab.Library
+    // Keep the last non-empty list so the exit animation doesn't render an empty card.
+    var shown by remember { mutableStateOf(added) }
+    if (added.isNotEmpty()) shown = added
     var review by remember(viewModel.recentlyAddedIds) { mutableStateOf(false) }
 
     LaunchedEffect(review) {
@@ -54,14 +57,14 @@ fun AddedVideosCard(viewModel: PhoneViewModel) {
         Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).maestro("videos_added"), color = VlcPanel) {
             Column(Modifier.padding(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (added.size == 1) ui.getString(R.string.ui_video_added_08c7ee) else ui.getString(R.string.ui_videos_added_cbf82e, added.size), Modifier.weight(1f), color = Color.White)
+                    Text(if (shown.size == 1) ui.getString(R.string.ui_video_added_08c7ee) else ui.getString(R.string.ui_videos_added_cbf82e, shown.size), Modifier.weight(1f), color = Color.White)
                     TextButton(onClick = viewModel::dismissAddedVideos, modifier = Modifier.maestro("videos_added_dismiss")) { Text(ui.getString(R.string.ui_dismiss_48845b)) }
                 }
-                if (added.size == 1) TextButton(onClick = { viewModel.findDetailsAndArtwork(added.first()) }, modifier = Modifier.maestro("videos_added_edit")) { Text(ui.getString(R.string.ui_edit_details_cover_134bbc)) }
+                if (shown.size == 1) TextButton(onClick = { viewModel.findDetailsAndArtwork(shown.first()) }, modifier = Modifier.maestro("videos_added_edit")) { Text(ui.getString(R.string.ui_edit_details_cover_134bbc)) }
                 else {
                     TextButton(onClick = { review = !review }, modifier = Modifier.maestro("videos_added_review")) { Text(if (review) ui.getString(R.string.ui_close_review_337f91) else ui.getString(R.string.ui_review_videos_70f10f)) }
                     if (review) Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState())) {
-                        added.forEach { item -> TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }) { Text(item.title) } }
+                        shown.forEach { item -> TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }) { Text(item.title) } }
                     }
                 }
             }

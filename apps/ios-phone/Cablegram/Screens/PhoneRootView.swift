@@ -59,9 +59,8 @@ struct LibraryShell: View {
         // Storage is a screen under Settings: the bar keeps highlighting Settings while it is open.
         let selection = Binding<PhoneTab>(get: { viewModel.tab.barItem }, set: { viewModel.selectTab($0) })
         VStack(spacing: 0) {
-            if viewModel.tab == .library {
-                AddedVideosCard(viewModel: viewModel)
-            }
+            AddedVideosCard(viewModel: viewModel)
+                .animation(.default, value: viewModel.tab == .library && !viewModel.recentlyAddedIds.isEmpty)
             PrepareCard(viewModel: viewModel)
             if !viewModel.tv.pendingApprovals.isEmpty { ApprovalCard(viewModel: viewModel) }
             TelegramApprovalCard(work: viewModel.telegram.work)
