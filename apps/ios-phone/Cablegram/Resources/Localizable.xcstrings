@@ -1552,6 +1552,116 @@
         }
       }
     },
+    "diagnostics_crash_reports_description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sends diagnostic error traces to help us fix playback problems and crashes. No video titles, file names or passwords are sent."
+          }
+        }
+      }
+    },
+    "diagnostics_crash_reports_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send crash reports"
+          }
+        }
+      }
+    },
+    "diagnostics_problem_description_label": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What went wrong? (optional)"
+          }
+        }
+      }
+    },
+    "diagnostics_report_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not send report. Diagnostics are disabled or network is unavailable."
+          }
+        }
+      }
+    },
+    "diagnostics_report_problem_button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report a problem"
+          }
+        }
+      }
+    },
+    "diagnostics_report_problem_description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send diagnostic info (device model, Android version, app version and recent errors) to help us investigate. No media titles, file names or passwords are sent."
+          }
+        }
+      }
+    },
+    "diagnostics_report_problem_title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Report a problem"
+          }
+        }
+      }
+    },
+    "diagnostics_report_sent": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thank you! Diagnostic report recorded."
+          }
+        }
+      }
+    },
+    "diagnostics_send_report_button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send report"
+          }
+        }
+      }
+    },
+    "diagnostics_sending": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending…"
+          }
+        }
+      }
+    },
     "pairing_get_tv_app": {
       "extractionState": "manual",
       "localizations": {
