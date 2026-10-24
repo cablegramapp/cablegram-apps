@@ -21,7 +21,8 @@ import app.cablegram.phone.*
 fun RemoteScreen(viewModel: PhoneViewModel) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     var choosingTv by remember { mutableStateOf(false) }
-    var volume by remember(viewModel.tvName) { mutableStateOf(0.5f) }
+    var volume by remember(viewModel.tvName, viewModel.tvVolume) { mutableFloatStateOf(viewModel.tvVolume) }
+    LaunchedEffect(viewModel.tvVolume) { volume = viewModel.tvVolume }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),

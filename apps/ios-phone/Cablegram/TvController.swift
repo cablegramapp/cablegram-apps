@@ -9,6 +9,8 @@ final class TvController {
     private(set) var tvs: [PairedTv]
     private(set) var paired: Bool
     private(set) var tvName: String
+    private(set) var tvVolumes: [String: Double] = [:]
+    var tvVolume: Double { tvVolumes[tvName] ?? 0.5 }
     var addingTv = false
     /// The code the owner just entered or scanned, waiting for "Is this your TV?" (spec 004 US8).
     var pendingPair: (pin: String, name: String)?
@@ -382,7 +384,11 @@ final class TvController {
     }
 
     func remoteSelect() { Task { _ = await sendCommand("select") } }
-    func remoteVolume(_ level: Int) { Task { _ = await sendCommand("volume", arguments: ["level": min(max(level, 0), 100)]) } }
+    func remoteVolume(_ level: Int) {
+        let clamped = min(max(level, 0), 100)
+        tvVolumes[tvName] = Double(clamped) / 100.0
+        Task { _ = await sendCommand("volume", arguments: ["level": clamped]) }
+    }
 
     /// Shifts the subtitle on the TV that is playing this title, relative to the timing it loaded (positive shows it later).
     func nudgeSubtitleOnTv(delayMs: Int64) {
@@ -464,6 +470,11 @@ final class TvController {
             catch { reportFinal((error as? LocalizedError)?.errorDescription ?? L("ui_could_not_open_the_tv_try_again_344ff8")); return nil }
         }
         let outcome = await TvCommandSender.confirm(client: client, commandId: commandId, token: token, deviceId: deviceId, wait: wait)
+        if generation == commandGeneration && (outcome == .confirmed || outcome == .unconfirmable) {
+            if command == "volume", let level = arguments["level"] as? Int {
+                tvVolumes[sentName] = Double(min(max(level, 0), 100)) / 100.0
+            }
+        }
         switch outcome {
         case .confirmed: reportFinal(text("ui_done_on_623a01", sentName))
         case .rejected(let reason): reportFinal(rejectionMessage(reason, tvName: sentName))
@@ -485,6 +496,9 @@ final class TvController {
                 guard let deviceId = self.playingTvDeviceId ?? self.pairing.tvs.last?.deviceId, let token = self.token else { break }
                 guard let report = await self.catalog().tvPlayback(token: token, deviceId: deviceId) else { continue }
                 guard self.nowPlaying != nil else { break }
+                if let vol = report.volume, (0...100).contains(vol) {
+                    self.tvVolumes[self.tvName] = Double(vol) / 100.0
+                }
                 switch followTv(report, nowPlayingId: current.id, sinceOwnCommandMs: Int64(Date().timeIntervalSince(self.ownCommandAt) * 1000)) {
                 case .keep: break
                 case .stopped: self.nowPlaying = nil; self.paused = false

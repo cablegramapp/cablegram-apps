@@ -14,6 +14,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.os.BatteryManager
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -31,7 +32,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -188,6 +191,9 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         private set
     var tvName by mutableStateOf(pairing.tvName)
         private set
+    private val tvVolumes = mutableStateMapOf<String, Float>()
+    val tvVolume: Float
+        get() = tvVolumes[tvName] ?: 0.5f
     var householdName by mutableStateOf(pairing.displayName)
         private set
     // Decided by the server (see [restoreHouseholdName]): a blank local cache
@@ -2808,7 +2814,9 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
 
     /** T078 / R-8: remote-tab actions (public wrappers around enqueue). */
     fun remoteVolume(level: Int) {
-        enqueue("volume", arguments = buildJsonObject { put("level", level.coerceIn(0, 100)) })
+        val clamped = level.coerceIn(0, 100)
+        tvVolumes[tvName] = clamped / 100f
+        enqueue("volume", arguments = buildJsonObject { put("level", clamped) })
     }
 
     fun remoteStop() {
@@ -3126,6 +3134,9 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
                 val report = catalog().tvPlayback(token, deviceId) ?: continue
                 val current = nowPlayingState ?: break
                 if (castPlaybackOwned) break
+                report.volume?.let { vol ->
+                    if (vol in 0..100) tvVolumes[tvName] = vol / 100f
+                }
                 when (val follow = followTv(report, current.id, SystemClock.elapsedRealtime() - ownCommandAt)) {
                     TvFollow.Keep -> Unit
                     TvFollow.Stopped -> { nowPlaying = null; paused = false }
@@ -3226,6 +3237,12 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
             }
         }
         val outcome = CastSession.confirm(client, sent, wait)
+        if (generation == commandGeneration && outcome.applies()) {
+            if (command == "volume") {
+                val level = (arguments["level"] as? JsonPrimitive)?.intOrNull
+                if (level != null) tvVolumes[sent.tvName] = level.coerceIn(0, 100) / 100f
+            }
+        }
         reportFinal(when (outcome) {
             Outcome.Confirmed -> uiText(R.string.ui_done_on_623a01, sent.tvName)
             is Outcome.Rejected -> rejectionMessage(outcome.reason, sent.tvName)

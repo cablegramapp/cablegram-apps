@@ -61,6 +61,15 @@ struct RemoteScreen: View {
             .padding(20)
         }
         .phoneScreenBackground()
+        .onAppear {
+            volume = tv.tvVolume
+        }
+        .onChange(of: tv.tvName) { _, _ in
+            volume = tv.tvVolume
+        }
+        .onChange(of: tv.tvVolume) { _, newVol in
+            volume = newVol
+        }
     }
 
     private func pad(_ tv: TvController) -> some View {

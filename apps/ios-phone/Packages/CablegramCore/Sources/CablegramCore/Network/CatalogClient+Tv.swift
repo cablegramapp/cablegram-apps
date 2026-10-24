@@ -164,7 +164,8 @@ extension CatalogClient {
         guard reply.isSuccess, let body = reply.object else { return nil }
         func int64(_ key: String) -> Int64? { (body[key] as? NSNumber)?.int64Value }
         return TvPlayback(state: body["state"] as? String ?? "unknown", videoId: body["video_id"] as? String, originId: body["origin_id"] as? String,
-                          positionMs: int64("position_ms"), ageMs: int64("age_ms"), online: body["online"] as? Bool ?? true)
+                          positionMs: int64("position_ms"), ageMs: int64("age_ms"), online: body["online"] as? Bool ?? true,
+                          volume: (body["volume"] as? NSNumber)?.intValue)
     }
 
     /// What the TV did with a command; nil when the status could not be read right now.
