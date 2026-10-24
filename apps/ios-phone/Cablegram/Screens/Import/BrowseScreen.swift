@@ -165,7 +165,7 @@ struct AddedVideosCard: View {
 
     var body: some View {
         let added = viewModel.items.filter { viewModel.recentlyAddedIds.contains($0.id) }
-        if !added.isEmpty {
+        if !added.isEmpty && viewModel.tab == .library {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(added.count == 1 ? L("ui_video_added_08c7ee") : L("ui_videos_added_cbf82e", added.count)).foregroundStyle(.white)
@@ -191,6 +191,14 @@ struct AddedVideosCard: View {
             }
             .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.phonePanel)
             .padding(.horizontal, 16).padding(.vertical, 6).accessibilityIdentifier("videos_added")
+            .transition(.opacity.combined(with: .move(edge: .top)))
+            .onChange(of: review) { _, isReview in
+                if isReview {
+                    viewModel.cancelDismissAddedVideos()
+                } else {
+                    viewModel.scheduleDismissAddedVideos()
+                }
+            }
         }
     }
 }
