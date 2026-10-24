@@ -36,6 +36,9 @@ data class ProblemReportData(
     }.toString()
 }
 
+// Debug builds must not mix with real data in Sentry.
+private val SENTRY_ENVIRONMENT = if (BuildConfig.DEBUG) "debug" else "production"
+
 object PhoneDiagnostics {
     fun isAvailable(): Boolean = BuildConfig.SENTRY_DSN.isNotBlank()
 
@@ -49,6 +52,7 @@ object PhoneDiagnostics {
         runCatching {
             SentryAndroid.init(context.applicationContext) { options ->
                 options.dsn = dsn
+                options.environment = SENTRY_ENVIRONMENT
                 options.beforeSend = SentryOptions.BeforeSendCallback { event, _ ->
                     scrubEvent(event)
                 }
@@ -187,6 +191,7 @@ object PhoneDiagnostics {
             if (!Sentry.isEnabled()) {
                 SentryAndroid.init(context.applicationContext) { options ->
                     options.dsn = dsn
+                    options.environment = SENTRY_ENVIRONMENT
                     options.beforeSend = SentryOptions.BeforeSendCallback { event, _ -> scrubEvent(event) }
                     options.beforeBreadcrumb = SentryOptions.BeforeBreadcrumbCallback { breadcrumb, _ -> scrubBreadcrumb(breadcrumb) }
                 }
