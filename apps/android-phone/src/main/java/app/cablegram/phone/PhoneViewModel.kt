@@ -169,7 +169,36 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
     }
     var recentlyAddedIds by mutableStateOf<List<String>>(emptyList())
         private set
-    fun dismissAddedVideos() { recentlyAddedIds = emptyList() }
+    private var dismissAddedVideosJob: kotlinx.coroutines.Job? = null
+
+    fun dismissAddedVideos() {
+        dismissAddedVideosJob?.cancel()
+        dismissAddedVideosJob = null
+        recentlyAddedIds = emptyList()
+        val added1 = uiText(R.string.ui_video_added_08c7ee)
+        val addedMulti = uiText(R.string.ui_videos_added_3d5b7a)
+        if (status == added1 || status == addedMulti) {
+            status = null
+        }
+    }
+
+    fun cancelDismissAddedVideos() {
+        dismissAddedVideosJob?.cancel()
+        dismissAddedVideosJob = null
+    }
+
+    fun scheduleDismissAddedVideos(delayMs: Long = 6_000L) {
+        cancelDismissAddedVideos()
+        dismissAddedVideosJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(delayMs)
+            dismissAddedVideos()
+        }
+    }
+
+    fun markRecentlyAdded(ids: List<String>, delayMs: Long = 6_000L) {
+        recentlyAddedIds = ids
+        scheduleDismissAddedVideos(delayMs)
+    }
 
     var items by mutableStateOf<List<LibraryItem>>(emptyList())
         private set
@@ -239,7 +268,15 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         private set
     var tunnelUrl by mutableStateOf(pairing.tunnelUrl)
         private set
-    var tab by mutableStateOf(PhoneTab.Library)
+    private var _tab by mutableStateOf(PhoneTab.Library)
+    var tab: PhoneTab
+        get() = _tab
+        set(value) {
+            if (_tab != value) {
+                if (value != PhoneTab.Library) dismissAddedVideos()
+            }
+            _tab = value
+        }
     /** Household profiles for Settings (owner first); empty until loaded. */
     var profiles by mutableStateOf<List<HouseholdProfile>>(emptyList())
         private set
@@ -2118,8 +2155,8 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
                 if (importDestination == STORAGE_BOTH && cloudConnected) {
                     beginSaveToCloud(item)
                 }
-                recentlyAddedIds = listOf(item.id)
                 tab = PhoneTab.Library
+                markRecentlyAdded(listOf(item.id))
                 status = uiText(R.string.ui_video_added_08c7ee)
                 sharedImportSucceeded = true
                 syncLibrary()
@@ -2324,8 +2361,8 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         prepareStep = null
         prepareProgress = 0f
         status = if (added == 0) uiText(R.string.ui_those_files_are_already_in_your_library_9b2db9) else uiText(R.string.ui_added_files_fb53a9, added)
-        recentlyAddedIds = imported.map { it.id }
         tab = PhoneTab.Library
+        markRecentlyAdded(imported.map { it.id })
         pendingPrivacyItems.addAll(imported)
         showNextPrivacyPrompt()
         viewModelScope.launch { syncLibrary() }
@@ -2333,7 +2370,10 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
 
     private fun showNextPrivacyPrompt() {
         pendingPrivacyItem = pendingPrivacyItems.removeFirstOrNull()
-        if (pendingPrivacyItem != null) status = uiText(R.string.ui_should_this_require_phone_approval_92bae5)
+        if (pendingPrivacyItem != null) {
+            cancelDismissAddedVideos()
+            status = uiText(R.string.ui_should_this_require_phone_approval_92bae5)
+        }
     }
 
     fun choosePrivacy(isPrivate: Boolean) {
@@ -2347,7 +2387,10 @@ class PhoneViewModel(application: Application, private val savedState: SavedStat
         }
         viewModelScope.launch { syncLibrary() }
         showNextPrivacyPrompt()
-        if (pendingPrivacyItem == null) status = uiText(R.string.ui_videos_added_3d5b7a)
+        if (pendingPrivacyItem == null) {
+            status = uiText(R.string.ui_videos_added_3d5b7a)
+            scheduleDismissAddedVideos()
+        }
     }
 
     fun browseUp() {

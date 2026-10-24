@@ -63,6 +63,7 @@ final class PhoneViewModel {
     var transferWhileCharging: Bool { didSet { pairing.transferWhileCharging = transferWhileCharging } }
     var syncLibraryToApi: Bool { didSet { pairing.syncLibraryToApi = syncLibraryToApi } }
     @ObservationIgnored private var pendingPrivacyItems: [LibraryItem] = []
+    @ObservationIgnored private var dismissAddedVideosTask: Task<Void, Never>?
     @ObservationIgnored private var browseFolderId: String?
     @ObservationIgnored let bookmarks: BookmarkStore
     @ObservationIgnored let store: LibraryStore
@@ -206,6 +207,9 @@ final class PhoneViewModel {
         cloud.dismissCloudSheet()
         closeItem()
         closeSeries()
+        if tab != .library {
+            dismissAddedVideos()
+        }
         self.tab = tab
     }
 
@@ -484,8 +488,8 @@ final class PhoneViewModel {
         prepareStep = nil
         prepareProgress = 0
         status = imported.isEmpty ? L("ui_those_files_are_already_in_your_library_9b2db9") : L("ui_added_files_fb53a9", imported.count)
-        recentlyAddedIds = imported.map(\.id)
         selectTab(.library)
+        markRecentlyAdded(imported.map(\.id))
         pendingPrivacyItems.append(contentsOf: imported.compactMap { store.get($0.id) })
         showNextPrivacyPrompt()
         Task { await syncLibrary() }
@@ -515,20 +519,51 @@ final class PhoneViewModel {
             }
             refresh()
             if imported.isEmpty { status = L("ui_could_not_import_that_file_3e92a3"); return }
-            recentlyAddedIds = imported.map(\.id)
-            status = L(imported.count == 1 ? "ui_video_added_08c7ee" : "ui_videos_added_3d5b7a")
             selectTab(.library)
+            markRecentlyAdded(imported.map(\.id))
+            status = L(imported.count == 1 ? "ui_video_added_08c7ee" : "ui_videos_added_3d5b7a")
             pendingPrivacyItems.append(contentsOf: imported)
             showNextPrivacyPrompt()
             Task { await syncLibrary() }
         }
     }
 
-    func dismissAddedVideos() { recentlyAddedIds = [] }
+    func dismissAddedVideos() {
+        dismissAddedVideosTask?.cancel()
+        dismissAddedVideosTask = nil
+        recentlyAddedIds = []
+        let single = L("ui_video_added_08c7ee")
+        let multi = L("ui_videos_added_3d5b7a")
+        if status == single || status == multi {
+            status = nil
+        }
+    }
+
+    func cancelDismissAddedVideos() {
+        dismissAddedVideosTask?.cancel()
+        dismissAddedVideosTask = nil
+    }
+
+    func scheduleDismissAddedVideos(delaySeconds: Double = 6.0) {
+        cancelDismissAddedVideos()
+        dismissAddedVideosTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+            guard let self, !Task.isCancelled else { return }
+            self.dismissAddedVideos()
+        }
+    }
+
+    func markRecentlyAdded(_ ids: [String], delaySeconds: Double = 6.0) {
+        recentlyAddedIds = ids
+        scheduleDismissAddedVideos(delaySeconds: delaySeconds)
+    }
 
     private func showNextPrivacyPrompt() {
         pendingPrivacyItem = pendingPrivacyItems.isEmpty ? nil : pendingPrivacyItems.removeFirst()
-        if pendingPrivacyItem != nil { status = L("ui_should_this_require_phone_approval_92bae5") }
+        if pendingPrivacyItem != nil {
+            cancelDismissAddedVideos()
+            status = L("ui_should_this_require_phone_approval_92bae5")
+        }
     }
 
     func choosePrivacy(_ isPrivate: Bool) {
@@ -539,7 +574,10 @@ final class PhoneViewModel {
         refresh()
         Task { await syncLibrary() }
         showNextPrivacyPrompt()
-        if pendingPrivacyItem == nil { status = L("ui_videos_added_3d5b7a") }
+        if pendingPrivacyItem == nil {
+            status = L("ui_videos_added_3d5b7a")
+            scheduleDismissAddedVideos()
+        }
     }
 
     /// Cleans up after a process death mid-import, then finishes any shared import it left unfinished.

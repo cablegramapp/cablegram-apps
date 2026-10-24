@@ -1,6 +1,11 @@
 package app.cablegram.phone
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -30,19 +35,34 @@ import android.view.WindowManager
 fun AddedVideosCard(viewModel: PhoneViewModel) {
     val ui = androidx.compose.ui.platform.LocalContext.current.resources
     val added = viewModel.items.filter { it.id in viewModel.recentlyAddedIds }
-    if (added.isEmpty()) return
+    val visible = added.isNotEmpty() && viewModel.tab == PhoneTab.Library
     var review by remember(viewModel.recentlyAddedIds) { mutableStateOf(false) }
-    Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).maestro("videos_added"), color = VlcPanel) {
-        Column(Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(if (added.size == 1) ui.getString(R.string.ui_video_added_08c7ee) else ui.getString(R.string.ui_videos_added_cbf82e, added.size), Modifier.weight(1f), color = Color.White)
-                TextButton(onClick = viewModel::dismissAddedVideos, modifier = Modifier.maestro("videos_added_dismiss")) { Text(ui.getString(R.string.ui_dismiss_48845b)) }
-            }
-            if (added.size == 1) TextButton(onClick = { viewModel.findDetailsAndArtwork(added.first()) }, modifier = Modifier.maestro("videos_added_edit")) { Text(ui.getString(R.string.ui_edit_details_cover_134bbc)) }
-            else {
-                TextButton(onClick = { review = !review }, modifier = Modifier.maestro("videos_added_review")) { Text(if (review) ui.getString(R.string.ui_close_review_337f91) else ui.getString(R.string.ui_review_videos_70f10f)) }
-                if (review) Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState())) {
-                    added.forEach { item -> TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }) { Text(item.title) } }
+
+    LaunchedEffect(review) {
+        if (review) {
+            viewModel.cancelDismissAddedVideos()
+        } else if (viewModel.recentlyAddedIds.isNotEmpty()) {
+            viewModel.scheduleDismissAddedVideos()
+        }
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).maestro("videos_added"), color = VlcPanel) {
+            Column(Modifier.padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (added.size == 1) ui.getString(R.string.ui_video_added_08c7ee) else ui.getString(R.string.ui_videos_added_cbf82e, added.size), Modifier.weight(1f), color = Color.White)
+                    TextButton(onClick = viewModel::dismissAddedVideos, modifier = Modifier.maestro("videos_added_dismiss")) { Text(ui.getString(R.string.ui_dismiss_48845b)) }
+                }
+                if (added.size == 1) TextButton(onClick = { viewModel.findDetailsAndArtwork(added.first()) }, modifier = Modifier.maestro("videos_added_edit")) { Text(ui.getString(R.string.ui_edit_details_cover_134bbc)) }
+                else {
+                    TextButton(onClick = { review = !review }, modifier = Modifier.maestro("videos_added_review")) { Text(if (review) ui.getString(R.string.ui_close_review_337f91) else ui.getString(R.string.ui_review_videos_70f10f)) }
+                    if (review) Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState())) {
+                        added.forEach { item -> TextButton(onClick = { viewModel.findDetailsAndArtwork(item) }) { Text(item.title) } }
+                    }
                 }
             }
         }

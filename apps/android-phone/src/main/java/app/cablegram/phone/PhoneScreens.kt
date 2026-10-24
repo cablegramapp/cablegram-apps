@@ -160,7 +160,7 @@ fun LibraryShell(viewModel: PhoneViewModel) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize().background(VlcBlack)) {
             Column(Modifier.fillMaxSize()) {
-                AddedVideosCard(viewModel)
+                if (viewModel.tab == PhoneTab.Library) AddedVideosCard(viewModel)
                 if (viewModel.pendingApprovals.isNotEmpty()) ApprovalCard(viewModel, Modifier.padding(16.dp))
                 Box(Modifier.weight(1f)) {
                     when (viewModel.tab) {
