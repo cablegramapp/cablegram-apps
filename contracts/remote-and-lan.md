@@ -24,11 +24,11 @@ The TV reports what its player is doing, so the phone's remote follows a title t
 paused on the TV instead of showing the last command it sent:
 
 - `PUT /api/control/playback` (TV token): `{"state": "playing|paused|stopped", "video_id"?, "origin_id"?,
-  "position_ms"?, "seq"}`. `seq` rises with every report from one TV; the server keeps only the newest.
+  "position_ms"?, "volume"?, "seq"}`. `volume` is the player's level, 0-100, left out while it is muted. `seq` rises with every report from one TV; the server keeps only the newest.
   The TV reports on every play/pause change and when the player closes, and refreshes a lasting state
   every 15 s (a paused player does not refresh).
 - `GET /api/control/playback/{deviceId}` (phone token, same household, TV not removed):
-  `{"state", "video_id", "origin_id", "position_ms", "age_ms", "online"}`. `state` is `unknown` until
+  `{"state", "video_id", "origin_id", "position_ms", "volume", "age_ms", "online"}`. `volume` is `null` when the TV did not report one. `state` is `unknown` until
   the TV has reported since the server started.
 
 The phone asks every 3 s while a title plays on that TV and the app is open (not for Cast Connect,

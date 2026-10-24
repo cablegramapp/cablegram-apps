@@ -380,6 +380,7 @@ class CablegramApi(
             report.videoId?.let { put("video_id", it) }
             report.originId?.let { put("origin_id", it) }
             report.positionMs?.let { put("position_ms", it) }
+            report.volume?.let { put("volume", it.coerceIn(0, 100)) }
             put("seq", report.seq)
         })
         executeNoContent(authenticatedRequest("api/control/playback", token).put(body.toRequestBody(jsonMediaType)).build())
