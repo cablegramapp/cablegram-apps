@@ -88,7 +88,12 @@ fun RemoteScreen(viewModel: PhoneViewModel) {
             Text(ui.getString(R.string.ui_drag_to_set_the_volume_to_448bd2, ((volume * 100).toInt()).toString()), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
         viewModel.remoteStatus?.let { StatusNote(it) }
-        Text(ui.getString(R.string.ui_commands_use_your_household_connection_keep_the_tv_con_b044c4), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+        Text(
+            if (viewModel.isCustomServer) ui.getString(R.string.ui_commands_go_through_your_server_keep_the_tv_connec_9e2c9b)
+            else ui.getString(R.string.ui_commands_use_your_household_connection_keep_the_tv_con_b044c4),
+            color = VlcMuted,
+            style = MaterialTheme.typography.bodySmall,
+        )
         Spacer(Modifier.height(16.dp))
     }
 }

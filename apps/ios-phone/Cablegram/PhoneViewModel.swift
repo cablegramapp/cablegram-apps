@@ -28,6 +28,9 @@ final class PhoneViewModel {
     var profiles: [HouseholdProfile] = []
     var relayUsage: RelayUsage?
     var apiBaseUrl: String
+    var isCustomServer: Bool {
+        apiBaseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")) != AppConfiguration.defaultApiBase.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
     var tunnelUrl: String
     var serverCapabilities: ServerCapabilities?
     var features: ServerFeatures { serverCapabilities?.features ?? .hostedDefault }

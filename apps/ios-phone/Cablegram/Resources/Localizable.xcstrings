@@ -10404,49 +10404,96 @@
         }
       }
     },
+    "ui_commands_go_through_your_server_keep_the_tv_connec_9e2c9b": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تمر الأوامر عبر خادمك. أبقِ التلفاز متصلاً بنفس الشبكة."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Befehle laufen über Ihren Server. Halten Sie den Fernseher mit demselben Netzwerk verbunden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commands go through your server. Keep the TV connected to the same network."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los comandos pasan por tu servidor. Mantén la TV conectada a la misma red."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فرمان‌ها از سرور شما عبور می‌کنند. تلویزیون را به همان شبکه متصل نگه دارید."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I comandi passano attraverso il tuo server. Tieni la TV collegata alla stessa rete."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Команды проходят через ваш сервер. Держите телевизор подключенным к той же сети."
+          }
+        }
+      }
+    },
     "ui_commands_use_your_household_connection_keep_the_tv_con_b044c4": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "الاوامر تستخدم اتصالك المنزلي أبقي التلفاز متصلاً بالإنترنت"
+            "value": "الاوامر تستخدم اتصالك. أبقي التلفاز متصلاً بالإنترنت"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Befehle verwenden Ihre Haushaltsverbindung. Halten Sie den Fernseher mit dem Internet verbunden."
+            "value": "Befehle verwenden Ihre Verbindung. Halten Sie den Fernseher mit dem Internet verbunden."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Commands use your household connection. Keep the TV connected to the internet."
+            "value": "Commands use your connection. Keep the TV connected to the internet."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los comandos usan la conexión del hogar. Mantenga la TV conectada a Internet."
+            "value": "Los comandos usan la conexión. Mantenga la TV conectada a Internet."
           }
         },
         "fa": {
           "stringUnit": {
             "state": "translated",
-            "value": "فرمان‌ها از اتصال گروه خانوادگی شما استفاده می‌کنند. تلویزیون را به اینترنت متصل نگه دارید."
+            "value": "فرمان‌ها از اتصال شما استفاده می‌کنند. تلویزیون را به اینترنت متصل نگه دارید."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "I comandi usano la tua connessione domestica. Tenere la TV collegata a internet."
+            "value": "I comandi usano la tua connessione. Tenere la TV collegata a internet."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Команды используют ваше домашнее соединение. Держите телевизор подключенным к Интернету."
+            "value": "Команды используют ваше соединение. Держите телевизор подключенным к Интернету."
           }
         }
       }
