@@ -4,3 +4,4 @@ build
 *.wgt
 *.ipk
 dist-mock
+.env*.local

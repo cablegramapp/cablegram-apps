@@ -39,4 +39,16 @@
     <string name="tv_rename">Rename</string>
     <string name="tv_rename_title">Rename TV</string>
     <string name="tv_name_label">TV name</string>
+
+    <!-- Diagnostics & Crash Reporting -->
+    <string name="diagnostics_crash_reports_title">Send crash reports</string>
+    <string name="diagnostics_crash_reports_description">Sends diagnostic error traces to help us fix playback problems and crashes. No video titles, file names or passwords are sent.</string>
+    <string name="diagnostics_report_problem_button">Report a problem</string>
+    <string name="diagnostics_report_problem_title">Report a problem</string>
+    <string name="diagnostics_report_problem_description">Send diagnostic info (device model, Android version, app version and recent errors) to help us investigate. No media titles, file names or passwords are sent.</string>
+    <string name="diagnostics_problem_description_label">What went wrong? (optional)</string>
+    <string name="diagnostics_send_report_button">Send report</string>
+    <string name="diagnostics_sending">Sending…</string>
+    <string name="diagnostics_report_sent">Thank you! Diagnostic report recorded.</string>
+    <string name="diagnostics_report_failed">Could not record diagnostic report.</string>
 </resources>

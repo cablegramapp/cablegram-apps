@@ -47,6 +47,12 @@ android {
         // turns it on for development and testing.
         val subtitleSpeechSync = (project.findProperty("CABLEGRAM_SUBTITLE_SPEECH_SYNC") as String?).toBoolean()
         buildConfigField("boolean", "SUBTITLE_SPEECH_SYNC", "$subtitleSpeechSync")
+        // Sentry DSN for crash and error monitoring; defaults to empty for open-source and dev builds
+        val sentryDsn = ((project.findProperty("SENTRY_DSN") as String?)
+            ?: (project.findProperty("SENTRY_DSN_ANDROID") as String?)
+            ?: localSetting("SENTRY_DSN").ifBlank { localSetting("SENTRY_DSN_ANDROID") }).trim()
+            .replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
         // Optional, e.g. -PCABLEGRAM_ABIS=arm64-v8a: TDLib ships ~22 MB of native code per ABI,
         // so a universal debug APK is ~100 MB. Play delivers one ABI per device from the bundle.
         (project.findProperty("CABLEGRAM_ABIS") as String?)?.let { abis ->
@@ -125,6 +131,7 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("io.sentry:sentry-android:8.16.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")

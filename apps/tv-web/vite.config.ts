@@ -12,7 +12,11 @@ export default defineConfig(({ mode }) => ({
   plugins: [legacy({ targets: ["chrome >= 53"], modernTargets: ["chrome >= 64"] })],
   // GramJS (loaded only in VITE_TG_DIRECT builds) refers to Node's `global`.
   // An explicit constant, so builds without VITE_TG_DIRECT=1 drop the Telegram chunk instead of shipping it unused.
-  define: { global: "window", "import.meta.env.VITE_TG_DIRECT": JSON.stringify(loadEnv(mode, process.cwd(), "VITE_").VITE_TG_DIRECT ?? "") },
+  define: {
+    global: "window",
+    "import.meta.env.VITE_TG_DIRECT": JSON.stringify(loadEnv(mode, process.cwd(), "VITE_").VITE_TG_DIRECT ?? ""),
+    "import.meta.env.VITE_SENTRY_DSN": JSON.stringify(loadEnv(mode, process.cwd(), "VITE_").VITE_SENTRY_DSN ?? ""),
+  },
   resolve: {
     alias: [
       ...["util", "events"].map((name) => ({ find: new RegExp(`^${name}$`), replacement: fileURLToPath(new URL(`./src/shims/${name}.ts`, import.meta.url)) })),

@@ -7,6 +7,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import app.cablegram.BuildConfig
 import app.cablegram.data.LanPosterAuth
+import app.cablegram.diagnostics.TvDiagnostics
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -28,6 +29,7 @@ class CablegramApplication : Application(), DefaultLifecycleObserver, SingletonI
 
     override fun onCreate() {
         super<Application>.onCreate()
+        TvDiagnostics.init(this)
         if (BuildConfig.CABLEGRAM_CAST_APP_ID.isBlank()) return
         // Non-Cast TVs keep the existing relay path even when a receiver ID is configured.
         runCatching {

@@ -43,6 +43,12 @@ android {
         // LibVLC logs every stream URL, and a URL from the phone carries its LAN credential (`?token=`). Its own log
         // stays off unless a developer asks for it with -PCABLEGRAM_VLC_VERBOSE=true; never in a build given to others.
         buildConfigField("boolean", "VLC_VERBOSE", (project.findProperty("CABLEGRAM_VLC_VERBOSE") == "true").toString())
+        // Sentry DSN for crash and error monitoring; defaults to empty for open-source and dev builds
+        val sentryDsn = ((project.findProperty("SENTRY_DSN") as String?)
+            ?: (project.findProperty("SENTRY_DSN_ANDROID") as String?)
+            ?: localSetting("SENTRY_DSN").ifBlank { localSetting("SENTRY_DSN_ANDROID") }).trim()
+            .replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
         // Optional, e.g. -PCABLEGRAM_ABIS=armeabi-v7a: the universal APK is ~210 MB because of
         // LibVLC, which does not fit on low-storage TV sticks (Chromecast has ~4 GB /data).
         (project.findProperty("CABLEGRAM_ABIS") as String?)?.let { abis ->
@@ -117,6 +123,7 @@ dependencies {
     implementation("dev.g000sha256:tdl-coroutines-android:15.0.0")
     // Localhost Range server that feeds Telegram files to LibVLC (spec 004 FR-007).
     implementation("org.nanohttpd:nanohttpd:2.3.1")
+    implementation("io.sentry:sentry-android:8.16.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")

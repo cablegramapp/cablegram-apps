@@ -1,5 +1,6 @@
 package app.cablegram
 
+import app.cablegram.diagnostics.SentryScrubber
 import android.app.Application
 import android.content.Context
 import android.os.Build
@@ -763,6 +764,8 @@ class CablegramViewModel @JvmOverloads constructor(
 
     /** [holdForClip] is false for casts, remote commands and retries: those start the moment the title is ready. */
     fun play(video: Video, holdForClip: Boolean = true) {
+        // Diagnostics redact the playing title wherever an error message repeats it.
+        SentryScrubber.rememberName(video.title)
         // The same title continuing (after the Telegram password prompt, say) keeps the phone's command open.
         if (remoteTitleCommand?.second != video.id) finishRemoteTitle("superseded")
         castApp?.mediaSession?.begin(video.id, video.title ?: "Cablegram", video.posterUrl, video.durationSeconds?.times(1000L))

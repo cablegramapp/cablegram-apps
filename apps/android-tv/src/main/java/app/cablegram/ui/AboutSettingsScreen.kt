@@ -45,6 +45,8 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import app.cablegram.R
+import app.cablegram.diagnostics.DiagnosticsPreferences
+import app.cablegram.diagnostics.TvDiagnostics
 import app.cablegram.isSigningIn
 import app.cablegram.data.PRIVACY_POLICY_URL
 
@@ -138,6 +140,63 @@ internal fun AboutSettingsPanel(
                 Text(ui.getString(R.string.ui_open_privacy_policy_c90fcb))
             }
             Text(PRIVACY_POLICY_URL, color = Slate, fontSize = 12.sp)
+            if (TvDiagnostics.isAvailable()) {
+                var crashReporting by remember { mutableStateOf(DiagnosticsPreferences.isCrashReportingEnabled(context)) }
+                var reportStatus by remember { mutableStateOf<String?>(null) }
+                var sendingReport by remember { mutableStateOf(false) }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = {
+                            val next = !crashReporting
+                            crashReporting = next
+                            DiagnosticsPreferences.setCrashReportingEnabled(context, next)
+                        },
+                        colors = ButtonDefaults.colors(containerColor = PanelRaised),
+                    ) {
+                        Text(if (crashReporting) stringResource(R.string.diagnostics_crash_reports_on) else stringResource(R.string.diagnostics_crash_reports_off))
+                    }
+                    Button(
+                        onClick = {
+                            sendingReport = true
+                            val tgStatusName = when (telegramStatus) {
+                                is app.cablegram.TvTelegramStatus.Off -> "Off"
+                                is app.cablegram.TvTelegramStatus.CanConnect -> "CanConnect"
+                                is app.cablegram.TvTelegramStatus.Connecting -> "Connecting"
+                                is app.cablegram.TvTelegramStatus.WaitingForPhone -> "WaitingForPhone"
+                                is app.cablegram.TvTelegramStatus.NotSignedIn -> "NotSignedIn"
+                                is app.cablegram.TvTelegramStatus.NeedsPassword -> "NeedsPassword"
+                                is app.cablegram.TvTelegramStatus.Connected -> "Connected"
+                                is app.cablegram.TvTelegramStatus.Problem -> "Problem"
+                                is app.cablegram.TvTelegramStatus.ThroughPhone -> "ThroughPhone"
+                            }
+                            val isCustom = serverUrl != null && !serverUrl.trimEnd('/').equals(app.cablegram.BuildConfig.API_BASE_URL.trimEnd('/'), ignoreCase = true)
+                            val hasLanIp = !tvLanIp.isNullOrBlank()
+
+                            TvDiagnostics.sendProblemReport(
+                                context = context,
+                                description = "User initiated report from TV",
+                                hasTvLanIp = hasLanIp,
+                                telegramStatus = tgStatusName,
+                                isCustomServer = isCustom,
+                            ) { success ->
+                                sendingReport = false
+                                reportStatus = if (success) {
+                                    ui.getString(R.string.diagnostics_report_sent)
+                                } else {
+                                    ui.getString(R.string.diagnostics_report_failed)
+                                }
+                            }
+                        },
+                        enabled = !sendingReport,
+                        colors = ButtonDefaults.colors(containerColor = PanelRaised),
+                    ) {
+                        Text(if (sendingReport) stringResource(R.string.diagnostics_sending) else stringResource(R.string.diagnostics_report_problem_button))
+                    }
+                }
+                reportStatus?.let {
+                    Text(it, color = Cyan, fontSize = 12.sp)
+                }
+            }
             var showLegal by remember { mutableStateOf(false) }
             Button(
                 onClick = { showLegal = !showLegal },

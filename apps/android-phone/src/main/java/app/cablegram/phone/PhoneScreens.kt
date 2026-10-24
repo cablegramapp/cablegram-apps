@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.font.FontWeight
 import app.cablegram.phone.remote.RemoteScreen
+import app.cablegram.phone.diagnostics.DiagnosticsPreferences
+import app.cablegram.phone.diagnostics.PhoneDiagnostics
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -945,6 +947,11 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
     var showLegal by remember { mutableStateOf(false) }
     var profileToDelete by remember { mutableStateOf<HouseholdProfile?>(null) }
     var languageProfile by remember { mutableStateOf<HouseholdProfile?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var crashReportingEnabled by remember { mutableStateOf(DiagnosticsPreferences.isCrashReportingEnabled(context)) }
+    var reportProblemOpen by remember { mutableStateOf(false) }
+    var problemDescription by remember { mutableStateOf("") }
+    var sendingReport by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         viewModel.loadProfiles()
         viewModel.loadProfileLock()
@@ -1102,6 +1109,23 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                 }
             }
             Text(ui.getString(R.string.ui_share_your_catalog_with_your_household_your_video_file_fc6c1f), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
+            if (PhoneDiagnostics.isAvailable()) {
+                HorizontalDivider(color = PhoneOutline)
+                PrefSwitch(
+                    ui.getString(R.string.diagnostics_crash_reports_title),
+                    crashReportingEnabled,
+                    { enabled ->
+                        crashReportingEnabled = enabled
+                        DiagnosticsPreferences.setCrashReportingEnabled(context, enabled)
+                    },
+                    "settings_crash_reports",
+                )
+                Text(
+                    ui.getString(R.string.diagnostics_crash_reports_description),
+                    color = VlcMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
         if (page == "connection") SectionCard(ui.getString(R.string.ui_app_connection_535ee6)) {
             OutlinedButton(onClick = viewModel::clearLocalMetadata, modifier = Modifier.fillMaxWidth()) { Text(ui.getString(R.string.ui_clear_artwork_cache_6b5bf3)) }
@@ -1136,6 +1160,9 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
         viewModel.status?.let { StatusNote(it) }
         if (page == null) {
             TextButton(onClick = viewModel::replayWelcomeTour, modifier = Modifier.maestro(MaestroIds.SETTINGS_WELCOME_TOUR)) { Text(ui.getString(R.string.ui_show_the_welcome_tour_140eac)) }
+            if (PhoneDiagnostics.isAvailable()) {
+                TextButton(onClick = { reportProblemOpen = true }, modifier = Modifier.maestro("settings_report_problem")) { Text(ui.getString(R.string.diagnostics_report_problem_button)) }
+            }
             TextButton(onClick = { showLegal = true }) { Text(ui.getString(R.string.ui_licence_and_third_party_notices_0dcfa5)) }
             Text(ui.getString(R.string.ui_cablegram_your_videos_your_screen_your_space_b83cca, BuildConfig.VERSION_NAME), color = VlcMuted, style = MaterialTheme.typography.bodySmall)
         }
@@ -1216,6 +1243,61 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
             text = { Text(ui.getString(R.string.ui_their_watch_progress_and_my_list_are_removed_from_ever_c54b92)) },
             confirmButton = { TextButton(onClick = { viewModel.deleteProfile(profile); profileToDelete = null }) { Text(ui.getString(R.string.ui_delete_profile_47311a)) } },
             dismissButton = { TextButton(onClick = { profileToDelete = null }) { Text(ui.getString(R.string.ui_cancel_19766e)) } },
+        )
+    }
+    if (reportProblemOpen) {
+        AlertDialog(
+            modifier = Modifier.maestroRoot(),
+            onDismissRequest = { if (!sendingReport) reportProblemOpen = false },
+            title = { Text(ui.getString(R.string.diagnostics_report_problem_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        ui.getString(R.string.diagnostics_report_problem_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = VlcMuted,
+                    )
+                    OutlinedTextField(
+                        value = problemDescription,
+                        onValueChange = { problemDescription = it },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 90.dp),
+                        label = { Text(ui.getString(R.string.diagnostics_problem_description_label)) },
+                        enabled = !sendingReport,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        sendingReport = true
+                        PhoneDiagnostics.sendProblemReport(
+                            context = context,
+                            description = problemDescription,
+                            playbackState = if (viewModel.nowPlaying != null) (if (viewModel.paused) "paused" else "playing") else "idle",
+                        ) { success ->
+                            sendingReport = false
+                            reportProblemOpen = false
+                            problemDescription = ""
+                            viewModel.status = if (success) {
+                                ui.getString(R.string.diagnostics_report_sent)
+                            } else {
+                                ui.getString(R.string.diagnostics_report_failed)
+                            }
+                        }
+                    },
+                    enabled = !sendingReport,
+                ) {
+                    Text(if (sendingReport) ui.getString(R.string.diagnostics_sending) else ui.getString(R.string.diagnostics_send_report_button))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { reportProblemOpen = false },
+                    enabled = !sendingReport,
+                ) {
+                    Text(ui.getString(R.string.ui_cancel_19766e))
+                }
+            },
         )
     }
 }
