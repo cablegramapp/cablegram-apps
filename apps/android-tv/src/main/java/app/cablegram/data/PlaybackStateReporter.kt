@@ -11,6 +11,7 @@ data class PlaybackReport(
     val originId: String?,
     val positionMs: Long?,
     val seq: Long,
+    val volume: Int? = null,
 )
 
 /**
@@ -34,15 +35,15 @@ class PlaybackStateReporter(
         scope.launch { for (report in pending) runCatching { send(report) } }
     }
 
-    fun playing(videoId: String, originId: String?, positionMs: Long) = report("playing", videoId, originId, positionMs)
-    fun paused(videoId: String, originId: String?, positionMs: Long) = report("paused", videoId, originId, positionMs)
+    fun playing(videoId: String, originId: String?, positionMs: Long, volume: Int? = null) = report("playing", videoId, originId, positionMs, volume)
+    fun paused(videoId: String, originId: String?, positionMs: Long, volume: Int? = null) = report("paused", videoId, originId, positionMs, volume)
     fun stopped() = report("stopped", null, null, null)
 
-    private fun report(state: String, videoId: String?, originId: String?, positionMs: Long?) {
+    private fun report(state: String, videoId: String?, originId: String?, positionMs: Long?, volume: Int? = null) {
         val previous = last
         val changed = previous == null || previous.state != state || previous.videoId != videoId
         if (!changed && (state == "stopped" || nowMs() - lastQueuedAt < refreshMs)) return
-        val next = PlaybackReport(state, videoId, originId, positionMs, ++seq)
+        val next = PlaybackReport(state, videoId, originId, positionMs, ++seq, volume)
         last = next
         lastQueuedAt = nowMs()
         pending.trySend(next)
