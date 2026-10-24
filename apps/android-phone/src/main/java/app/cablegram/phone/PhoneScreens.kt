@@ -1267,7 +1267,7 @@ private fun SettingsScreen(viewModel: PhoneViewModel) {
                         app.cablegram.phone.diagnostics.PhoneDiagnostics.sendProblemReport(
                             context = context,
                             description = problemDescription,
-                            playbackState = viewModel.playbackState?.name,
+                            playbackState = if (viewModel.nowPlaying != null) (if (viewModel.paused) "paused" else "playing") else "idle",
                         ) {
                             sendingReport = false
                             reportProblemOpen = false
