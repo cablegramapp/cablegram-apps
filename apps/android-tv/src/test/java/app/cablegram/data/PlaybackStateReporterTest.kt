@@ -27,6 +27,15 @@ class PlaybackStateReporterTest {
     }
 
     @Test
+    fun `the player volume travels with playing and paused reports`() {
+        reporter.playing("v1", null, 1_000, volume = 35)
+        reporter.paused("v1", null, 2_000, volume = 40)
+        reporter.stopped()
+        scope.runCurrent()
+        assertEquals(listOf<Int?>(35, 40, null), sent.map { it.volume })
+    }
+
+    @Test
     fun `a lasting state is refreshed only now and then`() {
         reporter.playing("v1", null, 1_000)
         now = 5_000; reporter.playing("v1", null, 6_000)

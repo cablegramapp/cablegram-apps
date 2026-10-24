@@ -966,8 +966,8 @@ class CablegramViewModel @JvmOverloads constructor(
         lastPlayerPosition = videoId to positionSeconds
         castApp?.mediaSession?.progress(positionSeconds * 1000L, isPlaying)
         playingVideo(videoId)?.let { video ->
-            if (isPlaying) playbackReporter.playing(video.id, video.originIdentity, positionSeconds * 1000L)
-            else playbackReporter.paused(video.id, video.originIdentity, positionSeconds * 1000L)
+            if (isPlaying) playbackReporter.playing(video.id, video.originIdentity, positionSeconds * 1000L, volume.takeIf { !muted })
+            else playbackReporter.paused(video.id, video.originIdentity, positionSeconds * 1000L, volume.takeIf { !muted })
         }
         if (isPlaying) remotePlaybackResult(videoId, null)
         if (isDemoMode || isDemoVideoId(videoId)) return
