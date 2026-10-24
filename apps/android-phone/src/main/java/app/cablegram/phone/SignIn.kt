@@ -81,7 +81,12 @@ class SignInController(
             is SignInResult.Failed -> message = when (result.error) {
                 "invalid_setup_code" -> "That setup code isn't right."
                 "setup_code_expired" -> "That setup code expired. Ask the server owner for a new one."
-                else -> result.text(resources())
+                "too_many_setup_attempts", "rate_limited" -> resources().getString(R.string.ui_too_many_tries_wait_a_while_and_try_again_114288)
+                else -> if (result.status == 429) {
+                    resources().getString(R.string.ui_too_many_tries_wait_a_while_and_try_again_114288)
+                } else {
+                    result.text(resources())
+                }
             }
             else -> handle(result)
         }
@@ -199,7 +204,7 @@ fun SignInResult.Failed.text(resources: android.content.res.Resources): String =
     "invalid_code" -> resources.getString(R.string.ui_that_code_isn_t_right_check_the_email_and_try_again_38ed4a)
     "code_expired" -> resources.getString(R.string.ui_that_code_expired_or_was_tried_too_often_ask_for_a_new_0aa93e)
     "code_rate_limited" -> resources.getString(R.string.ui_a_code_was_sent_a_moment_ago_wait_a_minute_before_aski_cc929d)
-    "rate_limited" -> resources.getString(R.string.ui_too_many_tries_wait_a_while_and_try_again_114288)
+    "rate_limited", "too_many_setup_attempts" -> resources.getString(R.string.ui_too_many_tries_wait_a_while_and_try_again_114288)
     "mail_unavailable" -> resources.getString(R.string.ui_we_couldn_t_send_the_email_try_again_in_a_few_minutes_fb5f5f)
     "disposable_email" -> resources.getString(R.string.ui_temporary_email_addresses_can_t_be_used_use_an_email_a_5c8d8f)
     "invalid_google_token" -> resources.getString(R.string.ui_google_sign_in_didn_t_work_try_again_78c785)
@@ -211,6 +216,7 @@ fun SignInResult.Failed.text(resources: android.content.res.Resources): String =
     else -> when (status) {
         null -> resources.getString(R.string.ui_can_t_reach_cablegram_check_your_connection_or_the_api_e3f77a)
         400 -> resources.getString(R.string.ui_check_the_email_address_and_try_again_5e6910)
+        429 -> resources.getString(R.string.ui_too_many_tries_wait_a_while_and_try_again_114288)
         else -> resources.getString(R.string.ui_something_went_wrong_try_again_in_a_moment_156a12)
     }
 }

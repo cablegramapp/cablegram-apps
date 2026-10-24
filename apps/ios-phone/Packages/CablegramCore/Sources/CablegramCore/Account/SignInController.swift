@@ -86,7 +86,26 @@ public final class SignInController {
             return
         }
         await run {
-            await handle(client().claimSetupCode(code: clean))
+            let result = await client().claimSetupCode(code: clean)
+            switch result {
+            case .failed(let failure):
+                switch failure.error {
+                case "invalid_setup_code":
+                    message = StatusMessage("ui_that_code_isn_t_right_check_the_email_and_try_again_38ed4a")
+                case "setup_code_expired":
+                    message = StatusMessage("ui_that_code_expired_or_was_tried_too_often_ask_for_a_new_0aa93e")
+                case "too_many_setup_attempts", "rate_limited":
+                    message = StatusMessage("ui_too_many_tries_wait_a_while_and_try_again_114288")
+                default:
+                    if failure.status == 429 {
+                        message = StatusMessage("ui_too_many_tries_wait_a_while_and_try_again_114288")
+                    } else {
+                        await handle(result)
+                    }
+                }
+            default:
+                await handle(result)
+            }
         }
     }
 
