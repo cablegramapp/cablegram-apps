@@ -128,6 +128,22 @@ class SignInControllerTest {
     }
 
     @Test
+    fun `claim setup code rate limit maps to too many tries`() = runTest {
+        server.enqueue(json(429, """{"error":"too_many_setup_attempts"}"""))
+        val c = controller()
+        c.claimSetupCode("123456")
+        assertEquals(res.getString(R.string.ui_too_many_tries_wait_a_while_and_try_again_114288), c.message)
+    }
+
+    @Test
+    fun `claim setup code generic 429 maps to too many tries`() = runTest {
+        server.enqueue(json(429, """{"error":"rate_limited"}"""))
+        val c = controller()
+        c.claimSetupCode("123456")
+        assertEquals(res.getString(R.string.ui_too_many_tries_wait_a_while_and_try_again_114288), c.message)
+    }
+
+    @Test
     fun `a join request waits, then signs in once approved`() = runTest {
         server.enqueue(json(201, """{"id":"j1","short_code":"654321","poll_secret":"s","expires_at":"x"}"""))
         server.enqueue(json(200, """{"id":"j1","status":"pending"}"""))

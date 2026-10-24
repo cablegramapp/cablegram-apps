@@ -398,6 +398,13 @@ extension Network {
         #expect(req.body["client"] as? String == "app")
     }
 
+    @Test func claimSetupCodeRateLimitMapsToTooManyTries() {
+        let attemptFailure = SignInFailure(status: 429, error: "too_many_setup_attempts")
+        #expect(attemptFailure.messageKey == "ui_too_many_tries_wait_a_while_and_try_again_114288")
+        let status429Failure = SignInFailure(status: 429, error: nil)
+        #expect(status429Failure.messageKey == "ui_too_many_tries_wait_a_while_and_try_again_114288")
+    }
+
     @Test func createAndPollJoinRequest() async {
         MockHTTP.enqueue(201, """
         {
